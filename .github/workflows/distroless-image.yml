@@ -58,8 +58,6 @@ jobs:
             git.valerio.pw/${{ env.IMAGE_NAME }}:latest
             git.valerio.pw/${{ env.IMAGE_NAME }}-${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Image digest
         run: echo ${{ steps.build.outputs.digest }}

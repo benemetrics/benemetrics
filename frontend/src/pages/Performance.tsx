@@ -1,33 +1,139 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MobileNavBar } from '../components/MobileNavBar';
-import { cn } from '../lib/utils';
+import { cn, formatMs, percentile } from '../lib/utils';
+import { listEvents } from '../lib/api';
+
+interface SpanRow {
+  name: string;
+  op: string | null;
+  durationMs: number;
+  status: string | null;
+}
+
+interface TxRow {
+  id: string;
+  name: string;
+  durationMs: number;
+  status: string | null;
+  traceId: string | null;
+  op: string | null;
+  receivedAt: string;
+  spans: SpanRow[];
+}
+
+interface TxAggregate {
+  name: string;
+  count: number;
+  avgMs: number;
+  p95Ms: number;
+  failurePct: number | null;
+}
+
+const timeRanges = ['1h', '24h', '7d', '30d'] as const;
+const rangeMs: Record<string, number> = { '1h': 3_600_000, '24h': 86_400_000, '7d': 604_800_000, '30d': 2_592_000_000 };
+
+function toTxRow(id: string, tx: any, receivedAt: string): TxRow | null {
+  if (!tx || typeof tx !== 'object') return null;
+  const start = typeof tx.start_timestamp === 'number' ? tx.start_timestamp : null;
+  const end = typeof tx.timestamp === 'number' ? tx.timestamp : null;
+  const durationSec = typeof tx.duration === 'number'
+    ? tx.duration
+    : start != null && end != null ? end - start : null;
+  const spans: SpanRow[] = Array.isArray(tx.spans)
+    ? tx.spans
+        .map((s: any) => {
+          const sStart = typeof s?.start_timestamp === 'number' ? s.start_timestamp : null;
+          const sEnd = typeof s?.timestamp === 'number' ? s.timestamp : null;
+          const dur = sStart != null && sEnd != null ? (sEnd - sStart) * 1000 : null;
+          if (dur == null) return null;
+          return {
+            name: String(s.name ?? 'unknown'),
+            op: typeof s.op === 'string' ? s.op : null,
+            durationMs: dur,
+            status: typeof s.status === 'string' ? s.status : null,
+          } satisfies SpanRow;
+        })
+        .filter((s: SpanRow | null): s is SpanRow => s !== null)
+    : [];
+  return {
+    id,
+    name: String(tx.transaction ?? 'unknown'),
+    durationMs: durationSec != null ? durationSec * 1000 : Number.NaN,
+    status: typeof tx.status === 'string' ? tx.status : null,
+    traceId: typeof tx.trace_id === 'string' ? tx.trace_id : null,
+    op: tx.contexts?.trace?.op ?? null,
+    receivedAt,
+    spans,
+  };
+}
+
+function aggregate(rows: TxRow[]): TxAggregate[] {
+  const byName = new Map<string, TxRow[]>();
+  for (const row of rows) {
+    const list = byName.get(row.name) ?? [];
+    list.push(row);
+    byName.set(row.name, list);
+  }
+  return [...byName.entries()]
+    .map(([name, list]) => {
+      const durations = list.map((r) => r.durationMs).filter((d) => !Number.isNaN(d));
+      const known = list.filter((r) => r.status != null);
+      const failed = known.filter((r) => r.status !== 'ok').length;
+      return {
+        name,
+        count: list.length,
+        avgMs: durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : Number.NaN,
+        p95Ms: percentile(durations, 95) ?? Number.NaN,
+        failurePct: known.length ? Math.round((failed / known.length) * 100) : null,
+      };
+    })
+    .sort((a, b) => (Number.isNaN(b.p95Ms) ? -1 : b.p95Ms) - (Number.isNaN(a.p95Ms) ? -1 : a.p95Ms));
+}
 
 export function Performance() {
-  const [activeTimeRange, setActiveTimeRange] = useState('24h');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedTrace, setSelectedTrace] = useState<{ title: string; avg: string; p95: string; req: string } | null>(null);
+  const [activeTimeRange, setActiveTimeRange] = useState<(typeof timeRanges)[number]>('24h');
+  const [allTx, setAllTx] = useState<TxRow[]>([]);
+  const [selected, setSelected] = useState<TxRow | null>(null);
 
-  const timeRanges = ['1h', '24h', '7d', '30d'];
-  const timeKPIs: Record<string, { p75: string; throughput: string; apdex: string; failure: string }> = {
-    '1h': { p75: '128ms', throughput: '4,512 rpm', apdex: '0.94', failure: '0.12%' },
-    '24h': { p75: '142ms', throughput: '4,820 rpm', apdex: '0.96', failure: '0.08%' },
-    '7d': { p75: '156ms', throughput: '4,690 rpm', apdex: '0.95', failure: '0.09%' },
-    '30d': { p75: '162ms', throughput: '4,555 rpm', apdex: '0.93', failure: '0.11%' },
-  };
-  const kpi = timeKPIs[activeTimeRange]!;
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const result = await listEvents();
+        const events = (result?.data ?? []) as Array<{ id: string; itemTypes: string[]; transaction: any; receivedAt: string }>;
+        const mapped = events
+          .filter((e) => e.itemTypes?.includes('transaction'))
+          .map((e) => toTxRow(e.id, e.transaction, e.receivedAt))
+          .filter((r): r is TxRow => r !== null);
+        if (!cancelled) setAllTx(mapped);
+      } catch {
+        // keep last known data on fetch failure
+      }
+    };
+    load();
+    const interval = setInterval(load, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
-  const slowestTx = [
-    { title: 'POST /api/v2/reports/export', avg: '1,840ms', p95: '4.2s', req: '340 req/min', bar: 88, status: 'Regressed +40%', color: 'error' },
-    { title: 'GET /api/v1/feed/personal', avg: '310ms', p95: '640ms', req: '2.8k req/min', bar: 24, status: 'Normal', color: 'primary' },
-    { title: 'POST /auth/oauth/token', avg: '220ms', p95: '410ms', req: '1.2k req/min', bar: 16, status: 'Normal', color: 'primary' },
-    { title: 'DELETE /api/v1/team/member', avg: '85ms', p95: '120ms', req: '45 req/min', bar: 6, status: 'Fast', color: 'secondary' },
-  ];
+  const windowStart = Date.now() - rangeMs[activeTimeRange]!;
+  const rows = useMemo(
+    () => allTx.filter((r) => new Date(r.receivedAt).getTime() >= windowStart),
+    [allTx, windowStart]
+  );
 
-  const traceModalData = [
-    { name: 'express.middleware: authenticate', duration: '14ms', pct: '5%', color: 'secondary' },
-    { name: 'postgres.query: SELECT * FROM telemetry_events', duration: '1,240ms (67%)', pct: '68%', color: 'error', warning: true },
-    { name: 'aws.s3: putObject (compressed_report.zip)', duration: '480ms', pct: '26%', color: 'primary' },
-  ];
+  const durations = useMemo(() => rows.map((r) => r.durationMs).filter((d) => !Number.isNaN(d)), [rows]);
+  const p75 = percentile(durations, 75);
+  const p50 = percentile(durations, 50);
+  const knownStatus = rows.filter((r) => r.status != null);
+  const failureRate = knownStatus.length
+    ? Math.round((knownStatus.filter((r) => r.status !== 'ok').length / knownStatus.length) * 100)
+    : null;
+  const throughput = rows.length > 0 ? (rows.length / (rangeMs[activeTimeRange]! / 60_000)).toFixed(1) : null;
+
+  const aggregates = useMemo(() => aggregate(rows), [rows]);
 
   return (
     <div className="flex flex-col h-screen bg-surface">
@@ -48,265 +154,191 @@ export function Performance() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-container-low text-secondary text-code-md shadow-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
-            <span className="tracking-wide">prod-us-east-1</span>
-          </div>
-          <button className="w-8 h-8 rounded-xl bg-surface-container-low flex items-center justify-center text-on-surface-variant active:scale-95 transition-transform">
-            <span className="text-[16px] mds">sync</span>
-          </button>
-        </div>
+        <span className="text-code-sm text-on-surface-variant">auto-reloading (2s)</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 px-4">
-        <div className="p-3 rounded-xl bg-surface-container flex flex-col justify-between shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between text-on-surface-variant mb-1">
-            <span className="text-code-sm uppercase tracking-wider">P75 Latency</span>
-            <span className="text-[16px] mds text-primary">timer</span>
-          </div>
-          <div className="flex items-baseline gap-1 my-0.5">
-            <span className="text-headline-lg-mobile text-on-surface font-bold">{kpi.p75.replace('ms', '')}</span>
-            <span className="text-code-md text-on-surface-variant">ms</span>
-          </div>
-          <div className="flex items-center justify-between mt-1">
-            <div className="flex items-center gap-0.5 text-secondary text-code-sm">
-              <span className="text-[13px] mds">trending_down</span>
-              <span>-18ms</span>
-            </div>
+      {rows.length === 0 ? (
+        <div className="flex-1 px-4 flex items-center justify-center">
+          <div className="border border-dashed border-outline-variant rounded-xl p-8 flex flex-col items-center justify-center gap-3 text-center max-w-md">
+            <span className="material-symbols-outlined text-[36px] text-outline">speed</span>
+            <h3 className="text-headline-sm text-on-surface font-semibold">No transactions in this window</h3>
+            <p className="text-body-sm text-on-surface-variant">
+              Send traces with performance monitoring enabled (tracesSampleRate &gt; 0) and they will show up here.
+            </p>
           </div>
         </div>
-        <div className="p-3 rounded-xl bg-surface-container flex flex-col justify-between shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between text-on-surface-variant mb-1">
-            <span className="text-code-sm uppercase tracking-wider">Throughput</span>
-            <span className="text-[16px] mds text-primary">speed</span>
-          </div>
-          <div className="flex items-baseline gap-1 my-0.5">
-            <span className="text-headline-lg-mobile text-on-surface font-bold">{kpi.throughput}</span>
-          </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-code-sm text-on-surface-variant">peak 6.1k</span>
-          </div>
-        </div>
-        <div className="p-3 rounded-xl bg-surface-container flex flex-col justify-between shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between text-on-surface-variant mb-1">
-            <span className="text-code-sm uppercase tracking-wider">Apdex</span>
-            <span className="text-[16px] mds text-secondary">sentiment_very_satisfied</span>
-          </div>
-          <div className="flex items-baseline gap-1 my-0.5">
-            <span className="text-headline-lg-mobile text-secondary font-bold">{kpi.apdex}</span>
-            <span className="text-code-sm text-on-surface-variant">/1.0</span>
-          </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-secondary text-code-sm">Excellent</span>
-            <span className="text-code-sm text-on-surface-variant">T = 200ms</span>
-          </div>
-        </div>
-        <div className="p-3 rounded-xl bg-surface-container flex flex-col justify-between shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between text-on-surface-variant mb-1">
-            <span className="text-code-sm uppercase tracking-wider">Failure Rate</span>
-            <span className="text-[16px] mds text-tertiary">format_image_left</span>
-          </div>
-          <div className="flex items-baseline gap-1 my-0.5">
-            <span className="text-headline-lg-mobile text-on-surface font-bold">{kpi.failure.replace('%', '')}</span>
-            <span className="text-code-md text-on-surface-variant">%</span>
-          </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-code-sm text-secondary">38 err/24h</span>
-            <div className="w-10 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
-              <div className="h-full bg-secondary rounded-full" style={{ width: kpi.failure }}></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-3 rounded-xl bg-surface-container shadow-sm flex flex-col gap-2 mt-2 px-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-[18px] mds text-primary">monitoring</span>
-            <span className="text-headline-sm text-on-surface font-semibold">Latency Dynamics</span>
-          </div>
-          <div className="flex items-center gap-2 text-code-sm">
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-0.5 rounded-full bg-primary" />
-              <span className="text-on-surface-variant">P95</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-0.5 rounded-full bg-secondary" />
-              <span className="text-on-surface-variant">P50</span>
-            </div>
-          </div>
-        </div>
-        <div className="w-full h-24 relative flex items-center justify-center">
-          <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 320 80">
-            <defs>
-              <linearGradient id="cyanFill" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#4cd7f6" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="#4cd7f6" stopOpacity="0" />
-              </linearGradient>
-              <linearGradient id="emeraldFill" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#4edea3" stopOpacity="0.18" />
-                <stop offset="100%" stopColor="#4edea3" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <path d="M0 45 C30 38, 60 52, 90 32 C120 18, 150 48, 180 28 C210 12, 240 30, 270 20 C295 12, 310 16, 320 15 L320 80 L0 80 Z" fill="url(#cyanFill)" />
-            <path d="M0 45 C30 38, 60 52, 90 32 C120 18, 150 48, 180 28 C210 12, 240 30, 270 20 C295 12, 310 16, 320 15" fill="none" stroke="#4cd7f6" strokeLinecap="round" strokeWidth="1.5" />
-            <path d="M0 64 C35 60, 70 66, 110 58 C150 50, 190 62, 230 52 C270 44, 300 48, 320 46 L320 80 L0 80 Z" fill="url(#emeraldFill)" />
-            <path d="M0 64 C35 60, 70 66, 110 58 C150 50, 190 62, 230 52 C270 44, 300 48, 320 46" fill="none" stroke="#4edea3" strokeLinecap="round" strokeWidth="1.5" />
-            <circle cx="270" cy="20" fill="#4cd7f6" r="3" />
-            <circle cx="270" cy="20" fill="#4cd7f6" opacity="0.3" r="6" className="animate-ping" />
-          </svg>
-        </div>
-        <div className="flex items-center justify-between text-on-surface-variant text-code-sm">
-          <span>24h ago</span>
-          <span>12h ago</span>
-          <span>6h ago</span>
-          <span className="text-primary font-bold">Now</span>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1 mt-2 px-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-[18px] mds text-secondary">vital_signs</span>
-            <span className="text-headline-sm text-on-surface font-semibold">Vitals Matrix</span>
-          </div>
-          <span className="text-code-sm text-on-surface-variant">75th Percentile</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: 'LCP', value: '1.1', unit: 's', pct: '44%' },
-            { label: 'FID / INP', value: '42', unit: 'ms', pct: '21%' },
-            { label: 'CLS', value: '0.02', unit: 'score', pct: '20%' },
-            { label: 'Warm Start', value: '420', unit: 'ms', pct: '42%', color: 'primary' },
-          ].map((v) => (
-            <div key={v.label} className="p-3 rounded-xl bg-surface-container flex flex-col justify-between shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-code-sm text-on-surface-variant">{v.label}</span>
-                <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-secondary text-code-sm">Good</span>
+      ) : (
+        <>
+          {/* KPI tiles — computed from real transactions */}
+          <div className="grid grid-cols-2 gap-2 px-4">
+            <div className="p-3 rounded-xl bg-surface-container flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between text-on-surface-variant mb-1">
+                <span className="text-code-sm uppercase tracking-wider">P75 Duration</span>
+                <span className="text-[16px] mds text-primary">timer</span>
               </div>
-              <div className="flex items-baseline gap-1 my-1">
-                <span className="text-headline-md text-on-surface font-bold">{v.value}</span>
-                <span className="text-code-md text-on-surface-variant">{v.unit}</span>
+              <div className="flex items-baseline gap-1 my-0.5">
+                <span className="text-headline-lg-mobile text-on-surface font-bold">{p75 != null ? formatMs(p75) : '—'}</span>
               </div>
-              <div className="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
-                <div className="bg-secondary h-full rounded-full" style={{ width: v.pct }}></div>
+              <span className="text-code-sm text-on-surface-variant">P50 {p50 != null ? formatMs(p50) : '—'}</span>
+            </div>
+            <div className="p-3 rounded-xl bg-surface-container flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between text-on-surface-variant mb-1">
+                <span className="text-code-sm uppercase tracking-wider">Throughput</span>
+                <span className="text-[16px] mds text-primary">speed</span>
+              </div>
+              <div className="flex items-baseline gap-1 my-0.5">
+                <span className="text-headline-lg-mobile text-on-surface font-bold">{throughput ?? '—'}</span>
+                <span className="text-code-md text-on-surface-variant">tx/min</span>
+              </div>
+              <span className="text-code-sm text-on-surface-variant">{rows.length} transactions</span>
+            </div>
+            <div className="p-3 rounded-xl bg-surface-container flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between text-on-surface-variant mb-1">
+                <span className="text-code-sm uppercase tracking-wider">Fastest / Slowest</span>
+                <span className="text-[16px] mds text-secondary">swap_vert</span>
+              </div>
+              <div className="flex items-baseline gap-1 my-0.5">
+                <span className="text-headline-lg-mobile text-secondary font-bold">
+                  {durations.length ? formatMs(Math.min(...durations)) : '—'}
+                </span>
+                <span className="text-code-md text-on-surface-variant">/</span>
+                <span className="text-headline-lg-mobile text-error font-bold">
+                  {durations.length ? formatMs(Math.max(...durations)) : '—'}
+                </span>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1 mt-2 px-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-[18px] mds text-error">crisis_alert</span>
-            <span className="text-headline-sm text-on-surface font-semibold">Slowest Transactions</span>
-          </div>
-          <span className="text-code-sm text-on-surface-variant">Sorted by P95</span>
-        </div>
-        {slowestTx.map((tx, i) => (
-          <div
-            key={i}
-            onClick={() => {
-              setSelectedTrace(tx);
-              setModalOpen(true);
-            }}
-            className={cn(
-              'p-3 rounded-xl bg-surface-container flex flex-col gap-1 shadow-sm hover:bg-surface-container-high transition-colors cursor-pointer'
-            )}
-          >
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-code-lg text-on-surface font-semibold truncate">{tx.title}</span>
-              <span className={cn(
-                'px-1.5 py-0.5 rounded text-code-sm flex-shrink-0',
-                tx.status === 'Regressed +40%' ? 'bg-error-container text-on-error-container animate-pulse font-semibold' :
-                  tx.status === 'Fast' ? 'bg-surface-container-high text-secondary' :
-                  tx.status === 'Normal' ? 'bg-surface-container-high text-secondary' : ''
-              )}>
-                {tx.status}
-              </span>
+            <div className="p-3 rounded-xl bg-surface-container flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between text-on-surface-variant mb-1">
+                <span className="text-code-sm uppercase tracking-wider">Failure Rate</span>
+                <span className="text-[16px] mds text-tertiary">format_image_left</span>
+              </div>
+              <div className="flex items-baseline gap-1 my-0.5">
+                <span className="text-headline-lg-mobile text-on-surface font-bold">{failureRate != null ? failureRate : '—'}</span>
+                <span className="text-code-md text-on-surface-variant">%</span>
+              </div>
+              <span className="text-code-sm text-on-surface-variant">{knownStatus.length} with status</span>
             </div>
-            <div className="flex items-center justify-between text-on-surface-variant text-code-md">
+          </div>
+
+          {/* Slowest Transactions — grouped from real data */}
+          <div className="flex flex-col gap-1 mt-3 px-4 overflow-y-auto flex-1 pb-2">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span>Avg <strong className="text-on-surface">{tx.avg}</strong></span>
-                <span className="text-outline">|</span>
-                <span>P95 <strong className={tx.status === 'Regressed +40%' ? 'text-error font-semibold' : 'text-on-surface'}>
-                  {tx.p95}
-                </strong></span>
+                <span className="text-[18px] mds text-error">crisis_alert</span>
+                <span className="text-headline-sm text-on-surface font-semibold">Slowest Transactions</span>
               </div>
-              <span className="text-on-surface-variant">{tx.req}</span>
+              <span className="text-code-sm text-on-surface-variant">sorted by P95</span>
             </div>
-            <div className="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-0.5">
-              <div className="bg-error h-full rounded-full" style={{ width: tx.bar }}></div>
-            </div>
+            {aggregates.map((tx) => {
+              const slowest = Math.max(...durations, 1);
+              const barWidth = Math.max(4, Math.min(100, Math.round((tx.p95Ms / slowest) * 100)));
+              const example = rows.find((r) => r.name === tx.name) ?? null;
+              return (
+                <div
+                  key={tx.name}
+                  onClick={() => example && setSelected(example)}
+                  className="p-3 rounded-xl bg-surface-container flex flex-col gap-1 shadow-sm hover:bg-surface-container-high transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-code-lg text-on-surface font-semibold truncate">{tx.name}</span>
+                    <span className="px-1.5 py-0.5 rounded text-code-sm flex-shrink-0 bg-surface-container-high text-secondary">
+                      {tx.count} tx
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-on-surface-variant text-code-md">
+                    <div className="flex items-center gap-2">
+                      <span>Avg <strong className="text-on-surface">{formatMs(tx.avgMs)}</strong></span>
+                      <span className="text-outline">|</span>
+                      <span>P95 <strong className={cn(tx.failurePct != null && tx.failurePct > 0 ? 'text-error font-semibold' : 'text-on-surface')}>
+                        {formatMs(tx.p95Ms)}
+                      </strong></span>
+                    </div>
+                    <span className={cn(tx.failurePct != null && tx.failurePct > 0 ? 'text-error' : 'text-secondary')}>
+                      {tx.failurePct != null ? `${tx.failurePct}% failed` : 'no status'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-0.5">
+                    <div className={cn('h-full rounded-full', tx.failurePct != null && tx.failurePct > 0 ? 'bg-error' : 'bg-secondary')} style={{ width: `${barWidth}%` }}></div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ))}
-        <button
-          onClick={() => {
-            setSelectedTrace(slowestTx[0]!);
-            setModalOpen(true);
-          }}
-          className="w-full h-11 px-3 rounded-xl bg-primary text-on-primary text-code-lg font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-90 active:scale-[0.99] transition-transform mt-2"
-        >
-          <span className="text-[20px] mds">account_tree</span>
-          <span>Inspect Distributed Trace Waterfall</span>
-        </button>
-      </div>
+        </>
+      )}
 
-      {modalOpen && selectedTrace && (
-        <div className="fixed inset-0 z-50 bg-surface/90 backdrop-blur-md hidden flex-col justify-end">
-          <div className="flex-1 w-full" onClick={() => setModalOpen(false)} />
+      {selected && (
+        <div className="fixed inset-0 z-50 bg-surface/90 backdrop-blur-md flex flex-col justify-end">
+          <div className="flex-1 w-full" onClick={() => setSelected(null)} />
           <div className="w-full bg-surface-container rounded-t-2xl p-4 shadow-2xl flex flex-col gap-3 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <div className="flex flex-col min-w-0">
                 <span className="text-code-sm text-primary uppercase tracking-wider">Trace Investigation</span>
-                <span className="text-headline-sm text-on-surface font-bold truncate">{selectedTrace.title}</span>
+                <span className="text-headline-sm text-on-surface font-bold truncate">{selected.name}</span>
               </div>
-              <button onClick={() => setModalOpen(false)} className="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-bright">
+              <button onClick={() => setSelected(null)} className="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-bright">
                 <span className="text-[18px] mds">close</span>
               </button>
             </div>
             <div className="grid grid-cols-3 gap-2 p-2 rounded-xl bg-surface-container-low text-center">
               <div>
                 <span className="text-code-sm text-on-surface-variant block">Duration</span>
-                <span className="text-code-lg text-error font-bold">{selectedTrace.avg}</span>
+                <span className="text-code-lg text-error font-bold">{formatMs(selected.durationMs)}</span>
               </div>
               <div>
-                <span className="text-code-sm text-on-surface-variant block">P95</span>
-                <span className="text-code-lg text-on-surface font-semibold">{selectedTrace.p95}</span>
+                <span className="text-code-sm text-on-surface-variant block">Status</span>
+                <span className="text-code-lg text-on-surface font-semibold">{selected.status ?? '—'}</span>
               </div>
               <div>
-                <span className="text-code-sm text-on-surface-variant block">Throughput</span>
-                <span className="text-code-lg text-secondary font-semibold">{selectedTrace.req}</span>
+                <span className="text-code-sm text-on-surface-variant block">Spans</span>
+                <span className="text-code-lg text-secondary font-semibold">{selected.spans.length}</span>
               </div>
             </div>
+            {selected.traceId && (
+              <div className="p-2 rounded-lg bg-surface-container-low flex items-center justify-between">
+                <span className="text-code-sm text-on-surface-variant">Trace ID</span>
+                <span className="text-code-sm text-on-surface font-mono truncate">{selected.traceId}</span>
+              </div>
+            )}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between text-on-surface-variant text-code-sm">
-                <span>SPANS TIMELINE (0ms - {selectedTrace.avg})</span>
-                <span className="text-primary">8 Spans Total</span>
+                <span>SPANS TIMELINE</span>
+                <span className="text-primary">{selected.spans.length} span{selected.spans.length === 1 ? '' : 's'}</span>
               </div>
-              {traceModalData.map((span, i) => (
-                <div key={i} className="flex flex-col gap-1 p-2 rounded-lg bg-surface-container-low">
-                  <div className="flex items-center justify-between text-code-sm">
-                    <span className={cn('font-semibold', span.warning ? 'text-error flex items-center gap-1' : span.color === 'error' ? 'text-error' : 'text-on-surface')}>
-                      {span.warning && <span className="text-[14px] mds">warning</span>}
-                      {span.name}
-                    </span>
-                    <span className={cn('font-semibold', span.color === 'error' ? 'text-error' : span.color === 'primary' ? 'text-primary' : 'text-secondary')}>{span.duration}</span>
-                  </div>
-                  <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden relative">
-                    <div className={cn('absolute bg-secondary h-full rounded-full', span.color === 'error' ? '!bg-error' : span.color === 'primary' ? '!bg-primary' : '')} style={{ left: '6%', width: span.pct }}></div>
-                  </div>
-                </div>
-              ))}
+              {selected.spans.length === 0 ? (
+                <p className="text-body-sm text-on-surface-variant">No child spans recorded for this transaction.</p>
+              ) : (
+                selected.spans.map((span, i) => {
+                  const total = Math.max(selected.durationMs, 1);
+                  const width = Math.max(3, Math.min(100, Math.round((span.durationMs / total) * 100)));
+                  return (
+                    <div key={i} className="flex flex-col gap-1 p-2 rounded-lg bg-surface-container-low">
+                      <div className="flex items-center justify-between text-code-sm">
+                        <span className="font-semibold text-on-surface truncate">
+                          {span.op && <span className="text-primary mr-1">[{span.op}]</span>}
+                          {span.name}
+                        </span>
+                        <span className={cn('font-semibold flex-shrink-0', span.durationMs > total * 0.5 ? 'text-error' : 'text-secondary')}>
+                          {formatMs(span.durationMs)}
+                        </span>
+                      </div>
+                      <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden relative">
+                        <div className={cn('absolute h-full rounded-full', span.durationMs > total * 0.5 ? 'bg-error' : 'bg-secondary')} style={{ width: `${width}%` }}></div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
             <div className="flex items-center gap-2 pt-2">
-              <button className="flex-1 h-10 rounded-xl bg-surface-container-high text-on-surface text-code-md font-semibold hover:bg-surface-bright flex items-center justify-center gap-1.5">
+              <button
+                onClick={() => navigator.clipboard.writeText(JSON.stringify(selected, null, 2))}
+                className="flex-1 h-10 rounded-xl bg-surface-container-high text-on-surface text-code-md font-semibold hover:bg-surface-bright flex items-center justify-center gap-1.5"
+              >
                 <span className="text-[16px] mds">content_copy</span>
-                Copy JSON Span
+                Copy JSON
               </button>
-              <button onClick={() => setModalOpen(false)} className="flex-1 h-10 rounded-xl bg-primary text-on-primary text-code-md font-semibold flex items-center justify-center gap-1.5">
+              <button onClick={() => setSelected(null)} className="flex-1 h-10 rounded-xl bg-primary text-on-primary text-code-md font-semibold flex items-center justify-center gap-1.5">
                 <span className="text-[16px] mds">done</span>
                 Done
               </button>

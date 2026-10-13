@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import { staticPlugin } from "@elysiajs/static";
+import ui from "../frontend/index.html";
 import type { EnvelopeHeader } from "./models/envelope-header";
 import type { ItemHeader } from "./models/item-header";
 import type { StoredEvent } from "./models/stored-event";
@@ -17,7 +17,7 @@ const storedEvents = new Map<string, StoredEvent>();
 const dsnStorage = new Map<string, DsnRecord>();
 const featureFlagStorage = new Map<string, FeatureFlag>();
 const segmentStorage = new Map<string, Segment>();
-const SERVER_PORT = 31337;
+const SERVER_PORT = Number(process.env.PORT) || 31337;
 
 // Parse DSN to extract public key and project ID
 function parseDsn(dsn: string): { publicKey: string; projectId: string } | null {
@@ -529,13 +529,19 @@ async function handleGetEvent(request: Request): Promise<Response> {
 }
 
 // Handle GET /events
+// List all stored events (returns full event payload for each event)
 async function handleListEvents(): Promise<Response> {
   console.log(`[DEBUG] handleListEvents called, storedEvents size: ${storedEvents.size}`);
-  const events = Array.from(storedEvents.values()).map(e => ({
-    id: e.id,
-    receivedAt: e.envelope.receivedAt,
-    itemTypes: e.envelope.items.map(i => i.header.type),
-  }));
+  const events = Array.from(storedEvents.values()).map(e => {
+    const eventItem = e.envelope.items.find(item => item.header.type === "event");
+    const payload = eventItem ? eventItem.payload : {};
+    return {
+      id: e.id,
+      receivedAt: e.envelope.receivedAt,
+      itemTypes: e.envelope.items.map(i => i.header.type),
+      event: payload,
+    };
+  });
   console.log(`[DEBUG] handleListEvents returning: ${JSON.stringify(events)}`);
   
   return new Response(JSON.stringify(events), {
@@ -1191,7 +1197,18 @@ async function handleHealth(): Promise<Response> {
 }
 
 // Create Elysia app
-const app = new Elysia()
+// Serve the frontend via Bun's fullstack dev server (HTML import).
+// Bun bundles the <script>/<link> tags on the fly (TSX, CSS, Tailwind via
+// bunfig.toml [serve.static] plugins) — no separate frontend build needed.
+// HMR is enabled when NODE_ENV !== "production".
+const app = new Elysia({
+  serve: {
+    routes: {
+      "/ui": ui,
+      "/ui/*": ui,
+    },
+  },
+})
   // Health check (public)
   .get("/health", () => handleHealth())
 
@@ -1201,6 +1218,7 @@ const app = new Elysia()
   .get("/events/:eventId", ({ params }) => handleGetEvent(new Request(`http://localhost:${SERVER_PORT}/events/${params.eventId}`)))
 
   // Sentry endpoints (DSN authentication)
+
   .group("/api", (app) =>
     app
       // Envelope ingestion: POST /api/:projectId/envelope/
@@ -1345,15 +1363,10 @@ const app = new Elysia()
       })
   );
 
-// Serve frontend static files from / path using Bun's fullstack dev server
-// This enables HMR in development
-app.use(
-  await staticPlugin({
-    assets: "./public",
-    prefix: "/",
-    indexHTML: true,
-  })
-);
+// Redirect root to the UI
+app.get("/", () => Response.redirect(new URL("/ui", `http://localhost:${SERVER_PORT}`)));
+
+export type App = typeof app;
 
 // Start server only if not in test environment
 if (process.env.NODE_ENV !== 'test') {

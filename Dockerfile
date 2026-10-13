@@ -11,7 +11,7 @@ RUN bun install --frozen-lockfile
 
 # Copy source code
 COPY backend/ ./backend/
-COPY public/ ./public/
+COPY frontend/ ./frontend/
 COPY tsconfig.json ./
 COPY bunfig.toml ./
 
@@ -29,7 +29,7 @@ WORKDIR /app
 
 # Copy built application
 COPY --from=builder /app/dist/backend/ ./dist/backend/
-COPY --from=builder /app/public/ ./public/
+COPY --from=builder /app/frontend/ ./frontend/
 COPY --from=builder /app/node_modules/ ./node_modules/
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/bun.lock ./

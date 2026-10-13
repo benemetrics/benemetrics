@@ -19,7 +19,7 @@
     // Path aliases (relative paths required)
     "paths": {
       "*": ["./*"],
-      "@public/*": ["./public/*"]
+      "@public/*": ["./frontend/*"]
     },
 
     // Best practices

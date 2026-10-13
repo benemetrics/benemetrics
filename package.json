@@ -5,8 +5,11 @@
   "private": true,
   "scripts": {
     "typecheck": "bun check",
+    "dev": "bun --hot backend/index.ts",
+    "start": "bun backend/index.ts",
     "test": "bun test e2e/",
     "test:error-tracking": "bun test e2e/01-error-tracking.test.ts",
+    "test:error-tracking-ui": "bun test e2e/01-error-tracking-ui.test.ts",
     "test:release-tracking": "bun test e2e/02-release-tracking.test.ts",
     "test:performance": "bun test e2e/03-performance-monitoring.test.ts",
     "test:session-replay": "bun test e2e/04-session-replay.test.ts",
@@ -16,9 +19,16 @@
     "test:feature-flags": "bun test e2e/09-feature-flags.test.ts"
   },
   "dependencies": {
-    "@elysiajs/static": "^1.4.10",
+    "@elysiajs/eden": "^1.4.9",
     "@sentry/bun": "^8.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "clsx": "^2.1.1",
     "elysia": "^1.4.30",
+    "lucide-react": "^1.56.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.4",
     "tailwindcss": "4"
   },
   "devDependencies": {

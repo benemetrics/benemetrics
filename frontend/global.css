@@ -1,5 +1,5 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
 
 @theme {
   /* --- Color Palette (design-system/obsidian-telemetry) --- */
@@ -36,34 +36,70 @@
   --color-on-error-container: #ffdad6;
   --color-background: #0f131c;
 
-  /* Functional accents (per DESIGN.md "Brand & Style") */
+  /* Functional accents */
   --color-accent-error: #f43f5e;
   --color-accent-warning: #f59e0b;
 
   /* --- Typography --- */
   --font-display: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+  --font-headline-lg: "Inter", sans-serif;
+  --font-headline-md: "Inter", sans-serif;
+  --font-headline-sm: "Inter", sans-serif;
+  --font-headline-lg-mobile: "Inter", sans-serif;
+  --font-body-lg: "Inter", sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-body-sm: "Inter", sans-serif;
+  --font-label-code-sm: "JetBrains Mono", monospace;
+  --font-label-code-md: "JetBrains Mono", monospace;
+  --font-label-code-lg: "JetBrains Mono", monospace;
 
-  --text-display-lg: 28px 34px;
-  --text-display-lg: 28px / 34px;
-  --font-display-lg-weight: 700;
-  --font-display-lg-letterspacing: -0.02em;
-  --text-display-md: 20px / 26px;
-  --font-display-md-weight: 600;
-  --font-display-md-letterspacing: -0.01em;
-  --text-display-sm: 17px / 22px;
-  --font-display-sm-weight: 600;
-  --font-display-sm-letterspacing: -0.01em;
-  --text-body-lg: 15px / 22px;
-  --text-body-md: 13px / 18px;
-  --text-body-sm: 11px / 15px;
-  --text-code-lg: 13px / 18px;
-  --font-code-lg-weight: 500;
-  --text-code-md: 11px / 15px;
-  --font-code-md-weight: 500;
-  --text-code-sm: 10px / 13px;
-  --font-code-sm-weight: 600;
-  --font-code-sm-letterspacing: 0.04em;
+  --text-headline-lg: 28px;
+  --text-headline-lg--line-height: 34px;
+  --text-headline-lg--letter-spacing: -0.02em;
+  --text-headline-lg--font-weight: 700;
+  --text-headline-md: 20px;
+  --text-headline-md--line-height: 26px;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 600;
+  --text-headline-sm: 17px;
+  --text-headline-sm--line-height: 22px;
+  --text-headline-sm--letter-spacing: -0.01em;
+  --text-headline-sm--font-weight: 600;
+  --text-headline-lg-mobile: 24px;
+  --text-headline-lg-mobile--line-height: 30px;
+  --text-headline-lg-mobile--letter-spacing: -0.02em;
+  --text-headline-lg-mobile--font-weight: 700;
+  --text-body-lg: 15px;
+  --text-body-lg--line-height: 22px;
+  --text-body-md: 13px;
+  --text-body-md--line-height: 18px;
+  --text-body-sm: 11px;
+  --text-body-sm--line-height: 15px;
+  --text-label-code-lg: 13px;
+  --text-label-code-lg--line-height: 18px;
+  --text-label-code-lg--font-weight: 500;
+  --text-label-code-md: 11px;
+  --text-label-code-md--line-height: 15px;
+  --text-label-code-md--font-weight: 500;
+  --text-label-code-sm: 10px;
+  --text-label-code-sm--line-height: 13px;
+  --text-label-code-sm--letter-spacing: 0.04em;
+  --text-label-code-sm--font-weight: 600;
+  --text-display-lg: 28px;
+  --text-display-lg--line-height: 34px;
+  --text-display-md: 20px;
+  --text-display-md--line-height: 26px;
+  --text-display-sm: 17px;
+  --text-display-sm--line-height: 22px;
+  --text-code-lg: 13px;
+  --text-code-lg--line-height: 18px;
+  --text-code-md: 11px;
+  --text-code-md--line-height: 15px;
+  --text-code-sm: 10px;
+  --text-code-sm--line-height: 13px;
+
+  --radius-DEFAULT: 0.125rem;
 
   /* --- Spacing --- */
   --spacing-gutter: 0.75rem;
@@ -82,19 +118,6 @@
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
   --radius-full: 9999px;
-
-  /* Custom class names for tailwind utility mapping */
-  .font-display { font-family: var(--font-display); }
-  .font-mono { font-family: var(--font-mono); }
-  .text-display-lg { font-size: var(--text-display-lg); line-height: 34px; font-weight: 700; letter-spacing: -0.02em; }
-  .text-display-md { font-size: var(--text-display-md); line-height: 26px; font-weight: 600; letter-spacing: -0.01em; }
-  .text-display-sm { font-size: var(--text-display-sm); line-height: 22px; font-weight: 600; letter-spacing: -0.01em; }
-  .text-body-lg { font-size: var(--text-body-lg); line-height: 22px; }
-  .text-body-md { font-size: var(--text-body-md); line-height: 18px; }
-  .text-body-sm { font-size: var(--text-body-sm); line-height: 15px; }
-  .text-code-lg { font-size: var(--text-code-lg); line-height: 18px; font-weight: 500; }
-  .text-code-md { font-size: var(--text-code-md); line-height: 15px; font-weight: 500; }
-  .text-code-sm { font-size: var(--text-code-sm); line-height: 13px; font-weight: 600; letter-spacing: 0.04em; }
 }
 
 @layer base {
@@ -110,7 +133,6 @@
   body {
     font-family: var(--font-display);
     font-size: var(--text-body-md);
-    overscroll-behavior: none;
   }
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
   .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
@@ -119,29 +141,16 @@
 }
 
 @layer utilities {
-  /* Hide scrollbar but keep functionality */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
-/* Material Symbols Outlined font */
-@font-face {
-  font-family: "Material Symbols Outlined";
-  font-style: normal;
-  font-weight: 400;
-  src: url(https://fonts.gstatic.com/s/materialsymbolsoutlined/vf_gGKSrRK7KWIiYo61ro8HU_VtdzqAA0Qa9MZE9-V_6dLXQxI7i1h3f1e0Fz1vI.woff2) format("woff2");
-}
-
+/* Material Symbols Outlined icon font (loaded via index.html) */
+.material-symbols-outlined,
 .mds {
   font-family: "Material Symbols Outlined", sans-serif;
   font-weight: normal;
   font-style: normal;
-  font-size: 24px;
   line-height: 1;
   letter-spacing: normal;
   text-transform: none;
@@ -149,4 +158,5 @@
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
 }

@@ -1,11 +1,12 @@
 import { edenTreaty } from '@elysiajs/eden';
-import type { App } from '../../backend/index';
+import type { App } from '../../../backend/index';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:31337';
+// In Bun's fullstack dev server, frontend and API share the same origin.
+// The UI is served under /ui, so use the origin as base so API paths
+// (/events, /api/...) resolve at the root, not relative to /ui.
+export const api = edenTreaty<App>(window.location.origin) as any;
 
-export const api = edenTreaty<App>(API_BASE_URL);
-
-export type { App } from '../../backend/index';
+export type { App } from '../../../backend/index';
 
 export async function checkHealth() {
   const response = await api.health.get();
@@ -93,7 +94,7 @@ export async function getSegment(id: string) {
 }
 
 export async function ingestEnvelope(projectId: string, body: string, headers: Record<string, string> = {}) {
-  const response = await fetch(`${API_BASE_URL}/api/${projectId}/envelope/`, {
+  const response = await fetch(`/api/${projectId}/envelope/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -105,7 +106,7 @@ export async function ingestEnvelope(projectId: string, body: string, headers: R
 }
 
 export async function ingestStore(projectId: string, body: any, headers: Record<string, string> = {}) {
-  const response = await fetch(`${API_BASE_URL}/api/${projectId}/store/`, {
+  const response = await fetch(`/api/${projectId}/store/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

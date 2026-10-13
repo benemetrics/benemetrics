@@ -1,20 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { MobileNavBar } from './components/MobileNavBar';
 import { IssuesTriage } from './pages/IssuesTriage';
 import { Performance } from './pages/Performance';
 import { IssueDetail } from './pages/IssueDetail';
 import { Setup } from './pages/Setup';
-
-const navLinks = [
-  { path: '/issues', label: 'Issues', icon: 'bug_report' },
-  { path: '/performance', label: 'Perf', icon: 'speed' },
-  { path: '/replays', label: 'Replays', icon: 'play_circle' },
-  { path: '/setup', label: 'Setup', icon: 'settings_input_component' },
-];
+import { APIDemo } from './components/APIDemo';
 
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/ui">
       <div className="min-h-screen bg-surface">
         <Routes>
           <Route path="/" element={<Navigate to="/issues" replace />} />
@@ -23,8 +16,8 @@ export function App() {
           <Route path="/replays" element={<ReplaysPage />} />
           <Route path="/setup" element={<Setup />} />
           <Route path="/issue/:id" element={<IssueDetail />} />
+          <Route path="/api-demo" element={<APIDemo />} />
         </Routes>
-        <MobileNavBar links={navLinks} />
       </div>
     </BrowserRouter>
   );

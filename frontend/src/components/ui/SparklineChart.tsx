@@ -70,7 +70,7 @@ export function SparklineChart({
       />
       <circle
         cx={width}
-        cy={height - ((data[data.length - 1] - min) / range) * (height - 4) - 2}
+        cy={height - ((data[data.length - 1]! - min) / range) * (height - 4) - 2}
         fill={line}
         r={2}
         className={animateEnd ? 'animate-ping' : ''}

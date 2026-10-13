@@ -14,7 +14,7 @@ export function Performance() {
     '7d': { p75: '156ms', throughput: '4,690 rpm', apdex: '0.95', failure: '0.09%' },
     '30d': { p75: '162ms', throughput: '4,555 rpm', apdex: '0.93', failure: '0.11%' },
   };
-  const kpi = timeKPIs[activeTimeRange];
+  const kpi = timeKPIs[activeTimeRange]!;
 
   const slowestTx = [
     { title: 'POST /api/v2/reports/export', avg: '1,840ms', p95: '4.2s', req: '340 req/min', bar: 88, status: 'Regressed +40%', color: 'error' },
@@ -244,7 +244,7 @@ export function Performance() {
         ))}
         <button
           onClick={() => {
-            setSelectedTrace(slowestTx[0]);
+            setSelectedTrace(slowestTx[0]!);
             setModalOpen(true);
           }}
           className="w-full h-11 px-3 rounded-xl bg-primary text-on-primary text-code-lg font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-90 active:scale-[0.99] transition-transform mt-2"

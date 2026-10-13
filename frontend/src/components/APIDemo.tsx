@@ -97,7 +97,9 @@ export function APIDemo() {
     }
   };
 
-  return (
+   const directTreatyCode = "api.api.dsn.create.post({ projectId: 'direct-treaty-test', host: 'benemetrics.app' })";
+
+   return (
     <div className="p-4 space-y-4">
       <h2 className="text-headline-sm text-on-surface font-semibold">Eden Treaty API Demo</h2>
       
@@ -169,8 +171,8 @@ export function APIDemo() {
         >
           {loading ? 'Running...' : 'Call api.api.dsn.create.post()'}
         </button>
-        <p className="text-code-sm text-on-surface-variant">
-          Full type-safe access: <code className="bg-surface-container-lowest px-1 py-0.5 rounded">api.api.dsn.create.post({...})</code>
+         <p className="text-code-sm text-on-surface-variant">
+           Full type-safe access: <code className="bg-surface-container-lowest px-1 py-0.5 rounded">{directTreatyCode}</code>
         </p>
       </div>
 

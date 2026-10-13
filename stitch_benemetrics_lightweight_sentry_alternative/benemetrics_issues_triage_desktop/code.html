@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary": "#003824", "surface-container-highest": "#31353e", "on-primary": "#003640", "on-tertiary-fixed-variant": "#2f2ebe", "on-primary-fixed": "#001f26", "on-tertiary-fixed": "#07006c", "on-tertiary-container": "#211cb4", "on-surface-variant": "#bcc9cd", "inverse-on-surface": "#2c3039", "on-tertiary": "#1000a9", "error": "#ffb4ab", "surface-container": "#1c2028", "surface-container-lowest": "#0a0e16", "primary": "#4cd7f6", "tertiary": "#c0c1ff", "secondary": "#4edea3", "surface": "#0f131c", "surface-variant": "#31353e", "inverse-surface": "#dfe2ee", "tertiary-fixed-dim": "#c0c1ff", "primary-fixed": "#acedff", "on-secondary-fixed": "#002113", "secondary-fixed-dim": "#4edea3", "inverse-primary": "#00687a", "primary-fixed-dim": "#4cd7f6", "on-primary-fixed-variant": "#004e5c", "surface-container-high": "#262a33", "surface-dim": "#0f131c", "surface-tint": "#4cd7f6", "on-background": "#dfe2ee", "on-secondary-fixed-variant": "#005236", "outline": "#869397", "on-secondary-container": "#00311f", "on-surface": "#dfe2ee", "outline-variant": "#3d494c", "tertiary-fixed": "#e1e0ff", "secondary-fixed": "#6ffbbe", "primary-container": "#06b6d4", "tertiary-container": "#9a9dff", "error-container": "#93000a", "background": "#0f131c", "on-error-container": "#ffdad6", "on-primary-container": "#00424f", "surface-container-low": "#181c24", "secondary-container": "#00a572", "surface-bright": "#353942", "on-error": "#690005" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "gutter-tablet": "1rem", "gutter": "0.75rem", "margin": "1rem", "margin-tablet": "1.5rem", "space-sm": "0.5rem", "space-xs": "0.25rem", "space-md": "0.75rem", "space-lg": "1rem", "space-xl": "1.5rem" }, "fontFamily": { "body-md": ["Inter"], "body-sm": ["Inter"], "headline-md": ["Inter"], "headline-lg": ["Inter"], "headline-sm": ["Inter"], "headline-lg-mobile": ["Inter"], "body-lg": ["Inter"], "label-code-sm": ["JetBrains Mono"], "label-code-md": ["JetBrains Mono"], "label-code-lg": ["JetBrains Mono"] }, "fontSize": { "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "body-sm": ["11px", { "lineHeight": "15px", "fontWeight": "400" }], "headline-md": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-sm": ["17px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-lg": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "label-code-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0.04em", "fontWeight": "600" }], "label-code-md": ["11px", { "lineHeight": "15px", "fontWeight": "500" }], "label-code-lg": ["13px", { "lineHeight": "18px", "fontWeight": "500" }] } } } };</script></head><body class="bg-background font-body-md text-on-surface antialiased min-h-screen selection:bg-primary-container selection:text-on-primary-container"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.2)]"><div class="flex flex-col"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-7 h-7 rounded-xl bg-primary-container flex items-center justify-center text-on-primary-container"><span class="material-symbols-outlined text-[18px]">radar</span></div><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-bold">Benemetrics</span></div><span class="px-space-xs py-0.5 rounded-DEFAULT bg-surface-container font-label-code-sm text-label-code-sm text-primary uppercase">v2.4</span></div><div class="px-margin py-space-xs"><button class="w-full flex items-center justify-between px-space-md py-space-xs bg-surface-container-low hover:bg-surface-container hover:text-on-surface rounded-xl transition-all text-left group" type="button"><div class="flex items-center gap-space-sm min-w-0"><span class="material-symbols-outlined text-secondary text-[16px]">terminal</span><div class="truncate"><div class="font-label-code-md text-label-code-md text-on-surface font-semibold truncate">api-gateway</div><div class="font-label-code-sm text-label-code-sm text-on-surface-variant flex items-center gap-space-xs"><span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>env:production</div></div></div><span class="material-symbols-outlined text-on-surface-variant group-hover:text-on-surface text-[18px]">unfold_more</span></button></div><div class="px-margin pt-space-md pb-space-xs"><span class="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline px-space-xs">Telemetry Observability</span></div><nav class="px-space-sm space-y-0.5 flex flex-col" data-active-classes="bg-surface-container-high text-primary font-semibold"><a aria-current="page" class="flex items-center justify-between px-space-md py-space-xs rounded-xl transition-colors group bg-surface-container-high text-primary font-semibold" data-path="issues" href="#"><div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-[18px] group-hover:text-primary transition-colors">error_outline</span><span class="font-body-md text-body-md">Issues</span></div><span class="px-space-xs py-0.5 rounded-DEFAULT bg-error-container text-on-error-container font-label-code-sm text-label-code-sm font-semibold">14</span></a><a class="flex items-center gap-space-md px-space-md py-space-xs rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors group" data-path="performance-apm" href="#"><span class="material-symbols-outlined text-[18px] group-hover:text-primary transition-colors">speed</span><span class="font-body-md text-body-md">Performance &amp; APM</span></a><a class="flex items-center gap-space-md px-space-md py-space-xs rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors group" data-path="distributed-tracing" href="#"><span class="material-symbols-outlined text-[18px] group-hover:text-primary transition-colors">account_tree</span><span class="font-body-md text-body-md">Distributed Tracing</span></a><a class="flex items-center gap-space-md px-space-md py-space-xs rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors group" data-path="session-replays" href="#"><span class="material-symbols-outlined text-[18px] group-hover:text-primary transition-colors">slow_motion_video</span><span class="font-body-md text-body-md">Session Replays</span></a><a class="flex items-center gap-space-md px-space-md py-space-xs rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors group" data-path="setup-sdk" href="#"><span class="material-symbols-outlined text-[18px] group-hover:text-primary transition-colors">integration_instructions</span><span class="font-body-md text-body-md">Setup &amp; SDK</span></a></nav></div><div class="flex flex-col gap-space-xs px-space-sm pb-space-md"><div class="px-space-md py-space-xs rounded-xl bg-surface-container-low flex items-center justify-between mb-space-xs"><div class="flex items-center gap-space-sm"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span></span><span class="font-label-code-sm text-label-code-sm text-on-surface">42 e/s Connected</span></div><span class="font-label-code-sm text-label-code-sm text-outline">18ms</span></div><nav class="space-y-0.5 flex flex-col" data-active-classes="bg-surface-container-high text-primary font-semibold"><a class="flex items-center gap-space-md px-space-md py-space-xs rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors group" data-path="documentation" href="#"><span class="material-symbols-outlined text-[18px] group-hover:text-primary transition-colors">menu_book</span><span class="font-body-md text-body-md">Docs</span></a><a class="flex items-center gap-space-md px-space-md py-space-xs rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors group" data-path="settings" href="#"><span class="material-symbols-outlined text-[18px] group-hover:text-primary transition-colors">settings</span><span class="font-body-md text-body-md">Settings</span></a></nav></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface/80 backdrop-blur-xl z-40 flex items-center justify-between px-margin-tablet shadow-[0_1px_8px_rgba(0,0,0,0.06)]"><div class="flex items-center gap-space-lg flex-1 max-w-2xl"><div class="relative w-full"><span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span><input class="w-full h-9 pl-9 pr-14 bg-surface-container-low text-on-surface placeholder:text-outline text-body-md font-body-md rounded-xl focus:outline-none focus:bg-surface-container transition-all" placeholder="Search issues, transactions, tags or press ⌘K" type="text"/><div class="absolute right-space-sm top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-space-xs py-0.5 bg-surface-container-highest rounded-DEFAULT text-outline font-label-code-sm text-label-code-sm">⌘K</div></div></div><div class="flex items-center gap-space-lg"><div class="hidden lg:flex items-center gap-space-sm px-space-md py-1 rounded-full bg-surface-container-low"><span class="w-2 h-2 rounded-full bg-secondary"></span><span class="font-label-code-sm text-label-code-sm text-on-surface-variant">Cluster: us-east-prod</span><span class="font-label-code-sm text-label-code-sm text-secondary font-semibold">99.98%</span></div><div class="flex items-center gap-space-xs"><button class="h-8 px-space-md bg-surface-container-low hover:bg-surface-container text-on-surface font-label-code-md text-label-code-md rounded-lg flex items-center gap-space-xs transition-colors" title="Create Alert Rule" type="button"><span class="material-symbols-outlined text-[16px] text-primary">add_alert</span><span class="hidden sm:inline">New Alert</span></button><button class="w-8 h-8 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors relative" title="Notifications" type="button"><span class="material-symbols-outlined text-[18px]">notifications</span><span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary"></span></button></div><div class="h-6 w-px bg-surface-container-highest"></div><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden xl:flex flex-col text-left"><span class="font-body-sm text-body-sm font-semibold text-on-surface leading-none">sre_lead</span><span class="font-label-code-sm text-label-code-sm text-outline leading-tight">admin</span></div></div></div></header><main class="w-full pt-14 bg-background min-h-screen px-margin-tablet"><div class="flex flex-col w-full pb-space-xl">
+<!-- Top Command Context Bar -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md py-space-md mb-space-sm">
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary shadow-[0_0_8px_rgba(78,222,163,0.6)]"></span>
+<span class="font-label-code-md text-label-code-md uppercase tracking-wider text-on-surface font-semibold">Triage Orchestrator</span>
+</div>
+<span class="text-outline-variant font-label-code-sm text-label-code-sm">/</span>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant bg-surface-container px-space-sm py-0.5 rounded-DEFAULT">tenant: prod-core-alpha</span>
+<span class="font-label-code-sm text-label-code-sm text-primary bg-surface-container-high px-space-sm py-0.5 rounded-DEFAULT">sync: real-time</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center bg-surface-container-low px-space-sm py-1 rounded-xl">
+<span class="material-symbols-outlined text-outline text-[16px] mr-1">history</span>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">Auto-reloading (15s)</span>
+</div>
+<button class="h-8 px-space-md bg-surface-container-low hover:bg-surface-container text-on-surface rounded-lg font-label-code-md text-label-code-md flex items-center gap-space-xs transition-colors" type="button">
+<span class="material-symbols-outlined text-[15px]">tune</span>
+<span>Configure Alerts</span>
+</button>
+<button class="h-8 px-space-md bg-primary-container text-on-primary-container hover:brightness-110 rounded-lg font-label-code-md text-label-code-md flex items-center gap-space-xs transition-all shadow-[0_0_12px_rgba(6,182,212,0.3)]" type="button">
+<span class="material-symbols-outlined text-[16px]">bolt</span>
+<span>Run Diagnostics</span>
+</button>
+</div>
+</div>
+<!-- Telemetry 4-Metric Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md mb-space-lg">
+<!-- Tile 1: Unresolved -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
+<div class="absolute right-0 top-0 w-24 h-24 bg-error-container/10 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-start justify-between mb-space-sm">
+<span class="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Unresolved Exceptions</span>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-error-container text-on-error-container font-label-code-sm text-label-code-sm font-semibold flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">trending_up</span>
+          +2 / hr
+        </span>
+</div>
+<div class="flex items-baseline justify-between mt-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-on-surface tracking-tight">14</span>
+<span class="font-label-code-sm text-label-code-sm text-error font-medium">crítico</span>
+</div>
+<div class="w-16 h-6 flex items-end gap-0.5">
+<div class="flex-1 bg-error/30 h-[40%] rounded-xs"></div>
+<div class="flex-1 bg-error/40 h-[60%] rounded-xs"></div>
+<div class="flex-1 bg-error/30 h-[30%] rounded-xs"></div>
+<div class="flex-1 bg-error/70 h-[85%] rounded-xs"></div>
+<div class="flex-1 bg-error h-full rounded-xs"></div>
+</div>
+</div>
+</div>
+<!-- Tile 2: 24h Event Volume -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
+<div class="absolute right-0 top-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-start justify-between mb-space-sm">
+<span class="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">24h Event Volume</span>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-surface-container-highest text-primary font-label-code-sm text-label-code-sm font-semibold flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">arrow_upward</span>
+          +12.4%
+        </span>
+</div>
+<div class="flex items-baseline justify-between mt-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-on-surface tracking-tight">3,248</span>
+<span class="font-label-code-sm text-label-code-sm text-outline">evt</span>
+</div>
+<svg class="w-20 h-7 text-primary overflow-visible" fill="none" viewbox="0 0 80 24">
+<path d="M0 18 Q 15 22, 25 14 T 50 12 T 70 4 T 80 7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
+<path d="M0 18 Q 15 22, 25 14 T 50 12 T 70 4 T 80 7 L 80 24 L 0 24 Z" fill="currentColor" fill-opacity="0.15"></path>
+</svg>
+</div>
+</div>
+<!-- Tile 3: Impacted Users -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
+<div class="absolute right-0 top-0 w-24 h-24 bg-tertiary/10 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-start justify-between mb-space-sm">
+<span class="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Impacted Users</span>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-surface-container-highest text-tertiary-fixed-dim font-label-code-sm text-label-code-sm font-semibold">
+          0.8% of DAU
+        </span>
+</div>
+<div class="flex items-baseline justify-between mt-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-on-surface tracking-tight">142</span>
+<span class="font-label-code-sm text-label-code-sm text-outline">unq</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-tertiary">group_remove</span>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant font-mono">p99 isolated</span>
+</div>
+</div>
+</div>
+<!-- Tile 4: Crash-Free Session Rate -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
+<div class="absolute right-0 top-0 w-24 h-24 bg-secondary/10 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-start justify-between mb-space-sm">
+<span class="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Crash-Free Sessions</span>
+<span class="px-space-xs py-0.5 rounded-DEFAULT bg-secondary/15 text-secondary font-label-code-sm text-label-code-sm font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+          SLO Met
+        </span>
+</div>
+<div class="flex items-baseline justify-between mt-space-xs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-secondary tracking-tight">99.82%</span>
+<span class="font-label-code-sm text-label-code-sm text-outline">target 99.5%</span>
+</div>
+<div class="w-12 h-6 flex items-center">
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 99.82%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Filter, Query Console & Triage Actions Bar -->
+<div class="bg-surface-container-low rounded-xl p-space-md mb-space-md flex flex-col gap-space-md shadow-sm">
+<!-- Top Row: Full Query Input -->
+<div class="flex flex-col md:flex-row items-stretch md:items-center gap-space-sm">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-primary text-[18px]">filter_alt</span>
+<input class="w-full h-9 pl-9 pr-24 bg-surface-container text-on-surface font-label-code-md text-label-code-md rounded-lg focus:outline-none focus:bg-surface-container-high transition-colors tracking-wide" type="text" value="is:unresolved level:error environment:production"/>
+<div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+<button class="px-space-xs py-0.5 rounded bg-surface-container-highest text-outline hover:text-on-surface font-label-code-sm text-label-code-sm" type="button">Syntax Help</button>
+</div>
+</div>
+<div class="flex items-center gap-space-xs shrink-0">
+<!-- Time Range Picker -->
+<button class="h-9 px-space-md bg-surface-container hover:bg-surface-container-high text-on-surface font-label-code-md text-label-code-md rounded-lg flex items-center gap-space-xs transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">calendar_today</span>
+<span>Last 24 hours</span>
+<span class="material-symbols-outlined text-[16px] text-outline">expand_more</span>
+</button>
+<!-- Sort Select -->
+<button class="h-9 px-space-md bg-surface-container hover:bg-surface-container-high text-on-surface font-label-code-md text-label-code-md rounded-lg flex items-center gap-space-xs transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">sort</span>
+<span>Sort: Most Frequent</span>
+<span class="material-symbols-outlined text-[16px] text-outline">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Bottom Row: Tag Filters & Batch Bar -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline mr-1">Views:</span>
+<button class="h-7 px-space-sm bg-surface-container-highest text-primary font-label-code-sm text-label-code-sm rounded flex items-center gap-1 font-semibold" type="button">
+<span>Unhandled</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+</button>
+<button class="h-7 px-space-sm bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-code-sm text-label-code-sm rounded flex items-center gap-1 transition-colors" type="button">
+<span>Regressed</span>
+<span class="px-1 py-0 rounded bg-error-container text-on-error-container text-[9px] font-bold">3</span>
+</button>
+<button class="h-7 px-space-sm bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-code-sm text-label-code-sm rounded transition-colors" type="button">
+<span>Handled</span>
+</button>
+<button class="h-7 px-space-sm bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-code-sm text-label-code-sm rounded transition-colors" type="button">
+<span>All Events</span>
+</button>
+<div class="h-4 w-px bg-surface-container-highest mx-1"></div>
+<button class="h-7 px-space-sm bg-surface-container hover:bg-surface-container-high text-outline hover:text-on-surface font-label-code-sm text-label-code-sm rounded flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+<span>Custom Filter</span>
+</button>
+</div>
+<!-- Batch Actions Trigger Group -->
+<div class="flex items-center gap-space-xs" id="batch-actions-panel">
+<span class="font-label-code-sm text-label-code-sm text-outline mr-2">Selected: <strong class="text-on-surface" id="selected-count">0</strong></span>
+<button class="h-7 px-space-sm bg-surface-container hover:bg-secondary-container hover:text-on-secondary font-label-code-sm text-label-code-sm rounded text-on-surface-variant flex items-center gap-1 transition-colors disabled:opacity-40 disabled:pointer-events-none" disabled="" id="btn-batch-resolve" type="button">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+<span>Resolve</span>
+</button>
+<button class="h-7 px-space-sm bg-surface-container hover:bg-surface-container-high font-label-code-sm text-label-code-sm rounded text-on-surface-variant flex items-center gap-1 transition-colors disabled:opacity-40 disabled:pointer-events-none" disabled="" id="btn-batch-ignore" type="button">
+<span class="material-symbols-outlined text-[14px]">notifications_off</span>
+<span>Ignore</span>
+</button>
+<button class="h-7 px-space-sm bg-surface-container hover:bg-surface-container-high font-label-code-sm text-label-code-sm rounded text-on-surface-variant flex items-center gap-1 transition-colors disabled:opacity-40 disabled:pointer-events-none" disabled="" id="btn-batch-merge" type="button">
+<span class="material-symbols-outlined text-[14px]">call_merge</span>
+<span>Merge</span>
+</button>
+<button class="h-7 px-space-sm bg-surface-container hover:bg-error-container hover:text-on-error-container font-label-code-sm text-label-code-sm rounded text-on-surface-variant flex items-center gap-1 transition-colors disabled:opacity-40 disabled:pointer-events-none" disabled="" id="btn-batch-delete" type="button">
+<span class="material-symbols-outlined text-[14px]">delete</span>
+<span>Delete</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Main Asymmetric Workspace Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-md">
+<!-- Left Column: Master Issues Feed (xl:col-span-9) -->
+<div class="xl:col-span-9 flex flex-col gap-space-xs">
+<!-- Table Header Bar -->
+<div class="bg-surface-container-low px-space-md py-space-xs rounded-xl flex items-center justify-between text-outline font-label-code-sm text-label-code-sm tracking-wider uppercase">
+<div class="flex items-center gap-space-md flex-1">
+<label class="flex items-center cursor-pointer">
+<input class="rounded bg-surface-container text-primary focus:ring-0 focus:outline-none w-3.5 h-3.5 border-0" id="master-select" type="checkbox"/>
+</label>
+<span>Issue / Root Culprit</span>
+</div>
+<div class="hidden md:flex items-center gap-space-lg w-72 justify-between">
+<span class="w-24 text-center">24h Frequency</span>
+<span class="w-16 text-right">Events</span>
+<span class="w-14 text-right">Users</span>
+</div>
+<div class="w-32 text-right hidden sm:block">Assignee / Action</div>
+</div>
+<!-- Issues List Container -->
+<div class="flex flex-col gap-1.5" id="issues-list">
+<!-- Issue Row 1: Postgres Connection Timeout (Go) -->
+<div class="issue-row bg-surface-container-low hover:bg-surface-container rounded-xl p-space-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+<div class="flex items-start gap-space-md flex-1 min-w-0">
+<div class="pt-0.5">
+<input class="issue-check rounded bg-surface-container text-primary focus:ring-0 focus:outline-none w-3.5 h-3.5 border-0 cursor-pointer" type="checkbox"/>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs flex-wrap mb-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold hover:text-primary cursor-pointer truncate">
+                  DatabaseConnectionPoolTimeout: driver failed to allocate slot within 5000ms
+                </span>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap font-label-code-sm text-label-code-sm">
+<span class="text-error font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                  CRITICAL
+                </span>
+<span class="text-outline-variant">•</span>
+<span class="text-on-surface-variant font-mono">postgres_pool.go:142</span>
+<span class="text-outline-variant">•</span>
+<span class="bg-surface-container px-1 rounded text-primary">v2.4.1</span>
+<span class="text-outline-variant">•</span>
+<span class="text-outline">deploy #8819</span>
+<span class="text-outline-variant">•</span>
+<span class="text-outline">seen 3m ago</span>
+</div>
+</div>
+</div>
+<!-- Sparkline & Metrics -->
+<div class="flex items-center justify-between w-full md:w-auto md:gap-space-lg shrink-0">
+<!-- 24h Hourly Bars -->
+<div class="w-24 h-6 flex items-end gap-0.5 py-0.5">
+<div class="flex-1 bg-surface-container-highest h-2 rounded-xs"></div>
+<div class="flex-1 bg-surface-container-highest h-2 rounded-xs"></div>
+<div class="flex-1 bg-surface-container-highest h-3 rounded-xs"></div>
+<div class="flex-1 bg-surface-container-highest h-2 rounded-xs"></div>
+<div class="flex-1 bg-error/40 h-4 rounded-xs"></div>
+<div class="flex-1 bg-error/70 h-5 rounded-xs"></div>
+<div class="flex-1 bg-error h-full rounded-xs shadow-[0_0_6px_rgba(255,180,171,0.5)]"></div>
+</div>
+<!-- Stats -->
+<div class="w-16 text-right">
+<span class="font-label-code-md text-label-code-md text-on-surface font-bold block">1.4k</span>
+<span class="font-label-code-sm text-label-code-sm text-outline block leading-none">events</span>
+</div>
+<div class="w-14 text-right">
+<span class="font-label-code-md text-label-code-md text-on-surface font-bold block">82</span>
+<span class="font-label-code-sm text-label-code-sm text-outline block leading-none">users</span>
+</div>
+<!-- Assignee & Actions -->
+<div class="flex items-center gap-space-xs w-32 justify-end">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest text-primary flex items-center justify-center font-label-code-sm text-label-code-sm font-bold" title="Assigned to SRE_Lead">
+                SL
+              </div>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-secondary flex items-center justify-center transition-colors" title="Resolve issue" type="button">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+</button>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Snooze alert" type="button">
+<span class="material-symbols-outlined text-[16px]">notifications_paused</span>
+</button>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Assignee" type="button">
+<span class="material-symbols-outlined text-[16px]">person_add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Issue Row 2: JWT Signature Verification Failure (Node.js) -->
+<div class="issue-row bg-surface-container-low hover:bg-surface-container rounded-xl p-space-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-secondary-container"></div>
+<div class="flex items-start gap-space-md flex-1 min-w-0">
+<div class="pt-0.5">
+<input class="issue-check rounded bg-surface-container text-primary focus:ring-0 focus:outline-none w-3.5 h-3.5 border-0 cursor-pointer" type="checkbox"/>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs flex-wrap mb-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold hover:text-primary cursor-pointer truncate">
+                  JsonWebTokenError: invalid algorithm RS256 expected EdDSA in token header
+                </span>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap font-label-code-sm text-label-code-sm">
+<span class="text-secondary font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  RECOVERED
+                </span>
+<span class="text-outline-variant">•</span>
+<span class="text-on-surface-variant font-mono">auth.middleware.ts:89</span>
+<span class="text-outline-variant">•</span>
+<span class="bg-surface-container px-1 rounded text-primary">v2.4.0</span>
+<span class="text-outline-variant">•</span>
+<span class="text-outline">deploy #8812</span>
+<span class="text-outline-variant">•</span>
+<span class="text-outline">seen 18m ago</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between w-full md:w-auto md:gap-space-lg shrink-0">
+<div class="w-24 h-6 flex items-end gap-0.5 py-0.5">
+<div class="flex-1 bg-secondary/70 h-4 rounded-xs"></div>
+<div class="flex-1 bg-secondary h-full rounded-xs"></div>
+<div class="flex-1 bg-secondary/50 h-3 rounded-xs"></div>
+<div class="flex-1 bg-surface-container-highest h-1 rounded-xs"></div>
+<div class="flex-1 bg-surface-container-highest h-1 rounded-xs"></div>
+<div class="flex-1 bg-surface-container-highest h-1 rounded-xs"></div>
+<div class="flex-1 bg-surface-container-highest h-1 rounded-xs"></div>
+</div>
+<div class="w-16 text-right">
+<span class="font-label-code-md text-label-code-md text-on-surface font-bold block">892</span>
+<span class="font-label-code-sm text-label-code-sm text-outline block leading-none">events</span>
+</div>
+<div class="w-14 text-right">
+<span class="font-label-code-md text-label-code-md text-on-surface font-bold block">34</span>
+<span class="font-label-code-sm text-label-code-sm text-outline block leading-none">users</span>
+</div>
+<div class="flex items-center gap-space-xs w-32 justify-end">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest text-outline flex items-center justify-center font-label-code-sm text-label-code-sm" title="Unassigned">
+                --
+              </div>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-secondary flex items-center justify-center transition-colors" title="Resolve issue" type="button">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+</button>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Snooze alert" type="button">
+<span class="material-symbols-outlined text-[16px]">notifications_paused</span>
+</button>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Assignee" type="button">
+<span class="material-symbols-outlined text-[16px]">person_add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Issue Row 3: Kotlin JVM Heap Exhaustion -->
+<div class="issue-row bg-surface-container-low hover:bg-surface-container rounded-xl p-space-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+<div class="flex items-start gap-space-md flex-1 min-w-0">
+<div class="pt-0.5">
+<input class="issue-check rounded bg-surface-container text-primary focus:ring-0 focus:outline-none w-3.5 h-3.5 border-0 cursor-pointer" type="checkbox"/>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs flex-wrap mb-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold hover:text-primary cursor-pointer truncate">
+                  OutOfMemoryError: Java heap space during parallel parquet ledger deserialization
+                </span>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap font-label-code-sm text-label-code-sm">
+<span class="text-error font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                  HIGH LEVEL
+                </span>
+<span class="text-outline-variant">•</span>
+<span class="text-on-surface-variant font-mono">SyncEngineJob.kt:204</span>
+<span class="text-outline-variant">•</span>
+<span class="bg-surface-container px-1 rounded text-primary">v2.4.1</span>
+<span class="text-outline-variant">•</span>
+<span class="text-outline">deploy #8819</span>
+<span class="text-outline-variant">•</span>
+<span class="text-outline">seen 41m ago</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between w-full md:w-auto md:gap-space-lg shrink-0">
+<div class="w-24 h-6 flex items-end gap-0.5 py-0.5">
+<div class="flex-1 bg-surface-container-highest h-1 rounded-xs"></div>
+<div class="flex-1 bg-surface-container-highest h-1 rounded-xs"></div>
+<div class="flex-1 bg-error/30 h-2 rounded-xs"></div>
+<div class="flex-1 bg-error/40 h-3 rounded-xs"></div>
+<div class="flex-1 bg-error/60 h-4 rounded-xs"></div>
+<div class="flex-1 bg-error/90 h-5 rounded-xs"></div>
+<div class="flex-1 bg-error h-full rounded-xs"></div>
+</div>
+<div class="w-16 text-right">
+<span class="font-label-code-md text-label-code-md text-on-surface font-bold block">412</span>
+<span class="font-label-code-sm text-label-code-sm text-outline block leading-none">events</span>
+</div>
+<div class="w-14 text-right">
+<span class="font-label-code-md text-label-code-md text-on-surface font-bold block">16</span>
+<span class="font-label-code-sm text-label-code-sm text-outline block leading-none">users</span>
+</div>
+<div class="flex items-center gap-space-xs w-32 justify-end">
+<div class="w-6 h-6 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-label-code-sm text-label-code-sm font-bold" title="Assigned to Data Eng">
+                DE
+              </div>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-secondary flex items-center justify-center transition-colors" title="Resolve issue" type="button">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+</button>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Snooze alert" type="button">
+<span class="material-symbols-outlined text-[16px]">notifications_paused</span>
+</button>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Assignee" type="button">
+<span class="material-symbols-outlined text-[16px]">person_add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Issue Row 4: Stripe Client Upstream Timeout (Python) -->
+<div class="issue-row bg-surface-container-low hover:bg-surface-container rounded-xl p-space-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="flex items-start gap-space-md flex-1 min-w-0">
+<div class="pt-0.5">
+<input class="issue-check rounded bg-surface-container text-primary focus:ring-0 focus:outline-none w-3.5 h-3.5 border-0 cursor-pointer" type="checkbox"/>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs flex-wrap mb-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold hover:text-primary cursor-pointer truncate">
+                  stripe.error.APIConnectionError: Request timed out idempotency_key=idmp_99182a
+                </span>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap font-label-code-sm text-label-code-sm">
+<span class="text-primary font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                  WARNING
+                </span>
+<span class="text-outline-variant">•</span>
+<span class="text-on-surface-variant font-mono">stripe_client.py:91</span>
+<span class="text-outline-variant">•</span>
+<span class="bg-surface-container px-1 rounded text-primary">v2.3.9</span>
+<span class="text-outline-variant">•</span>
+<span class="text-outline">deploy #8794</span>
+<span class="text-outline-variant">•</span>
+<span class="text-outline">seen 1h ago</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between w-full md:w-auto md:gap-space-lg shrink-0">
+<div class="w-24 h-6 flex items-end gap-0.5 py-0.5">
+<div class="flex-1 bg-primary/40 h-3 rounded-xs"></div>
+<div class="flex-1 bg-primary/60 h-4 rounded-xs"></div>
+<div class="flex-1 bg-primary/80 h-5 rounded-xs"></div>
+<div class="flex-1 bg-primary/40 h-2 rounded-xs"></div>
+<div class="flex-1 bg-primary/30 h-2 rounded-xs"></div>
+<div class="flex-1 bg-surface-container-highest h-1 rounded-xs"></div>
+<div class="flex-1 bg-surface-container-highest h-1 rounded-xs"></div>
+</div>
+<div class="w-16 text-right">
+<span class="font-label-code-md text-label-code-md text-on-surface font-bold block">214</span>
+<span class="font-label-code-sm text-label-code-sm text-outline block leading-none">events</span>
+</div>
+<div class="w-14 text-right">
+<span class="font-label-code-md text-label-code-md text-on-surface font-bold block">10</span>
+<span class="font-label-code-sm text-label-code-sm text-outline block leading-none">users</span>
+</div>
+<div class="flex items-center gap-space-xs w-32 justify-end">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest text-outline flex items-center justify-center font-label-code-sm text-label-code-sm" title="Unassigned">
+                --
+              </div>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-secondary flex items-center justify-center transition-colors" title="Resolve issue" type="button">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+</button>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Snooze alert" type="button">
+<span class="material-symbols-outlined text-[16px]">notifications_paused</span>
+</button>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Assignee" type="button">
+<span class="material-symbols-outlined text-[16px]">person_add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Issue Row 5: Redis MaxClients Reached -->
+<div class="issue-row bg-surface-container-low hover:bg-surface-container rounded-xl p-space-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+<div class="flex items-start gap-space-md flex-1 min-w-0">
+<div class="pt-0.5">
+<input class="issue-check rounded bg-surface-container text-primary focus:ring-0 focus:outline-none w-3.5 h-3.5 border-0 cursor-pointer" type="checkbox"/>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs flex-wrap mb-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold hover:text-primary cursor-pointer truncate">
+                  RedisClientException: ERR max number of clients reached (10000) on cache-shard-03
+                </span>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap font-label-code-sm text-label-code-sm">
+<span class="text-error font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                  HIGH LEVEL
+                </span>
+<span class="text-outline-variant">•</span>
+<span class="text-on-surface-variant font-mono">session_store.go:77</span>
+<span class="text-outline-variant">•</span>
+<span class="bg-surface-container px-1 rounded text-primary">v2.4.1</span>
+<span class="text-outline-variant">•</span>
+<span class="text-outline">deploy #8819</span>
+<span class="text-outline-variant">•</span>
+<span class="text-outline">seen 2h ago</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between w-full md:w-auto md:gap-space-lg shrink-0">
+<div class="w-24 h-6 flex items-end gap-0.5 py-0.5">
+<div class="flex-1 bg-error/30 h-1 rounded-xs"></div>
+<div class="flex-1 bg-error/30 h-2 rounded-xs"></div>
+<div class="flex-1 bg-error/50 h-3 rounded-xs"></div>
+<div class="flex-1 bg-error/70 h-4 rounded-xs"></div>
+<div class="flex-1 bg-error h-5 rounded-xs"></div>
+<div class="flex-1 bg-error/60 h-3 rounded-xs"></div>
+<div class="flex-1 bg-error/40 h-2 rounded-xs"></div>
+</div>
+<div class="w-16 text-right">
+<span class="font-label-code-md text-label-code-md text-on-surface font-bold block">330</span>
+<span class="font-label-code-sm text-label-code-sm text-outline block leading-none">events</span>
+</div>
+<div class="w-14 text-right">
+<span class="font-label-code-md text-label-code-md text-on-surface font-bold block">22</span>
+<span class="font-label-code-sm text-label-code-sm text-outline block leading-none">users</span>
+</div>
+<div class="flex items-center gap-space-xs w-32 justify-end">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest text-primary flex items-center justify-center font-label-code-sm text-label-code-sm font-bold" title="Assigned to SRE_Lead">
+                SL
+              </div>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-secondary flex items-center justify-center transition-colors" title="Resolve issue" type="button">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+</button>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Snooze alert" type="button">
+<span class="material-symbols-outlined text-[16px]">notifications_paused</span>
+</button>
+<button class="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Assignee" type="button">
+<span class="material-symbols-outlined text-[16px]">person_add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination & Stream State Footer -->
+<div class="bg-surface-container-low px-space-md py-space-sm rounded-xl flex items-center justify-between text-outline font-label-code-sm text-label-code-sm mt-space-xs">
+<div class="flex items-center gap-space-sm">
+<span>Showing 1 - 5 of 14 unresolved issues</span>
+<span class="text-outline-variant">•</span>
+<span class="text-secondary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+            Buffer clean
+          </span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="px-space-sm py-1 bg-surface-container hover:bg-surface-container-high rounded text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40" disabled="" type="button">
+            Previous
+          </button>
+<span class="px-space-sm py-1 bg-surface-container-highest text-primary font-bold rounded">1</span>
+<button class="px-space-sm py-1 bg-surface-container hover:bg-surface-container-high rounded text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+            2
+          </button>
+<button class="px-space-sm py-1 bg-surface-container hover:bg-surface-container-high rounded text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+            3
+          </button>
+<button class="px-space-sm py-1 bg-surface-container hover:bg-surface-container-high rounded text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+            Next
+          </button>
+</div>
+</div>
+</div>
+<!-- Right Column: Live Context & Cluster Health (xl:col-span-3) -->
+<div class="xl:col-span-3 flex flex-col gap-space-md">
+<!-- Realtime Ingestion Card -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-md shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+<span class="font-label-code-sm text-label-code-sm uppercase tracking-wider text-on-surface font-semibold">Cluster Ingestion</span>
+</div>
+<span class="font-label-code-sm text-label-code-sm text-primary bg-surface-container px-space-xs py-0.5 rounded">Healthy</span>
+</div>
+<div class="grid grid-cols-2 gap-space-sm pt-space-xs">
+<div class="bg-surface-container p-space-sm rounded-lg">
+<span class="font-label-code-sm text-label-code-sm text-outline block">Throughput</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">42.4</span>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant block">evt / sec</span>
+</div>
+<div class="bg-surface-container p-space-sm rounded-lg">
+<span class="font-label-code-sm text-label-code-sm text-outline block">p95 Latency</span>
+<span class="font-headline-sm text-headline-sm text-secondary font-bold">11.2</span>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant block">milliseconds</span>
+</div>
+</div>
+<!-- Mini Ingestion Area Chart SVG -->
+<div class="flex flex-col gap-1 pt-1">
+<div class="flex justify-between items-center text-outline font-label-code-sm text-label-code-sm">
+<span>Inbound Pipeline</span>
+<span class="text-on-surface-variant font-mono">2.4 MB/s</span>
+</div>
+<div class="h-16 w-full bg-surface-container rounded-lg p-1 overflow-hidden flex items-end">
+<svg class="w-full h-full text-secondary" preserveaspectratio="none" viewbox="0 0 100 40">
+<defs>
+<lineargradient id="ingest-grad" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="currentColor" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="currentColor" stop-opacity="0.0"></stop>
+</lineargradient>
+</defs>
+<polygon fill="url(#ingest-grad)" points="0,40 0,25 15,30 30,18 45,22 60,10 75,16 90,8 100,12 100,40"></polygon>
+<polyline fill="none" points="0,25 15,30 30,18 45,22 60,10 75,16 90,8 100,12" stroke="currentColor" stroke-linecap="round" stroke-width="2"></polyline>
+</svg>
+</div>
+</div>
+</div>
+<!-- Runtime Triage Breakdown -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-md shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Runtime Distribution</span>
+<span class="material-symbols-outlined text-outline text-[16px]">pie_chart</span>
+</div>
+<div class="flex flex-col gap-space-sm">
+<!-- Go -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-code-sm text-label-code-sm">
+<span class="text-on-surface font-semibold flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                Go (Golang)
+              </span>
+<span class="text-on-surface font-mono">1,730 (53%)</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 53%"></div>
+</div>
+</div>
+<!-- Node.js -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-code-sm text-label-code-sm">
+<span class="text-on-surface font-semibold flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                Node.js / TS
+              </span>
+<span class="text-on-surface font-mono">892 (28%)</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 28%"></div>
+</div>
+</div>
+<!-- JVM -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-code-sm text-label-code-sm">
+<span class="text-on-surface font-semibold flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+                JVM / Kotlin
+              </span>
+<span class="text-on-surface font-mono">412 (13%)</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full rounded-full" style="width: 13%"></div>
+</div>
+</div>
+<!-- Python -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-code-sm text-label-code-sm">
+<span class="text-on-surface font-semibold flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+                Python 3.12
+              </span>
+<span class="text-on-surface font-mono">214 (6%)</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-error h-full rounded-full" style="width: 6%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Triage Rules / SLO Notice -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-sm relative overflow-hidden">
+<div class="flex items-center gap-space-xs text-primary">
+<span class="material-symbols-outlined text-[16px]">auto_fix_high</span>
+<span class="font-label-code-sm text-label-code-sm uppercase font-semibold">Triage Heuristics</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          3 issues automatically flagged for rollback consideration due to regression match against git tag <code class="text-on-surface bg-surface-container px-1 rounded">v2.4.1</code>.
+        </p>
+<div class="pt-space-xs">
+<button class="w-full py-1.5 px-space-md bg-surface-container hover:bg-surface-container-high rounded text-on-surface font-label-code-sm text-label-code-sm transition-colors text-left flex items-center justify-between" type="button">
+<span>View Affected Commits</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Simple client-side micro-interaction for Master & Row Selection
+  (function() {
+    const masterCheckbox = document.getElementById('master-select');
+    const rowCheckboxes = document.querySelectorAll('.issue-check');
+    const selectedCountSpan = document.getElementById('selected-count');
+    const batchButtons = [
+      document.getElementById('btn-batch-resolve'),
+      document.getElementById('btn-batch-ignore'),
+      document.getElementById('btn-batch-merge'),
+      document.getElementById('btn-batch-delete')
+    ];
+
+    function updateBatchState() {
+      const checkedCount = Array.from(rowCheckboxes).filter(cb => cb.checked).length;
+      if (selectedCountSpan) {
+        selectedCountSpan.textContent = checkedCount.toString();
+      }
+      
+      batchButtons.forEach(btn => {
+        if (btn) {
+          btn.disabled = checkedCount === 0;
+        }
+      });
+
+      if (masterCheckbox) {
+        masterCheckbox.checked = checkedCount === rowCheckboxes.length && rowCheckboxes.length > 0;
+        masterCheckbox.indeterminate = checkedCount > 0 && checkedCount < rowCheckboxes.length;
+      }
+    }
+
+    if (masterCheckbox) {
+      masterCheckbox.addEventListener('change', () => {
+        rowCheckboxes.forEach(cb => {
+          cb.checked = masterCheckbox.checked;
+        });
+        updateBatchState();
+      });
+    }
+
+    rowCheckboxes.forEach(cb => {
+      cb.addEventListener('change', updateBatchState);
+    });
+  })();
+</script></main></div></body></html>

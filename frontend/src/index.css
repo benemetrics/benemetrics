@@ -1,0 +1,152 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@theme {
+  /* --- Color Palette (design-system/obsidian-telemetry) --- */
+  --color-surface: #0f131c;
+  --color-surface-dim: #0f131c;
+  --color-surface-bright: #353942;
+  --color-surface-container-lowest: #0a0e16;
+  --color-surface-container-low: #181c24;
+  --color-surface-container: #1c2028;
+  --color-surface-container-high: #262a33;
+  --color-surface-container-highest: #31353e;
+  --color-on-surface: #dfe2ee;
+  --color-on-surface-variant: #bcc9cd;
+  --color-inverse-surface: #dfe2ee;
+  --color-inverse-on-surface: #2c3039;
+  --color-outline: #869397;
+  --color-outline-variant: #3d494c;
+  --color-primary: #4cd7f6;
+  --color-on-primary: #003640;
+  --color-primary-container: #06b6d4;
+  --color-on-primary-container: #00424f;
+  --color-inverse-primary: #00687a;
+  --color-secondary: #4edea3;
+  --color-on-secondary: #003824;
+  --color-secondary-container: #00a572;
+  --color-on-secondary-container: #00311f;
+  --color-tertiary: #c0c1ff;
+  --color-on-tertiary: #1000a9;
+  --color-tertiary-container: #9a9dff;
+  --color-on-tertiary-container: #211cb4;
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-background: #0f131c;
+
+  /* Functional accents (per DESIGN.md "Brand & Style") */
+  --color-accent-error: #f43f5e;
+  --color-accent-warning: #f59e0b;
+
+  /* --- Typography --- */
+  --font-display: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --text-display-lg: 28px 34px;
+  --text-display-lg: 28px / 34px;
+  --font-display-lg-weight: 700;
+  --font-display-lg-letterspacing: -0.02em;
+  --text-display-md: 20px / 26px;
+  --font-display-md-weight: 600;
+  --font-display-md-letterspacing: -0.01em;
+  --text-display-sm: 17px / 22px;
+  --font-display-sm-weight: 600;
+  --font-display-sm-letterspacing: -0.01em;
+  --text-body-lg: 15px / 22px;
+  --text-body-md: 13px / 18px;
+  --text-body-sm: 11px / 15px;
+  --text-code-lg: 13px / 18px;
+  --font-code-lg-weight: 500;
+  --text-code-md: 11px / 15px;
+  --font-code-md-weight: 500;
+  --text-code-sm: 10px / 13px;
+  --font-code-sm-weight: 600;
+  --font-code-sm-letterspacing: 0.04em;
+
+  /* --- Spacing --- */
+  --spacing-gutter: 0.75rem;
+  --spacing-gutter-tablet: 1rem;
+  --spacing-margin: 1rem;
+  --spacing-margin-tablet: 1.5rem;
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 0.75rem;
+  --spacing-space-lg: 1rem;
+  --spacing-space-xl: 1.5rem;
+
+  /* --- Border radius --- */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+
+  /* Custom class names for tailwind utility mapping */
+  .font-display { font-family: var(--font-display); }
+  .font-mono { font-family: var(--font-mono); }
+  .text-display-lg { font-size: var(--text-display-lg); line-height: 34px; font-weight: 700; letter-spacing: -0.02em; }
+  .text-display-md { font-size: var(--text-display-md); line-height: 26px; font-weight: 600; letter-spacing: -0.01em; }
+  .text-display-sm { font-size: var(--text-display-sm); line-height: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .text-body-lg { font-size: var(--text-body-lg); line-height: 22px; }
+  .text-body-md { font-size: var(--text-body-md); line-height: 18px; }
+  .text-body-sm { font-size: var(--text-body-sm); line-height: 15px; }
+  .text-code-lg { font-size: var(--text-code-lg); line-height: 18px; font-weight: 500; }
+  .text-code-md { font-size: var(--text-code-md); line-height: 15px; font-weight: 500; }
+  .text-code-sm { font-size: var(--text-code-sm); line-height: 13px; font-weight: 600; letter-spacing: 0.04em; }
+}
+
+@layer base {
+  html, body {
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    font-family: var(--font-display);
+    font-size: var(--text-body-md);
+    overscroll-behavior: none;
+  }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+  main > :first-child { margin-top: 0 !important; }
+  main > :last-child { margin-bottom: 0 !important; }
+}
+
+@layer utilities {
+  /* Hide scrollbar but keep functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Material Symbols Outlined font */
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 400;
+  src: url(https://fonts.gstatic.com/s/materialsymbolsoutlined/vf_gGKSrRK7KWIiYo61ro8HU_VtdzqAA0Qa9MZE9-V_6dLXQxI7i1h3f1e0Fz1vI.woff2) format("woff2");
+}
+
+.mds {
+  font-family: "Material Symbols Outlined", sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+}

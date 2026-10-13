@@ -1,0 +1,31 @@
+{
+  "name": "sentry",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "bun check",
+    "test": "bun test e2e/",
+    "test:error-tracking": "bun test e2e/01-error-tracking.test.ts",
+    "test:release-tracking": "bun test e2e/02-release-tracking.test.ts",
+    "test:performance": "bun test e2e/03-performance-monitoring.test.ts",
+    "test:session-replay": "bun test e2e/04-session-replay.test.ts",
+    "test:breadcrumbs": "bun test e2e/05-breadcrumbs.test.ts",
+    "test:alerting": "bun test e2e/06-alerting.test.ts",
+    "test:authentication": "bun test e2e/08-authentication.test.ts",
+    "test:feature-flags": "bun test e2e/09-feature-flags.test.ts"
+  },
+  "dependencies": {
+    "@elysiajs/static": "^1.4.10",
+    "@sentry/bun": "^8.0.0",
+    "elysia": "^1.4.30",
+    "tailwindcss": "4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "bun-plugin-tailwind": "^0.1.2"
+  },
+  "peerDependencies": {
+    "typescript": "^7"
+  }
+}

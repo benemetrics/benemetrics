@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#0f131c;}body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "on-error-container": "#ffdad6", "surface": "#0f131c", "surface-container-high": "#262a33", "background": "#0f131c", "outline-variant": "#3d494c", "inverse-primary": "#00687a", "surface-container": "#1c2028", "on-surface": "#dfe2ee", "primary": "#4cd7f6", "secondary": "#4edea3", "surface-container-low": "#181c24", "surface-container-lowest": "#0a0e16", "error": "#ffb4ab", "primary-container": "#06b6d4", "tertiary-container": "#9a9dff", "on-tertiary-container": "#211cb4", "on-primary-container": "#00424f", "surface-tint": "#4cd7f6", "primary-fixed": "#acedff", "tertiary-fixed-dim": "#c0c1ff", "tertiary-fixed": "#e1e0ff", "secondary-fixed": "#6ffbbe", "on-secondary-container": "#00311f", "outline": "#869397", "on-tertiary-fixed": "#07006c", "inverse-surface": "#dfe2ee", "on-secondary": "#003824", "on-error": "#690005", "on-primary-fixed-variant": "#004e5c", "primary-fixed-dim": "#4cd7f6", "on-primary-fixed": "#001f26", "secondary-container": "#00a572", "inverse-on-surface": "#2c3039", "on-background": "#dfe2ee", "tertiary": "#c0c1ff", "on-surface-variant": "#bcc9cd", "surface-container-highest": "#31353e", "on-secondary-fixed": "#002113", "on-primary": "#003640", "on-secondary-fixed-variant": "#005236", "error-container": "#93000a", "on-tertiary-fixed-variant": "#2f2ebe", "surface-dim": "#0f131c", "surface-bright": "#353942", "surface-variant": "#31353e", "on-tertiary": "#1000a9", "secondary-fixed-dim": "#4edea3" }, borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, spacing: { "space-xs": "0.25rem", "gutter-tablet": "1rem", "margin-tablet": "1.5rem", "space-md": "0.75rem", "space-lg": "1rem", "space-sm": "0.5rem", "gutter": "0.75rem", "space-xl": "1.5rem", "margin": "1rem" }, fontFamily: { "label-code-sm": ["JetBrains Mono"], "body-md": ["Inter"], "headline-sm": ["Inter"], "body-lg": ["Inter"], "label-code-lg": ["JetBrains Mono"], "body-sm": ["Inter"], "headline-lg-mobile": ["Inter"], "headline-md": ["Inter"], "label-code-md": ["JetBrains Mono"], "headline-lg": ["Inter"] }, fontSize: { "label-code-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0.04em", "fontWeight": "600" }], "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-sm": ["17px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-lg": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "label-code-lg": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "body-sm": ["11px", { "lineHeight": "15px", "fontWeight": "400" }], "headline-lg-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-code-md": ["11px", { "lineHeight": "15px", "fontWeight": "500" }], "headline-lg": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "700" }] } } } };</script></head><body class="bg-surface text-on-surface font-body-md text-body-md flex flex-col min-h-screen antialiased selection:bg-primary selection:text-on-primary"><header class="fixed top-0 inset-x-0 z-50 bg-surface/85 backdrop-blur-xl shadow-[0_1px_12px_rgba(0,0,0,0.35)] pt-safe"><div class="h-16 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><div class="w-9 h-9 rounded-lg bg-surface-container-high flex items-center justify-center text-primary flex-shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.2)]"><span class="material-symbols-outlined text-[20px]">terminal</span></div><div class="flex flex-col min-w-0"><div class="flex items-center gap-space-xs"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight truncate font-bold">Benemetrics</span><span class="px-1.5 py-0.5 rounded-DEFAULT bg-surface-container-highest text-secondary font-label-code-sm text-label-code-sm uppercase">prod</span></div><div class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span><span class="font-label-code-sm text-label-code-sm text-on-surface-variant truncate">sentry-sdk v7</span></div></div></div><div class="flex items-center gap-space-xs flex-shrink-0"><button aria-label="Search and filter incidents" class="w-11 h-11 flex items-center justify-center rounded-lg text-on-surface-variant hover:text-primary active:bg-surface-container transition-colors"><span class="material-symbols-outlined text-[20px]">search</span></button><div class="w-11 h-11 flex items-center justify-center"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-outline-variant/40" src="https://lh3.googleusercontent.com/aida/AEtjO1WEaK0aFtn3yVH-XaNmkM4F9aRy5uCSpcxY2D5XV5cBb2BOQM02JnvIBhbhHqsZgHZrs7MnOEv2_Lax5ZSaA01P8pPltcIYUOOImKEvH2O00Db_G71LyvdvFNBZGpmjL_aBELvPMUbeecAT747IseuNZZo2_mixpmP-8RwPw34xq4k1kV4shTdFZ1NXGB51HR9AITWEgpjOb_FMg-dVMU95Aswt3h01cJesBt9K9cifnR2IkEvd3vqtYue1"/></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-24 bg-surface min-h-screen"><div class="flex flex-col w-full px-margin pb-6 gap-space-md">
+<!-- Time Range & Env Bar -->
+<div class="flex items-center justify-between gap-space-xs mt-space-sm">
+<!-- Time Tabs -->
+<div class="flex items-center p-1 rounded-xl bg-surface-container-low shadow-sm">
+<button class="px-2.5 py-1 rounded-lg font-label-code-sm text-label-code-sm text-on-surface-variant hover:text-on-surface transition-colors" onclick="setActiveTime(this)" type="button">1h</button>
+<button class="px-2.5 py-1 rounded-lg bg-surface-container font-label-code-sm text-label-code-sm text-primary shadow-sm transition-colors" onclick="setActiveTime(this)" type="button">24h</button>
+<button class="px-2.5 py-1 rounded-lg font-label-code-sm text-label-code-sm text-on-surface-variant hover:text-on-surface transition-colors" onclick="setActiveTime(this)" type="button">7d</button>
+<button class="px-2.5 py-1 rounded-lg font-label-code-sm text-label-code-sm text-on-surface-variant hover:text-on-surface transition-colors" onclick="setActiveTime(this)" type="button">30d</button>
+</div>
+<!-- Env & Refresh Pill -->
+<div class="flex items-center gap-space-xs">
+<div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-container-low text-secondary font-label-code-sm text-label-code-sm shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+<span class="tracking-wide">prod-us-east-1</span>
+</div>
+<button aria-label="Refresh telemetry" class="w-8 h-8 rounded-xl bg-surface-container-low flex items-center justify-center text-on-surface-variant active:scale-95 transition-transform" id="refresh-btn" onclick="triggerRefresh()" type="button">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+</button>
+</div>
+</div>
+<!-- KPI Grid: Bento 2x2 with micro-charts -->
+<div class="grid grid-cols-2 gap-space-sm">
+<!-- P75 Latency -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between text-on-surface-variant mb-1">
+<span class="font-label-code-sm text-label-code-sm uppercase tracking-wider">P75 Latency</span>
+<span class="material-symbols-outlined text-primary text-[16px]">timer</span>
+</div>
+<div class="flex items-baseline gap-1 my-0.5">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-bold">142</span>
+<span class="font-label-code-md text-label-code-md text-on-surface-variant">ms</span>
+</div>
+<div class="flex items-center justify-between mt-1">
+<div class="flex items-center gap-0.5 text-secondary font-label-code-sm text-label-code-sm">
+<span class="material-symbols-outlined text-[13px]">trending_down</span>
+<span>-18ms</span>
+</div>
+<!-- Sparkline Latency -->
+<svg class="w-14 h-5 overflow-visible" fill="none" viewbox="0 0 56 20">
+<path d="M0 16 L10 14 L20 17 L30 11 L40 12 L56 4" stroke="#4edea3" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path>
+<circle cx="56" cy="4" fill="#4edea3" r="2"></circle>
+</svg>
+</div>
+</div>
+<!-- Throughput -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between text-on-surface-variant mb-1">
+<span class="font-label-code-sm text-label-code-sm uppercase tracking-wider">Throughput</span>
+<span class="material-symbols-outlined text-primary text-[16px]">speed</span>
+</div>
+<div class="flex items-baseline gap-1 my-0.5">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-bold">4,820</span>
+<span class="font-label-code-md text-label-code-md text-on-surface-variant">rpm</span>
+</div>
+<div class="flex items-center justify-between mt-1">
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">peak 6.1k</span>
+<!-- Sparkline Throughput -->
+<svg class="w-14 h-5 overflow-visible" fill="none" viewbox="0 0 56 20">
+<path d="M0 12 L10 9 L20 13 L30 6 L40 5 L56 7" stroke="#4cd7f6" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path>
+<circle cx="56" cy="7" fill="#4cd7f6" r="2"></circle>
+</svg>
+</div>
+</div>
+<!-- Apdex Score -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between text-on-surface-variant mb-1">
+<span class="font-label-code-sm text-label-code-sm uppercase tracking-wider">Apdex</span>
+<span class="material-symbols-outlined text-secondary text-[16px]">sentiment_very_satisfied</span>
+</div>
+<div class="flex items-baseline gap-1 my-0.5">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-secondary font-bold">0.96</span>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">/1.0</span>
+</div>
+<div class="flex items-center justify-between mt-1">
+<span class="px-1.5 py-0.5 rounded-DEFAULT bg-surface-container-high text-secondary font-label-code-sm text-label-code-sm">Excellent</span>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">T = 200ms</span>
+</div>
+</div>
+<!-- Failure Rate -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between text-on-surface-variant mb-1">
+<span class="font-label-code-sm text-label-code-sm uppercase tracking-wider">Failure Rate</span>
+<span class="material-symbols-outlined text-tertiary text-[16px]">format_image_left</span>
+</div>
+<div class="flex items-baseline gap-1 my-0.5">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-bold">0.08</span>
+<span class="font-label-code-md text-label-code-md text-on-surface-variant">%</span>
+</div>
+<div class="flex items-center justify-between mt-1">
+<span class="font-label-code-sm text-label-code-sm text-secondary">38 err/24h</span>
+<div class="w-10 h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 8%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Telemetry Main Chart: Dual Line (Response Latency & Traffic) -->
+<div class="p-space-md rounded-xl bg-surface-container shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">monitoring</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Latency Dynamics</span>
+</div>
+<div class="flex items-center gap-space-sm font-label-code-sm text-label-code-sm">
+<div class="flex items-center gap-1">
+<span class="w-2 h-0.5 rounded-full bg-primary"></span>
+<span class="text-on-surface-variant">P95</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="w-2 h-0.5 rounded-full bg-secondary"></span>
+<span class="text-on-surface-variant">P50</span>
+</div>
+</div>
+</div>
+<!-- Live SVG Waveform -->
+<div class="w-full h-24 relative flex items-center justify-center">
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 320 80">
+<defs>
+<lineargradient id="cyanFill" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#4cd7f6" stop-opacity="0.25"></stop>
+<stop offset="100%" stop-color="#4cd7f6" stop-opacity="0"></stop>
+</lineargradient>
+<lineargradient id="emeraldFill" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#4edea3" stop-opacity="0.18"></stop>
+<stop offset="100%" stop-color="#4edea3" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<!-- Area Cyan (P95) -->
+<path d="M0 45 C30 38, 60 52, 90 32 C120 18, 150 48, 180 28 C210 12, 240 30, 270 20 C295 12, 310 16, 320 15 L320 80 L0 80 Z" fill="url(#cyanFill)"></path>
+<!-- Line Cyan (P95) -->
+<path d="M0 45 C30 38, 60 52, 90 32 C120 18, 150 48, 180 28 C210 12, 240 30, 270 20 C295 12, 310 16, 320 15" fill="none" stroke="#4cd7f6" stroke-linecap="round" stroke-width="1.5"></path>
+<!-- Area Emerald (P50) -->
+<path d="M0 64 C35 60, 70 66, 110 58 C150 50, 190 62, 230 52 C270 44, 300 48, 320 46 L320 80 L0 80 Z" fill="url(#emeraldFill)"></path>
+<!-- Line Emerald (P50) -->
+<path d="M0 64 C35 60, 70 66, 110 58 C150 50, 190 62, 230 52 C270 44, 300 48, 320 46" fill="none" stroke="#4edea3" stroke-linecap="round" stroke-width="1.5"></path>
+<!-- Marker point with glow -->
+<circle cx="270" cy="20" fill="#4cd7f6" r="3"></circle>
+<circle class="animate-ping" cx="270" cy="20" fill="#4cd7f6" opacity="0.3" r="6"></circle>
+</svg>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm">
+<span>24h ago</span>
+<span>12h ago</span>
+<span>6h ago</span>
+<span class="text-primary font-bold">Now</span>
+</div>
+</div>
+<!-- Core Web & Mobile Vitals -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">vital_signs</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Vitals Matrix</span>
+</div>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">75th Percentile</span>
+</div>
+<div class="grid grid-cols-2 gap-space-sm">
+<!-- LCP Card -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">LCP</span>
+<span class="px-1.5 py-0.5 rounded-DEFAULT bg-surface-container-high text-secondary font-label-code-sm text-label-code-sm">Good</span>
+</div>
+<div class="flex items-baseline gap-1 my-1">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">1.1</span>
+<span class="font-label-code-md text-label-code-md text-on-surface-variant">s</span>
+</div>
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 44%;"></div>
+</div>
+</div>
+<!-- FID / INP Card -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">FID / INP</span>
+<span class="px-1.5 py-0.5 rounded-DEFAULT bg-surface-container-high text-secondary font-label-code-sm text-label-code-sm">Good</span>
+</div>
+<div class="flex items-baseline gap-1 my-1">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">42</span>
+<span class="font-label-code-md text-label-code-md text-on-surface-variant">ms</span>
+</div>
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 21%;"></div>
+</div>
+</div>
+<!-- CLS Card -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">CLS</span>
+<span class="px-1.5 py-0.5 rounded-DEFAULT bg-surface-container-high text-secondary font-label-code-sm text-label-code-sm">Good</span>
+</div>
+<div class="flex items-baseline gap-1 my-1">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">0.02</span>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">score</span>
+</div>
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 20%;"></div>
+</div>
+</div>
+<!-- Warm App Start -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">Warm Start</span>
+<span class="px-1.5 py-0.5 rounded-DEFAULT bg-surface-container-high text-primary font-label-code-sm text-label-code-sm">Mobile SDK</span>
+</div>
+<div class="flex items-baseline gap-1 my-1">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">420</span>
+<span class="font-label-code-md text-label-code-md text-on-surface-variant">ms</span>
+</div>
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 42%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Slowest Transactions List -->
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-error text-[18px]">crisis_alert</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Slowest Transactions</span>
+</div>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant">Sorted by P95</span>
+</div>
+<!-- Transaction Item 1: Severe regression -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-xs shadow-sm hover:bg-surface-container-high transition-colors cursor-pointer" onclick="openTraceModal('POST /api/v2/reports/export', '1,840ms', '4.2s', '340 req/min')">
+<div class="flex items-center justify-between gap-space-xs">
+<span class="font-label-code-lg text-label-code-lg text-error font-semibold truncate">POST /api/v2/reports/export</span>
+<span class="px-2 py-0.5 rounded-DEFAULT bg-error-container text-on-error-container font-label-code-sm text-label-code-sm font-semibold flex-shrink-0 animate-pulse">
+          Regressed +40%
+        </span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-code-md text-label-code-md">
+<div class="flex items-center gap-space-sm">
+<span>Avg <strong class="text-on-surface">1,840ms</strong></span>
+<span class="text-outline">|</span>
+<span>P95 <strong class="text-error font-semibold">4.2s</strong></span>
+</div>
+<span class="text-on-surface-variant">340 req/min</span>
+</div>
+<!-- Latency Progress Bar Indicator -->
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-0.5">
+<div class="bg-error h-full rounded-full" style="width: 88%;"></div>
+</div>
+</div>
+<!-- Transaction Item 2: Normal -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-xs shadow-sm hover:bg-surface-container-high transition-colors cursor-pointer" onclick="openTraceModal('GET /api/v1/feed/personal', '310ms', '640ms', '2.8k req/min')">
+<div class="flex items-center justify-between gap-space-xs">
+<span class="font-label-code-lg text-label-code-lg text-primary font-semibold truncate">GET /api/v1/feed/personal</span>
+<span class="px-1.5 py-0.5 rounded-DEFAULT bg-surface-container-high text-secondary font-label-code-sm text-label-code-sm flex-shrink-0">
+          Normal
+        </span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-code-md text-label-code-md">
+<div class="flex items-center gap-space-sm">
+<span>Avg <strong class="text-on-surface">310ms</strong></span>
+<span class="text-outline">|</span>
+<span>P95 <strong class="text-on-surface">640ms</strong></span>
+</div>
+<span class="text-on-surface-variant">2.8k req/min</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-0.5">
+<div class="bg-primary h-full rounded-full" style="width: 24%;"></div>
+</div>
+</div>
+<!-- Transaction Item 3: Normal -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-xs shadow-sm hover:bg-surface-container-high transition-colors cursor-pointer" onclick="openTraceModal('POST /auth/oauth/token', '220ms', '410ms', '1.2k req/min')">
+<div class="flex items-center justify-between gap-space-xs">
+<span class="font-label-code-lg text-label-code-lg text-primary font-semibold truncate">POST /auth/oauth/token</span>
+<span class="px-1.5 py-0.5 rounded-DEFAULT bg-surface-container-high text-secondary font-label-code-sm text-label-code-sm flex-shrink-0">
+          Normal
+        </span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-code-md text-label-code-md">
+<div class="flex items-center gap-space-sm">
+<span>Avg <strong class="text-on-surface">220ms</strong></span>
+<span class="text-outline">|</span>
+<span>P95 <strong class="text-on-surface">410ms</strong></span>
+</div>
+<span class="text-on-surface-variant">1.2k req/min</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-0.5">
+<div class="bg-primary h-full rounded-full" style="width: 16%;"></div>
+</div>
+</div>
+<!-- Transaction Item 4: Fast -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-xs shadow-sm hover:bg-surface-container-high transition-colors cursor-pointer" onclick="openTraceModal('DELETE /api/v1/team/member', '85ms', '120ms', '45 req/min')">
+<div class="flex items-center justify-between gap-space-xs">
+<span class="font-label-code-lg text-label-code-lg text-secondary font-semibold truncate">DELETE /api/v1/team/member</span>
+<span class="px-1.5 py-0.5 rounded-DEFAULT bg-surface-container-high text-on-surface-variant font-label-code-sm text-label-code-sm flex-shrink-0">
+          Fast
+        </span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-code-md text-label-code-md">
+<div class="flex items-center gap-space-sm">
+<span>Avg <strong class="text-on-surface">85ms</strong></span>
+</div>
+<span class="text-on-surface-variant">45 req/min</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-0.5">
+<div class="bg-secondary h-full rounded-full" style="width: 6%;"></div>
+</div>
+</div>
+</div>
+<!-- Primary Action: Drill into Distributed Waterfall -->
+<button class="w-full h-11 px-space-md rounded-xl bg-primary text-on-primary font-label-code-lg text-label-code-lg font-semibold flex items-center justify-center gap-2 shadow-sm active:opacity-90 active:scale-[0.99] transition-transform mt-space-xs" onclick="openTraceModal('POST /api/v2/reports/export', '1,840ms', '4.2s', '340 req/min')" type="button">
+<span class="material-symbols-outlined text-[20px]">account_tree</span>
+<span>Inspect Distributed Trace Waterfall</span>
+</button>
+<!-- Interactive Distributed Trace Waterfall Drawer/Modal -->
+<div class="fixed inset-0 z-50 bg-surface/90 backdrop-blur-md hidden flex-col justify-end" id="trace-modal">
+<!-- Overlay Click to Dismiss -->
+<div class="flex-1 w-full" onclick="closeTraceModal()"></div>
+<div class="w-full bg-surface-container rounded-t-2xl p-space-md shadow-2xl flex flex-col gap-space-md max-h-[85vh] overflow-y-auto">
+<!-- Modal Header -->
+<div class="flex items-center justify-between">
+<div class="flex flex-col min-w-0">
+<span class="font-label-code-sm text-label-code-sm text-primary uppercase tracking-wider">Trace Investigation</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold truncate" id="modal-tx-title">POST /api/v2/reports/export</span>
+</div>
+<button class="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-bright" onclick="closeTraceModal()" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Quick Metrics Bar -->
+<div class="grid grid-cols-3 gap-space-xs p-space-sm rounded-xl bg-surface-container-low text-center">
+<div>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant block">Duration</span>
+<span class="font-label-code-lg text-label-code-lg text-error font-bold" id="modal-tx-avg">1,840ms</span>
+</div>
+<div>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant block">P95</span>
+<span class="font-label-code-lg text-label-code-lg text-on-surface font-semibold" id="modal-tx-p95">4.2s</span>
+</div>
+<div>
+<span class="font-label-code-sm text-label-code-sm text-on-surface-variant block">Throughput</span>
+<span class="font-label-code-lg text-label-code-lg text-secondary font-semibold" id="modal-tx-req">340 rpm</span>
+</div>
+</div>
+<!-- Span Waterfall Breakdown -->
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between text-on-surface-variant font-label-code-sm text-label-code-sm">
+<span>SPANS TIMELINE (0ms - 1,840ms)</span>
+<span class="text-primary">8 Spans Total</span>
+</div>
+<!-- Span 1: Router -->
+<div class="flex flex-col gap-1 p-2 rounded-lg bg-surface-container-low">
+<div class="flex items-center justify-between font-label-code-sm text-label-code-sm">
+<span class="text-on-surface font-semibold">express.middleware: authenticate</span>
+<span class="text-secondary">14ms</span>
+</div>
+<div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden relative">
+<div class="absolute left-0 bg-secondary h-full rounded-full" style="width: 5%;"></div>
+</div>
+</div>
+<!-- Span 2: Database Query (Slow Bottleneck) -->
+<div class="flex flex-col gap-1 p-2 rounded-lg bg-surface-container-low">
+<div class="flex items-center justify-between font-label-code-sm text-label-code-sm">
+<span class="text-error font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+              postgres.query: SELECT * FROM telemetry_events
+            </span>
+<span class="text-error font-bold">1,240ms (67%)</span>
+</div>
+<div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden relative">
+<div class="absolute bg-error h-full rounded-full" style="left: 6%; width: 68%;"></div>
+</div>
+</div>
+<!-- Span 3: S3 Upload -->
+<div class="flex flex-col gap-1 p-2 rounded-lg bg-surface-container-low">
+<div class="flex items-center justify-between font-label-code-sm text-label-code-sm">
+<span class="text-primary font-semibold">aws.s3: putObject (compressed_report.zip)</span>
+<span class="text-primary">480ms</span>
+</div>
+<div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden relative">
+<div class="absolute bg-primary h-full rounded-full" style="left: 74%; width: 26%;"></div>
+</div>
+</div>
+</div>
+<!-- Action Buttons inside Waterfall -->
+<div class="flex items-center gap-space-sm pt-2">
+<button class="flex-1 h-10 rounded-xl bg-surface-container-high text-on-surface font-label-code-md text-label-code-md font-semibold hover:bg-surface-bright flex items-center justify-center gap-1.5" onclick="alert('Raw span payload copied to clipboard')" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+          Copy JSON Span
+        </button>
+<button class="flex-1 h-10 rounded-xl bg-primary text-on-primary font-label-code-md text-label-code-md font-semibold flex items-center justify-center gap-1.5" onclick="closeTraceModal()" type="button">
+<span class="material-symbols-outlined text-[16px]">done</span>
+          Done
+        </button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  function setActiveTime(button) {
+    const parent = button.parentElement;
+    parent.querySelectorAll('button').forEach(btn => {
+      btn.className = "px-2.5 py-1 rounded-lg font-label-code-sm text-label-code-sm text-on-surface-variant hover:text-on-surface transition-colors";
+    });
+    button.className = "px-2.5 py-1 rounded-lg bg-surface-container font-label-code-sm text-label-code-sm text-primary shadow-sm transition-colors";
+  }
+
+  function triggerRefresh() {
+    const icon = document.querySelector('#refresh-btn span');
+    if (icon) {
+      icon.classList.add('animate-spin');
+      setTimeout(() => icon.classList.remove('animate-spin'), 650);
+    }
+  }
+
+  function openTraceModal(title, avg, p95, req) {
+    const modal = document.getElementById('trace-modal');
+    document.getElementById('modal-tx-title').textContent = title;
+    document.getElementById('modal-tx-avg').textContent = avg;
+    document.getElementById('modal-tx-p95').textContent = p95;
+    document.getElementById('modal-tx-req').textContent = req;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  function closeTraceModal() {
+    const modal = document.getElementById('trace-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+</script></main><nav class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-2px_16px_rgba(0,0,0,0.5)]" data-active-classes="text-primary font-semibold"><div class="flex items-center justify-around h-16 px-space-xs"><a class="flex flex-col items-center justify-center min-w-[64px] h-12 text-on-surface-variant transition-colors hover:text-on-surface" data-path="issues" href="#"><span class="material-symbols-outlined text-[22px]">bug_report</span><span class="font-label-code-sm text-label-code-sm mt-0.5">Issues</span></a><a aria-current="page" class="flex flex-col items-center justify-center min-w-[64px] h-12 transition-colors text-primary font-semibold" data-path="performance" href="#"><span class="material-symbols-outlined text-[22px]">speed</span><span class="font-label-code-sm text-label-code-sm mt-0.5">Perf</span></a><a class="flex flex-col items-center justify-center min-w-[64px] h-12 text-on-surface-variant transition-colors hover:text-on-surface" data-path="replays-and-traces" href="#"><span class="material-symbols-outlined text-[22px]">play_circle</span><span class="font-label-code-sm text-label-code-sm mt-0.5">Replays</span></a><a class="flex flex-col items-center justify-center min-w-[64px] h-12 text-on-surface-variant transition-colors hover:text-on-surface" data-path="setup-and-sdk" href="#"><span class="material-symbols-outlined text-[22px]">settings_input_component</span><span class="font-label-code-sm text-label-code-sm mt-0.5">Setup</span></a></div></nav></body></html>

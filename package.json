@@ -16,7 +16,8 @@
     "test:breadcrumbs": "bun test e2e/05-breadcrumbs.test.ts",
     "test:alerting": "bun test e2e/06-alerting.test.ts",
     "test:authentication": "bun test e2e/08-authentication.test.ts",
-    "test:feature-flags": "bun test e2e/09-feature-flags.test.ts"
+    "test:feature-flags": "bun test e2e/09-feature-flags.test.ts",
+    "test:projects": "bun test e2e/12-projects-apps.test.ts"
   },
   "dependencies": {
     "@elysiajs/eden": "^1.4.9",

@@ -8,6 +8,12 @@ import type {
   FeatureFlag, FeatureFlagCreateRequest, FeatureFlagUpdateRequest, FeatureFlagListResponse,
   FeatureFlagVariant, TargetingRule, Segment, EvaluationRequest, EvaluationResponse
 } from "./models/dsn";
+import type {
+  Project, AppRecord,
+  ProjectCreateRequest, AppCreateRequest,
+  AppResponse, ProjectResponse, ProjectDetailResponse,
+  ProjectListResponse, AppListResponse
+} from "./models/project";
 
 // Types (re-exported for use in handlers)
 export type { EnvelopeHeader, ItemHeader, StoredEvent };
@@ -17,7 +23,15 @@ const storedEvents = new Map<string, StoredEvent>();
 const dsnStorage = new Map<string, DsnRecord>();
 const featureFlagStorage = new Map<string, FeatureFlag>();
 const segmentStorage = new Map<string, Segment>();
+const projectStorage = new Map<string, Project>();
+const appStorage = new Map<string, AppRecord>();
 const SERVER_PORT = Number(process.env.PORT) || 31337;
+
+const jsonHeaders = { "Content-Type": "application/json" };
+
+function jsonResponse(status: number, data: unknown): Response {
+  return new Response(JSON.stringify(data), { status, headers: jsonHeaders });
+}
 
 // Parse DSN to extract public key and project ID
 function parseDsn(dsn: string): { publicKey: string; projectId: string } | null {
@@ -534,12 +548,13 @@ async function handleListEvents(): Promise<Response> {
   console.log(`[DEBUG] handleListEvents called, storedEvents size: ${storedEvents.size}`);
   const events = Array.from(storedEvents.values()).map(e => {
     const eventItem = e.envelope.items.find(item => item.header.type === "event");
-    const payload = eventItem ? eventItem.payload : {};
+    const txItem = e.envelope.items.find(item => item.header.type === "transaction");
     return {
       id: e.id,
       receivedAt: e.envelope.receivedAt,
       itemTypes: e.envelope.items.map(i => i.header.type),
-      event: payload,
+      event: eventItem ? eventItem.payload : null,
+      transaction: txItem ? txItem.payload : null,
     };
   });
   console.log(`[DEBUG] handleListEvents returning: ${JSON.stringify(events)}`);
@@ -1134,6 +1149,193 @@ async function handleSegmentGet(request: Request): Promise<Response> {
   });
 }
 
+// ============ Projects & Apps Handlers ============
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function shortId(length: number): string {
+  return crypto.randomUUID().replace(/-/g, "").slice(0, length);
+}
+
+function toAppResponse(app: AppRecord): AppResponse {
+  return {
+    id: app.id,
+    projectId: app.projectId,
+    name: app.name,
+    platform: app.platform,
+    ingestKey: app.ingestKey,
+    dsn: `${app.protocol}://${app.publicKey}@${app.host}/${app.ingestKey}`,
+    publicKey: app.publicKey,
+    host: app.host,
+    protocol: app.protocol,
+    createdAt: app.createdAt.toISOString(),
+  };
+}
+
+function listAppsFor(projectId: string): AppRecord[] {
+  return Array.from(appStorage.values())
+    .filter((a) => a.projectId === projectId)
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+}
+
+function toProjectResponse(project: Project): ProjectResponse {
+  return {
+    id: project.id,
+    name: project.name,
+    slug: project.slug,
+    description: project.description,
+    appCount: listAppsFor(project.id).length,
+    createdAt: project.createdAt.toISOString(),
+  };
+}
+
+async function handleProjectCreate(request: Request): Promise<Response> {
+  let body: ProjectCreateRequest;
+  try {
+    body = await request.json() as ProjectCreateRequest;
+  } catch {
+    return jsonResponse(400, { error: "Invalid JSON body" });
+  }
+
+  if (!body.name || typeof body.name !== "string") {
+    return jsonResponse(400, { error: "Missing required field: name" });
+  }
+
+  const id = crypto.randomUUID();
+  let slug = body.slug ? slugify(body.slug) : slugify(body.name);
+  if (!slug) slug = "project";
+
+  const existingSlugs = new Set(Array.from(projectStorage.values()).map((p) => p.slug));
+  if (existingSlugs.has(slug)) {
+    slug = `${slug}-${shortId(6)}`;
+  }
+
+  const project: Project = {
+    id,
+    name: body.name,
+    slug,
+    description: body.description || "",
+    createdAt: new Date(),
+  };
+
+  projectStorage.set(id, project);
+
+  return jsonResponse(200, toProjectResponse(project));
+}
+
+function handleProjectList(): Response {
+  const projects = Array.from(projectStorage.values())
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .map(toProjectResponse);
+
+  const response: ProjectListResponse = { data: projects };
+  return jsonResponse(200, response);
+}
+
+function handleProjectGet(id: string): Response {
+  const project = projectStorage.get(id);
+  if (!project) {
+    return jsonResponse(404, { error: `Project not found: ${id}` });
+  }
+
+  const response: ProjectDetailResponse = {
+    ...toProjectResponse(project),
+    apps: listAppsFor(project.id).map(toAppResponse),
+  };
+
+  return jsonResponse(200, response);
+}
+
+function handleProjectDelete(id: string): Response {
+  const project = projectStorage.get(id);
+  if (!project) {
+    return jsonResponse(404, { error: `Project not found: ${id}` });
+  }
+
+  for (const app of listAppsFor(id)) {
+    appStorage.delete(app.id);
+  }
+  projectStorage.delete(id);
+
+  return jsonResponse(200, { success: true });
+}
+
+async function handleAppCreate(request: Request, projectId: string): Promise<Response> {
+  const project = projectStorage.get(projectId);
+  if (!project) {
+    return jsonResponse(404, { error: `Project not found: ${projectId}` });
+  }
+
+  let body: AppCreateRequest;
+  try {
+    body = await request.json() as AppCreateRequest;
+  } catch {
+    return jsonResponse(400, { error: "Invalid JSON body" });
+  }
+
+  if (!body.name || typeof body.name !== "string") {
+    return jsonResponse(400, { error: "Missing required field: name" });
+  }
+
+  // Default the DSN host to the host this server was reached on so the
+  // generated DSN works out of the box against this instance.
+  const requestHost = request.headers.get("host");
+  const host = body.host || requestHost || "benemetrics.app";
+  const isLocal = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?$/i.test(host);
+  const protocol = isLocal ? "http" : "https";
+
+  const app: AppRecord = {
+    id: crypto.randomUUID(),
+    projectId,
+    name: body.name,
+    platform: body.platform || "node",
+    ingestKey: `${project.slug}-${shortId(12)}`,
+    publicKey: crypto.randomUUID().replace(/-/g, ""),
+    host,
+    protocol,
+    createdAt: new Date(),
+  };
+
+  appStorage.set(app.id, app);
+
+  return jsonResponse(200, toAppResponse(app));
+}
+
+function handleAppList(projectId: string): Response {
+  if (!projectStorage.has(projectId)) {
+    return jsonResponse(404, { error: `Project not found: ${projectId}` });
+  }
+
+  const response: AppListResponse = { data: listAppsFor(projectId).map(toAppResponse) };
+  return jsonResponse(200, response);
+}
+
+function handleAppGet(appId: string): Response {
+  const app = appStorage.get(appId);
+  if (!app) {
+    return jsonResponse(404, { error: `App not found: ${appId}` });
+  }
+
+  return jsonResponse(200, toAppResponse(app));
+}
+
+function handleAppDelete(appId: string): Response {
+  const app = appStorage.get(appId);
+  if (!app) {
+    return jsonResponse(404, { error: `App not found: ${appId}` });
+  }
+
+  appStorage.delete(appId);
+
+  return jsonResponse(200, { success: true });
+}
+
 // Evaluation endpoint
 async function handleFeatureFlagEvaluate(request: Request): Promise<Response> {
   const body = await request.json() as EvaluationRequest;
@@ -1361,6 +1563,19 @@ const app = new Elysia({
       .get("/segments/:id", async ({ request, params }) => {
         return await handleSegmentGet(new Request(`http://localhost:${SERVER_PORT}/api/admin/segments/${params.id}`));
       })
+      // Projects & Apps management
+      .post("/projects", async ({ request }) => {
+        return await handleProjectCreate(request);
+      })
+      .get("/projects", () => handleProjectList())
+      .get("/projects/:id", ({ params }) => handleProjectGet(params.id))
+      .delete("/projects/:id", ({ params }) => handleProjectDelete(params.id))
+      .post("/projects/:id/apps", async ({ request, params }) => {
+        return await handleAppCreate(request, params.id);
+      })
+      .get("/projects/:id/apps", ({ params }) => handleAppList(params.id))
+      .get("/apps/:appId", ({ params }) => handleAppGet(params.appId))
+      .delete("/apps/:appId", ({ params }) => handleAppDelete(params.appId))
   );
 
 // Redirect root to the UI
@@ -1378,6 +1593,11 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`  POST   /api/dsn/create         - Create a new DSN`);
     console.log(`  GET    /api/dsn/:projectId     - Get DSN by project ID`);
     console.log(`  POST   /api/dsn/generate       - Generate a new DSN with random key`);
+    console.log(`  POST   /api/admin/projects           - Create a project`);
+    console.log(`  GET    /api/admin/projects           - List projects`);
+    console.log(`  GET    /api/admin/projects/:id       - Get project with apps`);
+    console.log(`  POST   /api/admin/projects/:id/apps  - Create app (with DSN)`);
+    console.log(`  GET    /api/admin/apps/:appId        - Get app + DSN`);
     console.log(`  GET    /events                    - List all stored events`);
     console.log(`  GET    /events/:eventId           - Fetch event by ID`);
     console.log(`  POST   /events/clear              - Clear all events`);

@@ -4,6 +4,7 @@ import { Performance } from './pages/Performance';
 import { IssueDetail } from './pages/IssueDetail';
 import { Setup } from './pages/Setup';
 import { APIDemo } from './components/APIDemo';
+import { AdminProjects, ProjectDetail } from './pages/Admin';
 
 export function App() {
   return (
@@ -17,6 +18,8 @@ export function App() {
           <Route path="/setup" element={<Setup />} />
           <Route path="/issue/:id" element={<IssueDetail />} />
           <Route path="/api-demo" element={<APIDemo />} />
+          <Route path="/admin" element={<AdminProjects />} />
+          <Route path="/admin/projects/:id" element={<ProjectDetail />} />
         </Routes>
       </div>
     </BrowserRouter>

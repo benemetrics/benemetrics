@@ -5,9 +5,9 @@
   "private": true,
   "scripts": {
     "typecheck": "bun check",
+    "test": "bun test e2e/",
     "dev": "bun --hot backend/index.ts",
     "start": "bun backend/index.ts",
-    "test": "bun test e2e/",
     "test:error-tracking": "bun test e2e/01-error-tracking.test.ts",
     "test:error-tracking-ui": "bun test e2e/01-error-tracking-ui.test.ts",
     "test:release-tracking": "bun test e2e/02-release-tracking.test.ts",
@@ -32,6 +32,7 @@
     "tailwindcss": "4"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
     "@types/bun": "latest",
     "bun-plugin-tailwind": "^0.1.2"
   },

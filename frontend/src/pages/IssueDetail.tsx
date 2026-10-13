@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { MobileNavBar } from '../components/MobileNavBar';
+import { PageShell } from '../components/PageShell';
 import { cn, relativeTime } from '../lib/utils';
 import { getEvent } from '../lib/api';
 
@@ -86,35 +86,23 @@ export function IssueDetail() {
 
   if (notFound) {
     return (
-      <div className="flex flex-col h-screen bg-surface pt-safe">
-        <div className="px-4 pt-3 flex flex-col items-center justify-center gap-3 text-center flex-1">
+      <PageShell narrow>
+        <div className="py-16 flex flex-col items-center justify-center gap-3 text-center">
           <span className="material-symbols-outlined text-[36px] text-outline">search_off</span>
           <h3 className="text-headline-sm text-on-surface font-semibold">Event not found</h3>
           <Link to="/issues" className="text-code-md text-primary">← Back to Issues</Link>
         </div>
-        <MobileNavBar links={[
-          { path: '/issues', label: 'Issues', icon: 'bug_report' },
-          { path: '/performance', label: 'Perf', icon: 'speed' },
-          { path: '/replays', label: 'Replays', icon: 'play_circle' },
-          { path: '/setup', label: 'Setup', icon: 'settings_input_component' },
-        ]} />
-      </div>
+      </PageShell>
     );
   }
 
   if (!event) {
     return (
-      <div className="flex flex-col h-screen bg-surface pt-safe">
-        <div className="px-4 pt-6 flex justify-center">
+      <PageShell narrow>
+        <div className="py-10 flex justify-center">
           <span className="text-code-md text-on-surface-variant">Loading event…</span>
         </div>
-        <MobileNavBar links={[
-          { path: '/issues', label: 'Issues', icon: 'bug_report' },
-          { path: '/performance', label: 'Perf', icon: 'speed' },
-          { path: '/replays', label: 'Replays', icon: 'play_circle' },
-          { path: '/setup', label: 'Setup', icon: 'settings_input_component' },
-        ]} />
-      </div>
+      </PageShell>
     );
   }
 
@@ -122,8 +110,8 @@ export function IssueDetail() {
   const levelClass = level === 'fatal' || level === 'error' ? 'bg-error-container text-on-error-container' : 'bg-surface-container-high text-primary';
 
   return (
-    <div className="flex flex-col h-screen bg-surface pt-safe">
-      <div className="px-4 pt-3 pb-2 overflow-y-auto flex-1">
+    <PageShell narrow>
+      <div className="pt-1 pb-2 flex flex-col">
         {/* Header — fields rendered only when present in the stored event */}
         <div className="bg-surface-container-low p-3 rounded-xl flex flex-col gap-2 relative overflow-hidden shadow-sm">
           <div className="flex items-center justify-between gap-2">
@@ -339,16 +327,10 @@ export function IssueDetail() {
         )}
       </div>
       {toast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-xl bg-surface-container-high shadow-lg text-code-sm text-on-surface">
+        <div className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-xl bg-surface-container-high shadow-lg text-code-sm text-on-surface">
           {toast}
         </div>
       )}
-      <MobileNavBar links={[
-        { path: '/issues', label: 'Issues', icon: 'bug_report' },
-        { path: '/performance', label: 'Perf', icon: 'speed' },
-        { path: '/replays', label: 'Replays', icon: 'play_circle' },
-        { path: '/setup', label: 'Setup', icon: 'settings_input_component' },
-      ]} />
-    </div>
+    </PageShell>
   );
 }

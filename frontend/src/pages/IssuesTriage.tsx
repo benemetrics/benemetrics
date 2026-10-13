@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sidebar } from '../components/Sidebar';
-import { cn } from '../lib/utils';
-import { relativeTime } from '../lib/utils';
+import { PageShell } from '../components/PageShell';
+import { GettingStarted } from '../components/GettingStarted';
+import { cn, relativeTime } from '../lib/utils';
 import { checkHealth, listEvents } from '../lib/api';
 
 type Severity = 'critical' | 'recovered' | 'high' | 'warning';
@@ -143,303 +143,278 @@ export function IssuesTriage() {
   const allSelected = rows.length > 0 && selected.size === rows.length;
   const someSelected = selected.size > 0 && selected.size < rows.length;
   const online = health?.status === 'ok';
+  // Until the first event fires, the workspace is replaced by the getting-started guide
+  const noEvents = rows.length === 0 && txCount === 0;
+
+  const search = (
+    <div className="relative w-full max-w-2xl">
+      <span className="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+      <input className="w-full h-9 pl-9 pr-14 bg-surface-container-low text-on-surface placeholder:text-outline text-body-md font-body-md rounded-xl focus:outline-none focus:bg-surface-container transition-all" placeholder="Search issues, transactions, tags or press ⌘K" type="text" />
+      <div className="absolute right-space-sm top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-space-xs py-0.5 bg-surface-container-highest rounded-DEFAULT text-outline font-label-code-sm text-label-code-sm">⌘K</div>
+    </div>
+  );
+
+  const actions = (
+    <button className="h-8 px-space-md bg-surface-container-low hover:bg-surface-container text-on-surface font-label-code-md text-label-code-md rounded-lg flex items-center gap-space-xs transition-colors" title="Create Alert Rule" type="button">
+      <span className="material-symbols-outlined text-[16px] text-primary">add_alert</span>
+      <span className="hidden sm:inline">New Alert</span>
+    </button>
+  );
 
   return (
-    <div className="bg-background font-body-md text-on-surface antialiased min-h-screen selection:bg-primary-container selection:text-on-primary-container">
-      <Sidebar />
-
-      <div className="pl-64">
-        {/* Header */}
-        <header className="fixed top-0 left-64 right-0 h-14 bg-surface/80 backdrop-blur-xl z-40 flex items-center justify-between px-margin-tablet shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
-          <div className="flex items-center gap-space-lg flex-1 max-w-2xl">
-            <div className="relative w-full">
-              <span className="material-symbols-outlined absolute left-space-md top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
-              <input className="w-full h-9 pl-9 pr-14 bg-surface-container-low text-on-surface placeholder:text-outline text-body-md font-body-md rounded-xl focus:outline-none focus:bg-surface-container transition-all" placeholder="Search issues, transactions, tags or press ⌘K" type="text" />
-              <div className="absolute right-space-sm top-1/2 -translate-y-1/2 flex items-center gap-0.5 px-space-xs py-0.5 bg-surface-container-highest rounded-DEFAULT text-outline font-label-code-sm text-label-code-sm">⌘K</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-space-lg">
-            <div className="hidden lg:flex items-center gap-space-sm px-space-md py-1 rounded-full bg-surface-container-low">
-              <span className={cn('w-2 h-2 rounded-full', online ? 'bg-secondary' : 'bg-error')}></span>
-              <span className="font-label-code-sm text-label-code-sm text-on-surface-variant">Ingest API</span>
-              <span className={cn('font-label-code-sm text-label-code-sm font-semibold', online ? 'text-secondary' : 'text-error')}>
-                {online ? 'connected' : 'offline'}
-              </span>
-            </div>
+    <PageShell search={search} actions={actions}>
+      <div className="flex flex-col w-full pb-space-xl">
+        {/* Top Context Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md py-space-md mb-space-sm">
+          <div className="flex items-center gap-space-md flex-wrap">
             <div className="flex items-center gap-space-xs">
-              <button className="h-8 px-space-md bg-surface-container-low hover:bg-surface-container text-on-surface font-label-code-md text-label-code-md rounded-lg flex items-center gap-space-xs transition-colors" title="Create Alert Rule" type="button">
-                <span className="material-symbols-outlined text-[16px] text-primary">add_alert</span>
-                <span className="hidden sm:inline">New Alert</span>
-              </button>
-              <button className="w-8 h-8 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors relative" title="Notifications" type="button">
-                <span className="material-symbols-outlined text-[18px]">notifications</span>
-              </button>
+              <span className={cn('w-2.5 h-2.5 rounded-full', online ? 'bg-secondary shadow-[0_0_8px_rgba(78,222,163,0.6)]' : 'bg-error')}></span>
+              <span className="font-label-code-md text-label-code-md uppercase tracking-wider text-on-surface font-semibold">Live Triage</span>
+            </div>
+            <span className="text-outline-variant font-label-code-sm text-label-code-sm hidden sm:inline">/</span>
+            <span className="font-label-code-sm text-label-code-sm text-primary bg-surface-container-high px-space-sm py-0.5 rounded-DEFAULT">polling every 2s</span>
+          </div>
+          <div className="flex items-center gap-space-sm">
+            <div className="flex items-center bg-surface-container-low px-space-sm py-1 rounded-xl">
+              <span className="material-symbols-outlined text-outline text-[16px] mr-1">history</span>
+              <span className="font-label-code-sm text-label-code-sm text-on-surface-variant">Auto-reloading (2s)</span>
+            </div>
+            <button className="h-8 px-space-md bg-surface-container-low hover:bg-surface-container text-on-surface rounded-lg font-label-code-md text-label-code-md flex items-center gap-space-xs transition-colors" type="button">
+              <span className="material-symbols-outlined text-[15px]">tune</span>
+              <span>Configure Alerts</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Metric Grid — all values derived from stored events */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-space-md mb-space-lg">
+          <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
+            <div className="flex items-start justify-between mb-space-sm">
+              <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Stored Error Events</span>
+            </div>
+            <div className="flex items-baseline justify-between mt-space-xs">
+              <span className="font-headline-lg text-headline-lg text-on-surface tracking-tight">{rows.length}</span>
+              <span className="font-label-code-sm text-label-code-sm text-outline">events</span>
             </div>
           </div>
-        </header>
+          <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
+            <div className="flex items-start justify-between mb-space-sm">
+              <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Total Envelopes</span>
+            </div>
+            <div className="flex items-baseline justify-between mt-space-xs">
+              <span className="font-headline-lg text-headline-lg text-on-surface tracking-tight">{health?.eventsStored ?? '—'}</span>
+              <span className="font-label-code-sm text-label-code-sm text-outline">stored</span>
+            </div>
+          </div>
+          <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
+            <div className="flex items-start justify-between mb-space-sm">
+              <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Transactions</span>
+            </div>
+            <div className="flex items-baseline justify-between mt-space-xs">
+              <span className="font-headline-lg text-headline-lg text-primary tracking-tight">{txCount}</span>
+              <span className="font-label-code-sm text-label-code-sm text-outline">traces</span>
+            </div>
+          </div>
+          <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
+            <div className="flex items-start justify-between mb-space-sm">
+              <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Impacted Users</span>
+            </div>
+            <div className="flex items-baseline justify-between mt-space-xs">
+              <span className="font-headline-lg text-headline-lg text-on-surface tracking-tight">{uniqueUsers}</span>
+              <span className="font-label-code-sm text-label-code-sm text-outline">unique</span>
+            </div>
+          </div>
+        </div>
 
-        <main className="w-full pt-14 bg-background min-h-screen px-margin-tablet">
-          <div className="flex flex-col w-full pb-space-xl">
-            {/* Top Context Bar */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md py-space-md mb-space-sm">
-              <div className="flex items-center gap-space-md">
-                <div className="flex items-center gap-space-xs">
-                  <span className={cn('w-2.5 h-2.5 rounded-full', online ? 'bg-secondary shadow-[0_0_8px_rgba(78,222,163,0.6)]' : 'bg-error')}></span>
-                  <span className="font-label-code-md text-label-code-md uppercase tracking-wider text-on-surface font-semibold">Live Triage</span>
-                </div>
-                <span className="text-outline-variant font-label-code-sm text-label-code-sm">/</span>
-                <span className="font-label-code-sm text-label-code-sm text-primary bg-surface-container-high px-space-sm py-0.5 rounded-DEFAULT">polling every 2s</span>
+        {/* Workspace — replaced by the getting-started guide until the first event fires */}
+        {noEvents ? (
+          <GettingStarted />
+        ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-space-md">
+          {/* Left Column: Master Issues Feed */}
+          <div className="xl:col-span-9 flex flex-col gap-space-xs">
+            {/* Table Header Bar */}
+            <div className="bg-surface-container-low px-space-md py-space-xs rounded-xl flex items-center justify-between text-outline font-label-code-sm text-label-code-sm tracking-wider uppercase">
+              <div className="flex items-center gap-space-md flex-1">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    checked={allSelected}
+                    className="rounded bg-surface-container text-primary focus:ring-0 focus:outline-none w-3.5 h-3.5 border-0"
+                    ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                    type="checkbox"
+                    onChange={(e) => toggleAll(e.target.checked)}
+                  />
+                </label>
+                <span>Issue / Root Culprit</span>
               </div>
+              <div className="hidden md:flex items-center gap-space-lg w-40 justify-between">
+                <span className="w-16 text-right">Events</span>
+                <span className="w-14 text-right">Users</span>
+              </div>
+              <div className="w-20 text-right hidden sm:block">Action</div>
+            </div>
+
+            {/* Issues List */}
+            <div className="flex flex-col gap-1.5">
+              {rows.map((issue) => {
+                const sev = severityStyles[issue.severity];
+                return (
+                  <div
+                    key={issue.id}
+                    className="issue-row bg-surface-container-low hover:bg-surface-container rounded-xl p-space-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md relative overflow-hidden group"
+                  >
+                    <div className={cn('absolute left-0 top-0 bottom-0 w-1', issue.severity === 'critical' || issue.severity === 'high' ? 'bg-error' : 'bg-primary')}></div>
+                    <div className="flex items-start gap-space-md flex-1 min-w-0">
+                      <div className="pt-0.5">
+                        <input
+                          checked={selected.has(issue.id)}
+                          className="issue-check rounded bg-surface-container text-primary focus:ring-0 focus:outline-none w-3.5 h-3.5 border-0 cursor-pointer"
+                          type="checkbox"
+                          onChange={(e) => toggleRow(issue.id, e.target.checked)}
+                        />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-space-xs flex-wrap mb-1">
+                          <Link
+                            to={`/issue/${issue.id}`}
+                            className="font-headline-sm text-headline-sm text-on-surface font-semibold hover:text-primary cursor-pointer truncate"
+                          >
+                            {issue.title}
+                          </Link>
+                        </div>
+                        <div className="flex items-center gap-space-sm flex-wrap font-label-code-sm text-label-code-sm">
+                          <span className={cn(sev.text, 'font-semibold flex items-center gap-1')}>
+                            <span className={cn('w-1.5 h-1.5 rounded-full', sev.dot)}></span>
+                            {sev.label}
+                          </span>
+                          <span className="text-outline-variant">•</span>
+                          <span className="text-on-surface-variant font-mono">{issue.culprit}</span>
+                          {issue.version && (
+                            <>
+                              <span className="text-outline-variant">•</span>
+                              <span className="bg-surface-container px-1 rounded text-primary">{issue.version}</span>
+                            </>
+                          )}
+                          <span className="text-outline-variant">•</span>
+                          <span className="text-outline">{issue.seen}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between w-full md:w-auto md:gap-space-lg shrink-0">
+                      <div className="hidden md:block w-16 text-right">
+                        <span className="font-label-code-md text-label-code-md text-on-surface font-bold block">1</span>
+                        <span className="font-label-code-sm text-label-code-sm text-outline block leading-none">event</span>
+                      </div>
+                      <div className="hidden md:block w-14 text-right">
+                        <span className={cn('font-label-code-md text-label-code-md font-bold block', issue.hasUser ? 'text-on-surface' : 'text-outline')}>{issue.hasUser ? '1' : '—'}</span>
+                        <span className="font-label-code-sm text-label-code-sm text-outline block leading-none">user</span>
+                      </div>
+                      <div className="flex items-center gap-space-xs md:w-20 justify-end">
+                        <button className="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-secondary flex items-center justify-center transition-colors" title="Resolve issue" type="button" onClick={() => showToast('Issue marked as RESOLVED', 'success')}>
+                          <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                        </button>
+                        <button className="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Snooze alert" type="button" onClick={() => showToast('Issue silenced for 24h', 'warning')}>
+                          <span className="material-symbols-outlined text-[16px]">notifications_paused</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Stream State Footer */}
+            <div className="bg-surface-container-low px-space-md py-space-sm rounded-xl flex items-center justify-between text-outline font-label-code-sm text-label-code-sm mt-space-xs">
               <div className="flex items-center gap-space-sm">
-                <div className="flex items-center bg-surface-container-low px-space-sm py-1 rounded-xl">
-                  <span className="material-symbols-outlined text-outline text-[16px] mr-1">history</span>
-                  <span className="font-label-code-sm text-label-code-sm text-on-surface-variant">Auto-reloading (2s)</span>
-                </div>
-                <button className="h-8 px-space-md bg-surface-container-low hover:bg-surface-container text-on-surface rounded-lg font-label-code-md text-label-code-md flex items-center gap-space-xs transition-colors" type="button">
-                  <span className="material-symbols-outlined text-[15px]">tune</span>
-                  <span>Configure Alerts</span>
-                </button>
+                <span>Showing {rows.length} stored event{rows.length === 1 ? '' : 's'}</span>
+                <span className="text-outline-variant">•</span>
+                <span className={cn('flex items-center gap-1', online ? 'text-secondary' : 'text-error')}>
+                  <span className={cn('w-1.5 h-1.5 rounded-full', online ? 'bg-secondary' : 'bg-error')}></span>
+                  {online ? 'Stream connected' : 'Stream offline'}
+                </span>
               </div>
+              <span className="hidden sm:inline">refreshed every 2s</span>
             </div>
+          </div>
 
-            {/* Metric Grid — all values derived from stored events */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md mb-space-lg">
-              <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
-                <div className="flex items-start justify-between mb-space-sm">
-                  <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Stored Error Events</span>
+          {/* Right Column: Live Context & Runtime Breakdown */}
+          <div className="xl:col-span-3 flex flex-col gap-space-md">
+            {/* Server Health Card */}
+            <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-md shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-space-xs">
+                  <span className={cn('relative flex h-2 w-2', online && 'animate-ping')}>
+                    <span className={cn('relative inline-flex rounded-full h-2 w-2', online ? 'bg-primary' : 'bg-error')}></span>
+                  </span>
+                  <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-on-surface font-semibold">Server Health</span>
                 </div>
-                <div className="flex items-baseline justify-between mt-space-xs">
-                  <span className="font-headline-lg text-headline-lg text-on-surface tracking-tight">{rows.length}</span>
-                  <span className="font-label-code-sm text-label-code-sm text-outline">events</span>
-                </div>
+                <span className={cn('font-label-code-sm text-label-code-sm bg-surface-container px-space-xs py-0.5 rounded', online ? 'text-primary' : 'text-error')}>
+                  {health ? health.status : 'unreachable'}
+                </span>
               </div>
-              <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
-                <div className="flex items-start justify-between mb-space-sm">
-                  <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Total Envelopes</span>
+              <div className="grid grid-cols-1 gap-space-sm pt-space-xs">
+                <div className="bg-surface-container p-space-sm rounded-lg flex items-center justify-between">
+                  <div>
+                    <span className="font-label-code-sm text-label-code-sm text-outline block">Events Stored</span>
+                    <span className="font-headline-sm text-headline-sm text-on-surface font-bold mt-0.5">{health?.eventsStored ?? '—'}</span>
+                  </div>
+                  <div className="w-9 h-9 rounded bg-surface-container-high flex items-center justify-center text-primary">
+                    <span className="material-symbols-outlined text-[20px]">database</span>
+                  </div>
                 </div>
-                <div className="flex items-baseline justify-between mt-space-xs">
-                  <span className="font-headline-lg text-headline-lg text-on-surface tracking-tight">{health?.eventsStored ?? '—'}</span>
-                  <span className="font-label-code-sm text-label-code-sm text-outline">stored</span>
-                </div>
-              </div>
-              <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
-                <div className="flex items-start justify-between mb-space-sm">
-                  <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Transactions</span>
-                </div>
-                <div className="flex items-baseline justify-between mt-space-xs">
-                  <span className="font-headline-lg text-headline-lg text-primary tracking-tight">{txCount}</span>
-                  <span className="font-label-code-sm text-label-code-sm text-outline">traces</span>
-                </div>
-              </div>
-              <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden group hover:bg-surface-container transition-colors">
-                <div className="flex items-start justify-between mb-space-sm">
-                  <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Impacted Users</span>
-                </div>
-                <div className="flex items-baseline justify-between mt-space-xs">
-                  <span className="font-headline-lg text-headline-lg text-on-surface tracking-tight">{uniqueUsers}</span>
-                  <span className="font-label-code-sm text-label-code-sm text-outline">unique</span>
+                <div className="bg-surface-container p-space-sm rounded-lg flex items-center justify-between">
+                  <div>
+                    <span className="font-label-code-sm text-label-code-sm text-outline block">Error Events</span>
+                    <span className="font-headline-sm text-headline-sm text-on-surface font-bold mt-0.5">{rows.length}</span>
+                  </div>
+                  <div className="w-9 h-9 rounded bg-surface-container-high flex items-center justify-center text-error">
+                    <span className="material-symbols-outlined text-[20px]">bug_report</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Main Asymmetric Workspace Layout */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-space-md">
-              {/* Left Column: Master Issues Feed */}
-              <div className="xl:col-span-9 flex flex-col gap-space-xs">
-                {/* Table Header Bar */}
-                <div className="bg-surface-container-low px-space-md py-space-xs rounded-xl flex items-center justify-between text-outline font-label-code-sm text-label-code-sm tracking-wider uppercase">
-                  <div className="flex items-center gap-space-md flex-1">
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        checked={allSelected}
-                        className="rounded bg-surface-container text-primary focus:ring-0 focus:outline-none w-3.5 h-3.5 border-0"
-                        ref={(el) => { if (el) el.indeterminate = someSelected; }}
-                        type="checkbox"
-                        onChange={(e) => toggleAll(e.target.checked)}
-                      />
-                    </label>
-                    <span>Issue / Root Culprit</span>
-                  </div>
-                  <div className="hidden md:flex items-center gap-space-lg w-40 justify-between">
-                    <span className="w-16 text-right">Events</span>
-                    <span className="w-14 text-right">Users</span>
-                  </div>
-                  <div className="w-20 text-right hidden sm:block">Action</div>
-                </div>
-
-                {/* Issues List */}
-                <div className="flex flex-col gap-1.5">
-                  {rows.map((issue) => {
-                    const sev = severityStyles[issue.severity];
-                    return (
-                      <div
-                        key={issue.id}
-                        className="issue-row bg-surface-container-low hover:bg-surface-container rounded-xl p-space-md transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md relative overflow-hidden group"
-                      >
-                        <div className={cn('absolute left-0 top-0 bottom-0 w-1', issue.severity === 'critical' || issue.severity === 'high' ? 'bg-error' : 'bg-primary')}></div>
-                        <div className="flex items-start gap-space-md flex-1 min-w-0">
-                          <div className="pt-0.5">
-                            <input
-                              checked={selected.has(issue.id)}
-                              className="issue-check rounded bg-surface-container text-primary focus:ring-0 focus:outline-none w-3.5 h-3.5 border-0 cursor-pointer"
-                              type="checkbox"
-                              onChange={(e) => toggleRow(issue.id, e.target.checked)}
-                            />
-                          </div>
-                          <div className="flex flex-col min-w-0">
-                            <div className="flex items-center gap-space-xs flex-wrap mb-1">
-                              <Link
-                                to={`/issue/${issue.id}`}
-                                className="font-headline-sm text-headline-sm text-on-surface font-semibold hover:text-primary cursor-pointer truncate"
-                              >
-                                {issue.title}
-                              </Link>
-                            </div>
-                            <div className="flex items-center gap-space-sm flex-wrap font-label-code-sm text-label-code-sm">
-                              <span className={cn(sev.text, 'font-semibold flex items-center gap-1')}>
-                                <span className={cn('w-1.5 h-1.5 rounded-full', sev.dot)}></span>
-                                {sev.label}
-                              </span>
-                              <span className="text-outline-variant">•</span>
-                              <span className="text-on-surface-variant font-mono">{issue.culprit}</span>
-                              {issue.version && (
-                                <>
-                                  <span className="text-outline-variant">•</span>
-                                  <span className="bg-surface-container px-1 rounded text-primary">{issue.version}</span>
-                                </>
-                              )}
-                              <span className="text-outline-variant">•</span>
-                              <span className="text-outline">{issue.seen}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between w-full md:w-auto md:gap-space-lg shrink-0">
-                          <div className="w-16 text-right">
-                            <span className="font-label-code-md text-label-code-md text-on-surface font-bold block">1</span>
-                            <span className="font-label-code-sm text-label-code-sm text-outline block leading-none">event</span>
-                          </div>
-                          <div className="w-14 text-right">
-                            <span className={cn('font-label-code-md text-label-code-md font-bold block', issue.hasUser ? 'text-on-surface' : 'text-outline')}>{issue.hasUser ? '1' : '—'}</span>
-                            <span className="font-label-code-sm text-label-code-sm text-outline block leading-none">user</span>
-                          </div>
-                          <div className="flex items-center gap-space-xs w-20 justify-end">
-                            <button className="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-secondary flex items-center justify-center transition-colors" title="Resolve issue" type="button" onClick={() => showToast('Issue marked as RESOLVED', 'success')}>
-                              <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                            </button>
-                            <button className="w-7 h-7 rounded hover:bg-surface-container-highest text-outline hover:text-on-surface flex items-center justify-center transition-colors" title="Snooze alert" type="button" onClick={() => showToast('Issue silenced for 24h', 'warning')}>
-                              <span className="material-symbols-outlined text-[16px]">notifications_paused</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {rows.length === 0 && (
-                  <div className="border border-dashed border-outline-variant rounded-xl p-10 flex flex-col items-center justify-center gap-3 text-center">
-                    <span className="material-symbols-outlined text-[36px] text-outline">bug_report</span>
-                    <h3 className="font-headline-sm text-headline-sm text-on-surface font-semibold">No events captured yet</h3>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant max-w-md">
-                      Point any Sentry SDK at an app DSN (see Setup or Admin) and ingested events will appear here in real time.
-                    </p>
-                    <Link to="/setup" className="font-label-code-md text-label-code-md text-primary">Go to Setup →</Link>
-                  </div>
-                )}
-
-                {/* Stream State Footer */}
-                <div className="bg-surface-container-low px-space-md py-space-sm rounded-xl flex items-center justify-between text-outline font-label-code-sm text-label-code-sm mt-space-xs">
-                  <div className="flex items-center gap-space-sm">
-                    <span>Showing {rows.length} stored event{rows.length === 1 ? '' : 's'}</span>
-                    <span className="text-outline-variant">•</span>
-                    <span className={cn('flex items-center gap-1', online ? 'text-secondary' : 'text-error')}>
-                      <span className={cn('w-1.5 h-1.5 rounded-full', online ? 'bg-secondary' : 'bg-error')}></span>
-                      {online ? 'Stream connected' : 'Stream offline'}
-                    </span>
-                  </div>
-                  <span>refreshed every 2s</span>
-                </div>
+            {/* Runtime Triage Breakdown — aggregated from real SDK names */}
+            <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-md shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Runtime Distribution</span>
+                <span className="material-symbols-outlined text-outline text-[16px]">pie_chart</span>
               </div>
-
-              {/* Right Column: Live Context & Runtime Breakdown */}
-              <div className="xl:col-span-3 flex flex-col gap-space-md">
-                {/* Server Health Card */}
-                <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-md shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-space-xs">
-                      <span className={cn('relative flex h-2 w-2', online && 'animate-ping')}>
-                        <span className={cn('relative inline-flex rounded-full h-2 w-2', online ? 'bg-primary' : 'bg-error')}></span>
-                      </span>
-                      <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-on-surface font-semibold">Server Health</span>
-                    </div>
-                    <span className={cn('font-label-code-sm text-label-code-sm bg-surface-container px-space-xs py-0.5 rounded', online ? 'text-primary' : 'text-error')}>
-                      {health ? health.status : 'unreachable'}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 gap-space-sm pt-space-xs">
-                    <div className="bg-surface-container p-space-sm rounded-lg flex items-center justify-between">
-                      <div>
-                        <span className="font-label-code-sm text-label-code-sm text-outline block">Events Stored</span>
-                        <span className="font-headline-sm text-headline-sm text-on-surface font-bold mt-0.5">{health?.eventsStored ?? '—'}</span>
+              {runtimes.length === 0 ? (
+                <p className="font-body-sm text-body-sm text-on-surface-variant">No SDK metadata in stored events yet.</p>
+              ) : (
+                <div className="flex flex-col gap-space-sm">
+                  {runtimes.map((rt) => (
+                    <div key={rt.name} className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between font-label-code-sm text-label-code-sm">
+                        <span className="text-on-surface font-semibold flex items-center gap-1.5">
+                          <span className={cn('w-2 h-2 rounded-full', rt.bar)}></span>
+                          {rt.name}
+                        </span>
+                        <span className="text-on-surface font-mono">{rt.count} ({rt.pct}%)</span>
                       </div>
-                      <div className="w-9 h-9 rounded bg-surface-container-high flex items-center justify-center text-primary">
-                        <span className="material-symbols-outlined text-[20px]">database</span>
+                      <div className="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+                        <div className={cn('h-full rounded-full', rt.bar)} style={{ width: `${rt.pct}%` }}></div>
                       </div>
                     </div>
-                    <div className="bg-surface-container p-space-sm rounded-lg flex items-center justify-between">
-                      <div>
-                        <span className="font-label-code-sm text-label-code-sm text-outline block">Error Events</span>
-                        <span className="font-headline-sm text-headline-sm text-on-surface font-bold mt-0.5">{rows.length}</span>
-                      </div>
-                      <div className="w-9 h-9 rounded bg-surface-container-high flex items-center justify-center text-error">
-                        <span className="material-symbols-outlined text-[20px]">bug_report</span>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-
-                {/* Runtime Triage Breakdown — aggregated from real SDK names */}
-                <div className="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-md shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Runtime Distribution</span>
-                    <span className="material-symbols-outlined text-outline text-[16px]">pie_chart</span>
-                  </div>
-                  {runtimes.length === 0 ? (
-                    <p className="font-body-sm text-body-sm text-on-surface-variant">No SDK metadata in stored events yet.</p>
-                  ) : (
-                    <div className="flex flex-col gap-space-sm">
-                      {runtimes.map((rt) => (
-                        <div key={rt.name} className="flex flex-col gap-1">
-                          <div className="flex items-center justify-between font-label-code-sm text-label-code-sm">
-                            <span className="text-on-surface font-semibold flex items-center gap-1.5">
-                              <span className={cn('w-2 h-2 rounded-full', rt.bar)}></span>
-                              {rt.name}
-                            </span>
-                            <span className="text-on-surface font-mono">{rt.count} ({rt.pct}%)</span>
-                          </div>
-                          <div className="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
-                            <div className={cn('h-full rounded-full', rt.bar)} style={{ width: `${rt.pct}%` }}></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
                   )}
                 </div>
               </div>
             </div>
-          </div>
-        </main>
+        )}
       </div>
 
       <ToastBubble toast={toast} />
-    </div>
+    </PageShell>
   );
 }
 
 function ToastBubble({ toast }: { toast: { message: string; type: 'success' | 'warning' } | null }) {
   if (!toast) return null;
   return (
-    <div className="fixed bottom-6 right-6 z-[60] px-4 py-2.5 rounded-xl bg-surface-container-high shadow-lg flex items-center gap-2">
+    <div className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-[60] px-4 py-2.5 rounded-xl bg-surface-container-high shadow-lg flex items-center gap-2">
       <span className={cn('w-2 h-2 rounded-full', toast.type === 'success' ? 'bg-secondary' : 'bg-error')} />
       <span className="font-body-sm text-body-sm text-on-surface">{toast.message}</span>
     </div>

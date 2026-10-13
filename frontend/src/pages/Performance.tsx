@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MobileNavBar } from '../components/MobileNavBar';
+import { PageShell } from '../components/PageShell';
 import { cn, formatMs, percentile } from '../lib/utils';
 import { listEvents } from '../lib/api';
 
@@ -136,8 +136,9 @@ export function Performance() {
   const aggregates = useMemo(() => aggregate(rows), [rows]);
 
   return (
-    <div className="flex flex-col h-screen bg-surface">
-      <div className="flex items-center justify-between gap-2 mb-2 px-4 mt-3">
+    <PageShell narrow>
+      <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2 mb-1">
         <div className="flex items-center p-1 rounded-xl bg-surface-container-low shadow-sm">
           {timeRanges.map((range) => (
             <button
@@ -158,7 +159,7 @@ export function Performance() {
       </div>
 
       {rows.length === 0 ? (
-        <div className="flex-1 px-4 flex items-center justify-center">
+        <div className="py-16 flex items-center justify-center">
           <div className="border border-dashed border-outline-variant rounded-xl p-8 flex flex-col items-center justify-center gap-3 text-center max-w-md">
             <span className="material-symbols-outlined text-[36px] text-outline">speed</span>
             <h3 className="text-headline-sm text-on-surface font-semibold">No transactions in this window</h3>
@@ -170,7 +171,7 @@ export function Performance() {
       ) : (
         <>
           {/* KPI tiles — computed from real transactions */}
-          <div className="grid grid-cols-2 gap-2 px-4">
+          <div className="grid grid-cols-2 gap-2">
             <div className="p-3 rounded-xl bg-surface-container flex flex-col justify-between shadow-sm">
               <div className="flex items-center justify-between text-on-surface-variant mb-1">
                 <span className="text-code-sm uppercase tracking-wider">P75 Duration</span>
@@ -221,7 +222,7 @@ export function Performance() {
           </div>
 
           {/* Slowest Transactions — grouped from real data */}
-          <div className="flex flex-col gap-1 mt-3 px-4 overflow-y-auto flex-1 pb-2">
+          <div className="flex flex-col gap-1 mt-1 pb-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-[18px] mds text-error">crisis_alert</span>
@@ -268,7 +269,7 @@ export function Performance() {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-50 bg-surface/90 backdrop-blur-md flex flex-col justify-end">
+        <div className="fixed inset-0 z-[60] bg-surface/90 backdrop-blur-md flex flex-col justify-end">
           <div className="flex-1 w-full" onClick={() => setSelected(null)} />
           <div className="w-full bg-surface-container rounded-t-2xl p-4 shadow-2xl flex flex-col gap-3 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between">
@@ -347,12 +348,7 @@ export function Performance() {
         </div>
       )}
 
-      <MobileNavBar links={[
-        { path: '/issues', label: 'Issues', icon: 'bug_report' },
-        { path: '/performance', label: 'Perf', icon: 'speed' },
-        { path: '/replays', label: 'Replays', icon: 'play_circle' },
-        { path: '/setup', label: 'Setup', icon: 'settings_input_component' },
-      ]} />
-    </div>
+      </div>
+    </PageShell>
   );
 }

@@ -8,8 +8,10 @@ export const SIDEBAR_LINKS = [
   { path: '/performance', icon: 'speed', label: 'Performance & APM' },
   { path: '/tracing', icon: 'account_tree', label: 'Distributed Tracing' },
   { path: '/replays', icon: 'slow_motion_video', label: 'Session Replays' },
-  { path: '/setup', icon: 'integration_instructions', label: 'Setup & SDK' },
-  { path: '/admin', icon: 'admin_panel_settings', label: 'Admin' },
+];
+
+const ADMIN_LINKS = [
+  { path: '/admin', icon: 'folder', label: 'Projects' },
 ];
 
 // Fixed left sidebar shared across admin panel pages.
@@ -36,7 +38,7 @@ export function Sidebar() {
   }, []);
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.2)]">
+    <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-surface-container-lowest z-50 flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.2)]">
       <div className="flex flex-col">
         <div className="h-14 px-margin flex items-center justify-between">
           <div className="flex items-center gap-space-sm">
@@ -66,7 +68,36 @@ export function Sidebar() {
         </div>
         <nav className="px-space-sm space-y-0.5 flex flex-col">
           {SIDEBAR_LINKS.map((link) => {
-            const active = location.pathname === link.path || (link.path === '/admin' && location.pathname.startsWith('/admin'));
+            const active = location.pathname === link.path;
+            return (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={cn(
+                  'flex items-center justify-between px-space-md py-space-xs rounded-xl transition-colors group',
+                  active
+                    ? 'bg-surface-container-high text-primary font-semibold'
+                    : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                )}
+              >
+                <div className="flex items-center gap-space-md">
+                  <span className={cn('material-symbols-outlined text-[18px] transition-colors', !active && 'group-hover:text-primary')}>
+                    {link.icon}
+                  </span>
+                  <span className="font-body-md text-body-md">{link.label}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+        {/* Admin group */}
+        <div className="mx-space-sm mt-space-md h-px bg-surface-container-highest"></div>
+        <div className="px-margin pt-space-sm pb-space-xs">
+          <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline px-space-xs">Admin</span>
+        </div>
+        <nav className="px-space-sm space-y-0.5 flex flex-col pb-space-md">
+          {ADMIN_LINKS.map((link) => {
+            const active = location.pathname.startsWith(link.path);
             return (
               <Link
                 key={link.path}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Sidebar } from '../components/Sidebar';
+import { PageShell } from '../components/PageShell';
 import { Modal } from '../components/ui';
 import { cn } from '../lib/utils';
 import {
@@ -59,23 +59,16 @@ function useToast() {
   return { toast, showToast };
 }
 
-function AdminHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: React.ReactNode }) {
+function AdminTitle({ subtitle }: { subtitle: string }) {
   return (
-    <header className="fixed top-0 left-64 right-0 h-14 bg-surface/80 backdrop-blur-xl z-40 flex items-center justify-between px-margin-tablet shadow-[0_1px_8px_rgba(0,0,0,0.06)]">
-      <div className="flex items-center gap-space-md">
-        <div className="flex items-center gap-space-xs">
-          <span className="material-symbols-outlined text-primary text-[20px]">admin_panel_settings</span>
-          <span className="font-label-code-md text-label-code-md uppercase tracking-wider text-on-surface font-semibold">{title}</span>
-        </div>
-        {subtitle && (
-          <>
-            <span className="text-outline-variant font-label-code-sm text-label-code-sm">/</span>
-            <span className="font-label-code-sm text-label-code-sm text-on-surface-variant bg-surface-container px-space-sm py-0.5 rounded-DEFAULT">{subtitle}</span>
-          </>
-        )}
+    <div className="flex items-center gap-space-md flex-wrap py-space-sm mb-space-sm">
+      <div className="flex items-center gap-space-xs">
+        <span className="material-symbols-outlined text-primary text-[20px]">admin_panel_settings</span>
+        <span className="font-label-code-md text-label-code-md uppercase tracking-wider text-on-surface font-semibold">Admin Console</span>
       </div>
-      {actions && <div className="flex items-center gap-space-sm">{actions}</div>}
-    </header>
+      <span className="text-outline-variant font-label-code-sm text-label-code-sm">/</span>
+      <span className="font-label-code-sm text-label-code-sm text-on-surface-variant bg-surface-container px-space-sm py-0.5 rounded-DEFAULT">{subtitle}</span>
+    </div>
   );
 }
 
@@ -94,7 +87,7 @@ const inputClass =
 function ToastBubble({ toast }: { toast: Toast | null }) {
   if (!toast) return null;
   return (
-    <div className="fixed bottom-6 right-6 z-[60] px-4 py-2.5 rounded-xl bg-surface-container-high shadow-lg flex items-center gap-2">
+    <div className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-[60] px-4 py-2.5 rounded-xl bg-surface-container-high shadow-lg flex items-center gap-2">
       <span className={cn('w-2 h-2 rounded-full', toast.type === 'success' ? 'bg-secondary' : 'bg-error')} />
       <span className="font-body-sm text-body-sm text-on-surface">{toast.message}</span>
     </div>
@@ -136,28 +129,23 @@ export function AdminProjects() {
 
   const totalApps = projects.reduce((acc, p) => acc + (p.appCount ?? 0), 0);
 
-  return (
-    <div className="bg-background font-body-md text-on-surface antialiased min-h-screen selection:bg-primary-container selection:text-on-primary-container">
-      <Sidebar />
-      <div className="pl-64">
-        <AdminHeader
-          title="Admin Console"
-          subtitle="Projects"
-          actions={
-            <button
-              className="h-8 px-space-md bg-primary-container text-on-primary-container hover:brightness-110 rounded-lg font-label-code-md text-label-code-md flex items-center gap-space-xs transition-all shadow-[0_0_12px_rgba(6,182,212,0.3)]"
-              type="button"
-              onClick={() => setCreateOpen(true)}
-            >
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              <span>Create Project</span>
-            </button>
-          }
-        />
+  const createButton = (
+    <button
+      className="h-8 px-space-md bg-primary-container text-on-primary-container hover:brightness-110 rounded-lg font-label-code-md text-label-code-md flex items-center gap-space-xs transition-all shadow-[0_0_12px_rgba(6,182,212,0.3)]"
+      type="button"
+      onClick={() => setCreateOpen(true)}
+    >
+      <span className="material-symbols-outlined text-[16px]">add</span>
+      <span>Create Project</span>
+    </button>
+  );
 
-        <main className="w-full pt-14 bg-background min-h-screen px-margin-tablet">
-          <div className="flex flex-col w-full pb-space-xl">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-md py-space-md mb-space-sm">
+  return (
+    <PageShell actions={createButton}>
+      <div className="flex flex-col w-full pb-space-xl">
+        <AdminTitle subtitle="Projects" />
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-md mb-space-sm">
               <div className="bg-surface-container-low rounded-xl p-space-md">
                 <span className="font-label-code-sm text-label-code-sm uppercase tracking-wider text-outline">Projects</span>
                 <span className="font-headline-lg text-headline-lg text-on-surface tracking-tight block mt-1">{projects.length}</span>
@@ -217,8 +205,6 @@ export function AdminProjects() {
                 ))}
               </div>
             )}
-          </div>
-        </main>
       </div>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create Project">
@@ -260,7 +246,7 @@ export function AdminProjects() {
       </Modal>
 
       <ToastBubble toast={toast} />
-    </div>
+    </PageShell>
   );
 }
 
@@ -353,40 +339,30 @@ export function ProjectDetail() {
 
   if (notFound) {
     return (
-      <div className="bg-background font-body-md text-on-surface antialiased min-h-screen">
-        <Sidebar />
-        <div className="pl-64 pt-14 px-margin-tablet">
-          <div className="py-10 flex flex-col items-center gap-3 text-center">
-            <span className="material-symbols-outlined text-[36px] text-outline">search_off</span>
-            <h3 className="font-headline-sm text-headline-sm text-on-surface font-semibold">Project not found</h3>
-            <Link to="/admin" className="font-label-code-md text-label-code-md text-primary">← Back to Admin Console</Link>
-          </div>
+      <PageShell>
+        <div className="py-10 flex flex-col items-center gap-3 text-center">
+          <span className="material-symbols-outlined text-[36px] text-outline">search_off</span>
+          <h3 className="font-headline-sm text-headline-sm text-on-surface font-semibold">Project not found</h3>
+          <Link to="/admin" className="font-label-code-md text-label-code-md text-primary">← Back to Admin Console</Link>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
-  return (
-    <div className="bg-background font-body-md text-on-surface antialiased min-h-screen selection:bg-primary-container selection:text-on-primary-container">
-      <Sidebar />
-      <div className="pl-64">
-        <AdminHeader
-          title="Admin Console"
-          subtitle={project?.slug ?? 'project'}
-          actions={
-            <button
-              className="h-8 px-space-md bg-primary-container text-on-primary-container hover:brightness-110 rounded-lg font-label-code-md text-label-code-md flex items-center gap-space-xs transition-all shadow-[0_0_12px_rgba(6,182,212,0.3)]"
-              type="button"
-              onClick={() => setCreateOpen(true)}
-            >
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              <span>Create App</span>
-            </button>
-          }
-        />
+  const createAppButton = (
+    <button
+      className="h-8 px-space-md bg-primary-container text-on-primary-container hover:brightness-110 rounded-lg font-label-code-md text-label-code-md flex items-center gap-space-xs transition-all shadow-[0_0_12px_rgba(6,182,212,0.3)]"
+      type="button"
+      onClick={() => setCreateOpen(true)}
+    >
+      <span className="material-symbols-outlined text-[16px]">add</span>
+      <span>Create App</span>
+    </button>
+  );
 
-        <main className="w-full pt-14 bg-background min-h-screen px-margin-tablet">
-          <div className="flex flex-col w-full pb-space-xl">
+  return (
+    <PageShell actions={createAppButton}>
+      <div className="flex flex-col w-full pb-space-xl">
             <div className="flex items-center gap-space-sm py-space-md text-label-code-sm font-label-code-sm">
               <Link to="/admin" className="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1">
                 <span className="material-symbols-outlined text-[14px]">arrow_back</span>
@@ -485,8 +461,6 @@ export function ProjectDetail() {
                 )}
               </>
             )}
-          </div>
-        </main>
       </div>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create App">
@@ -528,6 +502,6 @@ export function ProjectDetail() {
       </Modal>
 
       <ToastBubble toast={toast} />
-    </div>
+    </PageShell>
   );
 }

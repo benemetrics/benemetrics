@@ -5,8 +5,8 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json bun.lock ./
-COPY backend/package.json ./backend/ 2>/dev/null || true
-COPY frontend/package.json ./frontend/ 2>/dev/null || true
+COPY backend/package.json ./backend/
+COPY frontend/package.json ./frontend/
 
 # Install dependencies
 RUN bun install --frozen-lockfile
@@ -24,7 +24,7 @@ RUN bun build index.ts --outdir ../dist/backend --target bun
 
 # Build frontend if needed
 WORKDIR /app/frontend
-RUN bun run build 2>/dev/null || true
+RUN bun install && bun run build
 
 # Runtime stage - Use distroless base
 FROM gcr.io/distroless/base-debian12:nonroot
@@ -37,7 +37,7 @@ WORKDIR /app
 # Copy built application
 COPY --from=builder /app/dist/backend/ ./dist/backend/
 COPY --from=builder /app/public/ ./public/
-COPY --from=builder /app/frontend/dist/ ./frontend/dist/ 2>/dev/null || true
+COPY --from=builder /app/frontend/dist/ ./frontend/dist/
 COPY --from=builder /app/node_modules/ ./node_modules/
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/bun.lock ./

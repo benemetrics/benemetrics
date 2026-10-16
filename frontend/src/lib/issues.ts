@@ -1,10 +1,11 @@
 /**
- * Client-side issue grouping.
+ * Client-side issue grouping for the dashboard and event detail.
  *
- * The backend stores raw envelopes (one row per event), so the UI groups
- * error events by their signature — the first exception's type + value,
- * or the message for events without a stack trace — to show real per-issue
- * counts, user counts, and timestamps instead of one row per event.
+ * The Issues page reads the admin issues API (backend fingerprints, with
+ * resolve/reopen). The Overview dashboard intentionally stays on the loaded
+ * event window, so it groups error events by their signature — the first
+ * exception's type + value, or the message for events without a stack
+ * trace — to show per-issue counts, user counts, and timestamps.
  */
 
 export interface StoredEvent {

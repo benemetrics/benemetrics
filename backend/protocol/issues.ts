@@ -17,6 +17,8 @@ export interface Issue {
   eventCount: number;
   firstSeen: string;
   lastSeen: string;
+  /** Stored event id of the most recent occurrence (null for legacy rows). */
+  latestEventId: string | null;
   createdAt: string;
   updatedAt: string;
 }

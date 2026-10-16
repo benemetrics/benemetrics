@@ -17,6 +17,8 @@ export const issues = pgTable(
     eventCount: integer("event_count").notNull().default(1),
     firstSeen: text("first_seen").notNull(),
     lastSeen: text("last_seen").notNull(),
+    // Stored event id of the most recent occurrence; the UI drills into it.
+    latestEventId: text("latest_event_id"),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },

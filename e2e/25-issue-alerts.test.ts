@@ -63,6 +63,16 @@ async function makeApp(): Promise<TestApp> {
   return { projectId: project.id, ...appRecord };
 }
 
+async function makeAppInProject(projectId: string): Promise<TestApp> {
+  const appRecord = await json<{ id: string; ingestKey: string; publicKey: string }>(
+    await apiRequest("POST", `/api/admin/projects/${projectId}/apps`, {
+      name: `IssueApp-${uniq()}`,
+      host: "localhost:31337",
+    }),
+  );
+  return { projectId, ...appRecord };
+}
+
 async function ingestEvent(t: TestApp, event: Record<string, unknown>): Promise<Response> {
   return fetch(
     `${baseUrl}/api/${t.ingestKey}/store/?sentry_key=${encodeURIComponent(t.publicKey)}`,
@@ -101,6 +111,7 @@ interface IssueDto {
   title: string;
   status: string;
   eventCount: number;
+  latestEventId: string | null;
 }
 
 interface IncidentDto {
@@ -583,6 +594,113 @@ describe("Issue alerting (new issue / regression)", () => {
       const otherIssues = await listIssues(other.id);
       expect(otherIssues.length).toBe(1);
       expect(otherIssues[0]!.fingerprint).not.toBe(issue!.fingerprint);
+    });
+
+    it("exposes the latest stored event id for drill-down", async () => {
+      const t = await makeApp();
+      const message = `latest event problem ${uniq()}`;
+      const firstId = crypto.randomUUID();
+      const secondId = crypto.randomUUID();
+
+      await ingestEvent(t, { ...errorEvent(message), event_id: firstId });
+      const [issue] = await waitFor(() => listIssues(t.id), (issues) => issues.length === 1);
+      expect(issue!.latestEventId).toBe(firstId);
+
+      await ingestEvent(t, { ...errorEvent(message), event_id: secondId });
+      const updated = await waitFor(
+        () => listIssues(t.id),
+        (issues) => issues[0]?.latestEventId === secondId,
+      );
+      expect(updated[0]!.latestEventId).toBe(secondId);
+
+      const fetched = await json<IssueDto>(
+        await apiRequest("GET", `/api/admin/issues/${issue!.id}`),
+      );
+      expect(fetched.latestEventId).toBe(secondId);
+    });
+
+    it("filters by project across its apps and validates the filter", async () => {
+      const t = await makeApp();
+      const second = await makeAppInProject(t.projectId);
+      const outsider = await makeApp();
+
+      await ingestEvent(t, errorEvent(`project scoped A ${uniq()}`));
+      await ingestEvent(second, errorEvent(`project scoped B ${uniq()}`));
+      await ingestEvent(outsider, errorEvent(`project scoped C ${uniq()}`));
+
+      const byProject = await waitFor(
+        async () =>
+          json<{ data: IssueDto[]; pagination: { total: number } }>(
+            await apiRequest("GET", `/api/admin/issues?projectId=${t.projectId}`),
+          ),
+        (result) => result.pagination.total === 2,
+      );
+      expect(byProject.data.length).toBe(2);
+      expect(new Set(byProject.data.map((issue) => issue.appId))).toEqual(
+        new Set([t.id, second.id]),
+      );
+
+      // The appId filter still narrows to a single app.
+      expect((await listIssues(t.id)).length).toBe(1);
+      expect((await listIssues(second.id)).length).toBe(1);
+
+      const badProject = await apiRequest("GET", "/api/admin/issues?projectId=not-a-uuid");
+      expect(badProject.status).toBe(400);
+
+      const unknownProject = await apiRequest(
+        "GET",
+        `/api/admin/issues?projectId=${crypto.randomUUID()}`,
+      );
+      expect(unknownProject.status).toBe(404);
+    });
+
+    it("searches issues by title and fingerprint", async () => {
+      const t = await makeApp();
+      const message = `wombat overflow ${uniq()}`;
+      const exception = {
+        event_id: crypto.randomUUID(),
+        level: "error",
+        exception: {
+          values: [
+            {
+              type: "ZodError",
+              value: "bad input",
+              stacktrace: {
+                frames: [{ filename: "src/checkout/cart.ts", function: "validateCart" }],
+              },
+            },
+          ],
+        },
+      };
+
+      await ingestEvent(t, errorEvent(message));
+      await ingestEvent(t, exception);
+      await waitFor(() => listIssues(t.id), (issues) => issues.length === 2);
+
+      const byTitle = await json<{ data: IssueDto[] }>(
+        await apiRequest(
+          "GET",
+          `/api/admin/issues?appId=${t.id}&q=${encodeURIComponent("wombat overflow")}`,
+        ),
+      );
+      expect(byTitle.data.map((issue) => issue.title)).toEqual([message]);
+
+      // The frame-derived fingerprint matches even though the title does not.
+      const byFingerprint = await json<{ data: IssueDto[] }>(
+        await apiRequest("GET", `/api/admin/issues?appId=${t.id}&q=validateCart`),
+      );
+      expect(byFingerprint.data.length).toBe(1);
+      expect(byFingerprint.data[0]!.fingerprint).toBe(
+        "ZodError@src/checkout/cart.ts:validateCart",
+      );
+
+      const noHits = await json<{ data: IssueDto[] }>(
+        await apiRequest(
+          "GET",
+          `/api/admin/issues?appId=${t.id}&q=${encodeURIComponent("nothing-matches-this")}`,
+        ),
+      );
+      expect(noHits.data.length).toBe(0);
     });
   });
 });

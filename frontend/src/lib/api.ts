@@ -182,6 +182,48 @@ export interface AlertIncidentDto {
   resolvedAt: string | null;
 }
 
+// Issues (admin) — derived at ingestion (they drive the issue alert
+// triggers); resolving one arms the "regression" trigger for its next
+// occurrence.
+
+export interface IssueDto {
+  id: string;
+  appId: string;
+  fingerprint: string;
+  title: string;
+  status: "unresolved" | "resolved";
+  eventCount: number;
+  firstSeen: string;
+  lastSeen: string;
+  latestEventId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// List issues. Only defined query params are sent: Eden serializes
+// `undefined` values as the literal string "undefined".
+export async function listIssues(params: {
+  appId?: string;
+  projectId?: string;
+  status?: "unresolved" | "resolved";
+  q?: string;
+  page?: number;
+  limit?: number;
+} = {}) {
+  const query: Record<string, string | number> = {};
+  if (params.appId) query.appId = params.appId;
+  if (params.projectId) query.projectId = params.projectId;
+  if (params.status) query.status = params.status;
+  if (params.q) query.q = params.q;
+  if (params.page) query.page = params.page;
+  if (params.limit) query.limit = params.limit;
+  const response =
+    Object.keys(query).length > 0
+      ? await api.api.admin.issues.get({ $query: query })
+      : await api.api.admin.issues.get();
+  return response;
+}
+
 // Environments (admin)
 
 export interface EnvironmentDto {

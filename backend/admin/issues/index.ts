@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { issueDAO } from "db/dao/issues";
-import { appDAO } from "db/dao/project";
+import { appDAO, projectDAO } from "db/dao/project";
 import { toIssue } from "./serialize";
 
 // Issues are created and kept up to date by ingestion; this surface only
@@ -10,11 +10,14 @@ import { toIssue } from "./serialize";
 export const issueRoutes = new Elysia({ prefix: "issues" })
   .get(
     "/",
-    async ({ query: { appId, status, page, limit } }) => {
+    async ({ query: { appId, projectId, status, q, page, limit } }) => {
       if (appId) await appDAO.findByIdOrThrow(appId);
+      if (projectId) await projectDAO.findByIdOrThrow(projectId);
       const { data, pagination } = await issueDAO.listPaged({
         appId,
+        projectId,
         status,
+        q,
         page,
         limit,
       });
@@ -23,7 +26,9 @@ export const issueRoutes = new Elysia({ prefix: "issues" })
     {
       query: arktype({
         appId: "string.uuid?",
+        projectId: "string.uuid?",
         status: "'unresolved' | 'resolved'?",
+        q: "string?",
         page: "string.integer.parse?",
         limit: "string.integer.parse?",
       }),

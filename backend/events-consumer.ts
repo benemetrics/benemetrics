@@ -43,7 +43,12 @@ export async function applyEventMessage(
   pushClickHouseEvent(event);
   broadcastLive(buildLiveEvent(event));
   if (event.appId) {
-    processIngestedEvent(event.appId, event.envelopeItems, event.receivedAt);
+    processIngestedEvent(
+      event.appId,
+      event.envelopeItems,
+      event.receivedAt,
+      event.id,
+    );
   }
   return true;
 }

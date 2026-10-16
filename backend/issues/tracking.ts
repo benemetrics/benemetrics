@@ -26,6 +26,7 @@ export async function trackIssuesForEvent(
   appId: string,
   envelopeItems: string,
   receivedAt: string,
+  latestEventId: string,
 ): Promise<IssueTrackingResult> {
   // One transition per fingerprint even when the envelope carries
   // several event items of the same issue.
@@ -45,6 +46,7 @@ export async function trackIssuesForEvent(
       title: issueTitle(payload),
       firstSeen: receivedAt,
       lastSeen: receivedAt,
+      latestEventId,
     });
     if (created) {
       newIssues.push({
@@ -59,6 +61,7 @@ export async function trackIssuesForEvent(
       appId,
       fingerprint,
       receivedAt,
+      latestEventId,
     );
     if (regressed) {
       regressions.push({
@@ -69,7 +72,7 @@ export async function trackIssuesForEvent(
       continue;
     }
 
-    await issueDAO.markSeen(appId, fingerprint, receivedAt);
+    await issueDAO.markSeen(appId, fingerprint, receivedAt, latestEventId);
   }
 
   return { newIssues, regressions };

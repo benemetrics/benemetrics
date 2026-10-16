@@ -5,18 +5,12 @@ import { ProjectSwitcher } from "./ProjectSwitcher";
 import { useWorkspace } from "./WorkspaceContext";
 import { NAV } from "./workspace";
 import {
-  AGGREGATE_EVENT_LIMIT,
   api,
   getAdminToken,
-  listEvents,
+  listIssues,
   setAdminToken,
 } from "../lib/api";
 import { POLL_INTERVAL_MS } from "../lib/utils";
-
-interface StoredEvent {
-  id: string;
-  itemTypes: string[];
-}
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -27,9 +21,8 @@ function initials(name: string): string {
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { project, environment, application, adminUser } = useWorkspace();
+  const { project, application, adminUser } = useWorkspace();
   const projectId = project?.id;
-  const environmentId = environment?.id;
   const applicationId = application?.id;
   const [issueCount, setIssueCount] = useState(0);
   const [issueCountCapped, setIssueCountCapped] = useState(false);
@@ -48,15 +41,19 @@ export function AppSidebar() {
     let cancelled = false;
     const load = async () => {
       try {
-        const result = await listEvents({ projectId, environmentId, appId: applicationId, limit: AGGREGATE_EVENT_LIMIT });
+        const result = await listIssues({
+          projectId,
+          appId: applicationId,
+          status: "unresolved",
+          limit: 1,
+        });
         const body = result?.data as {
-          data?: StoredEvent[];
           pagination?: { total: number };
         } | null;
-        const events = body?.data ?? [];
+        const total = body?.pagination?.total ?? 0;
         if (!cancelled) {
-          setIssueCount(events.filter((event) => event.itemTypes?.includes("event")).length);
-          setIssueCountCapped((body?.pagination?.total ?? 0) > AGGREGATE_EVENT_LIMIT);
+          setIssueCount(Math.min(total, 99));
+          setIssueCountCapped(total > 99);
         }
       } catch {
         // keep last counts on failure
@@ -87,7 +84,7 @@ export function AppSidebar() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [projectId, environmentId, applicationId]);
+  }, [projectId, applicationId]);
 
   return (
     <aside className="sidebar">

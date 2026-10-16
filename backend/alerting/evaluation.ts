@@ -316,12 +316,14 @@ export function processIngestedEvent(
   appId: string,
   envelopeItems: string,
   receivedAt: string,
+  eventId: string,
 ): void {
   enqueueAppWork(appId, "ingested event processing failed", async () => {
     const { newIssues, regressions } = await trackIssuesForEvent(
       appId,
       envelopeItems,
       receivedAt,
+      eventId,
     );
     if (newIssues.length > 0) {
       await fireIssueTriggerRules(appId, "new_issue", newIssues);

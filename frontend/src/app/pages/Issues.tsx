@@ -1,51 +1,67 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../Icon";
 import { ScreenIntro } from "../ScreenIntro";
 import { useWorkspace } from "../WorkspaceContext";
-import { AGGREGATE_EVENT_LIMIT, api, listEvents } from "../../lib/api";
-import { groupIssues, type IssueGroup, type StoredEvent } from "../../lib/issues";
+import { api, listIssues, type IssueDto } from "../../lib/api";
 import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils";
 
 const PAGE_SIZE = 20;
 
+type StatusFilter = "unresolved" | "resolved" | "all";
+
+const STATUS_FILTERS: Array<{ id: StatusFilter; label: string }> = [
+  { id: "unresolved", label: "Status: Unresolved" },
+  { id: "resolved", label: "Status: Resolved" },
+  { id: "all", label: "Status: All" },
+];
+
 export function Issues() {
   const navigate = useNavigate();
-  const { project, environment, application, query, setQuery } = useWorkspace();
+  const { project, application, query, setQuery } = useWorkspace();
   const projectId = project?.id;
-  const environmentId = environment?.id;
   const applicationId = application?.id;
-  const [groups, setGroups] = useState<IssueGroup[]>([]);
-  const [loadedEvents, setLoadedEvents] = useState(0);
-  const [storedTotal, setStoredTotal] = useState(0);
+  const [issues, setIssues] = useState<IssueDto[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [health, setHealth] = useState<{ status: string; eventsStored: number } | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("unresolved");
   const [page, setPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  // Debounce the shared toolbar query into the server-side `q` filter.
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(query.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     setPage(1);
-  }, [projectId, environmentId, applicationId]);
+  }, [projectId, applicationId, statusFilter, searchTerm]);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const result = await listEvents({
+        const result = await listIssues({
           projectId,
-          environmentId,
           appId: applicationId,
-          page: 1,
-          limit: AGGREGATE_EVENT_LIMIT,
+          status: statusFilter === "all" ? undefined : statusFilter,
+          q: searchTerm || undefined,
+          page,
+          limit: PAGE_SIZE,
         });
         const body = result?.data as {
-          data?: StoredEvent[];
-          pagination?: { total: number };
+          data?: IssueDto[];
+          pagination?: { page: number; limit: number; total: number; totalPages: number };
         } | null;
-        const events = body?.data ?? [];
         if (cancelled) return;
-        setGroups(groupIssues(events));
-        setLoadedEvents(events.length);
-        setStoredTotal(body?.pagination?.total ?? events.length);
+        setIssues(body?.data ?? []);
+        setTotal(body?.pagination?.total ?? body?.data?.length ?? 0);
+        setTotalPages(Math.max(1, body?.pagination?.totalPages ?? 1));
         setStatus("ready");
       } catch {
         // keep the last rows on fetch failure, but stop the loading state
@@ -64,36 +80,52 @@ export function Issues() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [projectId, environmentId, applicationId]);
+  }, [projectId, applicationId, statusFilter, searchTerm, page, reloadToken]);
 
-  const term = query.trim().toLowerCase();
-  const filtered = useMemo(
-    () =>
-      term
-        ? groups.filter(
-            (group) =>
-              group.title.toLowerCase().includes(term) ||
-              group.source.toLowerCase().includes(term) ||
-              group.tag.toLowerCase().includes(term),
-          )
-        : groups,
-    [groups, term],
-  );
+  const setFilter = (filter: StatusFilter) => {
+    setStatusFilter(filter);
+    setPage(1);
+  };
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Resolving an issue arms the "regression" alert trigger for its next
+  // occurrence; reopening one disarms it again.
+  const toggleStatus = async (issue: IssueDto) => {
+    setBusyId(issue.id);
+    try {
+      await api.api.admin.issues[issue.id].patch({
+        status: issue.status === "resolved" ? "unresolved" : "resolved",
+      });
+      setReloadToken((token) => token + 1);
+    } catch {
+      // transient failures reconcile on the next poll
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const currentPage = Math.min(page, totalPages);
-  const pageGroups = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const groupedCopy =
-    storedTotal > loadedEvents
-      ? `grouped from the latest ${loadedEvents} of ${storedTotal} stored events`
-      : `grouped from ${loadedEvents} stored event${loadedEvents === 1 ? "" : "s"}`;
+  const scopeCopy = application ? "this app" : "this project";
+  const emptyTitle = searchTerm
+    ? "No matching issues"
+    : statusFilter === "resolved"
+      ? "No resolved issues"
+      : statusFilter === "all"
+        ? "No issues yet"
+        : "No unresolved issues";
+  const emptyMeta = searchTerm
+    ? `Nothing matches “${searchTerm}” in ${scopeCopy}`
+    : statusFilter === "unresolved"
+      ? "New and regressed issues appear here"
+      : statusFilter === "resolved"
+        ? "Resolved issues appear here"
+        : "Send an event through your DSN and it will appear here";
 
   return (
     <div className="screen-stack">
       <ScreenIntro
         eyebrow="ERROR MONITORING"
         title="Issues"
-        subtitle="Errors captured from your applications, grouped by error signature (newest first)."
+        subtitle="Errors captured from your applications, grouped into issues by fingerprint (newest first)."
       />
       <div className="toolbar">
         <div className="toolbar-search">
@@ -101,45 +133,92 @@ export function Issues() {
           <input
             className="toolbar-input"
             type="text"
-            placeholder="Search by issue, service, or user..."
+            placeholder="Search by issue title or fingerprint..."
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
-        <div className="filter-chip">Status: Unresolved</div>
-        <div className="filter-chip">All projects</div>
-        {health && (
-          <div className="filter-chip">{health.eventsStored} stored</div>
-        )}
+        {STATUS_FILTERS.map((filter) => (
+          <div
+            key={filter.id}
+            className={`filter-chip clickable ${statusFilter === filter.id ? "active" : ""}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => setFilter(filter.id)}
+            onKeyDown={(event) => event.key === "Enter" && setFilter(filter.id)}
+          >
+            {filter.label}
+          </div>
+        ))}
+        <div className="filter-chip">
+          {application
+            ? `App: ${application.name}`
+            : project
+              ? `Project: ${project.name}`
+              : "All projects"}
+        </div>
+        {health && <div className="filter-chip">{health.eventsStored} stored</div>}
       </div>
       <article className="panel data-panel">
         <div className="data-head">
           <span>Issue</span>
           <span>Events</span>
-          <span>Users</span>
+          <span>Status</span>
           <span>Last seen</span>
         </div>
-        {pageGroups.map((group) => (
+        {issues.map((issue) => (
           <div
-            className="data-row clickable"
-            key={group.key}
+            className={`data-row ${issue.latestEventId ? "clickable" : ""}`}
+            key={issue.id}
             role="button"
             tabIndex={0}
-            onClick={() => navigate(`/issues/${group.latestEventId}`)}
-            onKeyDown={(event) => event.key === "Enter" && navigate(`/issues/${group.latestEventId}`)}
+            onClick={() => {
+              if (issue.latestEventId) navigate(`/issues/${issue.latestEventId}`);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && issue.latestEventId) {
+                navigate(`/issues/${issue.latestEventId}`);
+              }
+            }}
           >
             <div className="issue-main">
               <div className="issue-title">
-                <span>{group.code}</span>
-                {group.title}
+                <span>{issue.id.slice(0, 6).toUpperCase()}</span>
+                {issue.title}
               </div>
-              <div className="issue-meta">
-                {group.source} · {group.tag}
+              <div className="issue-meta issue-meta-truncate" title={issue.fingerprint}>
+                {issue.fingerprint}
               </div>
             </div>
-            <strong>{group.events}</strong>
-            <span>{group.users > 0 ? group.users : "—"}</span>
-            <span>{relativeTime(group.lastSeen)}</span>
+            <strong>{issue.eventCount}</strong>
+            <div className="issue-status">
+              <span className={`table-status ${issue.status === "resolved" ? "draft" : ""}`}>
+                <i></i>
+                {issue.status}
+              </span>
+              <span
+                className={`row-action ${busyId === issue.id ? "is-busy" : ""}`}
+                role="button"
+                tabIndex={0}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void toggleStatus(issue);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.stopPropagation();
+                    void toggleStatus(issue);
+                  }
+                }}
+              >
+                {busyId === issue.id
+                  ? "Saving…"
+                  : issue.status === "resolved"
+                    ? "Reopen"
+                    : "Resolve"}
+              </span>
+            </div>
+            <span>{relativeTime(issue.lastSeen)}</span>
           </div>
         ))}
         {status !== "ready" && (
@@ -147,11 +226,11 @@ export function Issues() {
             <div className="issue-main">
               <div className="issue-title">
                 <span>—</span>
-                {status === "loading" ? "Loading events…" : "Could not load events"}
+                {status === "loading" ? "Loading issues…" : "Could not load issues"}
               </div>
               <div className="issue-meta">
                 {status === "loading"
-                  ? "Fetching the latest stored events"
+                  ? "Fetching issues from the backend"
                   : "Check the backend connection and try again"}
               </div>
             </div>
@@ -160,29 +239,25 @@ export function Issues() {
             <span>—</span>
           </div>
         )}
-        {status === "ready" && filtered.length === 0 && (
+        {status === "ready" && issues.length === 0 && (
           <div className="data-row">
             <div className="issue-main">
               <div className="issue-title">
                 <span>—</span>
-                {term ? "No matching issues" : "No events yet"}
+                {emptyTitle}
               </div>
-              <div className="issue-meta">
-                {term
-                  ? `Nothing matches “${query.trim()}” in the current project and environment`
-                  : "Send an event through your DSN and it will appear here"}
-              </div>
+              <div className="issue-meta">{emptyMeta}</div>
             </div>
             <strong>0</strong>
             <span>—</span>
             <span>—</span>
           </div>
         )}
-        {status === "ready" && filtered.length > 0 && (
+        {status === "ready" && total > 0 && (
           <div className="pagination">
             <span>
-              Page {currentPage} of {totalPages} · {filtered.length} issue
-              {filtered.length === 1 ? "" : "s"} {groupedCopy}
+              Page {currentPage} of {totalPages} · {total} issue{total === 1 ? "" : "s"}
+              {searchTerm ? ` matching “${searchTerm}”` : ""}
             </span>
             <div className="pagination-actions">
               {currentPage > 1 && (

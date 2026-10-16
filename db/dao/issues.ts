@@ -1,6 +1,7 @@
 import { db } from "db";
 import { issues, type IssueRow, type IssueInsert } from "db/schema/issues";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { apps } from "db/schema/project";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { notFound } from "backend/errors";
 
 export const issueDAO = {
@@ -31,6 +32,7 @@ export const issueDAO = {
     appId: string,
     fingerprint: string,
     receivedAt: string,
+    latestEventId: string,
   ): Promise<IssueRow | undefined> => {
     const [updated] = await db
       .update(issues)
@@ -38,6 +40,7 @@ export const issueDAO = {
         status: "unresolved",
         eventCount: sql`${issues.eventCount} + 1`,
         lastSeen: receivedAt,
+        latestEventId,
         updatedAt: new Date().toISOString(),
       })
       .where(
@@ -55,12 +58,14 @@ export const issueDAO = {
     appId: string,
     fingerprint: string,
     receivedAt: string,
+    latestEventId: string,
   ): Promise<void> => {
     await db
       .update(issues)
       .set({
         eventCount: sql`${issues.eventCount} + 1`,
         lastSeen: receivedAt,
+        latestEventId,
         updatedAt: new Date().toISOString(),
       })
       .where(and(eq(issues.appId, appId), eq(issues.fingerprint, fingerprint)));
@@ -77,7 +82,9 @@ export const issueDAO = {
 
   listPaged: async (options: {
     appId?: string;
+    projectId?: string;
     status?: string;
+    q?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -90,6 +97,24 @@ export const issueDAO = {
     const conditions = [];
     if (options.appId) conditions.push(eq(issues.appId, options.appId));
     if (options.status) conditions.push(eq(issues.status, options.status));
+    if (options.projectId) {
+      // Issues carry no project; scope through the project's apps.
+      conditions.push(
+        inArray(
+          issues.appId,
+          db
+            .select({ id: apps.id })
+            .from(apps)
+            .where(eq(apps.projectId, options.projectId)),
+        ),
+      );
+    }
+    if (options.q) {
+      const pattern = `%${options.q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
+      conditions.push(
+        sql`(${issues.title} ILIKE ${pattern} OR ${issues.fingerprint} ILIKE ${pattern})`,
+      );
+    }
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const [rows, total] = await Promise.all([

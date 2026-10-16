@@ -341,11 +341,11 @@ Issues live in Postgres (source of truth for alerting; ClickHouse stays the opti
 
 | Method | Path                        | Body / Query                  | Description |
 | ------ | --------------------------- | ----------------------------- | ----------- |
-| GET    | `/api/admin/issues/`        | `?appId&status&page&limit`    | Paginated issues, newest `lastSeen` first |
+| GET    | `/api/admin/issues/`        | `?appId&projectId&status&q&page&limit` | Paginated issues, newest `lastSeen` first; `q` matches title/fingerprint (ILIKE) |
 | GET    | `/api/admin/issues/:id`     | `id` (uuid)                   | Get one |
 | PATCH  | `/api/admin/issues/:id`     | `{ status: 'unresolved'\|'resolved' }` | Resolve or reopen an issue |
 
-- An issue is keyed by `(appId, fingerprint)` (`fingerprint` groups events like Sentry: explicit fingerprint → top exception frame → message) and tracks `status`, `eventCount`, `firstSeen`, `lastSeen`.
+- An issue is keyed by `(appId, fingerprint)` (`fingerprint` groups events like Sentry: explicit fingerprint → top exception frame → message) and tracks `status`, `eventCount`, `firstSeen`, `lastSeen`, and `latestEventId` (stored event id of the latest occurrence, the UI's drill-down target).
 - Ingestion transitions: a first-ever fingerprint → **new issue**; a new event for a `resolved` issue → **regression** (status flips back to `unresolved`, `eventCount` increments). Repeats while unresolved only bump `eventCount`/`lastSeen` and never fire alerts.
 - Transitions are race-safe (`onConflictDoNothing` insert + `UPDATE ... WHERE status = 'resolved' RETURNING`), so concurrent deliveries fire exactly one alert.
 - Resolving is what arms the `regression` trigger for the issue's next event.
@@ -519,6 +519,7 @@ Guard wiring:
 | `status` | text | `unresolved\|resolved`, default `unresolved`, indexed |
 | `event_count` | integer | default `1` |
 | `first_seen` / `last_seen` | text | not null (ISO strings) |
+| `latest_event_id` | text | nullable; stored event id of the most recent occurrence (UI drill-down) |
 | `created_at` / `updated_at` | text | default `CURRENT_TIMESTAMP` |
 
 **stored_events** (alerting addition)

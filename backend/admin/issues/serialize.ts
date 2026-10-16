@@ -11,6 +11,7 @@ export function toIssue(row: IssueRow): Issue {
     eventCount: row.eventCount,
     firstSeen: row.firstSeen,
     lastSeen: row.lastSeen,
+    latestEventId: row.latestEventId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

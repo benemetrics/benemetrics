@@ -6,11 +6,11 @@ import { publishEvent, type SentryEventMessage } from "../nats";
 import { applyEventMessage } from "../events-consumer";
 import { enqueueReleaseEvent } from "../releases-consumer";
 
-// DSNs generated for apps route ingestion through the app's ingest key
-// (path segment) with the public key as the `sentry_key` credential;
-// older DSNs use the project id as the path segment. Unknown projects or
-// keys are rejected: apps are only created through the admin API, never
-// auto-provisioned by ingestion.
+// DSNs generated for apps route ingestion through the app's numeric
+// `number` (path segment) with the public key as the `sentry_key`
+// credential; older DSNs use the ingest key or project id as the path
+// segment. Unknown projects or keys are rejected: apps are only created
+// through the admin API, never auto-provisioned by ingestion.
 async function resolveApp(
   request: Request,
   projectId: string,
@@ -21,6 +21,14 @@ async function resolveApp(
     new URL(request.url).searchParams.get("sentry_key");
 
   if (!requestKey) return undefined;
+
+  if (/^\d+$/.test(projectId)) {
+    const numericId = Number(projectId);
+    if (Number.isSafeInteger(numericId)) {
+      const byNumber = await appDAO.findByNumber(numericId);
+      if (byNumber) return byNumber;
+    }
+  }
 
   const byIngestKey = await appDAO.findByIngestKey(projectId);
   if (byIngestKey) return byIngestKey;

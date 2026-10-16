@@ -72,9 +72,10 @@ describe("NATS-first ingestion", () => {
       });
 
       const publicKey = new URL(server.dsn).username;
+      const number = new URL(server.dsn).pathname;
       const eventId = hexEventId();
       const response = await fetch(
-        `${server.baseUrl}/api/1/store/?sentry_key=${encodeURIComponent(publicKey)}`,
+        `${server.baseUrl}/api${number}/store/?sentry_key=${encodeURIComponent(publicKey)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

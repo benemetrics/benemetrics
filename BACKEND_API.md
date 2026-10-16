@@ -188,7 +188,7 @@ Prefixes below are written **without** a leading slash only where the source omi
 | POST   | `/api/:projectId/envelope/` | Sentry **envelope** ingestion. Handles `gzip` (`Content-Encoding`). |
 | POST   | `/api/:projectId/store/`    | Legacy single-JSON event ingestion (`{ event_id, ... }`).         |
 
-Both routes resolve the target app from the DSN (ingest key or project id in the path, matched against `sentry_key`), validate DSN auth, then persist via `storedEventDAO`. Unknown apps or mismatched keys ⇒ `401`; apps are **never** auto-provisioned during ingestion. Duplicate `event_id`s are ignored (`onConflictDoNothing`) so retries stay idempotent.
+Both routes resolve the target app from the DSN (numeric app number, ingest key or project id in the path, matched against `sentry_key`), validate DSN auth, then persist via `storedEventDAO`. Unknown apps or mismatched keys ⇒ `401`; apps are **never** auto-provisioned during ingestion. Duplicate `event_id`s are ignored (`onConflictDoNothing`) so retries stay idempotent.
 
 ### 5.4 DSN management
 
@@ -271,7 +271,7 @@ Supported operators: `equals, not_equals, contains, not_contains, starts_with, e
 
 - Project creation auto-creates a default "testing" environment and no app.
 - `POST /api/admin/projects/:id/apps` accepts an optional `environment` name: the app is created inside that project environment (reusing it by slug/name when it exists, creating it otherwise); with no preference the project's default environment is used.
-- `POST /api/admin/projects/:id/duplicate` accepts `{ name?, slug?, description? }` (name defaults to `"<source> (copy)"`). It creates a new project and copies every environment (fresh ids, same names/slugs, default flag preserved) and every app (fresh id, ingest key and public key, so each duplicated app gets its own DSN; name, platform and host are kept). Slug collisions are resolved with `-copy`, `-copy-2`, ... suffixes.
+- `POST /api/admin/projects/:id/duplicate` accepts `{ name?, slug?, description? }` (name defaults to `"<source> (copy)"`). It creates a new project and copies every environment (fresh ids, same names/slugs, default flag preserved) and every app (fresh id, number, ingest key and public key, so each duplicated app gets its own DSN; name, platform and host are kept). Slug collisions are resolved with `-copy`, `-copy-2`, ... suffixes.
 - Apps are removed by deleting their owning project (`appDAO.delete`); environments are project-scoped and shared, so deleting an app leaves them intact and deleting the project removes them (`environmentDAO.deleteByProject`).
 
 ### 5.8 Admin — segments
@@ -377,6 +377,7 @@ Guard wiring:
 | column | type | notes |
 | --- | --- | --- |
 | `id` | text | PK |
+| `number` | serial | not null, **unique** — numeric DSN project id |
 | `project_id` | text | indexed |
 | `environment_id` | text | not null, indexed (environment the app was created inside) |
 | `name` | text | not null |
@@ -532,7 +533,7 @@ Each DAO is a plain object exported as `<entity>DAO` (e.g. `storedEventDAO`, `fe
 ## 9. Known limitations / landmines
 
 1. **One dialect, two drivers**: dev/test run in-process PGlite, production runs real Postgres via `drizzle-orm/bun-sql`; both use `db/schema` + the committed `db/migrations`, so schema drift is impossible. Watch driver-level result parsing (`int8` → `BigInt`/string in Bun SQL; use `count(*)::int` or `db.$count`) and keep `drizzle-kit` pinned to the same RC as `drizzle-orm`.
-2. **Sentry SDK DSN constraint**: SDKs reject non-numeric DSN project ids while app ingest keys are slug-based. `resolveApp` therefore falls back to a public-key lookup (which also serves numeric-path SDK DSNs); keep that fallback when changing ingestion routing.
+2. **Sentry SDK DSN constraint**: SDKs require a numeric DSN project id, so every app carries a DB-generated serial `number` used as the DSN path. `resolveApp` resolves numeric paths via `findByNumber` and keeps the ingest-key / project-id + public-key fallbacks for older DSNs; keep those fallbacks when changing ingestion routing.
 3. **ClickHouse is the optional events read store**: stored events are pushed best-effort at store time; the events API serves list/get from it when `initClickHouse` succeeded and falls back to Postgres on any failure. Postgres remains the source of truth for writes, metrics and alerting.
 4. **Identity providers are stubbed**: `adminAuthEnforced()` is env-driven (`ADMIN_TOKEN`, `OIDC_*`, `OAUTH_*`, `NODE_ENV=production`); there is no real OIDC/OAuth login flow yet.
 

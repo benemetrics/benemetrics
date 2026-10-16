@@ -15,12 +15,13 @@ import { conflict, internalError, notFound } from "backend/errors";
 export function toAppResponse(app: AppRecord) {
   return {
     id: app.id,
+    number: app.number,
     projectId: app.projectId,
     environmentId: app.environmentId,
     name: app.name,
     platform: app.platform,
     ingestKey: app.ingestKey,
-    dsn: `${app.protocol}://${app.publicKey}@${app.host}/${app.ingestKey}`,
+    dsn: `${app.protocol}://${app.publicKey}@${app.host}/${app.number}`,
     publicKey: app.publicKey,
     host: app.host,
     protocol: app.protocol,
@@ -145,6 +146,15 @@ export const appDAO = {
         .select()
         .from(apps)
         .where(eq(apps.ingestKey, ingestKey))
+        .limit(1)
+    )[0],
+
+  findByNumber: async (number: number): Promise<AppRecord | undefined> =>
+    (
+      await db
+        .select()
+        .from(apps)
+        .where(eq(apps.number, number))
         .limit(1)
     )[0],
 

@@ -113,11 +113,7 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
       body: JSON.stringify({ name: "UI App" }),
     });
     const created = (await appResponse.json()) as { dsn: string; publicKey: string };
-    // The SDK rejects non-numeric DSN project ids; the server resolves the
-    // app from the public key.
-    const dsnUrl = new URL(created.dsn);
-    dsnUrl.pathname = "/1";
-    dsn = dsnUrl.toString();
+    dsn = created.dsn;
 
     Sentry.init({
       dsn,

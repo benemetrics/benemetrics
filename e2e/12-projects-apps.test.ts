@@ -28,6 +28,7 @@ interface ProjectResponse {
 
 interface AppResponse {
   id: string;
+  number: number;
   projectId: string;
   name: string;
   platform: string;
@@ -245,7 +246,7 @@ describe("Projects & Apps Management", () => {
       expect(copyApp.ingestKey).not.toBe(sourceApp.ingestKey);
       expect(copyApp.publicKey).not.toBe(sourceApp.publicKey);
       expect(copyApp.dsn).not.toBe(sourceApp.dsn);
-      expect(copyApp.dsn).toBe(`${copyApp.protocol}://${copyApp.publicKey}@${copyApp.host}/${copyApp.ingestKey}`);
+      expect(copyApp.dsn).toBe(`${copyApp.protocol}://${copyApp.publicKey}@${copyApp.host}/${copyApp.number}`);
       // The app lands in the copied environment, not the original.
       expect(copyApp.environment!.name).toBe("Staging");
       expect(copyApp.environment!.slug).toBe("staging");
@@ -412,7 +413,7 @@ describe("Projects & Apps Management", () => {
       expect(data.platform).toBe("node");
       expect(data.ingestKey).toStartWith(`${project.slug}-`);
       expect(data.protocol).toBe("http");
-      expect(data.dsn).toBe(`${data.protocol}://${data.publicKey}@${data.host}/${data.ingestKey}`);
+      expect(data.dsn).toBe(`${data.protocol}://${data.publicKey}@${data.host}/${data.number}`);
       // App-environment combo: the app is created with its default environment.
       expect(data.environment).toBeDefined();
       expect(data.environment!.slug).toBe("testing");
@@ -462,7 +463,7 @@ describe("Projects & Apps Management", () => {
       expect(response.status).toBe(200);
       const data = await response.json() as AppResponse;
       expect(data.dsn).toStartWith("http");
-      expect(data.dsn).toContain(data.ingestKey);
+      expect(data.dsn).toEndWith(`/${data.number}`);
     });
 
     it("should return 404 for unknown project", async () => {

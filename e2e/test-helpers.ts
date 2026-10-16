@@ -47,18 +47,11 @@ export async function startTestServer(): Promise<TestServer> {
   const created = (await appResponse.json()) as {
     id: string;
     dsn: string;
-    publicKey: string;
   };
-
-  // Sentry SDKs reject non-numeric DSN project ids, so the SDK-facing DSN
-  // uses a numeric placeholder path; the server resolves the app from the
-  // (globally unique) public key in the DSN.
-  const dsnUrl = new URL(created.dsn);
-  dsnUrl.pathname = "/1";
 
   return {
     baseUrl,
-    dsn: dsnUrl.toString(),
+    dsn: created.dsn,
     projectId: project.id,
     appId: created.id,
     stop: () => server?.stop(true),

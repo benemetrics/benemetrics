@@ -2,6 +2,7 @@ import {
   pgTable,
   text,
   index,
+  serial,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
@@ -17,6 +18,7 @@ export const projects = pgTable("projects", {
 
 export const apps = pgTable("apps", {
   id: text("id").primaryKey(),
+  number: serial("number").notNull().unique(),
   projectId: text("project_id").notNull(),
   environmentId: text("environment_id").notNull(),
   name: text("name").notNull(),

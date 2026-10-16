@@ -15,10 +15,12 @@ import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
 import app from "../backend/index";
 
-const DSN_PUBLIC_KEY = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4";
-const PROJECT_ID = "123";
+const PROJECT_NAME = `E2E UI Project ${Date.now()}`;
+
+const ADMIN_TOKEN = "Bearer e2e-admin-token";
 
 let baseUrl = "";
+let dsn = "";
 let view: Bun.WebView;
 
 function uniqueMarker(): string {
@@ -26,7 +28,10 @@ function uniqueMarker(): string {
 }
 
 async function clearEvents(): Promise<void> {
-  await fetch(`${baseUrl}/events/clear`, { method: "POST" });
+  await fetch(`${baseUrl}/events/clear`, {
+    method: "POST",
+    headers: { Authorization: ADMIN_TOKEN },
+  });
 }
 
 /**
@@ -47,24 +52,87 @@ async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string>
   throw new Error(`"${text}" not found in admin UI within ${timeoutMs}ms. Page text: ${body.slice(0, 300)}`);
 }
 
+/**
+ * The Issues page scopes events to the project selected in the sidebar.
+ * The test provisions the project + app through the admin API before
+ * ingesting, so the project is selected by its real name.
+ */
+async function selectProjectInUI(name: string, timeoutMs = 20000): Promise<void> {
+  const start = Date.now();
+  let reloaded = false;
+  while (Date.now() - start < timeoutMs) {
+    const selected = await view.evaluate(`(() => {
+      const trigger = document.querySelector(".project-switcher");
+      if (!trigger) return false;
+      if ((trigger.textContent || "").includes(${JSON.stringify(name)})) return true;
+      const menu = document.querySelector(".project-menu");
+      if (!menu) {
+        trigger.click();
+        return false;
+      }
+      const options = Array.from(menu.querySelectorAll(".project-option"));
+      const target = options.find((el) => (el.textContent || "").includes(${JSON.stringify(name)}));
+      if (!target) return false;
+      target.click();
+      return true;
+    })()`);
+    if (selected) return;
+    // The project may not exist yet when the SPA first loaded its project
+    // list (first ingest creates it), so reload once to pick it up.
+    if (!reloaded && Date.now() - start > 3000) {
+      reloaded = true;
+      await view.navigate(`${baseUrl}/ui/issues`);
+    }
+    await Bun.sleep(400);
+  }
+  throw new Error(`Could not select project "${name}" in the admin UI`);
+}
+
 describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => {
   beforeAll(async () => {
-    // Start the real backend (API + admin UI) on an ephemeral port
     app.listen(0);
     const server = (app as any).server;
     baseUrl = `http://localhost:${server.port}`;
     await clearEvents();
 
-    // Point the Sentry SDK at the backend
+    // Apps are only created through the admin API; provision one and
+    // point the Sentry SDK at its real DSN.
+    const adminHeaders = {
+      "Content-Type": "application/json",
+      Authorization: ADMIN_TOKEN,
+    };
+    const projectResponse = await fetch(`${baseUrl}/api/admin/projects`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: PROJECT_NAME }),
+    });
+    const project = (await projectResponse.json()) as { id: string };
+    const appResponse = await fetch(`${baseUrl}/api/admin/projects/${project.id}/apps`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: "UI App" }),
+    });
+    const created = (await appResponse.json()) as { dsn: string; publicKey: string };
+    // The SDK rejects non-numeric DSN project ids; the server resolves the
+    // app from the public key.
+    const dsnUrl = new URL(created.dsn);
+    dsnUrl.pathname = "/1";
+    dsn = dsnUrl.toString();
+
     Sentry.init({
-      dsn: `http://${DSN_PUBLIC_KEY}@localhost:${server.port}/${PROJECT_ID}`,
+      dsn,
       environment: "test",
       release: "e2e-ui-full-circle",
       defaultIntegrations: false,
     });
 
-    // Load the admin panel in a real headless browser
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
+    await view.navigate(`${baseUrl}/ui/issues`);
+    // The UI has no built-in token fallback: log in by storing the admin
+    // token in localStorage, then reload so the SPA picks it up.
+    await view.evaluate(
+      `localStorage.setItem("benedebug.adminToken", "e2e-admin-token")`,
+    );
     await view.navigate(`${baseUrl}/ui/issues`);
   });
 
@@ -90,10 +158,12 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
     expect(eventId).toBeDefined();
 
     await Sentry.flush(5000);
+    await selectProjectInUI(PROJECT_NAME);
+
     const body = await waitForTextInUI(`Error: ${msg}`);
     expect(body).toContain(`Error: ${msg}`);
     expect(body).toContain("seen just now"); // rendered as a live (not mock) row
-  });
+  }, 30000);
 
   it("captures a TypeError with stack trace and displays it in the admin UI", async () => {
     const msg = uniqueMarker();
@@ -106,9 +176,10 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
     expect(eventId).toBeDefined();
 
     await Sentry.flush(5000);
+    await selectProjectInUI(PROJECT_NAME);
     const body = await waitForTextInUI(`TypeError: ${msg}`);
     expect(body).toContain(`TypeError: ${msg}`);
-  });
+  }, 30000);
 
   it("captures a message event and displays it in the admin UI", async () => {
     const msg = uniqueMarker();
@@ -116,9 +187,10 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
     expect(eventId).toBeDefined();
 
     await Sentry.flush(5000);
+    await selectProjectInUI(PROJECT_NAME);
     const body = await waitForTextInUI(msg);
     expect(body).toContain(msg);
-  });
+  }, 30000);
 
   it("stores multiple events and displays all of them in the admin UI", async () => {
     const msg1 = uniqueMarker();
@@ -130,10 +202,11 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
     Sentry.captureException(new TypeError(msg3));
 
     await Sentry.flush(5000);
+    await selectProjectInUI(PROJECT_NAME);
     await waitForTextInUI(`Error: ${msg1}`);
     await waitForTextInUI(msg2);
     await waitForTextInUI(`TypeError: ${msg3}`);
-  });
+  }, 30000);
 
   it("does not display an event that was never sent (negative case)", async () => {
     const ghost = uniqueMarker();

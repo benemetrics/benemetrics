@@ -85,7 +85,7 @@ await api.api.admin['feature-flags']['flag-id'].delete();
 
 ### Feature Flags Evaluation (Client - requires DSN auth)
 ```typescript
-const result = await api.api['feature-flags'].evaluate.post({
+const result = await api.api.sentry.flags.evaluate.post({
   user: { 
     id: 'user-123', 
     email: 'user@example.com',

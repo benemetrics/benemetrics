@@ -12,38 +12,65 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
 import app from "../backend/index";
 
-// Test DSN for authentication
-const TEST_PROJECT_ID = "123";
-const TEST_PUBLIC_KEY = "test-key";
-const TEST_DSN = `https://${TEST_PUBLIC_KEY}@localhost:31337/${TEST_PROJECT_ID}`;
+// Test DSN for authentication. Apps are only created through the admin
+// API, so the DSN is provisioned before the ingestion tests run.
+let TEST_PROJECT_ID = "";
+let TEST_PUBLIC_KEY = "";
+let TEST_DSN = "";
 
-// Helper to make requests with DSN auth
-async function sentryRequest(
-  method: string,
-  path: string,
-  body?: unknown
-): Promise<Response> {
-  const url = new URL(`http://localhost:31337${path}`);
-  url.searchParams.set("sentry_key", TEST_PUBLIC_KEY);
-  
-  const options: RequestInit = {
-    method,
-    headers: { "Content-Type": "application/json" },
+async function bootstrapProjectAndApp(): Promise<void> {
+  const adminHeaders = {
+    "Content-Type": "application/json",
+    Authorization: "Bearer e2e-admin-token",
   };
+  const projectResponse = await app.handle(
+    new Request("http://localhost:31337/api/admin/projects", {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: `Auth E2E Project ${Date.now()}` }),
+    }),
+  );
+  const project = (await projectResponse.json()) as { id: string };
 
-  if (body !== undefined) {
-    options.body = JSON.stringify(body);
-  }
+  const appResponse = await app.handle(
+    new Request(`http://localhost:31337/api/admin/projects/${project.id}/apps`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: "Auth App", host: "localhost:31337" }),
+    }),
+  );
+  const created = (await appResponse.json()) as {
+    ingestKey: string;
+    publicKey: string;
+    dsn: string;
+  };
+  TEST_PROJECT_ID = created.ingestKey;
+  TEST_PUBLIC_KEY = created.publicKey;
+  TEST_DSN = created.dsn;
+}
 
-  return await app.handle(new Request(url, options));
+// The UI surfaces (/events) require the configured admin token, which the
+// e2e preload sets for the whole suite.
+const ADMIN_HEADERS = {
+  "Content-Type": "application/json",
+  Authorization: "Bearer e2e-admin-token",
+};
+
+async function adminRequest(method: string, path: string): Promise<Response> {
+  return await app.handle(
+    new Request(`http://localhost:31337${path}`, {
+      method,
+      headers: ADMIN_HEADERS,
+    }),
+  );
 }
 
 async function clearEvents(): Promise<void> {
-  await sentryRequest("POST", "/events/clear");
+  await adminRequest("POST", "/events/clear");
 }
 
 async function fetchEvent(eventId: string): Promise<any> {
-  const response = await sentryRequest("GET", `/events/${eventId}`);
+  const response = await adminRequest("GET", `/events/${eventId}`);
   if (!response.ok) {
     throw new Error(`Event not found: ${response.status}`);
   }
@@ -79,6 +106,7 @@ async function sendEnvelope(projectId: string, envelope: string): Promise<any> {
 
 describe("Authentication - None (DSN-based) (08-authentication.md)", () => {
   beforeAll(async () => {
+    await bootstrapProjectAndApp();
     await clearEvents();
   });
 
@@ -91,7 +119,6 @@ describe("Authentication - None (DSN-based) (08-authentication.md)", () => {
   });
 
   it("sends events with DSN-only authentication via envelope endpoint", async () => {
-    // Create a minimal envelope
     const envelopeHeader = JSON.stringify({
       sent_at: new Date().toISOString(),
       dsn: TEST_DSN
@@ -116,7 +143,6 @@ describe("Authentication - None (DSN-based) (08-authentication.md)", () => {
     const result = await response.json();
     expect(result.id).toBeDefined();
     
-    // Fetch the event back
     const event = await waitForEvent(result.id);
     expect(event).toBeDefined();
     expect(event.message).toBe("DSN-only auth test");
@@ -169,7 +195,6 @@ describe("Authentication - None (DSN-based) (08-authentication.md)", () => {
     
     const envelope = `${envelopeHeader}\n${itemHeader}\n${payload}\n`;
     
-    // Send without sentry_key
     const url = new URL(`http://localhost:31337/api/${TEST_PROJECT_ID}/envelope/`);
     const response = await app.handle(new Request(url, {
       method: "POST",
@@ -353,7 +378,7 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
       method: "GET",
       headers: { 
         "Content-Type": "application/json",
-        "Authorization": "Bearer admin-test-token"
+        "Authorization": "Bearer e2e-admin-token"
       }
     }));
     
@@ -361,11 +386,11 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
   });
 
   it("rejects sentry endpoints with admin token (invalid body)", async () => {
-    const response = await app.handle(new Request("http://localhost:31337/api/feature-flags/evaluate", {
+    const response = await app.handle(new Request("http://localhost:31337/api/sentry/flags/evaluate", {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
-        "Authorization": "Bearer admin-test-token"
+        "Authorization": "Bearer e2e-admin-token"
       },
       body: JSON.stringify({ user: { id: "1" }, flags: [] })
     }));
@@ -385,5 +410,21 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
     }));
     
     expect(response.status).toBe(401);
+  });
+
+  it("rejects /api/admin/me without a Bearer token", async () => {
+    const response = await app.handle(new Request("http://localhost:31337/api/admin/me"));
+    expect(response.status).toBe(401);
+  });
+
+  it("returns the authenticated admin profile from /api/admin/me", async () => {
+    const response = await app.handle(new Request("http://localhost:31337/api/admin/me", {
+      headers: { "Authorization": "Bearer e2e-admin-token" }
+    }));
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { id: string; email: string; name: string; roles: string[] };
+    expect(body.email).toBe("admin@company.com");
+    expect(body.roles).toContain("admin");
   });
 });

@@ -1,8 +1,0 @@
-[Sentry Server] Started on http://localhost:31337
-[Sentry Server] Endpoints:
-  POST   /api/:projectId/envelope/  - Receive envelopes
-  POST   /api/:projectId/store/     - Legacy store endpoint
-  GET    /events                    - List all stored events
-  GET    /events/:eventId           - Fetch event by ID
-  POST   /events/clear              - Clear all events
-  GET    /health                    - Health check

@@ -7,11 +7,14 @@
 
 import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
+import { startTestServer, type TestServer } from "./test-helpers";
 
-const SERVER_URL = "http://localhost:31337";
+let SERVER_URL = "";
+let testServer: TestServer | null = null;
 
 interface TestResult {
-  id?: string;
+  id: string;
+  itemTypes: string[];
   [key: string]: unknown;
 }
 
@@ -23,7 +26,10 @@ async function apiRequest(
   const url = new URL(`${SERVER_URL}${path}`);
   const options: RequestInit = {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer e2e-admin-token",
+    },
   };
   if (body !== undefined) {
     options.body = JSON.stringify(body);
@@ -39,7 +45,8 @@ async function fetchEvent(eventId: string): Promise<TestResult | null> {
 
 async function fetchAllEvents(): Promise<TestResult[]> {
   const response = await apiRequest("GET", "/events");
-  return await response.json();
+  const body = (await response.json()) as { data?: TestResult[] } | TestResult[];
+  return Array.isArray(body) ? body : (body.data ?? []);
 }
 
 async function waitForEvent(eventId: string, timeout: number = 5000): Promise<TestResult | null> {
@@ -56,11 +63,6 @@ async function clearEvents(): Promise<void> {
   await apiRequest("POST", "/events/clear");
 }
 
-function createTestDsn(projectId: string, publicKey?: string): string {
-  const key = publicKey || Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
-  return `http://${key}@localhost:31337/${projectId}`;
-}
-
 function initSentryForTest(config: { dsn: string; release?: string }): void {
   const { init } = require("@sentry/bun");
   init({
@@ -72,7 +74,20 @@ function initSentryForTest(config: { dsn: string; release?: string }): void {
   });
 }
 
-const DSN = process.env.SENTRY_DSN || createTestDsn("123");
+let DSN = process.env.SENTRY_DSN || "";
+
+// Self-contained backend: apps are only created through the admin API,
+// so the SDK gets a real DSN provisioned on an ephemeral port.
+beforeAll(async () => {
+  testServer = await startTestServer();
+  SERVER_URL = testServer.baseUrl;
+  if (!DSN) DSN = testServer.dsn;
+  await clearEvents();
+});
+
+afterAll(() => {
+  testServer?.stop();
+});
 
 describe("Session Replay (04-session-replay.md)", () => {
   beforeAll(async () => {
@@ -100,8 +115,8 @@ describe("Session Replay (04-session-replay.md)", () => {
       expect(span).toBeDefined();
       const traceId = span.spanContext().traceId;
       
-      // Simulate replay being recorded
-      const eventId = Sentry.captureMessage("Replay recorded", "info", {
+      const eventId = Sentry.captureMessage("Replay recorded", {
+        level: "info",
         contexts: {
           trace: {
             trace_id: traceId,

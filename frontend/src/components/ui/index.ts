@@ -1,9 +1,0 @@
-export { StatusPill } from './StatusPill';
-export { SparklineChart } from './SparklineChart';
-export { Modal } from './Modal';
-export { Breadcrumb } from './Breadcrumb';
-export { TelemetryChip } from './TelemetryChip';
-export { MicroHistogram } from './MicroHistogram';
-export { ActionBar } from './ActionBar';
-export { Loader } from './Loader';
-export { ToggleSwitch } from './ToggleSwitch';

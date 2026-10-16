@@ -1,9 +1,5 @@
-import { clsx } from 'clsx';
-import type { ClassValue } from 'clsx';
-
-export function cn(...inputs: ClassValue[]) {
-  return clsx(inputs);
-}
+/** Shared interval for live screens that poll the backend (5s). */
+export const POLL_INTERVAL_MS = 5000;
 
 // Format an ISO/Date timestamp as a compact relative time.
 // Fresh events render as "seen just now" (kept stable for the UI e2e test).

@@ -61,7 +61,8 @@ Sentry.init({
 |-------------------|-------|-------------|-------------|
 | **Sentry Ingestion** | `/api/:projectId/envelope/`, `/api/:projectId/store/` | DSN (None) | `sentry_key` query param or `X-Sentry-Auth` header |
 | **Sentry DSN Management** | `/api/dsn/create`, `/api/dsn/:projectId`, `/api/dsn/generate` | DSN (None) | `sentry_key` query param or Bearer token with DSN public key |
-| **Sentry Feature Flag Evaluation** | `/api/feature-flags/evaluate` | DSN (None) | `sentry_key` query param or Bearer token with DSN public key |
+| **Sentry Feature Flag Evaluation** | `/api/sentry/flags/evaluate`, `/api/sentry/flags/stream` | DSN (None) | `sentry_key` query param or Bearer token with DSN public key |
+| **OpenFlag (OpenFeature) Evaluation** | `/v1/flags/:key` | None | — |
 | **Admin Feature Flags** | `/api/admin/feature-flags/*` | OAuth2/OIDC | `Authorization: Bearer <token>` |
 | **Admin Segments** | `/api/admin/segments/*` | OAuth2/OIDC | `Authorization: Bearer <token>` |
 

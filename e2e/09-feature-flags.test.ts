@@ -8,8 +8,10 @@
 import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
 import app from "../backend/index";
+import { startTestServer, type TestServer } from "./test-helpers";
 
-const SERVER_URL = "http://localhost:31337";
+let SERVER_URL = "";
+let testServer: TestServer | null = null;
 
 interface TestResult {
   id?: string;
@@ -24,7 +26,10 @@ async function apiRequest(
   const url = new URL(`${SERVER_URL}${path}`);
   const options: RequestInit = {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer e2e-admin-token",
+    },
   };
   if (body !== undefined) {
     options.body = JSON.stringify(body);
@@ -57,13 +62,6 @@ async function clearEvents(): Promise<void> {
   await apiRequest("POST", "/events/clear");
 }
 
-function createTestDsn(projectId: string, publicKey?: string): string {
-  const key = publicKey || Array.from(crypto.getRandomValues(new Uint8Array(16)))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-  return `http://${key}@localhost:31337/${projectId}`;
-}
-
 function initSentryForTest(config: { dsn: string; release?: string }): void {
   const { init } = require("@sentry/bun");
   init({
@@ -74,7 +72,20 @@ function initSentryForTest(config: { dsn: string; release?: string }): void {
   });
 }
 
-const DSN = process.env.SENTRY_DSN || createTestDsn("123");
+let DSN = process.env.SENTRY_DSN || "";
+
+// Self-contained backend: apps are only created through the admin API,
+// so the SDK gets a real DSN provisioned on an ephemeral port.
+beforeAll(async () => {
+  testServer = await startTestServer();
+  SERVER_URL = testServer.baseUrl;
+  if (!DSN) DSN = testServer.dsn;
+  await clearEvents();
+});
+
+afterAll(() => {
+  testServer?.stop();
+});
 
 describe("Feature Flags - Setup & Configuration (09-feature-flags.md)", () => {
   beforeAll(async () => {
@@ -183,7 +194,6 @@ describe("Feature Flags - Boolean Flag Patterns (09-feature-flags.md)", () => {
       "beta-api-v2": "control" as const,
     };
 
-    // Boolean flag check
     const newCheckoutEnabled = mockFlags["new-checkout"];
     const darkModeEnabled = mockFlags["dark-mode"];
 
@@ -523,11 +533,9 @@ describe("Feature Flags - Kill Switch Patterns (09-feature-flags.md)", () => {
       killSwitch: false,
     };
 
-    // Normal evaluation
     let effectiveEnabled = flagState.enabled && !flagState.killSwitch;
     expect(effectiveEnabled).toBe(true);
 
-    // Kill switch activated
     flagState.killSwitch = true;
     effectiveEnabled = flagState.enabled && !flagState.killSwitch;
     expect(effectiveEnabled).toBe(false);
@@ -546,7 +554,6 @@ describe("Feature Flags - Kill Switch Patterns (09-feature-flags.md)", () => {
       action: "disable",
     };
 
-    // Simulate metric evaluation
     const currentErrorRate = 0.08; // 8% - exceeds threshold
     const evaluations = 150;
 
@@ -670,15 +677,12 @@ describe("Feature Flags - Caching & Performance Patterns (09-feature-flags.md)",
       return flagsCache !== null && Date.now() - lastFetch < CACHE_TTL;
     }
 
-    // Initially invalid
     expect(isCacheValid()).toBe(false);
 
-    // Set cache
     flagsCache = { "new-checkout": true };
     lastFetch = Date.now();
     expect(isCacheValid()).toBe(true);
 
-    // Simulate time passing
     lastFetch = Date.now() - CACHE_TTL - 1000;
     expect(isCacheValid()).toBe(false);
   });

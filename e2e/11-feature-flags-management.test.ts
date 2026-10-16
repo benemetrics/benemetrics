@@ -2,14 +2,17 @@
  * E2E Test: Feature Flags Management API (11-admin.md)
  * 
  * Tests the feature flags management API endpoints.
- * Uses the Elysia app directly with admin authentication.
+ * Starts a real server on an ephemeral port for testing.
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
 import app from "../backend/index";
 
-const SERVER_URL = "http://localhost:31337";
-const ADMIN_TOKEN = "Bearer admin-test-token";
+let baseUrl = "";
+let server: any;
+
+const SERVER_URL = "http://localhost:31337"; // kept for reference but not used
+const ADMIN_TOKEN = "Bearer e2e-admin-token";
 
 interface FeatureFlag {
   id: string;
@@ -34,7 +37,7 @@ async function apiRequest(
   body?: unknown,
   token: string = ADMIN_TOKEN
 ): Promise<Response> {
-  const url = new URL(`${SERVER_URL}${path}`);
+  const url = new URL(`${baseUrl}${path}`);
   const options: RequestInit = {
     method,
     headers: { 
@@ -47,7 +50,7 @@ async function apiRequest(
     options.body = JSON.stringify(body);
   }
 
-  return await app.handle(new Request(url, options));
+  return await fetch(url, options);
 }
 
 async function sentryRequest(
@@ -55,7 +58,7 @@ async function sentryRequest(
   path: string,
   body?: unknown
 ): Promise<Response> {
-  const url = new URL(`${SERVER_URL}${path}`);
+  const url = new URL(`${baseUrl}${path}`);
   url.searchParams.set("sentry_key", "test-key");
   
   const options: RequestInit = {
@@ -67,22 +70,27 @@ async function sentryRequest(
     options.body = JSON.stringify(body);
   }
 
-  return await app.handle(new Request(url, options));
+  return await fetch(url, options);
 }
 
 describe("Feature Flags Management API", () => {
   beforeAll(async () => {
-    // Clear any existing data
-    await sentryRequest("POST", "/events/clear");
+    app.listen(0);
+    server = (app as any).server;
+    baseUrl = `http://localhost:${server.port}`;
+    
+    await apiRequest("POST", "/events/clear");
   });
 
   afterAll(async () => {
-    await sentryRequest("POST", "/events/clear");
+    await apiRequest("POST", "/events/clear");
+    server.stop();
   });
 
   beforeEach(async () => {
     // Note: In-memory storage persists across tests in this setup
     // In a real test suite, you'd want to reset storage between tests
+    await apiRequest("POST", "/events/clear");
   });
 
   describe("POST /api/admin/feature-flags", () => {
@@ -125,7 +133,7 @@ describe("Feature Flags Management API", () => {
       expect(response.status).toBe(200);
       const data = await response.json() as FeatureFlag;
       expect(data.variants).toHaveLength(3);
-      expect(data.variants[0].value).toBe("blue");
+      expect(data.variants[0]!.value).toBe("blue");
     });
 
     it("should return 400 for missing required fields", async () => {
@@ -142,7 +150,7 @@ describe("Feature Flags Management API", () => {
         name: "No Auth Test",
         type: "boolean",
         defaultValue: false
-      }, ""); // No token
+      }, "");
 
       expect(response.status).toBe(401);
     });
@@ -164,6 +172,27 @@ describe("Feature Flags Management API", () => {
       const data = await response.json() as { data: FeatureFlag[] };
       expect(data.data).toBeInstanceOf(Array);
     });
+
+    it("should filter by search case-insensitively", async () => {
+      const suffix = "search-" + Date.now();
+      const createResponse = await apiRequest("POST", "/api/admin/feature-flags", {
+        key: suffix,
+        name: "Searchable Name",
+        type: "boolean",
+        defaultValue: false
+      });
+      const created = await createResponse.json() as FeatureFlag;
+
+      const response = await apiRequest("GET", `/api/admin/feature-flags?search=SEARCHABLE`);
+      expect(response.status).toBe(200);
+      const data = await response.json() as { data: FeatureFlag[] };
+      expect(data.data.some((flag) => flag.id === created.id)).toBe(true);
+    });
+
+    it("should reject an invalid status filter", async () => {
+      const response = await apiRequest("GET", "/api/admin/feature-flags?status=bogus");
+      expect(response.status).toBe(400);
+    });
   });
 
   describe("GET /api/admin/feature-flags/:id", () => {
@@ -184,7 +213,7 @@ describe("Feature Flags Management API", () => {
     });
 
     it("should return 404 for non-existent flag", async () => {
-      const response = await apiRequest("GET", "/api/admin/feature-flags/non-existent");
+      const response = await apiRequest("GET", `/api/admin/feature-flags/${crypto.randomUUID()}`);
       expect(response.status).toBe(404);
     });
   });
@@ -208,6 +237,30 @@ describe("Feature Flags Management API", () => {
       const data = await response.json() as FeatureFlag;
       expect(data.name).toBe("Updated Name");
       expect(data.rolloutPercentage).toBe(75);
+    });
+
+    it("cannot overwrite internal columns through a patch", async () => {
+      const createResponse = await apiRequest("POST", "/api/admin/feature-flags", {
+        key: "guard-test-" + Date.now(),
+        name: "Guard Test",
+        type: "boolean",
+        defaultValue: false
+      });
+      const created = await createResponse.json() as FeatureFlag & { createdBy: string };
+
+      const response = await apiRequest("PATCH", `/api/admin/feature-flags/${created.id}`, {
+        id: crypto.randomUUID(),
+        createdBy: "attacker",
+        createdAt: "1970-01-01T00:00:00.000Z",
+        name: "Renamed"
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json() as FeatureFlag & { createdBy: string };
+      expect(data.id).toBe(created.id);
+      expect(data.createdBy).toBe(created.createdBy);
+      expect(data.createdAt).toBe(created.createdAt);
+      expect(data.name).toBe("Renamed");
     });
   });
 
@@ -239,12 +292,10 @@ describe("Feature Flags Management API", () => {
       });
       const created = await createResponse.json() as FeatureFlag;
 
-      // First activate
       await apiRequest("POST", `/api/admin/feature-flags/${created.id}/status`, {
         status: "active"
       });
 
-      // Then pause
       const response = await apiRequest("POST", `/api/admin/feature-flags/${created.id}/status`, {
         status: "paused"
       });
@@ -336,7 +387,6 @@ describe("Feature Flags Management API", () => {
 
   describe("Evaluation API (Sentry - DSN auth)", () => {
     it("should evaluate flags for a user context", async () => {
-      // Create a flag first
       await apiRequest("POST", "/api/admin/feature-flags", {
         key: "eval-test-" + Date.now(),
         name: "Eval Test",
@@ -348,7 +398,7 @@ describe("Feature Flags Management API", () => {
         ]
       });
 
-      const response = await sentryRequest("POST", "/api/feature-flags/evaluate", {
+      const response = await sentryRequest("POST", "/api/sentry/flags/evaluate", {
         user: {
           id: "user_123",
           email: "test@company.com",
@@ -358,10 +408,9 @@ describe("Feature Flags Management API", () => {
           ip: "192.168.1.1",
           country: "US"
         },
-        flags: ["eval-test-" + Date.now()] // This won't match the flag we created above
+        flags: ["eval-test-" + Date.now()]
       });
 
-      // The flag key won't match exactly, but we test the endpoint works
       expect([200, 400]).toContain(response.status);
     });
   });
@@ -379,7 +428,6 @@ describe("Feature Flags Management API", () => {
       const response = await apiRequest("DELETE", `/api/admin/feature-flags/${created.id}`);
       expect(response.status).toBe(200);
 
-      // Verify it's gone
       const getResponse = await apiRequest("GET", `/api/admin/feature-flags/${created.id}`);
       expect(getResponse.status).toBe(404);
     });
@@ -393,12 +441,10 @@ describe("Feature Flags Management API", () => {
       });
       const created = await createResponse.json() as FeatureFlag;
 
-      // Activate it first
       await apiRequest("POST", `/api/admin/feature-flags/${created.id}/status`, {
         status: "active"
       });
 
-      // Try to delete - should fail
       const response = await apiRequest("DELETE", `/api/admin/feature-flags/${created.id}`);
       expect(response.status).toBe(400);
     });

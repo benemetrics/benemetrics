@@ -1,0 +1,1841 @@
+{
+  "version": 1,
+  "skills": {
+    "Bun .npmrc support": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-npmrc/SKILL.md",
+      "computedHash": "e58f22c87912f62fd53ec246c40409fb2eed2c4ccac8c9383bab57b9be5d7f6c"
+    },
+    "Bun Add Sentry to a Bun app": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-sentry/SKILL.md",
+      "computedHash": "f9dcffbbeff58f9f5f704773240b7fd842bd1a443ba4dbef111d3719989e9282"
+    },
+    "Bun Add a Git dependency": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-add-git/SKILL.md",
+      "computedHash": "5b3a2e2ed1f492aecaddabc5ee180cabce1a9a274a0d62f96a46e8178f58fc0e"
+    },
+    "Bun Add a dependency": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-add/SKILL.md",
+      "computedHash": "3eee16946fc09cadb34c3c6bb3e0f4cb0c20f64886b36dfb74a62e47c4b11ce6"
+    },
+    "Bun Add a development dependency": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-add-dev/SKILL.md",
+      "computedHash": "8b11e07f1948e73fd2c984349a461b62a2c90fb9f7ad055341b6082be5173583"
+    },
+    "Bun Add a peer dependency": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-add-peer/SKILL.md",
+      "computedHash": "6bf315b3032fed9eab485d1aebfb335d4875d1b87e19f520981ab19d754d4b30"
+    },
+    "Bun Add a tarball dependency": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-add-tarball/SKILL.md",
+      "computedHash": "1ff2efad5fd0d2a359d91b426c14e5d03df6861c0ba0f54b3530fbec89933a8a"
+    },
+    "Bun Add a trusted dependency": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-trusted/SKILL.md",
+      "computedHash": "01a5c1c3f8391c59d54a16df59ed9cfe84dade350000f5d564403b705c7f33ec"
+    },
+    "Bun Add an optional dependency": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-add-optional/SKILL.md",
+      "computedHash": "8b1ed12bd07b5247a5c332a40b5826321690d7a8a0b1ddf7ea5d223b8aa22a1a"
+    },
+    "Bun Append content to a file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-write-file-append/SKILL.md",
+      "computedHash": "c769b371c70d6b3a8628d63590a42aca54df9daec7d5c530beab7fbbb4075496"
+    },
+    "Bun Archive": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-archive/SKILL.md",
+      "computedHash": "1253da85660c6f01a8dc719a5aa7b67376c6686acadb10347df982b114ce3aac"
+    },
+    "Bun Auto-install": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-auto-install/SKILL.md",
+      "computedHash": "01797d68935b5f6e55e8cc57e4e7d1cfbdb8974424f6a1cc8850ec6be1fe71f5"
+    },
+    "Bun Bail early with the Bun test runner": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-bail/SKILL.md",
+      "computedHash": "7f3276c9f2b6defb7bec6ef63c4ebb907c8c5bea556ea800acbc24817a7b233b"
+    },
+    "Bun Benchmarking": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-project-benchmarking/SKILL.md",
+      "computedHash": "f7433c76ba296fdd6064cb5f9ef7a85db990f613996278c3aa19f9b4dd5e5d0f"
+    },
+    "Bun Binary Data": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-binary-data/SKILL.md",
+      "computedHash": "63a35a845bdc989820e1321a14945eb0835c52f46f8d20f861ff1e78b75012e4"
+    },
+    "Bun Bindgen": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-project-bindgen/SKILL.md",
+      "computedHash": "dec6a660b0f7f24e1b3d28d1f4da4edf967aa5fb32f4d17423302c81a7dbc20d"
+    },
+    "Bun Build a React app with Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-react/SKILL.md",
+      "computedHash": "7255220044a6a46c462fbb825c4840d579f7eecbd00aca6cded512985e3f0238"
+    },
+    "Bun Build a frontend using Vite and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-vite/SKILL.md",
+      "computedHash": "c0cdd880c76aecd4124aa5a3d2529691357f3b8ae3d9ab0d25c2f3d2b19a217f"
+    },
+    "Bun Build a publish-subscribe WebSocket server": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-websocket-pubsub/SKILL.md",
+      "computedHash": "e5120ccf0a787e9844f000448ddeb4c97687910b374401262db66198885b3e70"
+    },
+    "Bun Build a simple WebSocket server": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-websocket-simple/SKILL.md",
+      "computedHash": "29199a231fcd48062f69ebadff98b2484636c487dcf27f645da1707c957710c9"
+    },
+    "Bun Build an HTTP server using Elysia and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-elysia/SKILL.md",
+      "computedHash": "6f637c06e4838bed2b176785132128263aff9381285023877ba6a2ede4af20c7"
+    },
+    "Bun Build an HTTP server using Express and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-express/SKILL.md",
+      "computedHash": "fe29ceb80194f73ec0cbeb3dd43f5dc2b3d1bd9be06cc7fc7fdbb4a1960be2f8"
+    },
+    "Bun Build an HTTP server using Hono and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-hono/SKILL.md",
+      "computedHash": "cdee915b46ce5278ddf54c3c8e2d136821c2eb7b33606ae8993e2de9677272ca"
+    },
+    "Bun Build an HTTP server using StricJS and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-stric/SKILL.md",
+      "computedHash": "3ae08afae2750387e964481c54c332cc8941e21f78283aa1de2e8ead9cce8647"
+    },
+    "Bun Build an app with Astro and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-astro/SKILL.md",
+      "computedHash": "761c72c80a157782ecddaeb30c96587660c191389a2d78f92932afd187bbaf6e"
+    },
+    "Bun Build an app with Next.js and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-nextjs/SKILL.md",
+      "computedHash": "da4743a5491fb753fcd0c4d32bc02be6f86fd35007197af1a917152e9e02de67"
+    },
+    "Bun Build an app with Nuxt and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-nuxt/SKILL.md",
+      "computedHash": "58e912dccfdf96a3982b3598a14c0f15f6d8cf05146535e81a6d955995285c8c"
+    },
+    "Bun Build an app with Qwik and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-qwik/SKILL.md",
+      "computedHash": "c8f77434acabdc3c602adf51e862f10492fa1106bd9f6525c441618f0085de30"
+    },
+    "Bun Build an app with Remix and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-remix/SKILL.md",
+      "computedHash": "06618e547b2c535d62e1e87d8d961607d24dd549c357614a79f8ae4216273624"
+    },
+    "Bun Build an app with SolidStart and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-solidstart/SKILL.md",
+      "computedHash": "eb78723d13c559c54e734c65703213f77371479d0ea2d942f0f56376adcf3627"
+    },
+    "Bun Build an app with SvelteKit and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-sveltekit/SKILL.md",
+      "computedHash": "04b6d117819ba501f1959ea687221d90f76803213d9551ab1f3828390b817f34"
+    },
+    "Bun Build-time constants with --define": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-build-time-constants/SKILL.md",
+      "computedHash": "5569c5ee88da6a9e6e42d24349d26b99bab6363d2f93d1ecbc03448ef61ba9a3"
+    },
+    "Bun Building Windows": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-project-building-windows/SKILL.md",
+      "computedHash": "06746b91a80545211a54df84bb7e609793deb55214503c1bbf974f6f0226b30c"
+    },
+    "Bun Bun APIs": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-bun-apis/SKILL.md",
+      "computedHash": "b544f4e36d9d91ed15793b7fa4187205e5a3dbf441fe648827f1d23bc90955c4"
+    },
+    "Bun Bun Redis with Upstash": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-upstash/SKILL.md",
+      "computedHash": "3514c963f3d5429d8b66ecc80fdc27443dda9ba317cc15c0c4bb3dd22943e9c3"
+    },
+    "Bun Bun Runtime": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-index/SKILL.md",
+      "computedHash": "99da7c335d9007e658e791c67658bb8f4c4b921c325a03be19d0b3bc6fbbf03b"
+    },
+    "Bun Bundler": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-index/SKILL.md",
+      "computedHash": "c72424b1425ea70693394c5c33e1be8580fc4d0befb717019fb5a0bf69af42b1"
+    },
+    "Bun Bytecode Caching": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-bytecode/SKILL.md",
+      "computedHash": "3e99011591a62b7e4fefd723442ca3bb707a8768b333042fdc1b32eec6ae145b"
+    },
+    "Bun C Compiler": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-c-compiler/SKILL.md",
+      "computedHash": "d0a61d7bf4836371da60e8fd22b56e8a1097dccea855319ee3c64c56d37f6edf"
+    },
+    "Bun CSS": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-css/SKILL.md",
+      "computedHash": "dd13e1a80f27e2d24774ba6857804992f4547a82211ebc4826f70ebcf9ef3403"
+    },
+    "Bun Catalogs": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-catalogs/SKILL.md",
+      "computedHash": "9f1a4b57dc4d75c827a5b7091d5b970e7c246e353a40bf7af4a886bb423de330"
+    },
+    "Bun Check if a file exists": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-read-file-exists/SKILL.md",
+      "computedHash": "df66450f472792c94949b2bdf3779b462d43c5b3ab7fe67d8280c1d58ff048fa"
+    },
+    "Bun Check if the current file is the entrypoint": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-entrypoint/SKILL.md",
+      "computedHash": "6a62be402cfcccf83cf8a1966cba3770bc294b8cb3e8a5a62e4e308137720381"
+    },
+    "Bun Check if two objects are deeply equal": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-deep-equals/SKILL.md",
+      "computedHash": "c162469b2d83701e09973e8f6bb28ba633eefbc2a1e085d110227b460406b442"
+    },
+    "Bun Code coverage": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-code-coverage/SKILL.md",
+      "computedHash": "14c7611eda1be7d96fc30a0bb094f96d504132b9de2bea66f0303023b2c72a1d"
+    },
+    "Bun Codesign a single-file JavaScript executable on macOS": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-codesign-macos-executable/SKILL.md",
+      "computedHash": "35baff8cd6d7231e01538ae7128cb9997f72aeb90fc0b4040ca6e40d53e2c1b4"
+    },
+    "Bun Color": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-color/SKILL.md",
+      "computedHash": "55a972b7b8f5a67fa7d85b9a764674de27325f11b5c577c2ea75349eef80475b"
+    },
+    "Bun Common HTTP server usage": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-server/SKILL.md",
+      "computedHash": "08d296da283b3136e1b2a2bae564cdf1c1153ad2594fc5a95691473eabe0e742"
+    },
+    "Bun Compress and decompress data with DEFLATE": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-deflate/SKILL.md",
+      "computedHash": "1614f20b43837ed04211c5a9628849ec3ccd0abb2dc1a1f9578e8b36ebcbfbdd"
+    },
+    "Bun Compress and decompress data with gzip": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-gzip/SKILL.md",
+      "computedHash": "96f3e668607351f68800b72e006911dbb88b0541ac80e734f5276ebe7915181c"
+    },
+    "Bun Configure TLS on an HTTP server": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-tls/SKILL.md",
+      "computedHash": "1e711c66c9d26c3284e546fdb5c00c41f57afd28b550e93f02516e454d989047"
+    },
+    "Bun Configure git to diff Bun's lockb lockfile": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-git-diff-bun-lockfile/SKILL.md",
+      "computedHash": "ee3b8901757886b9a1d057bc555f6162ae0c82c73f3f73d807a0fcc16429a121"
+    },
+    "Bun Configure private registry for org scope": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-registry-scope/SKILL.md",
+      "computedHash": "241ccca447fa9adaf2ed56fe87a226007bf7c34186f6593b23f1abeaab32aace"
+    },
+    "Bun Configuring a monorepo using workspaces": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-workspaces/SKILL.md",
+      "computedHash": "50fd4017781810834b1a41de772ed93fbb130b90e8bb49f699a861d9d60a3acb"
+    },
+    "Bun Console": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-console/SKILL.md",
+      "computedHash": "cf7b3d3c9b9cf51c6255879ef9602b6d0eb483fdd2bb96ef9b9c40d6b70e718d"
+    },
+    "Bun Containerize a Bun application with Docker": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-docker/SKILL.md",
+      "computedHash": "969a19d23a2da3a9703e3bf08c81fa284cf4844753dc2c4c0c73b6b4124cd9e8"
+    },
+    "Bun Contributing": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-project-contributing/SKILL.md",
+      "computedHash": "c574173a6301134795bd6ae5a2cef6e905b6784ec22e8c4029431bbf77cb0977"
+    },
+    "Bun Convert a Blob to a DataView": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-blob-to-dataview/SKILL.md",
+      "computedHash": "dac28a5139aac05c961152333eaabe5f959d9ea390dbff9b8adb5ac22a9bbc3b"
+    },
+    "Bun Convert a Blob to a ReadableStream": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-blob-to-stream/SKILL.md",
+      "computedHash": "75438ed5947b4ca3b0b599a14e63242284ac234843636d0836310c0485f0b1d6"
+    },
+    "Bun Convert a Blob to a Uint8Array": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-blob-to-typedarray/SKILL.md",
+      "computedHash": "be8ea0d13ca5eebcb91b3cd894a8ac6625ab314a2fd27fba746ad81aa3d1384b"
+    },
+    "Bun Convert a Blob to a string": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-blob-to-string/SKILL.md",
+      "computedHash": "94cd952fff1ecab70c8aac29b2977854076cfc4b3698fcec6cbaf7bd9cd3e0c8"
+    },
+    "Bun Convert a Blob to an ArrayBuffer": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-blob-to-arraybuffer/SKILL.md",
+      "computedHash": "3d1df33f5628da314486b1a41021a6ab8abe3fe8a65c3b29ceac7b8719b17f37"
+    },
+    "Bun Convert a Buffer to a ReadableStream": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-buffer-to-readablestream/SKILL.md",
+      "computedHash": "c2d08f93c678fcfc76af9f72bdb04592553066f1b24f529f09440e4a124d66c6"
+    },
+    "Bun Convert a Buffer to a Uint8Array": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-buffer-to-typedarray/SKILL.md",
+      "computedHash": "685675e73051bde11f5d4c37bf8deaa794fdba3c78478a248130ea132c03e9e4"
+    },
+    "Bun Convert a Buffer to a blob": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-buffer-to-blob/SKILL.md",
+      "computedHash": "8e12dc41ba4e08e50ac136463aac23d588cbf03a212875d48b84c6b68fd33837"
+    },
+    "Bun Convert a Buffer to a string": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-buffer-to-string/SKILL.md",
+      "computedHash": "378a31bc587bcfec993e0f9f081cfeeb7495865c5a7bc16add61533979e16f4e"
+    },
+    "Bun Convert a Buffer to an ArrayBuffer": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-buffer-to-arraybuffer/SKILL.md",
+      "computedHash": "5ca7fa99658bf9b6bfdc54488a4ab4d40f907244f1cb0d34c0a11e66b7fd4fe9"
+    },
+    "Bun Convert a DataView to a string": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-dataview-to-string/SKILL.md",
+      "computedHash": "248cc0a7e85974f3be61ab0477015186da07ddb954b943a029c0dd82b7c468de"
+    },
+    "Bun Convert a Node.js Readable to JSON": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-node-readable-to-json/SKILL.md",
+      "computedHash": "33888f96572f2a1f8ce64bc504d02cf085e8482fde2c6e2f99e7ddbbae8065f6"
+    },
+    "Bun Convert a Node.js Readable to a Blob": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-node-readable-to-blob/SKILL.md",
+      "computedHash": "4dd75b228eacecdab4be0098441a318c6167f71197b2a354af55cf1d091c6e98"
+    },
+    "Bun Convert a Node.js Readable to a string": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-node-readable-to-string/SKILL.md",
+      "computedHash": "d3ceda8b061ece2e1e2ccac93758f8d57845be32663f002c317cec846d3edbc1"
+    },
+    "Bun Convert a Node.js Readable to an ArrayBuffer": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-node-readable-to-arraybuffer/SKILL.md",
+      "computedHash": "f36afc896181a18b223049927138b11bb4d7fb8658daa352180df2f29845f88a"
+    },
+    "Bun Convert a Node.js Readable to an Uint8Array": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-node-readable-to-uint8array/SKILL.md",
+      "computedHash": "b8ee81aa5614b25cd67763b9ba5ebf9935b6fa2678b4d6912a26a55991d0acf4"
+    },
+    "Bun Convert a ReadableStream to JSON": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-to-json/SKILL.md",
+      "computedHash": "1f525e125406dd3da1397c4f55b4e2f924027abd9047c5dd0dbe799c87a63ab4"
+    },
+    "Bun Convert a ReadableStream to a Blob": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-to-blob/SKILL.md",
+      "computedHash": "e69dc3675cea9c094ae8aa5569173c2fda21f8f0f26c73509cdc1f6ea4949547"
+    },
+    "Bun Convert a ReadableStream to a Buffer": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-to-buffer/SKILL.md",
+      "computedHash": "cf3c84933637654ca134758719fff6d2af9d096d1d86fce2b25a5503f5192215"
+    },
+    "Bun Convert a ReadableStream to a Uint8Array": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-to-typedarray/SKILL.md",
+      "computedHash": "fb6a4f8b634b1ce4258de6262bb5e9c7e723c55f93acdb7956328ae357168b7b"
+    },
+    "Bun Convert a ReadableStream to a string": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-to-string/SKILL.md",
+      "computedHash": "b40cf6e23b577df64d5e0ad5ead6c7b7a63ae1bfe7ca3126066079438237da0c"
+    },
+    "Bun Convert a ReadableStream to an ArrayBuffer": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-to-arraybuffer/SKILL.md",
+      "computedHash": "f91feb59683a8b2b7dd218540f41be10170c7660912e990bdcba978715369d8d"
+    },
+    "Bun Convert a ReadableStream to an array of chunks": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-streams-to-array/SKILL.md",
+      "computedHash": "31fe6c5558868fa3d90997bad34e717c88b75b85d88c6926b9bceaf334cc44e7"
+    },
+    "Bun Convert a Uint8Array to a Blob": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-typedarray-to-blob/SKILL.md",
+      "computedHash": "632575adcc23444ab529df535b64f22da7961c6ee135b9b028785e747984b8d3"
+    },
+    "Bun Convert a Uint8Array to a Buffer": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-typedarray-to-buffer/SKILL.md",
+      "computedHash": "dc7397ba7662598977622ecb2a1e6403f22ebecade9b63b7df33d999f0aaec16"
+    },
+    "Bun Convert a Uint8Array to a DataView": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-typedarray-to-dataview/SKILL.md",
+      "computedHash": "a4706719015bb996b016815e19753e485be686fea27ab12dd0f2ea4796ae8859"
+    },
+    "Bun Convert a Uint8Array to a ReadableStream": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-typedarray-to-readablestream/SKILL.md",
+      "computedHash": "76741fd1dfc664bfdb33fa1b2ceb514d61fd0b261630b9eea926bbbe8b4302f1"
+    },
+    "Bun Convert a Uint8Array to a string": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-typedarray-to-string/SKILL.md",
+      "computedHash": "b3638cb8019e743c7f98af9f83bd4ad5c4057d7529e51f779360fad018930a51"
+    },
+    "Bun Convert a Uint8Array to an ArrayBuffer": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-typedarray-to-arraybuffer/SKILL.md",
+      "computedHash": "6b8d674ef24c0d3723ef9a4d7abc065ed69d7e8e5805f3e3eb90f3ab955e7131"
+    },
+    "Bun Convert a file URL to an absolute path": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-file-url-to-path/SKILL.md",
+      "computedHash": "812610180d6c558dc318f717c96b3e1fd318351e122cd698db3bc90c76e5f266"
+    },
+    "Bun Convert an ArrayBuffer to a Blob": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-arraybuffer-to-blob/SKILL.md",
+      "computedHash": "6662499b8ec648c7d8544a4e397198c47e56a9b5aa71efa9d9a81755133491e9"
+    },
+    "Bun Convert an ArrayBuffer to a Buffer": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-arraybuffer-to-buffer/SKILL.md",
+      "computedHash": "5aaf81880c8f61bf91a24564a3a74107163e73b4a610c24060b31cb74879cc17"
+    },
+    "Bun Convert an ArrayBuffer to a Uint8Array": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-arraybuffer-to-typedarray/SKILL.md",
+      "computedHash": "abf9d44b91f53a7b911cbaace310857010fa305a46e7e7ef09bd477466bec114"
+    },
+    "Bun Convert an ArrayBuffer to a string": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-arraybuffer-to-string/SKILL.md",
+      "computedHash": "234dd896645ecbdd6665013609179858f0f4a7e11f0aabfe211d85b3bf3d863b"
+    },
+    "Bun Convert an ArrayBuffer to an array of numbers": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-binary-arraybuffer-to-array/SKILL.md",
+      "computedHash": "284892c9d4715a9b8acb661a9b16382e8b8ffe2d658875a88e41963af054254b"
+    },
+    "Bun Convert an absolute path to a file URL": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-path-to-file-url/SKILL.md",
+      "computedHash": "bb1f69b2f4358d4a28820d6b57c4052e43ef73453b26c9bccda2be81fb7b54a2"
+    },
+    "Bun Cookies": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-cookies/SKILL.md",
+      "computedHash": "59865832be1a655760f4697d4451a086f332c132135ceaac4dcd91b30bc83cb7"
+    },
+    "Bun Copy a file to another location": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-write-file-file-cp/SKILL.md",
+      "computedHash": "53d68ec1acd384b4018fb15eecc380a685baa68fde9d325b250134e2c188c6a8"
+    },
+    "Bun Create a Discord bot": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-discordjs/SKILL.md",
+      "computedHash": "0021458dbe8b051bfcf8b3d6aa9365e27aab9c4b55b22318cfc5bf192f4f0e4e"
+    },
+    "Bun DNS": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-networking-dns/SKILL.md",
+      "computedHash": "4d5ab3254c93a34a384e6cab97e1e6e83b5facd7b1ae8d044b3d8cf1ca475b4a"
+    },
+    "Bun DOM testing": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-dom/SKILL.md",
+      "computedHash": "2041bc833f8bad22eb8f5d2ba1ee10e48643c57c59f65dea266e16ca990065e7"
+    },
+    "Bun Dates and times": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-dates-times/SKILL.md",
+      "computedHash": "592d592a4fe488bb546b1a4d9a3e776f4bc7f274af08f6d2741b6899d8af8a69"
+    },
+    "Bun Debugging": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-debugger/SKILL.md",
+      "computedHash": "061bf871b766b657248dc8620b1e02cce6a212beea25f8d729a439e24db1bb86"
+    },
+    "Bun Debugging Bun with the VS Code extension": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-vscode-debugger/SKILL.md",
+      "computedHash": "cba8564977ed90ae40c54cc6cd5bc461cbde374b7be587016e3e63562433e40a"
+    },
+    "Bun Debugging Bun with the web debugger": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-web-debugger/SKILL.md",
+      "computedHash": "e667e0f4ed40547e5d075e0b18dad9378207da9a06dec16d2dfdc19c40886cf4"
+    },
+    "Bun Define and replace static globals & constants": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-define-constant/SKILL.md",
+      "computedHash": "5395735b2902fef99d5e525ce4064aab407435121561ca9a28dedfb8504bc1ad"
+    },
+    "Bun Delete a file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-write-file-unlink/SKILL.md",
+      "computedHash": "69e55518d7953489b002bc9513e92fc40261a9612287f14d5fe52b5280631416"
+    },
+    "Bun Delete directories": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-delete-directory/SKILL.md",
+      "computedHash": "f06d40c211442b36749402b14a564680daffc5d474fee6c7a0e4ce99349e77b7"
+    },
+    "Bun Delete files": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-delete-file/SKILL.md",
+      "computedHash": "b076de70294ef75e28272df33619dc413fc0f70ab34d8fa09506c37c4e85dfbc"
+    },
+    "Bun Deploy a Bun application on AWS Lambda": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-deployment-aws-lambda/SKILL.md",
+      "computedHash": "b4fb3976f9dbba8e80385f631f9f10e7430cf995cbb0e5ac98b9aaba2208dbed"
+    },
+    "Bun Deploy a Bun application on DigitalOcean": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-deployment-digital-ocean/SKILL.md",
+      "computedHash": "00f9d60f2ddd25b596b3ff38afe036b75724e33ce6ad4b0c121d4d2dd76338ae"
+    },
+    "Bun Deploy a Bun application on Google Cloud Run": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-deployment-google-cloud-run/SKILL.md",
+      "computedHash": "a361635623d80cf2095241b8455b15467f25e4c78097a5aa8a7aa2218fdd9074"
+    },
+    "Bun Deploy a Bun application on Railway": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-deployment-railway/SKILL.md",
+      "computedHash": "4aa4300f37d2548f4f8459ee7398a6a3fee8cabb0469ddab4664f322c4eeece8"
+    },
+    "Bun Deploy a Bun application on Render": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-deployment-render/SKILL.md",
+      "computedHash": "5b0f38cd685fc4c4274089766914e319022f2050d9ee68cc9d2058ad99588716"
+    },
+    "Bun Deploy a Bun application on Vercel": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-deployment-vercel/SKILL.md",
+      "computedHash": "5e7181d4ddd871ffa6f849ac6bc117159bc59beaeef3600474f4690a4a3f5b28"
+    },
+    "Bun Detect when code is executed with Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-detect-bun/SKILL.md",
+      "computedHash": "2f13f99547600da132ebcd3de2ed40b621fca516f119ef2f9d7939ca0626b885"
+    },
+    "Bun Enable compression for WebSocket messages": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-websocket-compression/SKILL.md",
+      "computedHash": "050c6ffc7ae99ac109cf2f8a60170de798adb3dadd719b5c2c71671222e0ce4b"
+    },
+    "Bun Encode and decode base64 strings": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-base64/SKILL.md",
+      "computedHash": "54fa5621973d40c74b5e12b563f2afded4e7f546e0457e0ab407b97543683aaa"
+    },
+    "Bun Environment Variables": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-environment-variables/SKILL.md",
+      "computedHash": "d78e648fa139942bfb459065af152f6d10236cec467a7d78cef1f39f98fca436"
+    },
+    "Bun Error Handling": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-http-error-handling/SKILL.md",
+      "computedHash": "59cd1932c6d8355ca4b7e0edb04e0eeeb325a9dc486c7d192cd9e500e0a628b8"
+    },
+    "Bun Escape an HTML string": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-escape-html/SKILL.md",
+      "computedHash": "0e892be8fc8e040469b0831ceafaa4bc5a97ff9dac3182b2b370476e6addbe05"
+    },
+    "Bun Extract links from a webpage using HTMLRewriter": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-html-rewriter-extract-links/SKILL.md",
+      "computedHash": "7e8958f87a0bdab46699c0d88b6fcf03f56db665fd9efe9e33142a82d7884e72"
+    },
+    "Bun Extract social share images and Open Graph tags": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-html-rewriter-extract-social-meta/SKILL.md",
+      "computedHash": "ba3bc4bbccd8c84e39362c1506b2f3b2bd932a14486296c75333e0707a111c4c"
+    },
+    "Bun FFI": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-ffi/SKILL.md",
+      "computedHash": "6146c4ae8e89a8770f6af2393b64d65afb658b5f157a07bd72c73b164ca94514"
+    },
+    "Bun Feedback": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-feedback/SKILL.md",
+      "computedHash": "a04e1e927d6abb04b49ede87fc107981dba9cf252ea352a7c1e0c2123534f667"
+    },
+    "Bun Fetch": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-networking-fetch/SKILL.md",
+      "computedHash": "0f2cd734a07c8eaec741154b4ef6ab46af2a520ee91d78297e89c40ae604ff82"
+    },
+    "Bun File I/O": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-file-io/SKILL.md",
+      "computedHash": "ed5fd4e90d38b3622c2c8ff79ffc32846df589c6b202328b42f757e2b23af416"
+    },
+    "Bun File System Router": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-file-system-router/SKILL.md",
+      "computedHash": "f0b4122a0917c0ba687b1b3711b71c3b117b3921d22a9e9c88711bc2f32e5c19"
+    },
+    "Bun File Types": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-file-types/SKILL.md",
+      "computedHash": "3e949f878d928bb2100bb2de5d8c5f2daf1a3b59b4022aca5a2975b2947d23dd"
+    },
+    "Bun Finding tests": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-discovery/SKILL.md",
+      "computedHash": "c9347e0de4b1926a00332121ed2e0e91166105562eab94c11d12f470388b3d8b"
+    },
+    "Bun Fullstack dev server": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-fullstack/SKILL.md",
+      "computedHash": "83fd3747b2dd9753852c63c586c1934bda4874cc889d3747366cab035fdd31fa"
+    },
+    "Bun Generate a UUID": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-javascript-uuid/SKILL.md",
+      "computedHash": "72b5f224ca394966e04498c9387dc9baf87d45e01f033a490b54770bbbc4c31d"
+    },
+    "Bun Generate a yarn-compatible lockfile": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-yarnlock/SKILL.md",
+      "computedHash": "0aefc5be1cb9039c991edcf661db40c3998ade902ee520c8f127e1e7c2bca8de"
+    },
+    "Bun Generate code coverage reports with the Bun test runner": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-coverage/SKILL.md",
+      "computedHash": "59fa00170ea0fc20c4d5686fc392e340bcca4cbe6ac62f32668c430683a57bf5"
+    },
+    "Bun Get the MIME type of a file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-read-file-mime/SKILL.md",
+      "computedHash": "80175445b2310957abe739663af630cc085fc58539691a4319bc4e76489bb69c"
+    },
+    "Bun Get the absolute path of the current file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-import-meta-path/SKILL.md",
+      "computedHash": "d1418872fd66b866336a25f2cfc938d9b0218c096fe6dd33aecc10157d7d9701"
+    },
+    "Bun Get the absolute path to the current entrypoint": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-main/SKILL.md",
+      "computedHash": "4b80850f287e578dc06f074be2a838ad5bf5c3de4a8412f6ad99d5a1840e6c0b"
+    },
+    "Bun Get the current Bun version": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-version/SKILL.md",
+      "computedHash": "213e9549a371043e04663a24bd4b99897ea0b192494abc183d44ebb250738b87"
+    },
+    "Bun Get the directory of the current file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-import-meta-dir/SKILL.md",
+      "computedHash": "b7d4264230214c4505d1cab8f0843be5593f43e459433a011422a1e34bf87402"
+    },
+    "Bun Get the file name of the current file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-import-meta-file/SKILL.md",
+      "computedHash": "5ec7cb65da32be457e5de503dc21dae4549dba13caa390f8a4bdb40496154186"
+    },
+    "Bun Get the path to an executable bin file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-which-path-to-executable-bin/SKILL.md",
+      "computedHash": "00b09aec02246c4624af1eac9736bd1c5c4ad67718c9a62187ee0ca24223a4ed"
+    },
+    "Bun Get the process uptime in nanoseconds": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-process-nanoseconds/SKILL.md",
+      "computedHash": "f16d4d5ada7bcdbe2a1a6dff6ff02b4742b495d98d590ce1f2ac295dc9456261"
+    },
+    "Bun Glob": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-glob/SKILL.md",
+      "computedHash": "9531e9d15df303b9603a579180e225e1584aa6677afdf41d09660a03ab3a8b09"
+    },
+    "Bun Global cache": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-global-cache/SKILL.md",
+      "computedHash": "476df937520300197413901f8a7b17ec28d098a0b324c84e65875f84cbb4dc44"
+    },
+    "Bun Globals": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-globals/SKILL.md",
+      "computedHash": "009ab4c384d5a24ae91c1d26803969b73625996f59ac28604e6c6514f0302624"
+    },
+    "Bun Guides": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-index/SKILL.md",
+      "computedHash": "d7452b741183344a4a945adc45360ec8bfa1de3f37b39a4de6930b15a3eee276"
+    },
+    "Bun HTML & static sites": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-html-static/SKILL.md",
+      "computedHash": "c0e3950b2eaf6ec132c213294c4accc8c5284d92c8343c42c5798201116eafd5"
+    },
+    "Bun HTMLRewriter": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-html-rewriter/SKILL.md",
+      "computedHash": "ac78c608cea02e9c0e36f43595b923306edf51938b2f5ee2d58f1531a9af28f7"
+    },
+    "Bun Hash a password": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-hash-a-password/SKILL.md",
+      "computedHash": "5b3f5681bc04a1f8fb3bb963b08fd28e6297fde60f6d06159a7c19fc2ae14cb3"
+    },
+    "Bun Hashing": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-hashing/SKILL.md",
+      "computedHash": "0c740d2eff29be94e1c0c233570289fa025922e2ecbd208287fefdcd192d50f9"
+    },
+    "Bun Hot reload an HTTP server": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-hot/SKILL.md",
+      "computedHash": "aed3fdd21944a1bc2bf9d3f41cb2cc4692d1f94ec8bada514cfb0fafc829475e"
+    },
+    "Bun Hot reloading": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-hot-reloading/SKILL.md",
+      "computedHash": "63d2821f8ba952c196b1c82736f83564dce85c654fb149f82eaf3213d65ad165"
+    },
+    "Bun Import a HTML file as text": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-import-html/SKILL.md",
+      "computedHash": "d34c6f822eeb0f4e271c28fd4722afe38bfbedcdc58450ceaa48ad015a1665e8"
+    },
+    "Bun Import a JSON file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-import-json/SKILL.md",
+      "computedHash": "51980afdfffd447989ff39844c0a1279c15a5fb9a403bb6319fd0bb686e734cf"
+    },
+    "Bun Import a JSON5 file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-import-json5/SKILL.md",
+      "computedHash": "e83bb44cd7c7b239549663221e2a6d020c6ab4e08aba911b2071992cacf358d7"
+    },
+    "Bun Import a TOML file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-import-toml/SKILL.md",
+      "computedHash": "bdc71f298241d84fa6b7cfbf3fe9d5bcb675584ef496e2cc020c943e454a6cfb"
+    },
+    "Bun Import a YAML file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-import-yaml/SKILL.md",
+      "computedHash": "632ebb01fcb4fb9e39a2ce9dc8a9dac6fd970507ad22ae3cb0f9f59ee130e2fd"
+    },
+    "Bun Inspect memory usage using V8 heap snapshots": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-heap-snapshot/SKILL.md",
+      "computedHash": "74cf655be5c00f11e52bcbae25d1d39a680db7fb1270a1e506acee21c760d758"
+    },
+    "Bun Install TypeScript declarations for Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-typescript/SKILL.md",
+      "computedHash": "e71b393f83b6042b7af11d02997e366c07ae9fcad476d3114047ecfffac5ede9"
+    },
+    "Bun Install a package under a different name": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-npm-alias/SKILL.md",
+      "computedHash": "9f5e8e8a08be4edfc6378ba63cccd5ffa8b0f7b8a7fc5471996a0f1fd3fa138c"
+    },
+    "Bun Install and run Bun in GitHub Actions": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-cicd/SKILL.md",
+      "computedHash": "0cc4773705a07dd512bc256b7ef3f3ca9a5a9b12062a09c7eba27a0db94cab2f"
+    },
+    "Bun Install dependencies with Bun in GitHub Actions": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-cicd/SKILL.md",
+      "computedHash": "9dbbf707ecc290950a4ceafc14871e75b59769dffe42715791e487f5a595f395"
+    },
+    "Bun Installation": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-installation/SKILL.md",
+      "computedHash": "f5609c085fa6e5928187711e69716b2a57f50154adab8a154ecf4045bd594c87"
+    },
+    "Bun Isolated installs": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-isolated-installs/SKILL.md",
+      "computedHash": "a9ccceed4e3599429aa9e8ef221085ff328db43381a3222ba33407fa679f7c7c"
+    },
+    "Bun JSON5": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-json5/SKILL.md",
+      "computedHash": "44b33bcd0959c8c706c66a66d1fcb5324e730bbc0f7739ab4608b584904543a0"
+    },
+    "Bun JSONL": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-jsonl/SKILL.md",
+      "computedHash": "9f6376c3e8e82d3db0dc9d147c2a4da58643e59bc09133a47f8a28b0020569be"
+    },
+    "Bun JSX": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-jsx/SKILL.md",
+      "computedHash": "7b70aeabc59e566dae3658ff2d197ce58f70dbbf8bdd466212fb1b160335f2f0"
+    },
+    "Bun License": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-project-license/SKILL.md",
+      "computedHash": "ad13e7e4a7a4c7f64f7f2d268f5526ddfb3fa64d1e01ef16549ae8c6eade8ec0"
+    },
+    "Bun Lifecycle hooks": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-lifecycle/SKILL.md",
+      "computedHash": "39db31978e2ad8a8be68c391b42219c9b7cd6b7e61d931e3eda6f1fdc9001a5a"
+    },
+    "Bun Lifecycle scripts": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-lifecycle/SKILL.md",
+      "computedHash": "c58b86d5095557e20025169fb9395ff622cfd11ea73b4e07357f049959223988"
+    },
+    "Bun Listen for CTRL+C": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-process-ctrl-c/SKILL.md",
+      "computedHash": "552f3c264ae453a8872d1ed7b43107e532aba58d4a33c4cae9b6eef63831174f"
+    },
+    "Bun Listen to OS signals": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-process-os-signals/SKILL.md",
+      "computedHash": "42f20847f76bd51aa6290e983f0d992c433cd1d47a56fe6aeec8d07f922e18e1"
+    },
+    "Bun Loaders": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-loaders/SKILL.md",
+      "computedHash": "c4ab0d13140e7e74cb01af13ca7632338980ee0c1d4eb0586c6d983b43911f5d"
+    },
+    "Bun Lockfile": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-lockfile/SKILL.md",
+      "computedHash": "1f36f1d2e370d97925c0de5bdca9375004d5218138e64f470e77a90c4c24cb69"
+    },
+    "Bun Macros": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-macros/SKILL.md",
+      "computedHash": "b3aec6d8e0334b1d6c3883acdd8526a3c52f8e000183247c490ff402dd6190db"
+    },
+    "Bun Mark a test as a \"todo\" with the Bun test runner": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-todo-tests/SKILL.md",
+      "computedHash": "8ce7fb77d24f22e31019b2bd8f1baa96ba9d30bc70944d78196484794af36f3b"
+    },
+    "Bun Markdown": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-markdown/SKILL.md",
+      "computedHash": "84b4f79da296ebb3d31ecc09bc7a78ca41f2750df2c4dccab7180d6f74bcaed9"
+    },
+    "Bun Metrics": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-http-metrics/SKILL.md",
+      "computedHash": "c1907d5cb2a40f51a882142d26856f003eb717388d1a97a35fa4da975c7b19ee"
+    },
+    "Bun Migrate from Jest to Bun's test runner": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-migrate-from-jest/SKILL.md",
+      "computedHash": "d788f1b329bfb5830103a0556a1daf5ecc0aa0ee089d4ed9f68306e412caee76"
+    },
+    "Bun Migrate from npm install to bun install": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-from-npm-install-to-bun-install/SKILL.md",
+      "computedHash": "c534455bf0119e6b4d3f8cac3eab912126d9efac36591e0af9d10f096f9cb8d5"
+    },
+    "Bun Minifier": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-minifier/SKILL.md",
+      "computedHash": "2298685edfa8a8b19a37b01e832c6f00a17b19f3885058c4cc2bae6e0ceedd0a"
+    },
+    "Bun Mock functions in `bun test`": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-mock-functions/SKILL.md",
+      "computedHash": "c3e980e8c6eb3a979be996a020b1a147bc1e819f282c775f034399dca19ce219"
+    },
+    "Bun Mocks": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-mocks/SKILL.md",
+      "computedHash": "43a8cb309139fe3d8fd667ae257ec6c6cb5c0a1ff21898f2026960a67e7ff6f3"
+    },
+    "Bun Module Resolution": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-module-resolution/SKILL.md",
+      "computedHash": "a8bde59e8b60a551b400aba7a38931be999fc7bfe7ee2b92da896ca15bf88eff"
+    },
+    "Bun Node-API": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-node-api/SKILL.md",
+      "computedHash": "6a409c904b47c6e12018257a3ff18c7fdefe4dd3060727272a6233bf4c8d84b0"
+    },
+    "Bun Node.js Compatibility": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-nodejs-compat/SKILL.md",
+      "computedHash": "c88e519254daf621b757b4fb5b556b7ce5b7c3a0ed52fca86903677c4d6177c4"
+    },
+    "Bun Override the default npm registry for bun install": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-custom-registry/SKILL.md",
+      "computedHash": "8584b8584025e6a743a915dec233e7d71cb9de13994ae205ed67b22c4b7ed97e"
+    },
+    "Bun Overrides and resolutions": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-overrides/SKILL.md",
+      "computedHash": "a531705d360892534b5e520e0da1af3332493cb41bf4cc0f5fe5cbbd1088653d"
+    },
+    "Bun Parse command-line arguments": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-process-argv/SKILL.md",
+      "computedHash": "83289d1e802d5839152e05445def44fa2cea5055f64cf6cde9438f30f41ac065"
+    },
+    "Bun Plugins": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-plugins/SKILL.md",
+      "computedHash": "8905500131d13483a2517163470d39e6183be953510177cc6a5038cbc1dc8224"
+    },
+    "Bun Proxy HTTP requests using fetch()": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-proxy/SKILL.md",
+      "computedHash": "440959cd2aff30a1cd1897a1ffd0f4c5b9598aa75a5164e8cd4ae7d05abf2410"
+    },
+    "Bun Quickstart": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-quickstart/SKILL.md",
+      "computedHash": "195da59a0c5bc2c26b6ef9080ea4401491344cef1b1a90770846cee1cd448b49"
+    },
+    "Bun Re-map import paths": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-tsconfig-paths/SKILL.md",
+      "computedHash": "1a7a85226b636676bdd9ed7c5470d9756761b8ff0b1e15101b078c7c75cb5de9"
+    },
+    "Bun Re-run tests multiple times with the Bun test runner": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-rerun-each/SKILL.md",
+      "computedHash": "256b89e853e822a35100d0f3167837cf8964122a7e3d944aa9325ef84dbf1882"
+    },
+    "Bun Read a JSON file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-read-file-json/SKILL.md",
+      "computedHash": "ee20a69873aec32c6d3e18e0c707a13097bf30fb572eabd4baf58d1a6cdcef30"
+    },
+    "Bun Read a file as a ReadableStream": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-read-file-stream/SKILL.md",
+      "computedHash": "4ea3151e78a5422480422cafde5183b7ec43b5b2c982392799ceb6961f96dae9"
+    },
+    "Bun Read a file as a string": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-read-file-string/SKILL.md",
+      "computedHash": "fce8269b0348bb5b17bd782ccdc66a5f417a0b5b36d8d24b54d088940a643a84"
+    },
+    "Bun Read a file to a Buffer": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-read-file-buffer/SKILL.md",
+      "computedHash": "2a35c22dc6fbd67893eddc8a7164042726279e6802df19f63eaa3652ff72f423"
+    },
+    "Bun Read a file to a Uint8Array": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-read-file-uint8array/SKILL.md",
+      "computedHash": "f07e21735039444f04099cf87f8dbb608cfcad38bad9a93121572bbf65fc4641"
+    },
+    "Bun Read a file to an ArrayBuffer": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-read-file-arraybuffer/SKILL.md",
+      "computedHash": "fe3b7199bf4e855a825c4a443be443e845b6a866fe3fa4e46b1a1b5f2135de17"
+    },
+    "Bun Read and write data to MongoDB using Mongoose and Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-mongoose/SKILL.md",
+      "computedHash": "6b195578981a1f3d21ae078bb05197f5735d3032db5fbfbd1ba91d8da8753068"
+    },
+    "Bun Read environment variables": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-read-env/SKILL.md",
+      "computedHash": "f67aba7e15d3612d7dbbd29138f50611b74a6d8b3d8b613ef738d7bbcc37d31b"
+    },
+    "Bun Read from stdin": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-process-stdin/SKILL.md",
+      "computedHash": "f0428107fdbd2f67d467860ec3e4c67f3a277748eef6177ee8321f6e2284990a"
+    },
+    "Bun Read stderr from a child process": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-process-spawn-stderr/SKILL.md",
+      "computedHash": "cb93eb1325e26fba6de8d7a095068c60a21e5064a5c0135832b3fe961780c5f7"
+    },
+    "Bun Read stdout from a child process": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-process-spawn-stdout/SKILL.md",
+      "computedHash": "be641562827f98efd2b9288e89c48524c100ef6c533c945b34cd2a4966f77a8f"
+    },
+    "Bun Redis": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-redis/SKILL.md",
+      "computedHash": "b417dd5c94bbdb63cf5cf63a63146fe24f0f45ddd1a349b9ebe351733d855be0"
+    },
+    "Bun Roadmap": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-project-roadmap/SKILL.md",
+      "computedHash": "b72f28d045f2c438ba9d7cd1b699037d37bc1f55d672f48b89fe9e95141ae36e"
+    },
+    "Bun Routing": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-http-routing/SKILL.md",
+      "computedHash": "4887b74c24beacc55de7d0e6fabe3258a508516e1314ba112f4ce60a3b9628e1"
+    },
+    "Bun Run Bun as a daemon with PM2": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-pm2/SKILL.md",
+      "computedHash": "e193eb70639693ddadf919103e3eb922d02fc82c10cb9c42d224e1a2c3153e4f"
+    },
+    "Bun Run Bun as a daemon with systemd": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-systemd/SKILL.md",
+      "computedHash": "6630551c52adac8eae1ac95fe9ffe4fa96b9bcaba5593d063e7ce96eb0d679b3"
+    },
+    "Bun Run a Shell Command": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-shell/SKILL.md",
+      "computedHash": "0ccb5ff4dcab4a3950c5d09f9cd6ad759101d4dff97171e7010d01cc5cd4f4a3"
+    },
+    "Bun Run tests in watch mode with Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-watch-mode/SKILL.md",
+      "computedHash": "9ee688da35a22df5e617a43d626d8489a79e52e155ac4fe23e77cfb288545839"
+    },
+    "Bun Run your tests with the Bun test runner": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-run-tests/SKILL.md",
+      "computedHash": "b8a771ea35b61b8ff7363503da5817a7c622ca77a2923a307c0da78ea150234f"
+    },
+    "Bun Runtime behavior": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-runtime-behavior/SKILL.md",
+      "computedHash": "465b0e3e15d8e399ad150b7d6f55e3050c47e104e4ba20ff95e8dfee6a55f7a6"
+    },
+    "Bun S3": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-s3/SKILL.md",
+      "computedHash": "dc7184a97b1c4fbb601b7192204f9ee49f1da0a933e3c990c122ba3a07cafabb"
+    },
+    "Bun SQL": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-sql/SKILL.md",
+      "computedHash": "6ff932a3ce78f78ee6810022113f2ad69a0aca306ad9351cad1a6ec6dffb3730"
+    },
+    "Bun SQLite": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-sqlite/SKILL.md",
+      "computedHash": "436f6c5c3b98c39caace2dd5198d1c55ee87c461db374b8a9ad54089300f4a82"
+    },
+    "Bun Scopes and registries": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-scopes-registries/SKILL.md",
+      "computedHash": "37cdc2be38b708004b6ca7a3f1166071ff475a49e3b0afb0c901e0a50dd4e507"
+    },
+    "Bun Secrets": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-secrets/SKILL.md",
+      "computedHash": "305213b4c9b45e1029f9cc6cecf85d876e9e476d3042e3f5a94b9e555e194dff"
+    },
+    "Bun Security Scanner API": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-security-scanner-api/SKILL.md",
+      "computedHash": "b6537629cfeb9ffcc95c83f8fcfecf4f9bbf65a3d46be078aa827f7698039c78"
+    },
+    "Bun Selectively run tests concurrently with glob patterns": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-concurrent-test-glob/SKILL.md",
+      "computedHash": "d2402733c5d0fb68e5a8bc2d557fe03012cf878df7c2fc7fdb7874598045a4ee"
+    },
+    "Bun Semver": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-semver/SKILL.md",
+      "computedHash": "e1e42cf2a5dbb98d8a38b5db58c2c5139e12bf5262a011b9240fabbafde64e0d"
+    },
+    "Bun Send an HTTP request using fetch": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-fetch/SKILL.md",
+      "computedHash": "4d670ad3309b49b8e7a99195e71cf13025262d785f560c137b6a3768f8aed72b"
+    },
+    "Bun Server": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-http-server/SKILL.md",
+      "computedHash": "9c83b8dd7066e9b10b663adb8382a19665f3687ef8ed7eb1d0a154477320c005"
+    },
+    "Bun Server-side render (SSR) a React component": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-ssr-react/SKILL.md",
+      "computedHash": "2eebde4ad213a17eb88c537504df0eb2e1b09773fd7e05ca1efa1a924f4073e4"
+    },
+    "Bun Set a code coverage threshold with the Bun test runner": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-coverage-threshold/SKILL.md",
+      "computedHash": "04a7753d1c02ebe7ce899699c7cd15034a97f33fe042b85c62fded631ebedd97"
+    },
+    "Bun Set a per-test timeout with the Bun test runner": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-timeout/SKILL.md",
+      "computedHash": "48d9cb2d646935be1bbf29318462e82073884deb46f1d14bc5042a9040b525f7"
+    },
+    "Bun Set a time zone in Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-timezone/SKILL.md",
+      "computedHash": "e640e7541e44a82c424acb9b61325ae09e45e1dbe19920b7c3ae5e594b071055"
+    },
+    "Bun Set environment variables": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-runtime-set-env/SKILL.md",
+      "computedHash": "230beb333b2d7dc7c8bb89cc1ba3fd7f360e9ef03e3fcf53130b3917edbdfa27"
+    },
+    "Bun Set per-socket contextual data on a WebSocket": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-websocket-context/SKILL.md",
+      "computedHash": "d4f5b8b8e5eb3f204f4068d13cd029b6ec2e4294f414d2487659deb38ba8b7c5"
+    },
+    "Bun Set the system time in Bun's test runner": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-mock-clock/SKILL.md",
+      "computedHash": "25f1de4dcf85ed54645437c67ad621476ce3411580e06791879db80fd7206140"
+    },
+    "Bun Shell": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-shell/SKILL.md",
+      "computedHash": "a6da9b34e8a40411b3d9cead876507d0ede18afcb6064e9f5e18f3887814449f"
+    },
+    "Bun Single-file executable": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-executables/SKILL.md",
+      "computedHash": "2080fa6ec714bed350fd5c5ac8d2b4129471868ee9e157f64420ea1bdcd07643"
+    },
+    "Bun Skip tests with the Bun test runner": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-skip-tests/SKILL.md",
+      "computedHash": "2fa193abf83fae689b40831f36be8a440764edc0d1559fefc3644727aa58eca5"
+    },
+    "Bun Sleep for a fixed number of milliseconds": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-sleep/SKILL.md",
+      "computedHash": "981cfd0e14d26c7204d5a37e8ce3f5fe75bfa116af3cf43f9f1022a787a234e5"
+    },
+    "Bun Snapshots": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-snapshots/SKILL.md",
+      "computedHash": "0bab5def8810efbf7d91e4d8ff45adb4a0e232335e71649cf8d6722f01fc7506"
+    },
+    "Bun Spawn": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-child-process/SKILL.md",
+      "computedHash": "c66d1871f3cbff3995a357bbd259ec615b554134ca945c577081e79cf72f4278"
+    },
+    "Bun Spawn a child process": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-process-spawn/SKILL.md",
+      "computedHash": "9fad75cbfbe197e6c2dcce4cc57db84c77aa16c753c997cbca22caf8a776174e"
+    },
+    "Bun Spawn a child process and communicate using IPC": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-process-ipc/SKILL.md",
+      "computedHash": "d2679fbcbc8448e27817bfe62159e6fbb5446f2a3414ac8d870b97512d83edc4"
+    },
+    "Bun Spy on methods in `bun test`": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-spy-on/SKILL.md",
+      "computedHash": "c6434425023985bc5b37697e6481f08b8c31a5212a61edf0c9be2c3571cea2c8"
+    },
+    "Bun Standalone HTML": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-standalone-html/SKILL.md",
+      "computedHash": "003db1e54602310ceb8d5ea77c235258fbe6d3f8d174fd837d60acb5940df36e"
+    },
+    "Bun Start a cluster of HTTP servers": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-cluster/SKILL.md",
+      "computedHash": "b6fd4a81e86e52967f4a400d7c48d6df452eea8294c35116e406ae3a79ed379f"
+    },
+    "Bun Stream a file as an HTTP Response": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-stream-file/SKILL.md",
+      "computedHash": "baa56834e234c76c1376ba76e26d3c2f34ee13863f607c1012e484bf3b084c81"
+    },
+    "Bun Streaming HTTP Server with Async Iterators": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-stream-iterator/SKILL.md",
+      "computedHash": "5b8f07d14ca450517e523f0e5a116d69f37776d3a7e2230e570e003824a3efe3"
+    },
+    "Bun Streaming HTTP Server with Node.js Streams": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-stream-node-streams-in-bun/SKILL.md",
+      "computedHash": "5977bea889a8457fbb28e299b8572dd5576534e8ca1aad38a31758a8fa556466"
+    },
+    "Bun Streams": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-streams/SKILL.md",
+      "computedHash": "4621785437d6b9ca41a90b24067dc4f9f62d3e4e9f36730c77747910c60934d2"
+    },
+    "Bun TCP": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-networking-tcp/SKILL.md",
+      "computedHash": "36c98cd1fae39ba953bbd6c8e0eee265c20fb39de2f3c07758f990a85cf69ccf"
+    },
+    "Bun TLS": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-http-tls/SKILL.md",
+      "computedHash": "709451ea3332a0cbfdda6ae897cac3bcb53ef8e467b6b5f3d5b063723b399ae2"
+    },
+    "Bun Test Reporters": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-reporters/SKILL.md",
+      "computedHash": "fe71ca95117103907762a718ab0251eb800f7ce085f920935490114ad20b5259"
+    },
+    "Bun Test configuration": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-configuration/SKILL.md",
+      "computedHash": "cf96c1921a6e3d328691ed7d31e0b29f40070f8adfc0ff4296925fdd409b2059"
+    },
+    "Bun Test runner": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-index/SKILL.md",
+      "computedHash": "71ca0ae6b4fb220cb61d3736c10af30a71da436e38fc4bbbd258e4573cc0f8a0"
+    },
+    "Bun Transpiler": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-transpiler/SKILL.md",
+      "computedHash": "fa5881d1e5e7086efbe5dc396a25369671e40933b4acc27ac560738ae0625bbf"
+    },
+    "Bun TypeScript": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-typescript/SKILL.md",
+      "computedHash": "ce79d5ca42c5e51552d223ca4de7fd915105b748a1162c5cec6b440a9681d18f"
+    },
+    "Bun UDP": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-networking-udp/SKILL.md",
+      "computedHash": "dd5a86c0623a9470b7748a3d674be46b13fcff2038cc745972e74e1907e0cd81"
+    },
+    "Bun Update snapshots in `bun test`": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-update-snapshots/SKILL.md",
+      "computedHash": "0aef37dc6c976eb571fb66339c88cfedbd6f8b2a88d27c4dba6e404f00b429f8"
+    },
+    "Bun Upgrade Bun to the latest version": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-util-upgrade/SKILL.md",
+      "computedHash": "3e19440f095292ba5c74ab55f5121672fb768de0803748a528a09c027f346762"
+    },
+    "Bun Upload files via HTTP using FormData": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-file-uploads/SKILL.md",
+      "computedHash": "b8df9d21678257708a527dd44159f1a57d937215ea808b213764a2e973c700aa"
+    },
+    "Bun Use Drizzle ORM with Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-drizzle/SKILL.md",
+      "computedHash": "8921d08e716b4b42556623b714c3f78007d6a2a7666dedb962bb1bc78e7b181c"
+    },
+    "Bun Use Gel with Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-gel/SKILL.md",
+      "computedHash": "f4f081b46ea7bb7c979de4cf24a4a50aaf22d84fab5f4cba0671e06dd04d580d"
+    },
+    "Bun Use Neon Postgres through Drizzle ORM": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-neon-drizzle/SKILL.md",
+      "computedHash": "1c843c7709f45f128035cb243930aef9a1a4eb9254c0fcedcc89a0122195ca61"
+    },
+    "Bun Use Neon's Serverless Postgres with Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-neon-serverless-postgres/SKILL.md",
+      "computedHash": "a7559c3bc56e6ca95ccc20f99f55005415f4470e90d4c45d5e75053894d21d27"
+    },
+    "Bun Use Prisma Postgres with Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-prisma-postgres/SKILL.md",
+      "computedHash": "c742cddd51be9567bc63bef13141b89e524a1f0df7dfbdd2666c745d39e45cb3"
+    },
+    "Bun Use Prisma with Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-prisma/SKILL.md",
+      "computedHash": "5384e4e57048295da89d22748d11a20f76ce9da6f8c83470fe772d3a848c1f59"
+    },
+    "Bun Use TanStack Start with Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-ecosystem-tanstack-start/SKILL.md",
+      "computedHash": "f8cf5fe408fd84dde2a1dfe222dd6a709e51003381eeba3b58c17ea3d5beb26f"
+    },
+    "Bun Use snapshot testing in `bun test`": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-snapshot/SKILL.md",
+      "computedHash": "8fbac34ff62f33ce919ba0cd54e188c812ba935597aa61d103ba4a2de2cfe270"
+    },
+    "Bun Using Testing Library with Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-testing-library/SKILL.md",
+      "computedHash": "62de64fcd3ed63039d40c0aae57f68aa1832aad56a65f39960316dada81e6d12"
+    },
+    "Bun Using bun install with Artifactory": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-jfrog-artifactory/SKILL.md",
+      "computedHash": "305448e770f1874ee54b47cf811a0010186bd64aadd8d475f66fafb04a627663"
+    },
+    "Bun Using bun install with an Azure Artifacts npm registry": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-install-azure-artifacts/SKILL.md",
+      "computedHash": "a8061f8605facf5c524409c68c8571847d1d63cb7fd0bee05bf9c2605ff255be"
+    },
+    "Bun Utils": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-utils/SKILL.md",
+      "computedHash": "b224b1933b18da51b39c1ac9405b5e0ef0132e8314776fb4344ac9027116f67c"
+    },
+    "Bun Watch Mode": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-watch-mode/SKILL.md",
+      "computedHash": "67d469642562dadbfdb514d181a72e92781fe34b918c2a08001320e8a27b2769"
+    },
+    "Bun Watch a directory for changes": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-read-file-watch/SKILL.md",
+      "computedHash": "598456fdc141938b6a836f520b8dcbed97a7721812c36f1dc9fd33a30cba485c"
+    },
+    "Bun Web APIs": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-web-apis/SKILL.md",
+      "computedHash": "571f31b2a9376c25c83578ff658a9fdbec810086059085df9c2ebeac7f91f108"
+    },
+    "Bun WebSockets": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-http-websockets/SKILL.md",
+      "computedHash": "90c6109bc3d43c61854e464d7f97bee6d0c7f536f740271cb77a86d26a323e48"
+    },
+    "Bun Welcome to Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-index/SKILL.md",
+      "computedHash": "66b8bb56091637cbea66ca32d81b72b62562e4fbcdae81de7385e2812cf4b128"
+    },
+    "Bun Workers": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-workers/SKILL.md",
+      "computedHash": "f63a73b925c54e309af094fd35819f1ca451573e3b0e201ddb4c3578df8412d4"
+    },
+    "Bun Workspaces": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-workspaces/SKILL.md",
+      "computedHash": "6138a9a98e6eb185014a80778d3de0c505a804ee2cbbaff1b05d57c04ca781fa"
+    },
+    "Bun Write a Blob to a file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-write-file-blob/SKILL.md",
+      "computedHash": "68bee03743feb3e076e3ae5839c478ccdde6e38fad8fb794823f293c2ad60945"
+    },
+    "Bun Write a ReadableStream to a file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-write-file-stream/SKILL.md",
+      "computedHash": "0ad17471b7a00859fd6182361506a199b8a337052d83b22360375e48008a027b"
+    },
+    "Bun Write a Response to a file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-write-file-response/SKILL.md",
+      "computedHash": "d8c603c402dbc6d2edfe61010ebc72a40a630cd48fc9690ce9da56f246fd4109"
+    },
+    "Bun Write a file incrementally": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-write-file-filesink/SKILL.md",
+      "computedHash": "32d9bcca88940334accce75ba525603bfc8d72c554487a07bc32552f50d419cd"
+    },
+    "Bun Write a file to stdout": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-write-file-cat/SKILL.md",
+      "computedHash": "77045864cc332a8b98d539bda52b75c8f40e371983ee05fd3af575176ab9c744"
+    },
+    "Bun Write a simple HTTP server": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-simple/SKILL.md",
+      "computedHash": "559a292dcf0838b2ffae92c3eee5858b6531aa19fde56ac2609504dff683b6d9"
+    },
+    "Bun Write a string to a file": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-write-file-basic/SKILL.md",
+      "computedHash": "afbd4a08173fe5db467c00befb74020edc40751b28feb298135bf58d84912a8e"
+    },
+    "Bun Write browser DOM tests with Bun and happy-dom": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-happy-dom/SKILL.md",
+      "computedHash": "dd2df6585f494b218f680e8ef5c536f4b4d3b5100933a56195dce7c38df73423"
+    },
+    "Bun Write to stdout": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-write-file-stdout/SKILL.md",
+      "computedHash": "a5a35178bb1dcdd3679d0d029e5e757cdad0f17c7dfe49c74071c31d9477cfe8"
+    },
+    "Bun Writing tests": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-test-writing-tests/SKILL.md",
+      "computedHash": "2ab9d56fb1e37e6293d00a006a3431db1433a330b53fbb83f91edb227e10a458"
+    },
+    "Bun YAML": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-yaml/SKILL.md",
+      "computedHash": "7a206a49e49a3009a41fa6e1b54fe9a23c53d6a2f9c520a21f9dab2aa72b846b"
+    },
+    "Bun bun --filter": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-filter/SKILL.md",
+      "computedHash": "cd02fedbb0f49ff5599da3467fb94b0d31df898b98c1df0d77e00e1d1856ffba"
+    },
+    "Bun bun add": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-add/SKILL.md",
+      "computedHash": "c158998fdd342e01d0eca5dad4bd36d2e4782017bba021b1772ea580ca237635"
+    },
+    "Bun bun audit": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-audit/SKILL.md",
+      "computedHash": "c6c36381fc2b1539c16933e47a3e7edd4edefc60866bf5d3d58b992c463ac09f"
+    },
+    "Bun bun create": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-templating-create/SKILL.md",
+      "computedHash": "3908b851dc1f8107db02e96ed91add73c670103250602eca93888c2be1499038"
+    },
+    "Bun bun info": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-info/SKILL.md",
+      "computedHash": "e3a3d9b0bf5a134ecfaf5c7541d21a4bbe1fc833b92b1cc4d2c7ba8a0cb0c1e3"
+    },
+    "Bun bun init": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-templating-init/SKILL.md",
+      "computedHash": "56180293ff1339b9b3b08a1bcacf9f175bb3d288397e4a2a171b0f7596532fac"
+    },
+    "Bun bun install": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-install/SKILL.md",
+      "computedHash": "2c9adda29bbbaf48e9fe5b0fd6156b45ee62b93ac4675476d6412d27629f65ab"
+    },
+    "Bun bun link": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-link/SKILL.md",
+      "computedHash": "f5f6c90363aa599294f4da35271c0de19dcbbd3bb4196dc10b4f83b5824bc5b0"
+    },
+    "Bun bun outdated": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-outdated/SKILL.md",
+      "computedHash": "95bfe0cdefe866e419a17e55668a5cda794868fe408d815ff8aaf7e76dc9411a"
+    },
+    "Bun bun patch": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-patch/SKILL.md",
+      "computedHash": "4c697335525e68535ae970ef01cd45cbed0bfa39a6c4a95219b98df5125e3a96"
+    },
+    "Bun bun pm": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-pm/SKILL.md",
+      "computedHash": "902d131691c20201baa5d51e266ad7966148af693b6d518a1e815b5def4036bd"
+    },
+    "Bun bun publish": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-publish/SKILL.md",
+      "computedHash": "dd6d337e2acc363c6fd9cf5506631e21fde7e08cd5945d140e3cb22dffc603cf"
+    },
+    "Bun bun remove": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-remove/SKILL.md",
+      "computedHash": "653d616c7cd6c85196fdafbd9c3eb7a2a732589f329b2e9f4d43bcb24db8df10"
+    },
+    "Bun bun update": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-update/SKILL.md",
+      "computedHash": "0c1c3d9b188cbbd6b3c8ed8b63baff6c05d10f500a86d0557b7eea58edd9adb7"
+    },
+    "Bun bun why": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-cli-why/SKILL.md",
+      "computedHash": "7bbf62486a5fde7abf3b9583f91786bc99f697558b8f8a90c68ae67c2236b3d6"
+    },
+    "Bun bunfig.toml": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-runtime-bunfig/SKILL.md",
+      "computedHash": "52e8fa7da14dcd72c4c8e3063a136023c9938d8612fe194c6ae65bfb6470518f"
+    },
+    "Bun bunx": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-pm-bunx/SKILL.md",
+      "computedHash": "27f6d1bd63070b8698ca7086274b46fd1ce495e8110d11fb2e12c638e27a8f49"
+    },
+    "Bun esbuild": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-bundler-esbuild/SKILL.md",
+      "computedHash": "badda849c10cc69d418297cedfcda1e7db478fcfe54e619ec3646a9f19f0f89d"
+    },
+    "Bun fetch with unix domain sockets in Bun": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-http-fetch-unix/SKILL.md",
+      "computedHash": "67526a91e279a9de7acccfeba56ef1d4c4fe2fa44e69db1709f1a3f4916323fc"
+    },
+    "Bun import, require, and test Svelte components with bun test": {
+      "source": "jarle/bun-skills",
+      "sourceType": "github",
+      "skillPath": "skills/bun-guides-test-svelte-test/SKILL.md",
+      "computedHash": "12278a68744405e3cd20e417115d23e3ba804bb7e98001ef3809dd9cc2aaef64"
+    },
+    "arktype": {
+      "source": "arktypeio/arktype",
+      "sourceType": "github",
+      "skillPath": "ark/type/skills/arktype/SKILL.md",
+      "computedHash": "2913ae0a3d6c121c01699c37bae55aecd24489a1b78c3ee76d1e5de845c266a8"
+    },
+    "elysiajs": {
+      "source": "elysiajs/skills",
+      "sourceType": "github",
+      "skillPath": "elysia/SKILL.md",
+      "computedHash": "55268e69a2c766ed67e56a0db57544f60cc52dba0c7f024a974baf965e525e1b"
+    }
+  }
+}

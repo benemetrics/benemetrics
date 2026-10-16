@@ -1,38 +1,54 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { IssuesTriage } from './pages/IssuesTriage';
-import { Performance } from './pages/Performance';
-import { IssueDetail } from './pages/IssueDetail';
-import { APIDemo } from './components/APIDemo';
-import { AdminProjects, ProjectDetail } from './pages/Admin';
-import { PageShell } from './components/PageShell';
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AppChrome } from "./app/AppChrome";
+import { Overview } from "./app/pages/Overview";
+import { Issues } from "./app/pages/Issues";
+import { EventDetail } from "./app/pages/EventDetail";
+import { Performance } from "./app/pages/Performance";
+import { Logs } from "./app/pages/Logs";
+import { Alerts } from "./app/pages/Alerts";
+import { NewAlert } from "./app/pages/NewAlert";
+import { AlertChannels } from "./app/pages/AlertChannels";
+import { ChannelConfig } from "./app/pages/ChannelConfig";
+import { Releases } from "./app/pages/Releases";
+import { NewRelease } from "./app/pages/NewRelease";
+import { ReleaseDetail } from "./app/pages/ReleaseDetail";
+import { FeatureFlags } from "./app/pages/FeatureFlags";
+import { NewFeatureFlag } from "./app/pages/NewFeatureFlag";
+import { Segments } from "./app/pages/Segments";
+import { SourceMaps } from "./app/pages/SourceMaps";
+import { Projects } from "./app/pages/Projects";
+import { Setup } from "./app/pages/Setup";
+import { ErrorBoundary } from "./app/ErrorBoundary";
 
 export function App() {
   return (
     <BrowserRouter basename="/ui">
-      <div className="min-h-screen bg-surface">
+      <ErrorBoundary>
         <Routes>
-          <Route path="/" element={<Navigate to="/issues" replace />} />
-          <Route path="/issues" element={<IssuesTriage />} />
-          <Route path="/performance" element={<Performance />} />
-          <Route path="/replays" element={<ReplaysPage />} />
-          <Route path="/issue/:id" element={<IssueDetail />} />
-          <Route path="/api-demo" element={<APIDemo />} />
-          <Route path="/admin" element={<AdminProjects />} />
-          <Route path="/admin/projects/:id" element={<ProjectDetail />} />
+          <Route element={<AppChrome />}>
+            <Route path="/" element={<Navigate to="/overview" replace />} />
+            <Route path="/overview" element={<Overview />} />
+            <Route path="/issues" element={<Issues />} />
+            <Route path="/issues/:eventId" element={<EventDetail />} />
+            <Route path="/performance" element={<Performance />} />
+            <Route path="/logs" element={<Logs />} />
+            <Route path="/alerts" element={<Alerts />} />
+            <Route path="/alerts/new" element={<NewAlert />} />
+            <Route path="/alerts/channels" element={<AlertChannels />} />
+            <Route path="/alerts/channels/:channelId" element={<ChannelConfig />} />
+            <Route path="/releases" element={<Releases />} />
+            <Route path="/releases/new" element={<NewRelease />} />
+            <Route path="/releases/:releaseId" element={<ReleaseDetail />} />
+            <Route path="/feature-flags" element={<FeatureFlags />} />
+            <Route path="/feature-flags/new" element={<NewFeatureFlag />} />
+            <Route path="/segments" element={<Segments />} />
+            <Route path="/source-maps" element={<SourceMaps />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/setup" element={<Setup />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/overview" replace />} />
         </Routes>
-      </div>
+      </ErrorBoundary>
     </BrowserRouter>
-  );
-}
-
-function ReplaysPage() {
-  return (
-    <PageShell narrow>
-      <div className="py-10 flex flex-col items-center gap-3 text-center">
-        <span className="material-symbols-outlined text-[36px] text-outline">slow_motion_video</span>
-        <h1 className="text-headline-md text-on-surface font-bold">Session Replays</h1>
-        <p className="text-on-surface-variant">Session replay viewer coming soon.</p>
-      </div>
-    </PageShell>
   );
 }

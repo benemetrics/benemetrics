@@ -1,0 +1,44 @@
+name: Upload Source Maps
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  sourcemaps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+
+      # Official Sentry tooling (sentry-cli) against the
+      # Releases API-compatible surface on this backend.
+      - name: Install sentry-cli
+        run: npm i -g @sentry/cli
+
+      - name: Create release
+        run: >-
+          sentry-cli releases -o "$SENTRY_ORG" -p "$SENTRY_PROJECT" new "${{ github.sha }}"
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_SOURCE_MAP_TOKEN }}
+          SENTRY_URL: ${{ vars.SENTRY_API_URL }}
+
+      - name: Upload source maps
+        run: >-
+          sentry-cli releases -o "$SENTRY_ORG" -p "$SENTRY_PROJECT" files "${{ github.sha }}"
+          upload-sourcemaps ./dist --url-prefix '~/dist'
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_SOURCE_MAP_TOKEN }}
+          SENTRY_URL: ${{ vars.SENTRY_API_URL }}
+
+      - name: Finalize release
+        run: >-
+          sentry-cli releases -o "$SENTRY_ORG" -p "$SENTRY_PROJECT" finalize "${{ github.sha }}"
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_SOURCE_MAP_TOKEN }}
+          SENTRY_URL: ${{ vars.SENTRY_API_URL }}

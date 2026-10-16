@@ -276,7 +276,7 @@ Feature flags support A/B testing through variant weights and statistical analys
 }
 ```
 
-### `GET /api/feature-flags/:id/experiment/results`
+### `GET /api/sentry/flags/:id/experiment/results`
 
 Get experiment results with statistical significance.
 
@@ -335,7 +335,7 @@ Get experiment results with statistical significance.
 
 ## User Dashboard
 
-### `GET /api/feature-flags/:id/users`
+### `GET /api/sentry/flags/:id/users`
 
 Get users assigned to each variant for a feature flag.
 
@@ -369,7 +369,7 @@ Get users assigned to each variant for a feature flag.
 }
 ```
 
-### `GET /api/feature-flags/:id/user/:userId`
+### `GET /api/sentry/flags/:id/user/:userId`
 
 Get feature flag evaluation for a specific user.
 
@@ -391,7 +391,7 @@ Get feature flag evaluation for a specific user.
 
 ## Evaluation API (Client-Side - DSN Authentication)
 
-### `POST /api/feature-flags/evaluate`
+### `POST /api/sentry/flags/evaluate`
 
 Evaluate feature flags for a user context (used by SDKs). Requires **Sentry DSN authentication** (sentry_key query param or Bearer token with DSN public key).
 
@@ -435,6 +435,44 @@ Evaluate feature flags for a user context (used by SDKs). Requires **Sentry DSN 
     }
   ],
   "evaluatedAt": "2024-01-15T15:45:00Z"
+}
+```
+
+---
+
+## OpenFlag Evaluation API (OpenFeature-compatible)
+
+### `POST /v1/flags/:key`
+
+Evaluate a single flag for a user, using the [OpenFeature Web Flag Evaluation API](https://openfeature.dev) ("OpenFlag") wire format — one flag per request, targeted by `targetingKey`.
+
+**Request:**
+```json
+{
+  "targetingKey": "user_123",
+  "context": {
+    "email": "john@company.com",
+    "subscription_tier": "premium"
+  }
+}
+```
+
+**Response (success):**
+```json
+{
+  "variant": "treatment",
+  "value": true,
+  "reason": "Matched segment: Beta Users"
+}
+```
+
+**Response (unknown flag):**
+```json
+{
+  "variant": "default",
+  "value": null,
+  "reason": "Feature flag not found",
+  "errorCode": "FLAG_NOT_FOUND"
 }
 ```
 

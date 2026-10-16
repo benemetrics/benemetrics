@@ -38,6 +38,25 @@ const COOLDOWNS = [
 ] as const;
 
 type Metric = (typeof METRICS)[number][0];
+type Trigger = "threshold" | "new_issue" | "regression";
+
+const TRIGGERS = [
+  ["threshold", "Metric threshold"],
+  ["new_issue", "New issue"],
+  ["regression", "Regression"],
+] as const;
+
+const TRIGGER_HINTS: Record<Trigger, string> = {
+  threshold: "Fires when a metric crosses the threshold within the window.",
+  new_issue: "Fires the first time an issue is seen for the app.",
+  regression: "Fires when a resolved issue receives a new event.",
+};
+
+const TRIGGER_LABELS: Record<Trigger, string> = {
+  threshold: "Metric",
+  new_issue: "New issue",
+  regression: "Regression",
+};
 
 function unwrapOne<T>(response: unknown): T | null {
   if (!response || typeof response !== "object") return null;
@@ -48,15 +67,19 @@ function unwrapOne<T>(response: unknown): T | null {
 
 export function NewAlert() {
   const navigate = useNavigate();
-  const { application } = useWorkspace();
+  const { application, applications } = useWorkspace();
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
+  const [trigger, setTrigger] = useState<Trigger>("threshold");
   const [metric, setMetric] = useState<Metric>("error_count");
   const [operator, setOperator] = useState<"gt" | "lt">("gt");
   const [threshold, setThreshold] = useState("50");
   const [windowValue, setWindowValue] = useState("5");
   const [windowUnit, setWindowUnit] = useState(60);
-  const [scope, setScope] = useState<"global" | "app">("global");
+  // App the rule is attached to; null keeps it global. Preselects the app
+  // currently picked in the topbar, but any app of the current project can
+  // be chosen without switching the workspace.
+  const [scopeAppId, setScopeAppId] = useState<string | null>(application?.id ?? null);
   const [cooldown, setCooldown] = useState(3600);
   const [channelIds, setChannelIds] = useState<string[]>([]);
   const [channels, setChannels] = useState<AlertChannelDto[]>([]);
@@ -68,8 +91,8 @@ export function NewAlert() {
       try {
         const [globalResult, appResult] = await Promise.all([
           api.api.admin.alerting.channels.get(),
-          application
-            ? api.api.admin.alerting.channels.get({ $query: { appId: application.id } })
+          scopeAppId
+            ? api.api.admin.alerting.channels.get({ $query: { appId: scopeAppId } })
             : Promise.resolve(null),
         ]);
         // Same override semantics as the backend resolver: an app-scoped
@@ -89,15 +112,14 @@ export function NewAlert() {
     return () => {
       cancelled = true;
     };
-  }, [application]);
+  }, [scopeAppId]);
 
   const seconds = Math.max(60, Math.round(Number(windowValue) * windowUnit));
   const thresholdNumber = Number(threshold);
   const conditionValid =
     name.trim().length > 0 &&
-    Number.isFinite(thresholdNumber) &&
-    Number.isFinite(seconds) &&
-    seconds > 0;
+    (trigger !== "threshold" ||
+      (Number.isFinite(thresholdNumber) && Number.isFinite(seconds) && seconds > 0));
   const metricLabel = METRICS.find(([value]) => value === metric)?.[1] ?? metric;
   const operatorLabel = operator === "gt" ? "is above" : "is below";
   const windowLabel =
@@ -106,8 +128,9 @@ export function NewAlert() {
       : windowUnit === 3600
         ? `${windowValue || 0} h`
         : `${windowValue || 0} d`;
-  const scopeLabel = scope === "app" && application ? application.name : "Global";
-  const severity = metric === "fatal_count" ? "critical" : "warning";
+  const scopedApp = applications.find((app) => app.id === scopeAppId) ?? null;
+  const scopeLabel = scopedApp ? scopedApp.name : "Global";
+  const severity = trigger === "threshold" && metric === "fatal_count" ? "critical" : "warning";
   const selectedChannel = channels.find((channel) => channelIds.includes(channel.id));
 
   const create = async () => {
@@ -115,16 +138,23 @@ export function NewAlert() {
     const ruleName = name.trim();
     setCreating(true);
     try {
-      const result = await api.api.admin.alerting.rules.post({
+      const shared = {
         name: ruleName,
-        metric,
-        operator,
-        threshold: thresholdNumber,
-        windowSeconds: seconds,
         cooldownSeconds: cooldown,
         channelIds,
-        ...(scope === "app" && application ? { appId: application.id } : {}),
-      });
+        ...(scopeAppId ? { appId: scopeAppId } : {}),
+      };
+      const result =
+        trigger === "threshold"
+          ? await api.api.admin.alerting.rules.post({
+              ...shared,
+              trigger,
+              metric,
+              operator,
+              threshold: thresholdNumber,
+              windowSeconds: seconds,
+            })
+          : await api.api.admin.alerting.rules.post({ ...shared, trigger });
       const created = unwrapOne<{ id: string }>(result);
       if (!created?.id) {
         notify(`Could not create "${ruleName}" — the name may already be taken in this scope.`);
@@ -175,7 +205,7 @@ export function NewAlert() {
       <ScreenIntro
         eyebrow="NEW ALERT"
         title="Create an alert"
-        subtitle="Turn a metric threshold into an actionable notification."
+        subtitle="Turn metric thresholds, new issues and regressions into actionable notifications."
       />
       <div className="builder-layout">
         <article className="panel builder-card">
@@ -197,63 +227,82 @@ export function NewAlert() {
                 />
               </div>
               <div className="form-field">
-                <span>Metric</span>
+                <span>Alert type</span>
                 <select
                   className="field-control"
-                  value={metric}
-                  onChange={(event) => setMetric(event.target.value as Metric)}
+                  value={trigger}
+                  onChange={(event) => setTrigger(event.target.value as Trigger)}
                 >
-                  {METRICS.map(([value, label]) => (
+                  {TRIGGERS.map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
                     </option>
                   ))}
                 </select>
+                <small>{TRIGGER_HINTS[trigger]}</small>
               </div>
-              <div className="form-field">
-                <span>Trigger when</span>
-                <select
-                  className="field-control"
-                  value={operator}
-                  onChange={(event) => setOperator(event.target.value as "gt" | "lt")}
-                >
-                  <option value="gt">Is above</option>
-                  <option value="lt">Is below</option>
-                </select>
-              </div>
-              <div className="form-field">
-                <span>Threshold</span>
-                <input
-                  className="field-control"
-                  type="number"
-                  min="0"
-                  value={threshold}
-                  onChange={(event) => setThreshold(event.target.value)}
-                />
-              </div>
-              <div className="form-field">
-                <span>Window</span>
-                <div className="form-inline">
-                  <input
-                    className="field-control"
-                    type="number"
-                    min="1"
-                    value={windowValue}
-                    onChange={(event) => setWindowValue(event.target.value)}
-                  />
-                  <select
-                    className="field-control"
-                    value={windowUnit}
-                    onChange={(event) => setWindowUnit(Number(event.target.value))}
-                  >
-                    {WINDOW_UNITS.map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              {trigger === "threshold" && (
+                <>
+                  <div className="form-field">
+                    <span>Metric</span>
+                    <select
+                      className="field-control"
+                      value={metric}
+                      onChange={(event) => setMetric(event.target.value as Metric)}
+                    >
+                      {METRICS.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <span>Trigger when</span>
+                    <select
+                      className="field-control"
+                      value={operator}
+                      onChange={(event) => setOperator(event.target.value as "gt" | "lt")}
+                    >
+                      <option value="gt">Is above</option>
+                      <option value="lt">Is below</option>
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <span>Threshold</span>
+                    <input
+                      className="field-control"
+                      type="number"
+                      min="0"
+                      value={threshold}
+                      onChange={(event) => setThreshold(event.target.value)}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <span>Window</span>
+                    <div className="form-inline">
+                      <input
+                        className="field-control"
+                        type="number"
+                        min="1"
+                        value={windowValue}
+                        onChange={(event) => setWindowValue(event.target.value)}
+                      />
+                      <select
+                        className="field-control"
+                        value={windowUnit}
+                        onChange={(event) => setWindowUnit(Number(event.target.value))}
+                      >
+                        {WINDOW_UNITS.map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -263,11 +312,17 @@ export function NewAlert() {
                 <span>Scope</span>
                 <select
                   className="field-control"
-                  value={scope}
-                  onChange={(event) => setScope(event.target.value as "global" | "app")}
+                  value={scopeAppId ?? "global"}
+                  onChange={(event) =>
+                    setScopeAppId(event.target.value === "global" ? null : event.target.value)
+                  }
                 >
                   <option value="global">Global (all apps)</option>
-                  {application && <option value="app">{application.name}</option>}
+                  {applications.map((app) => (
+                    <option key={app.id} value={app.id}>
+                      {app.name}
+                    </option>
+                  ))}
                 </select>
                 <small>App-scoped rules override a global rule with the same name.</small>
               </div>
@@ -284,7 +339,11 @@ export function NewAlert() {
                     </option>
                   ))}
                 </select>
-                <small>Minimum time between two notifications for this rule.</small>
+                <small>
+                  {trigger === "threshold"
+                    ? "Minimum time between two notifications for this rule."
+                    : "Minimum time between two notifications for the same issue."}
+                </small>
               </div>
               <div className="form-field full">
                 <span>Destinations</span>
@@ -327,8 +386,11 @@ export function NewAlert() {
               <div>
                 <strong>{name.trim() || "Untitled alert"}</strong>
                 <span>
-                  Fires when {metricLabel.toLowerCase()} {operatorLabel} {thresholdNumber || 0} over{" "}
-                  {windowLabel} in {scopeLabel.toLowerCase()} scope.
+                  {trigger === "threshold"
+                    ? `Fires when ${metricLabel.toLowerCase()} ${operatorLabel} ${thresholdNumber || 0} over ${windowLabel} in ${scopeLabel.toLowerCase()} scope.`
+                    : trigger === "new_issue"
+                      ? `Fires the first time an issue is seen in ${scopeLabel.toLowerCase()} scope.`
+                      : `Fires when a resolved issue sees a new event in ${scopeLabel.toLowerCase()} scope.`}
                 </span>
               </div>
               <div className="severity-pill">{severity}</div>
@@ -362,16 +424,27 @@ export function NewAlert() {
             </div>
             <div className="notification-title">Alert: {name.trim() || "Untitled alert"}</div>
             <div className="notification-copy">
-              {metricLabel} is {operatorLabel.replace("is ", "")} {thresholdNumber || 0} over the last{" "}
-              {seconds}s for {scope === "app" && application ? `app ${application.name}` : "global"}.
+              {trigger === "threshold"
+                ? `${metricLabel} is ${operatorLabel.replace("is ", "")} ${thresholdNumber || 0} over the last ${seconds}s for ${scopedApp ? `app ${scopedApp.name}` : "global"}.`
+                : trigger === "new_issue"
+                  ? `New issue in ${scopedApp ? `app ${scopedApp.name}` : "global"}: TypeError: Cannot read properties of undefined`
+                  : `Regression in ${scopedApp ? `app ${scopedApp.name}` : "global"}: TypeError: Cannot read properties of undefined`}
             </div>
             <div className="notification-stats">
-              <span>
-                <b>{thresholdNumber || 0}</b> threshold
-              </span>
-              <span>
-                <b>{windowLabel}</b> window
-              </span>
+              {trigger === "threshold" ? (
+                <>
+                  <span>
+                    <b>{thresholdNumber || 0}</b> threshold
+                  </span>
+                  <span>
+                    <b>{windowLabel}</b> window
+                  </span>
+                </>
+              ) : (
+                <span>
+                  <b>{TRIGGER_LABELS[trigger]}</b> trigger
+                </span>
+              )}
               <span>
                 <b>{scopeLabel}</b> scope
               </span>

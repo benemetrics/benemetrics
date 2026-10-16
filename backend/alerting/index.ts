@@ -4,9 +4,15 @@ import { appDAO } from "db/dao/project";
 import { alertChannelDAO } from "db/dao/alert-channels";
 import { alertRuleDAO } from "db/dao/alert-rules";
 import { alertIncidentDAO } from "db/dao/alert-incidents";
+import { badRequest } from "../errors";
 import { toChannel, toIncident, toRule } from "./serialize";
 import { resolveEffectiveAlertConfig } from "./resolver";
 import { buildTestNotification, deliverAlertToChannels } from "./notifiers";
+import type {
+  AlertMetric,
+  AlertOperator,
+  AlertTrigger,
+} from "../protocol/alerting";
 
 const channelType = "'email' | 'webhook' | 'slack' | 'rocketchat'";
 const optionalChannelType = "'email' | 'webhook' | 'slack' | 'rocketchat'?";
@@ -16,6 +22,8 @@ const optionalAlertMetric =
   "'event_count' | 'error_count' | 'fatal_count' | 'new_issue_count' | 'latency_p95' | 'latency_p99'?";
 const alertOperator = "'gt' | 'lt'";
 const optionalAlertOperator = "'gt' | 'lt'?";
+const issueAlertTrigger = "'new_issue' | 'regression'";
+const optionalAlertTrigger = "'threshold' | 'new_issue' | 'regression'?";
 
 export const alertingRoutes = new Elysia({ prefix: "alerting" })
   // ---- Channels ----------------------------------------------------------
@@ -122,22 +130,33 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
     async ({ body }) => {
       const appId = body.appId ?? null;
       if (appId) await appDAO.findByIdOrThrow(appId);
-      const created = await alertRuleDAO.create({
+      const base = {
         name: body.name,
-        metric: body.metric,
-        operator: body.operator,
-        threshold: body.threshold,
-        windowSeconds: body.windowSeconds,
+        trigger: body.trigger ?? "threshold",
         cooldownSeconds: body.cooldownSeconds ?? 3600,
         channelIds: JSON.stringify(body.channelIds ?? []),
-        measurement: body.measurement ?? null,
         appId,
-      });
+      };
+      const created = await alertRuleDAO.create(
+        "metric" in body
+          ? {
+              ...base,
+              metric: body.metric,
+              operator: body.operator,
+              threshold: body.threshold,
+              windowSeconds: body.windowSeconds,
+              measurement: body.measurement ?? null,
+            }
+          : base,
+      );
       return toRule(created);
     },
     {
+      // Threshold rules carry the metric breach fields; issue triggers
+      // are fired by issue-state transitions instead and reject them.
       body: arktype({
         name: "string",
+        trigger: "'threshold'?",
         metric: alertMetric,
         operator: alertOperator,
         threshold: "number",
@@ -146,7 +165,15 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
         channelIds: "string.uuid[]?",
         measurement: "string?",
         appId: "string.uuid?",
-      }),
+      }).or(
+        arktype({
+          name: "string",
+          trigger: issueAlertTrigger,
+          cooldownSeconds: "number.integer >= 0?",
+          channelIds: "string.uuid[]?",
+          appId: "string.uuid?",
+        }).onUndeclaredKey("reject"),
+      ),
     },
   )
   .get(
@@ -158,22 +185,75 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
   .patch(
     "/rules/:id",
     async ({ params: { id }, body }) => {
+      const current = await alertRuleDAO.findByIdOrThrow(id);
+      const nextTrigger = (body.trigger ?? current.trigger) as AlertTrigger;
+      const nextMetric =
+        body.metric !== undefined
+          ? body.metric
+          : (current.metric as AlertMetric | null);
+      const nextOperator =
+        body.operator !== undefined
+          ? body.operator
+          : (current.operator as AlertOperator | null);
+      const nextThreshold =
+        body.threshold !== undefined ? body.threshold : current.threshold;
+      const nextWindowSeconds =
+        body.windowSeconds !== undefined
+          ? body.windowSeconds
+          : current.windowSeconds;
+
+      if (nextTrigger === "threshold") {
+        if (
+          nextMetric === null ||
+          nextOperator === null ||
+          nextThreshold === null ||
+          nextWindowSeconds === null
+        ) {
+          throw badRequest(
+            "threshold rules require metric, operator, threshold and windowSeconds",
+          );
+        }
+      } else if (
+        body.metric !== undefined ||
+        body.operator !== undefined ||
+        body.threshold !== undefined ||
+        body.windowSeconds !== undefined
+      ) {
+        throw badRequest(
+          "issue triggers do not accept metric, operator, threshold or windowSeconds",
+        );
+      }
+
+      // Switching to an issue trigger clears the metric-breach fields,
+      // switching back requires them again.
+      const thresholdFields =
+        nextTrigger === "threshold"
+          ? {
+              metric: nextMetric,
+              operator: nextOperator,
+              threshold: nextThreshold,
+              windowSeconds: nextWindowSeconds,
+              ...(body.measurement !== undefined
+                ? { measurement: body.measurement }
+                : {}),
+            }
+          : {
+              metric: null,
+              operator: null,
+              threshold: null,
+              windowSeconds: null,
+              measurement: null,
+            };
+
       const updated = await alertRuleDAO.updateOrThrow(id, {
         ...(body.name !== undefined ? { name: body.name } : {}),
-        ...(body.metric !== undefined ? { metric: body.metric } : {}),
-        ...(body.operator !== undefined ? { operator: body.operator } : {}),
-        ...(body.threshold !== undefined ? { threshold: body.threshold } : {}),
-        ...(body.windowSeconds !== undefined
-          ? { windowSeconds: body.windowSeconds }
-          : {}),
+        ...(body.trigger !== undefined ? { trigger: body.trigger } : {}),
+        ...thresholdFields,
         ...(body.cooldownSeconds !== undefined
           ? { cooldownSeconds: body.cooldownSeconds }
           : {}),
         ...(body.channelIds !== undefined
           ? { channelIds: JSON.stringify(body.channelIds) }
-          : {}),
-        ...(body.measurement !== undefined
-          ? { measurement: body.measurement }
           : {}),
         ...(body.isEnabled !== undefined
           ? { isEnabled: body.isEnabled ? 1 : 0 }
@@ -185,6 +265,7 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
       params: arktype({ id: "string.uuid" }),
       body: arktype({
         name: "string?",
+        trigger: optionalAlertTrigger,
         metric: optionalAlertMetric,
         operator: optionalAlertOperator,
         threshold: "number?",

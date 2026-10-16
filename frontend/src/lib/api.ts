@@ -153,10 +153,11 @@ export interface AlertChannelDto {
 export interface AlertRuleDto {
   id: string;
   name: string;
-  metric: string;
-  operator: string;
-  threshold: number;
-  windowSeconds: number;
+  trigger: string;
+  metric: string | null;
+  operator: string | null;
+  threshold: number | null;
+  windowSeconds: number | null;
   cooldownSeconds: number;
   channelIds: string[];
   measurement: string | null;
@@ -171,9 +172,11 @@ export interface AlertIncidentDto {
   id: string;
   ruleId: string;
   appId: string | null;
-  metric: string;
-  value: number;
-  threshold: number;
+  trigger: string;
+  metric: string | null;
+  value: number | null;
+  threshold: number | null;
+  issueFingerprint: string | null;
   status: string;
   triggeredAt: string;
   resolvedAt: string | null;

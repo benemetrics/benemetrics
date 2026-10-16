@@ -1,3 +1,5 @@
+import type { IssueSummary } from "./issues";
+
 export type AlertChannelType = "email" | "webhook" | "slack" | "rocketchat";
 
 export type AlertMetric =
@@ -9,6 +11,11 @@ export type AlertMetric =
   | "latency_p99";
 
 export type AlertOperator = "gt" | "lt";
+
+// A rule fires on a windowed metric breach ("threshold") or on an
+// issue-state transition detected at ingestion ("new_issue" first
+// occurrence, "regression" reoccurrence of a resolved issue).
+export type AlertTrigger = "threshold" | "new_issue" | "regression";
 
 export type AlertSeverity = "info" | "warning" | "critical";
 
@@ -42,10 +49,12 @@ export interface AlertChannelCreateRequest {
 export interface AlertRule {
   id: string;
   name: string;
-  metric: AlertMetric;
-  operator: AlertOperator;
-  threshold: number;
-  windowSeconds: number;
+  trigger: AlertTrigger;
+  // Set on threshold rules only; null on issue triggers.
+  metric: AlertMetric | null;
+  operator: AlertOperator | null;
+  threshold: number | null;
+  windowSeconds: number | null;
   cooldownSeconds: number;
   channelIds: string[];
   // Measurement name for latency_* metrics (default "duration").
@@ -61,9 +70,13 @@ export interface AlertIncident {
   id: string;
   ruleId: string;
   appId: string | null;
-  metric: AlertMetric;
-  value: number;
-  threshold: number;
+  trigger: AlertTrigger;
+  // Set on threshold incidents; issue-trigger incidents carry the
+  // fingerprint instead.
+  metric: AlertMetric | null;
+  value: number | null;
+  threshold: number | null;
+  issueFingerprint: string | null;
   status: AlertIncidentStatus;
   triggeredAt: string;
   resolvedAt: string | null;
@@ -76,9 +89,12 @@ export interface AlertNotification {
   message: string;
   severity: AlertSeverity;
   ruleName: string;
-  metric: AlertMetric;
-  value: number;
-  threshold: number;
+  trigger: AlertTrigger;
+  metric: AlertMetric | null;
+  value: number | null;
+  threshold: number | null;
+  // Present on issue-trigger notifications.
+  issue?: IssueSummary;
   appId: string | null;
   occurredAt: string;
   link?: string;

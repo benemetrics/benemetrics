@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { appDAO, toAppResponse } from "db/dao/project";
 import { storedEventDAO } from "db/dao/stored-event";
+import { issueDAO } from "db/dao/issues";
 import { releaseDAO } from "db/dao/releases";
 import { sourceMapDAO } from "db/dao/source-maps";
 import { sourceMapTokenDAO } from "db/dao/source-map-tokens";
@@ -14,6 +15,7 @@ import { alertChannelDAO } from "db/dao/alert-channels";
 // rules/channels) are shared and stay in place.
 export async function deleteAppCascade(appId: string): Promise<void> {
   await storedEventDAO.deleteByApp(appId);
+  await issueDAO.deleteByApp(appId);
   await releaseDAO.deleteByApp(appId);
   await sourceMapDAO.deleteByApp(appId);
   await sourceMapTokenDAO.deleteByApp(appId);

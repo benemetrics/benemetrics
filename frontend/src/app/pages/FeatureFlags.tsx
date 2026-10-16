@@ -13,6 +13,7 @@ interface FeatureFlagDto {
   rolloutPercentage: number;
   status: string;
   variants: Array<{ key: string; value: unknown; weight: number }>;
+  segments: string[];
   experiment: {
     enabled?: boolean;
     status?: "draft" | "running" | "completed";
@@ -214,6 +215,11 @@ export function FeatureFlags() {
                 {flag.experiment?.enabled && (
                   <span className="flag-experiment">
                     Experiment · {flag.experiment.status ?? "draft"}
+                  </span>
+                )}
+                {flag.segments?.length > 0 && (
+                  <span className="flag-audience">
+                    Audience · {flag.segments.length} segment{flag.segments.length === 1 ? "" : "s"}
                   </span>
                 )}
               </span>

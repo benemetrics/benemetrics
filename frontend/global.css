@@ -620,6 +620,22 @@ textarea.field-control { height: auto; min-height: 74px; padding: 9px 11px; resi
 .flag-cell > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .flag-cell > span { overflow: hidden; color: var(--ink-faint); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .flag-cell > span.flag-experiment { color: var(--brand); font-size: 7.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.flag-cell > span.flag-audience { color: var(--ink-muted); font-size: 7.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+/* Unified flag creation: pick or build the audience segment(s) on the same screen. */
+.audience-controls { display: flex; flex-direction: column; gap: 12px; }
+.audience-list { display: grid; gap: 8px; }
+.segment-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; }
+.segment-option:hover { background: var(--surface-subtle); }
+.segment-option.selected { border-color: var(--brand); background: var(--brand-soft); }
+.segment-option-copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.segment-option-copy strong { font-size: 10px; }
+.segment-option-copy span { overflow: hidden; color: var(--ink-faint); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.segment-option-mark { display: grid; place-items: center; width: 18px; height: 18px; flex: none; border: 1px solid var(--border); border-radius: 50%; color: transparent; font-size: 10px; }
+.segment-option.selected .segment-option-mark { border-color: var(--brand); background: var(--brand); color: var(--surface); }
+.audience-actions { display: flex; align-items: center; gap: 12px; }
+.audience-count { color: var(--ink-faint); font-size: 8.5px; }
+.audience-empty { padding: 12px 14px; border: 1px dashed var(--border); border-radius: var(--radius-sm); color: var(--ink-faint); font-size: 9px; }
+.audience-builder { padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-subtle); }
 .effective-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; padding-bottom: 12px; }
 .effective-head { padding: 14px 17px 0; color: var(--ink-muted); font-size: 9px; font-weight: 600; }
 .list-screen.alerts .list-screen-head, .list-screen.alerts .list-screen-row { grid-template-columns: 1.2fr .6fr 1fr 214px; }

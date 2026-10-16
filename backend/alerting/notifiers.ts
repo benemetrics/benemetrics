@@ -5,8 +5,10 @@ import type {
   AlertNotification,
   AlertOperator,
   AlertSeverity,
+  AlertTrigger,
   DeliveryResult,
 } from "../protocol/alerting";
+import type { IssueSummary } from "../protocol/issues";
 
 export interface Notifier {
   readonly type: AlertChannelType;
@@ -117,18 +119,32 @@ export const rocketChatNotifier: Notifier = {
             color: severityColor(notification.severity),
             title: notification.title,
             text: notification.message,
-            fields: [
-              {
-                title: "Metric",
-                value: `${notification.metric} = ${notification.value}`,
-                short: true,
-              },
-              {
-                title: "Threshold",
-                value: String(notification.threshold),
-                short: true,
-              },
-            ],
+            fields:
+              notification.trigger === "threshold"
+                ? [
+                    {
+                      title: "Metric",
+                      value: `${notification.metric} = ${notification.value}`,
+                      short: true,
+                    },
+                    {
+                      title: "Threshold",
+                      value: String(notification.threshold),
+                      short: true,
+                    },
+                  ]
+                : [
+                    {
+                      title: "Issue",
+                      value: notification.issue?.fingerprint ?? "—",
+                      short: true,
+                    },
+                    {
+                      title: "Trigger",
+                      value: notification.trigger,
+                      short: true,
+                    },
+                  ],
           },
         ],
       }),
@@ -161,11 +177,18 @@ const notifiers: Record<AlertChannelType, Notifier> = {
 };
 
 function formatChatText(notification: AlertNotification): string {
-  return [
+  const lines = [
     `${severityEmoji(notification.severity)} *${notification.title}*`,
     notification.message,
-    `metric: ${notification.metric} = ${notification.value} (threshold ${notification.threshold})`,
-  ].join("\n");
+  ];
+  if (notification.trigger === "threshold") {
+    lines.push(
+      `metric: ${notification.metric} = ${notification.value} (threshold ${notification.threshold})`,
+    );
+  } else if (notification.issue) {
+    lines.push(`issue: ${notification.issue.fingerprint}`);
+  }
+  return lines.join("\n");
 }
 
 function severityForMetric(metric: AlertMetric): AlertSeverity {
@@ -180,6 +203,16 @@ export interface ThresholdRuleLike {
   windowSeconds: number;
 }
 
+// Shape shared by every rule kind (test sends and issue triggers).
+export interface AlertRuleLike {
+  name: string;
+  trigger: AlertTrigger;
+  metric: AlertMetric | null;
+  operator: AlertOperator | null;
+  threshold: number | null;
+  windowSeconds: number | null;
+}
+
 export function buildAlertNotification(
   rule: ThresholdRuleLike,
   value: number,
@@ -191,6 +224,7 @@ export function buildAlertNotification(
     message: `${rule.metric} is ${value} (threshold ${rule.operator} ${rule.threshold}) over the last ${rule.windowSeconds}s for app ${appId ?? "global"}.`,
     severity: severityForMetric(rule.metric),
     ruleName: rule.name,
+    trigger: "threshold",
     metric: rule.metric,
     value,
     threshold: rule.threshold,
@@ -199,17 +233,43 @@ export function buildAlertNotification(
   };
 }
 
-export function buildTestNotification(
-  rule: ThresholdRuleLike,
+export function buildIssueAlertNotification(
+  rule: { name: string },
+  trigger: "new_issue" | "regression",
+  issue: IssueSummary,
+  appId: string | null,
+  occurredAt: string,
 ): AlertNotification {
+  const scope = appId ? `app ${appId}` : "global";
+  return {
+    title: `Alert: ${rule.name}`,
+    message:
+      trigger === "new_issue"
+        ? `New issue in ${scope}: ${issue.title}`
+        : `Regression in ${scope}: ${issue.title}`,
+    severity: "warning",
+    ruleName: rule.name,
+    trigger,
+    metric: null,
+    value: null,
+    threshold: null,
+    issue,
+    appId,
+    occurredAt,
+  };
+}
+
+export function buildTestNotification(rule: AlertRuleLike): AlertNotification {
+  const isThreshold = rule.trigger === "threshold";
   return {
     title: `Test alert: ${rule.name}`,
     message: "This is a test notification for the alert rule.",
     severity: "info",
     ruleName: rule.name,
-    metric: rule.metric,
-    value: rule.threshold,
-    threshold: rule.threshold,
+    trigger: rule.trigger,
+    metric: isThreshold ? rule.metric : null,
+    value: isThreshold ? (rule.threshold ?? 0) : null,
+    threshold: isThreshold ? (rule.threshold ?? 0) : null,
     appId: null,
     occurredAt: new Date().toISOString(),
   };

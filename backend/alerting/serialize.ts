@@ -5,6 +5,7 @@ import type {
   AlertMetric,
   AlertOperator,
   AlertRule,
+  AlertTrigger,
 } from "../protocol/alerting";
 import type { AlertChannelRow } from "db/schema/alert-channels";
 import type { AlertRuleRow } from "db/schema/alert-rules";
@@ -27,8 +28,9 @@ export function toRule(row: AlertRuleRow): AlertRule {
   return {
     id: row.id,
     name: row.name,
-    metric: row.metric as AlertMetric,
-    operator: row.operator as AlertOperator,
+    trigger: row.trigger as AlertTrigger,
+    metric: row.metric as AlertMetric | null,
+    operator: row.operator as AlertOperator | null,
     threshold: row.threshold,
     windowSeconds: row.windowSeconds,
     cooldownSeconds: row.cooldownSeconds,
@@ -47,9 +49,11 @@ export function toIncident(row: AlertIncidentRow): AlertIncident {
     id: row.id,
     ruleId: row.ruleId,
     appId: row.appId ?? null,
-    metric: row.metric as AlertMetric,
+    trigger: row.trigger as AlertTrigger,
+    metric: row.metric as AlertMetric | null,
     value: row.value,
     threshold: row.threshold,
+    issueFingerprint: row.issueFingerprint ?? null,
     status: row.status as AlertIncident["status"],
     triggeredAt: row.triggeredAt,
     resolvedAt: row.resolvedAt ?? null,

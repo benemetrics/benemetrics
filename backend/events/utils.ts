@@ -166,6 +166,20 @@ export function extractEventItems(
   }
 }
 
+// Human-readable issue title: exception type + value, the message,
+// or the fingerprint as a last resort.
+export function issueTitle(payload: Record<string, unknown>): string {
+  const exception = payload.exception as
+    | { values?: Array<{ type?: string; value?: string }> }
+    | undefined;
+  const top = exception?.values?.[0];
+  if (top) return `${top.type ?? "Error"}: ${top.value ?? ""}`.trim();
+  if (typeof payload.message === "string" && payload.message.trim()) {
+    return payload.message.slice(0, 200);
+  }
+  return issueFingerprint(payload);
+}
+
 // Groups events the way Sentry groups issues: explicit
 // fingerprint first, then top exception frame, then message.
 export function issueFingerprint(

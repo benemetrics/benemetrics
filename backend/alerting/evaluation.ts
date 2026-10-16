@@ -9,10 +9,12 @@ import { alertRuleDAO } from "db/dao/alert-rules";
 import { alertIncidentDAO } from "db/dao/alert-incidents";
 import { appDAO } from "db/dao/project";
 import { issueFingerprint } from "../events/utils";
+import { trackIssuesForEvent, type TrackedIssue } from "../issues/tracking";
 import { resolveEffectiveAlertConfig } from "./resolver";
 import { toIncident } from "./serialize";
 import {
   buildAlertNotification,
+  buildIssueAlertNotification,
   deliverAlertToChannels,
 } from "./notifiers";
 import type { AlertIncident, AlertMetric } from "../protocol/alerting";
@@ -153,22 +155,27 @@ function percentile(values: number[], percent: number): number {
 
 async function evaluateRules(appId: string): Promise<AlertIncident[]> {
   const { rules, channels } = await resolveEffectiveAlertConfig(appId);
-  const enabled = rules.filter((rule) => rule.isEnabled);
+  // Only windowed threshold rules are swept; issue triggers fire exactly
+  // once from the ingestion path (see processIngestedEvent).
+  const enabled = rules.filter(
+    (rule) => rule.isEnabled && rule.trigger === "threshold",
+  );
   if (enabled.length === 0) return [];
 
   const incidents: AlertIncident[] = [];
   const events = parseAppEvents(await storedEventDAO.listByApp(appId));
   for (const rule of enabled) {
-    const value = computeMetric(
-      events,
-      rule.metric,
-      rule.windowSeconds,
-      rule.measurement,
-    );
-    const breached =
-      rule.operator === "gt"
-        ? value > rule.threshold
-        : value < rule.threshold;
+    const { metric, operator, threshold, windowSeconds } = rule;
+    if (
+      metric === null ||
+      operator === null ||
+      threshold === null ||
+      windowSeconds === null
+    ) {
+      continue;
+    }
+    const value = computeMetric(events, metric, windowSeconds, rule.measurement);
+    const breached = operator === "gt" ? value > threshold : value < threshold;
 
     if (!breached) {
       // Metric recovered: close any open incident for the rule.
@@ -189,15 +196,21 @@ async function evaluateRules(appId: string): Promise<AlertIncident[]> {
     const selected = channels.filter((channel) =>
       targets.includes(channel.id),
     );
-    const notification = buildAlertNotification(rule, value, appId, now);
+    const notification = buildAlertNotification(
+      { name: rule.name, metric, operator, threshold, windowSeconds },
+      value,
+      appId,
+      now,
+    );
     await deliverAlertToChannels(selected, notification);
 
     const incident = await alertIncidentDAO.create({
       ruleId: rule.id,
       appId,
-      metric: rule.metric,
+      trigger: "threshold",
+      metric,
       value,
-      threshold: rule.threshold,
+      threshold,
       triggeredAt: now,
     });
     await alertRuleDAO.touchTriggered(rule.id, now);
@@ -206,21 +219,118 @@ async function evaluateRules(appId: string): Promise<AlertIncident[]> {
   return incidents;
 }
 
+// Issue triggers fire once per state transition, detected at ingestion:
+// "new_issue" for the first-ever occurrence of a fingerprint,
+// "regression" when a resolved issue is reopened. The cooldown applies
+// per issue (fingerprint), so separate issues are never batched into a
+// single notification.
+async function fireIssueTriggerRules(
+  appId: string,
+  trigger: "new_issue" | "regression",
+  issues: TrackedIssue[],
+): Promise<void> {
+  const { rules, channels } = await resolveEffectiveAlertConfig(appId);
+  const matching = rules.filter(
+    (rule) => rule.isEnabled && rule.trigger === trigger,
+  );
+  if (matching.length === 0) return;
+
+  for (const rule of matching) {
+    const targets =
+      rule.channelIds.length > 0
+        ? rule.channelIds
+        : channels.map((channel) => channel.id);
+    const selected = channels.filter((channel) =>
+      targets.includes(channel.id),
+    );
+
+    let fired = false;
+    for (const issue of issues) {
+      const last = await alertIncidentDAO.findLastForIssue(
+        rule.id,
+        issue.fingerprint,
+      );
+      if (last !== undefined) {
+        const elapsed = Date.now() - new Date(last.triggeredAt).getTime();
+        if (elapsed < rule.cooldownSeconds * 1000) continue;
+      }
+
+      const now = new Date().toISOString();
+      const notification = buildIssueAlertNotification(
+        rule,
+        trigger,
+        { fingerprint: issue.fingerprint, title: issue.title },
+        appId,
+        now,
+      );
+      await deliverAlertToChannels(selected, notification);
+      // One-shot: the transition already happened, so the incident is
+      // recorded already resolved — there is nothing to recover.
+      await alertIncidentDAO.create({
+        ruleId: rule.id,
+        appId,
+        trigger,
+        issueFingerprint: issue.fingerprint,
+        status: "resolved",
+        triggeredAt: now,
+        resolvedAt: now,
+      });
+      fired = true;
+    }
+
+    if (fired) await alertRuleDAO.touchTriggered(rule.id, new Date().toISOString());
+  }
+}
+
 const evaluationChains = new Map<string, Promise<unknown>>();
 
-export function evaluateRulesForApp(appId: string): void {
-  const run = () =>
-    evaluateRules(appId).catch((error: unknown) => {
+// Serializes per-app work: ingestion-triggered processing and sweeper
+// runs never interleave for the same app.
+function enqueueAppWork(
+  appId: string,
+  label: string,
+  run: () => Promise<unknown>,
+): void {
+  const guarded = () =>
+    run().catch((error: unknown) => {
       console.error(
-        `[alerting] rule evaluation failed for app ${appId}:`,
+        `[alerting] ${label} for app ${appId}:`,
         error instanceof Error ? error.message : error,
       );
     });
   const next = (evaluationChains.get(appId) ?? Promise.resolve()).then(
-    run,
-    run,
+    guarded,
+    guarded,
   );
   evaluationChains.set(appId, next);
+}
+
+export function evaluateRulesForApp(appId: string): void {
+  enqueueAppWork(appId, "rule evaluation failed", () => evaluateRules(appId));
+}
+
+// Ingestion path: refresh the app's issue state (new issue / regression)
+// and fire the matching issue triggers before the threshold rules are
+// evaluated.
+export function processIngestedEvent(
+  appId: string,
+  envelopeItems: string,
+  receivedAt: string,
+): void {
+  enqueueAppWork(appId, "ingested event processing failed", async () => {
+    const { newIssues, regressions } = await trackIssuesForEvent(
+      appId,
+      envelopeItems,
+      receivedAt,
+    );
+    if (newIssues.length > 0) {
+      await fireIssueTriggerRules(appId, "new_issue", newIssues);
+    }
+    if (regressions.length > 0) {
+      await fireIssueTriggerRules(appId, "regression", regressions);
+    }
+    await evaluateRules(appId);
+  });
 }
 
 let sweeperTimer: ReturnType<typeof setInterval> | null = null;

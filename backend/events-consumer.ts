@@ -1,6 +1,7 @@
 import { consumerOpts, createInbox, type JetStreamClient } from "nats";
 import { storedEventDAO } from "db/dao/stored-event";
-import { evaluateRulesForApp } from "./alerting/evaluation";
+import { issueDAO } from "db/dao/issues";
+import { processIngestedEvent } from "./alerting/evaluation";
 import { clearClickHouseEvents, pushClickHouseEvent } from "./clickhouse";
 import { broadcastLive, buildLiveEvent } from "./live-events";
 import { SUBJECT, type SentryEventMessage } from "./nats";
@@ -16,6 +17,9 @@ export async function applyEventMessage(
 ): Promise<boolean> {
   if (event.type === "clear") {
     await storedEventDAO.clear();
+    // Issues are derived from stored events; clearing the events clears
+    // the derived issue state too.
+    await issueDAO.clear();
     // ClickHouse holds a best-effort copy of events; clear it too so the
     // events API does not keep serving previous rows.
     await clearClickHouseEvents();
@@ -38,7 +42,9 @@ export async function applyEventMessage(
   // Postgres write, the live push or the response.
   pushClickHouseEvent(event);
   broadcastLive(buildLiveEvent(event));
-  if (event.appId) evaluateRulesForApp(event.appId);
+  if (event.appId) {
+    processIngestedEvent(event.appId, event.envelopeItems, event.receivedAt);
+  }
   return true;
 }
 

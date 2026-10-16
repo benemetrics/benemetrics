@@ -96,6 +96,23 @@ export const alertIncidentDAO = {
     await db.delete(alertIncidents).where(eq(alertIncidents.ruleId, ruleId));
   },
 
+  // Latest firing of a rule for one issue — drives the per-issue
+  // cooldown of issue triggers.
+  findLastForIssue: async (ruleId: string, fingerprint: string) =>
+    (
+      await db
+        .select()
+        .from(alertIncidents)
+        .where(
+          and(
+            eq(alertIncidents.ruleId, ruleId),
+            eq(alertIncidents.issueFingerprint, fingerprint),
+          ),
+        )
+        .orderBy(desc(alertIncidents.triggeredAt))
+        .limit(1)
+    )[0],
+
   // Removes incidents fired for the app's own rules; incidents of
   // global rules (appId = null) are shared and stay in place.
   deleteByApp: async (appId: string) => {

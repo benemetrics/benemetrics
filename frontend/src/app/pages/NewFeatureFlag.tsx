@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Action } from "../Action";
 import { Icon } from "../Icon";
 import { ScreenIntro } from "../ScreenIntro";
-import { api } from "../../lib/api";
+import { api, type SegmentDto } from "../../lib/api";
 import { notify } from "../../lib/toast";
 
 type FlagType = "boolean" | "string" | "number" | "json";
@@ -14,6 +14,15 @@ const FLAG_TYPES: Array<[FlagType, string]> = [
   ["number", "Number"],
   ["json", "JSON"],
 ];
+
+const AUDIENCE_RULES_PLACEHOLDER = `[
+  {
+    "id": "rule-1",
+    "attribute": "plan",
+    "operator": "equals",
+    "value": "pro"
+  }
+]`;
 
 function slugify(value: string): string {
   return value
@@ -44,9 +53,41 @@ export function NewFeatureFlag() {
   const [rollout, setRollout] = useState(100);
   const [activate, setActivate] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [audience, setAudience] = useState<SegmentDto[]>([]);
+  const [audienceStatus, setAudienceStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
+  const [newSegmentOpen, setNewSegmentOpen] = useState(false);
+  const [newSegmentName, setNewSegmentName] = useState("");
+  const [newSegmentDescription, setNewSegmentDescription] = useState("");
+  const [newSegmentRules, setNewSegmentRules] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await api.api.admin.segments.get();
+        if (!cancelled) {
+          setAudience((result?.data as { data?: SegmentDto[] } | null)?.data ?? []);
+          setAudienceStatus("ready");
+        }
+      } catch {
+        if (!cancelled) setAudienceStatus("error");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const effectiveKey = keyTouched ? key : slugify(name);
   const valid = name.trim().length > 0 && effectiveKey.length > 0;
+
+  const toggleSegment = (segmentId: string) =>
+    setSelectedSegments((current) =>
+      current.includes(segmentId)
+        ? current.filter((id) => id !== segmentId)
+        : [...current, segmentId],
+    );
 
   const defaultValue = (): { value: unknown; ok: boolean } => {
     if (type === "boolean") return { value: booleanDefault, ok: true };
@@ -74,8 +115,54 @@ export function NewFeatureFlag() {
       notify(type === "json" ? "Default value is not valid JSON" : "Default value must be a number");
       return;
     }
+
+    // The audience can include one brand-new segment defined on this screen.
+    const trimmedSegmentName = newSegmentName.trim();
+    const wantsNewSegment = newSegmentOpen && trimmedSegmentName.length > 0;
+    if (newSegmentOpen && !trimmedSegmentName && newSegmentRules.trim().length > 0) {
+      notify("Give the new audience segment a name first.");
+      return;
+    }
+    let newSegmentRulesParsed: unknown[] = [];
+    if (wantsNewSegment) {
+      try {
+        newSegmentRulesParsed = newSegmentRules.trim() ? JSON.parse(newSegmentRules) : [];
+      } catch {
+        notify("Audience rules must be valid JSON.");
+        return;
+      }
+      if (!Array.isArray(newSegmentRulesParsed)) {
+        notify("Audience rules must be a JSON array of targeting rules.");
+        return;
+      }
+    }
+
     setCreating(true);
     try {
+      let audienceIds = [...selectedSegments];
+      let createdSegmentName: string | null = null;
+      if (wantsNewSegment) {
+        const segmentResult = await api.api.admin.segments.post({
+          name: trimmedSegmentName,
+          description: newSegmentDescription.trim() || undefined,
+          rules: newSegmentRulesParsed,
+        });
+        const segment = (segmentResult?.data as SegmentDto | null) ?? null;
+        if (!segment?.id) {
+          notify(`Could not create the audience segment "${trimmedSegmentName}".`);
+          return;
+        }
+        createdSegmentName = segment.name;
+        audienceIds = [...audienceIds, segment.id];
+        // Fold the new audience into the selection so a retry (e.g. after a
+        // duplicate key) reuses it instead of creating a second segment.
+        setAudience((current) => [segment, ...current]);
+        setSelectedSegments(audienceIds);
+        setNewSegmentOpen(false);
+        setNewSegmentName("");
+        setNewSegmentDescription("");
+        setNewSegmentRules("");
+      }
       const created = unwrapOne<{ id: string; name: string }>(
         await api.api.admin["feature-flags"].post({
           key: effectiveKey,
@@ -83,10 +170,15 @@ export function NewFeatureFlag() {
           description: description.trim(),
           type,
           defaultValue: parsed.value as string | number | boolean,
+          segments: audienceIds,
         }),
       );
       if (!created?.id) {
-        notify(`Could not create "${name.trim()}" — the key may already exist.`);
+        notify(
+          createdSegmentName
+            ? `Segment "${createdSegmentName}" was created, but the flag could not be — the key may already exist.`
+            : `Could not create "${name.trim()}" — the key may already exist.`,
+        );
         return;
       }
       let extrasSaved = true;
@@ -104,13 +196,17 @@ export function NewFeatureFlag() {
           extrasSaved = false;
         }
       }
+      const audienceNote =
+        audienceIds.length > 0
+          ? ` targeting ${audienceIds.length} segment${audienceIds.length === 1 ? "" : "s"}`
+          : "";
       if (!extrasSaved) {
-        notify(`Feature flag "${created.name}" created, but the rollout/status update failed.`);
+        notify(`Feature flag "${created.name}" created${audienceNote}, but the rollout/status update failed.`);
       } else {
         notify(
           activate
-            ? `Feature flag "${created.name}" created and activated`
-            : `Feature flag "${created.name}" created as draft`,
+            ? `Feature flag "${created.name}" created and activated${audienceNote}`
+            : `Feature flag "${created.name}" created as draft${audienceNote}`,
         );
       }
       navigate("/feature-flags");
@@ -147,6 +243,7 @@ export function NewFeatureFlag() {
               <span>Name</span>
               <input
                 className="field-control"
+                aria-label="Flag name"
                 placeholder="Express checkout"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -277,6 +374,105 @@ export function NewFeatureFlag() {
                 <i></i>
               </div>
             </div>
+          </div>
+        </div>
+        <div className="form-section">
+          <div className="form-section-copy">
+            <strong>Audience</strong>
+            <span>
+              Users matching a selected segment's rules get this flag right away; everyone else follows
+              the rollout percentage.
+            </span>
+          </div>
+          <div className="audience-controls">
+            <div className="audience-list">
+              {audience.map((segment) => {
+                const selected = selectedSegments.includes(segment.id);
+                return (
+                  <div
+                    key={segment.id}
+                    className={`segment-option ${selected ? "selected" : ""}`}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={selected}
+                    onClick={() => toggleSegment(segment.id)}
+                    onKeyDown={(event) => event.key === "Enter" && toggleSegment(segment.id)}
+                  >
+                    <span className="segment-option-copy">
+                      <strong>{segment.name}</strong>
+                      <span>
+                        {segment.description ||
+                          `${segment.rules.length} rule${segment.rules.length === 1 ? "" : "s"}`}
+                      </span>
+                    </span>
+                    <span className="segment-option-mark">{selected ? "✓" : ""}</span>
+                  </div>
+                );
+              })}
+              {audienceStatus === "loading" && (
+                <div className="audience-empty">Loading segments…</div>
+              )}
+              {audienceStatus === "error" && (
+                <div className="audience-empty">
+                  Could not load segments — you can still create one below.
+                </div>
+              )}
+              {audienceStatus === "ready" && audience.length === 0 && (
+                <div className="audience-empty">No segments yet — create the first audience right here.</div>
+              )}
+            </div>
+            <div className="audience-actions">
+              <Action
+                variant="soft"
+                active={newSegmentOpen}
+                onClick={() => setNewSegmentOpen((value) => !value)}
+              >
+                <span className="plus">+</span>New segment
+              </Action>
+              {selectedSegments.length > 0 && (
+                <span className="audience-count">{selectedSegments.length} selected</span>
+              )}
+            </div>
+            {newSegmentOpen && (
+              <div className="audience-builder">
+                <div className="form-grid">
+                  <div className="form-field">
+                    <span>Segment name</span>
+                    <input
+                      className="field-control"
+                      aria-label="New segment name"
+                      placeholder="Paying customers"
+                      value={newSegmentName}
+                      onChange={(event) => setNewSegmentName(event.target.value)}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <span>Description</span>
+                    <input
+                      className="field-control"
+                      aria-label="New segment description"
+                      placeholder="Everyone on a paid plan"
+                      value={newSegmentDescription}
+                      onChange={(event) => setNewSegmentDescription(event.target.value)}
+                    />
+                  </div>
+                  <div className="form-field full">
+                    <span>Rules (JSON array)</span>
+                    <textarea
+                      className="field-control code-value"
+                      aria-label="New segment rules"
+                      placeholder={AUDIENCE_RULES_PLACEHOLDER}
+                      rows={6}
+                      value={newSegmentRules}
+                      onChange={(event) => setNewSegmentRules(event.target.value)}
+                    />
+                    <small>
+                      Created together with the flag when you submit; leave empty to match every user.
+                    </small>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="flag-code">

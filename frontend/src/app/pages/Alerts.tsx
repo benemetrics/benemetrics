@@ -24,6 +24,14 @@ interface EffectiveAlertConfig {
   rules: AlertRuleDto[];
 }
 
+const TRIGGER_LABELS: Record<string, string> = {
+  threshold: "Metric",
+  new_issue: "New issue",
+  regression: "Regression",
+};
+
+const triggerLabel = (trigger: string) => TRIGGER_LABELS[trigger] ?? trigger;
+
 export function Alerts() {
   const navigate = useNavigate();
   const { application } = useWorkspace();
@@ -199,7 +207,9 @@ export function Alerts() {
           return (
             <div className="list-screen-row" key={rule.id}>
               <strong>{rule.name}</strong>
-              <span>{rule.appId ? "App scope" : "Global"}</span>
+              <span>
+                {triggerLabel(rule.trigger)} · {rule.appId ? "App scope" : "Global"}
+              </span>
               <span>{destination}</span>
               <span className="row-status">
                 <span className={`table-status ${rule.isEnabled ? "" : "draft"}`}>
@@ -302,7 +312,9 @@ export function Alerts() {
                   {effective.rules.map((rule) => (
                     <div key={rule.id}>
                       <span>{rule.name}</span>
-                      <strong>{rule.appId ? "App override" : "Global"}</strong>
+                      <strong>
+                        {triggerLabel(rule.trigger)} · {rule.appId ? "App override" : "Global"}
+                      </strong>
                     </div>
                   ))}
                   {effective.rules.length === 0 && (

@@ -4,6 +4,7 @@
  * Locks in the screens built for the admin API's full surface:
  *   - Projects: environment rename/default/delete controls
  *   - Segments page (create/list/detail)
+ *   - Feature flags: unified creation with audience segments (pick existing or build inline)
  *   - Source maps page (upload tokens + artifacts + resolve tool)
  *   - Release detail (get / patch / finalize / delete / summary)
  *   - Alerts: rule pause/enable + delete actions
@@ -91,6 +92,52 @@ async function clickNav(label: string, timeoutMs = 15000): Promise<void> {
     await Bun.sleep(400);
   }
   throw new Error(`Could not click nav item "${label}" within ${timeoutMs}ms`);
+}
+
+/** Clicks an `.action` control (Action component) by its visible label. */
+async function clickAction(label: string): Promise<boolean> {
+  return (
+    (await view.evaluate(`(() => {
+      const normalize = (text) => (text || "").replace(/\\s+/g, " ").replace(/^\\+\\s*/, "").trim();
+      const nodes = Array.from(document.querySelectorAll(".action"));
+      const node = nodes.find((el) => normalize(el.textContent).startsWith(${JSON.stringify(label)}));
+      if (!node) return false;
+      node.click();
+      return true;
+    })()`)) ?? false
+  );
+}
+
+/** Sets a React-controlled input/textarea identified by its aria-label. */
+async function setField(label: string, value: string): Promise<boolean> {
+  const selector = `[aria-label="${label}"]`;
+  return (
+    (await view.evaluate(`(() => {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      if (!el) return false;
+      const proto = el.tagName === "TEXTAREA" ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+      const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
+      setter.call(el, ${JSON.stringify(value)});
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      return true;
+    })()`)) ?? false
+  );
+}
+
+/** Waits for the flags list row to show the flag together with its audience chip. */
+async function waitForFlagRowWithAudience(name: string, timeoutMs = 15000): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const ready =
+      (await view.evaluate(`(() => {
+        const rows = Array.from(document.querySelectorAll(".list-screen-row"));
+        const row = rows.find((el) => (el.textContent || "").includes(${JSON.stringify(name)}));
+        return !!(row && (row.textContent || "").includes("Audience · 1 segment"));
+      })()`)) ?? false;
+    if (ready) return true;
+    await Bun.sleep(400);
+  }
+  return false;
 }
 
 describe("Backend parity — admin UI surfaces", () => {
@@ -228,5 +275,50 @@ describe("Backend parity — admin UI surfaces", () => {
     const clicked = await clickRowAction(RULE_NAME, "Pause");
     expect(clicked).toBe(true);
     await waitForTextInUI("Disabled");
+  }, 30000);
+
+  it("creates a flag targeting an existing audience segment in one submission", async () => {
+    await clickNav("Feature flags");
+    await waitForTextInUI("New flag");
+    expect(await clickAction("New flag")).toBe(true);
+    await waitForTextInUI("Audience");
+    await waitForTextInUI(SEGMENT_NAME);
+
+    const selected = (await view.evaluate(`(() => {
+      const options = Array.from(document.querySelectorAll(".segment-option"));
+      const option = options.find((el) => (el.textContent || "").includes(${JSON.stringify(SEGMENT_NAME)}));
+      if (!option) return false;
+      option.click();
+      return true;
+    })()`)) ?? false;
+    expect(selected).toBe(true);
+    await waitForTextInUI("1 selected");
+
+    const flagName = `Unified audience flag ${Date.now()}`;
+    expect(await setField("Flag name", flagName)).toBe(true);
+    expect(await clickAction("Create flag")).toBe(true);
+
+    expect(await waitForFlagRowWithAudience(flagName)).toBe(true);
+  }, 30000);
+
+  it("creates a brand-new audience segment alongside the flag", async () => {
+    await clickNav("Feature flags");
+    await waitForTextInUI("New flag");
+    expect(await clickAction("New flag")).toBe(true);
+    await waitForTextInUI("Audience");
+    expect(await clickAction("New segment")).toBe(true);
+
+    const segmentName = `Inline audience ${Date.now()}`;
+    expect(await setField("New segment name", segmentName)).toBe(true);
+    const flagName = `Inline audience flag ${Date.now()}`;
+    expect(await setField("Flag name", flagName)).toBe(true);
+    expect(await clickAction("Create flag")).toBe(true);
+
+    expect(await waitForFlagRowWithAudience(flagName)).toBe(true);
+
+    // The inline segment also exists as a standalone segment.
+    await clickNav("Segments");
+    const segmentsBody = await waitForTextInUI(segmentName);
+    expect(segmentsBody).toContain(segmentName);
   }, 30000);
 });

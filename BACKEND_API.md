@@ -107,15 +107,18 @@ backend/
     index.ts          # alertingRoutes (/api/admin/alerting/*) — channels, rules, incidents, test send
     notifiers.ts      # Uniform Notifier interface + webhook/slack/rocketchat/email-stub + dispatcher
     resolver.ts       # Global → per-app config resolution (per-name override)
-    evaluation.ts     # Metric computation, threshold engine, cooldown, periodic sweeper
+    evaluation.ts     # Metric computation, threshold engine, cooldown, sweeper + issue-trigger firing
     serialize.ts      # JSON column parsing + row → protocol mappers
+  issues/
+    tracking.ts       # Ingestion-time issue state transitions (new issue / regression)
   admin/
-    index.ts          # adminRoutes (/api/admin) — composes featureFlags + projects + segments + ... + alerting
+    index.ts          # adminRoutes (/api/admin) — composes featureFlags + projects + segments + ... + issues + alerting
     projects/index.ts # projectRoutes, appRoutes (project + app management)
     segments/index.ts # segmentRoutes (audience segments)
     environments/index.ts # environmentRoutes (project environments, shared by apps)
     releases/index.ts # releaseRoutes + computeIssueMetrics (pure)
-  protocol/           # Type-only interfaces (source of truth: dsn, envelope-header, item-header, otlp, alerting, source-map)
+    issues/index.ts   # issueRoutes (/api/admin/issues/*) — list/get/resolve
+  protocol/           # Type-only interfaces (source of truth: dsn, envelope-header, item-header, otlp, alerting, issues, source-map)
 ```
 
 ---
@@ -317,9 +320,9 @@ override — see `backend/alerting/resolver.ts`).
 | PATCH  | `/api/admin/alerting/channels/:id`          | partial `{ name?, type?, config? }`            | Update channel |
 | DELETE | `/api/admin/alerting/channels/:id`          | `id` (uuid)                                    | Delete channel |
 | GET    | `/api/admin/alerting/rules`                 | `?appId&page&limit`                            | Paginated rules (global scope by default) |
-| POST   | `/api/admin/alerting/rules`                 | `{ name, metric, operator, threshold, windowSeconds, cooldownSeconds?, channelIds?, measurement?, appId? }` | Create rule; 409 duplicate name in scope |
+| POST   | `/api/admin/alerting/rules`                 | `{ name, trigger: 'threshold', metric, operator, threshold, windowSeconds, cooldownSeconds?, channelIds?, measurement?, appId? }` or `{ name, trigger: 'new_issue'\|'regression', cooldownSeconds?, channelIds?, appId? }` | Create rule; 409 duplicate name in scope |
 | GET    | `/api/admin/alerting/rules/:id`             | `id` (uuid)                                    | Get one |
-| PATCH  | `/api/admin/alerting/rules/:id`             | partial rule fields                            | Update rule |
+| PATCH  | `/api/admin/alerting/rules/:id`             | partial rule fields (incl. `trigger`)          | Update rule; switching triggers validates the field set |
 | DELETE | `/api/admin/alerting/rules/:id`             | `id` (uuid)                                    | Delete rule |
 | POST   | `/api/admin/alerting/rules/:id/test`        | `id` (uuid)                                    | Send test notification through the rule's channels; reports per-channel results |
 | GET    | `/api/admin/alerting/apps/:appId/effective` | `appId` (uuid)                                 | Resolved config (global + app overrides merged) |
@@ -327,9 +330,26 @@ override — see `backend/alerting/resolver.ts`).
 
 **Channels** (`type` → config): `webhook` `{ url }`, `slack` `{ webhookUrl }` or `{ token, channel }`, `rocketchat` `{ webhookUrl }`, `email` `{ to, from }` (SMTP via nodemailer is planned; currently a stub that reports a delivery failure).
 
-**Rules**: `metric` ∈ `event_count | error_count | fatal_count | new_issue_count | latency_p95 | latency_p99`; `operator` ∈ `gt | lt`; `windowSeconds` evaluation window; `cooldownSeconds` minimum time between notifications; `channelIds` empty ⇒ all effective channels; `measurement` (latency metrics, default `duration`).
+**Rules**: `trigger` ∈ `threshold | new_issue | regression` (default `threshold`, so pre-existing payloads keep working). Threshold rules additionally require `metric` ∈ `event_count | error_count | fatal_count | new_issue_count | latency_p95 | latency_p99`, `operator` ∈ `gt | lt`, `threshold`, `windowSeconds` (evaluation window) and accept `measurement` (latency metrics, default `duration`). Issue triggers carry none of those fields and reject payloads that do; `channelIds` empty ⇒ all effective channels; `cooldownSeconds` is the minimum time between notifications — per rule for `threshold`, per issue for `new_issue`/`regression`.
 
-**Evaluation** (`backend/alerting/evaluation.ts`): triggered fire-and-forget after every ingestion and by a periodic sweeper (`startAlertSweeper`, `ALERT_EVALUATION_INTERVAL_MS`). Breaching rules dispatch a uniform `AlertNotification` through every platform via the same `Notifier` interface (`backend/alerting/notifiers.ts`), record an `alert_incidents` row, and respect the cooldown; recovery closes open incidents. Delivery failures are logged and never fail ingestion.
+**Evaluation** (`backend/alerting/evaluation.ts`): threshold rules run fire-and-forget after every ingestion and from a periodic sweeper (`startAlertSweeper`, `ALERT_EVALUATION_INTERVAL_MS`); breaching rules dispatch a uniform `AlertNotification` through every platform via the same `Notifier` interface (`backend/alerting/notifiers.ts`), record an `alert_incidents` row, and respect the cooldown — recovery closes open incidents. Issue triggers (`new_issue`, `regression`) are event-driven instead (see §5.11): ingestion detects the issue-state transition and fires matching rules exactly once; their incidents are recorded already resolved and carry the issue `fingerprint`. Delivery failures are logged and never fail ingestion.
+
+### 5.11 Admin — issues
+
+`backend/admin/issues/index.ts` → `issueRoutes` (effective prefix `/api/admin/issues`).
+Issues live in Postgres (source of truth for alerting; ClickHouse stays the optional events read store) and are created/updated by ingestion, never through this API.
+
+| Method | Path                        | Body / Query                  | Description |
+| ------ | --------------------------- | ----------------------------- | ----------- |
+| GET    | `/api/admin/issues/`        | `?appId&status&page&limit`    | Paginated issues, newest `lastSeen` first |
+| GET    | `/api/admin/issues/:id`     | `id` (uuid)                   | Get one |
+| PATCH  | `/api/admin/issues/:id`     | `{ status: 'unresolved'\|'resolved' }` | Resolve or reopen an issue |
+
+- An issue is keyed by `(appId, fingerprint)` (`fingerprint` groups events like Sentry: explicit fingerprint → top exception frame → message) and tracks `status`, `eventCount`, `firstSeen`, `lastSeen`.
+- Ingestion transitions: a first-ever fingerprint → **new issue**; a new event for a `resolved` issue → **regression** (status flips back to `unresolved`, `eventCount` increments). Repeats while unresolved only bump `eventCount`/`lastSeen` and never fire alerts.
+- Transitions are race-safe (`onConflictDoNothing` insert + `UPDATE ... WHERE status = 'resolved' RETURNING`), so concurrent deliveries fire exactly one alert.
+- Resolving is what arms the `regression` trigger for the issue's next event.
+- Issues cascade with the app (`deleteAppCascade`) and are reset by the dev/test event clear (`/events/clear` → `issueDAO.clear()`).
 
 ---
 
@@ -461,11 +481,12 @@ Guard wiring:
 | --- | --- | --- |
 | `id` | text | PK |
 | `name` | text | not null; unique per scope (as above) |
-| `metric` | text | `event_count\|error_count\|fatal_count\|new_issue_count\|latency_p95\|latency_p99` |
-| `operator` | text | `gt\|lt` |
-| `threshold` | real | not null |
-| `window_seconds` | integer | not null (evaluation window) |
-| `cooldown_seconds` | integer | default `3600` (min time between notifications) |
+| `trigger` | text | `threshold\|new_issue\|regression`, default `threshold` |
+| `metric` | text | nullable; `event_count\|error_count\|fatal_count\|new_issue_count\|latency_p95\|latency_p99` (threshold rules only) |
+| `operator` | text | nullable; `gt\|lt` (threshold rules only) |
+| `threshold` | real | nullable (threshold rules only) |
+| `window_seconds` | integer | nullable (threshold rules only; evaluation window) |
+| `cooldown_seconds` | integer | default `3600` (min time between notifications; per issue for issue triggers) |
 | `channel_ids` | text | JSON string, default `[]`; empty ⇒ all effective channels |
 | `measurement` | text | nullable; measurement name for latency metrics |
 | `app_id` | text | nullable; `NULL` = global (default) rule |
@@ -479,12 +500,26 @@ Guard wiring:
 | `id` | text | PK |
 | `rule_id` | text | not null, indexed |
 | `app_id` | text | nullable, indexed |
-| `metric` | text | not null |
-| `value` | real | not null (observed metric value) |
-| `threshold` | real | not null |
-| `status` | text | default `firing`; `resolved` when the metric recovers |
+| `trigger` | text | `threshold\|new_issue\|regression`, default `threshold` |
+| `issue_fingerprint` | text | nullable; set on issue-trigger incidents (per-issue cooldown lookup) |
+| `metric` | text | nullable (threshold incidents only) |
+| `value` | real | nullable (observed metric value) |
+| `threshold` | real | nullable |
+| `status` | text | default `firing`; `resolved` when the metric recovers (issue-trigger incidents are recorded already `resolved` — one-shot) |
 | `triggered_at` | text | not null |
 | `resolved_at` | text | nullable |
+
+**issues**
+| column | type | notes |
+| --- | --- | --- |
+| `id` | text | PK |
+| `app_id` | text | not null, indexed |
+| `fingerprint` | text | not null; **unique per app** via `UNIQUE (app_id, fingerprint)` |
+| `title` | text | not null (human-readable: top exception or message) |
+| `status` | text | `unresolved\|resolved`, default `unresolved`, indexed |
+| `event_count` | integer | default `1` |
+| `first_seen` / `last_seen` | text | not null (ISO strings) |
+| `created_at` / `updated_at` | text | default `CURRENT_TIMESTAMP` |
 
 **stored_events** (alerting addition)
 | column | type | notes |

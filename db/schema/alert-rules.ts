@@ -11,15 +11,23 @@ import { sql } from "drizzle-orm/sql";
 // app_id IS NULL marks a global (default)
 // rule; an app-scoped rule with the same name replaces the
 // global one.
+//
+// `trigger` selects what fires the rule:
+//   - "threshold": the metric/operator/threshold/window fields define a
+//     windowed metric breach (evaluated by the sweeper).
+//   - "new_issue" / "regression": fired from ingestion when an issue
+//     appears for the first time / reopens after being resolved; the
+//     threshold fields are null.
 export const alertRules = pgTable(
   "alert_rules",
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
-    metric: text("metric").notNull(),
-    operator: text("operator").notNull(),
-    threshold: real("threshold").notNull(),
-    windowSeconds: integer("window_seconds").notNull(),
+    trigger: text("trigger").notNull().default("threshold"),
+    metric: text("metric"),
+    operator: text("operator"),
+    threshold: real("threshold"),
+    windowSeconds: integer("window_seconds"),
     cooldownSeconds: integer("cooldown_seconds").notNull().default(60),
     channelIds: text("channel_ids").notNull().default("[]"),
     measurement: text("measurement"),

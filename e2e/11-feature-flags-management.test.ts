@@ -117,6 +117,29 @@ describe("Feature Flags Management API", () => {
       expect(data.variants).toHaveLength(2);
     });
 
+    it("should attach an audience segment when creating a flag", async () => {
+      const segmentResponse = await apiRequest("POST", "/api/admin/segments", {
+        name: `Audience Segment ${Date.now()}`,
+        rules: [
+          { id: "rule-1", attribute: "plan", operator: "equals", value: "enterprise" }
+        ]
+      });
+      const segment = (await segmentResponse.json()) as { id: string };
+      expect(segment.id).toBeDefined();
+
+      const response = await apiRequest("POST", "/api/admin/feature-flags", {
+        key: `audience-flag-${Date.now()}`,
+        name: "Audience Flag",
+        type: "boolean",
+        defaultValue: false,
+        segments: [segment.id]
+      });
+
+      expect(response.status).toBe(200);
+      const data = (await response.json()) as FeatureFlag;
+      expect(data.segments).toEqual([segment.id]);
+    });
+
     it("should create a string feature flag with multiple variants", async () => {
       const response = await apiRequest("POST", "/api/admin/feature-flags", {
         key: "button-color",

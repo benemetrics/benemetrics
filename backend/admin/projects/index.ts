@@ -14,10 +14,6 @@ function randomKey(length: number): string {
   return crypto.randomUUID().replace(/-/g, "").slice(0, length);
 }
 
-function isLocalHost(host: string): boolean {
-  return /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?$/i.test(host);
-}
-
 async function createProjectWithUniqueSlug(input: {
   name: string;
   slug: string;
@@ -228,7 +224,6 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
           ingestKey: `${project.slug}-${randomKey(12)}`,
           publicKey: randomKey(32),
           host: sourceApp.host,
-          protocol: sourceApp.protocol,
         });
         const environment = environmentById.get(environmentId);
         if (!environment) {
@@ -281,7 +276,6 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
           const project = await projectDAO.findByIdOrThrow(id);
 
           const host = body.host || request.headers.get("host") || "localhost";
-          const protocol = isLocalHost(host) ? "http" : "https";
 
           // App-environment combo: the user picks the project and
           // the environment, and the app is created inside it.
@@ -296,7 +290,6 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
             ingestKey: `${project.slug}-${randomKey(12)}`,
             publicKey: randomKey(32),
             host,
-            protocol,
           });
 
           return {

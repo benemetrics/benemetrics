@@ -26,7 +26,6 @@ export const apps = pgTable("apps", {
   ingestKey: text("ingest_key").notNull().unique(),
   publicKey: text("public_key").notNull(),
   host: text("host").notNull().default("localhost"),
-  protocol: text("protocol").notNull().default("https"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
   projectIdIdx: index("apps_project_id_idx").on(table.projectId),

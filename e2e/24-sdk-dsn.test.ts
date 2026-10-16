@@ -20,7 +20,6 @@ interface AppResponse {
   number: number;
   dsn: string;
   publicKey: string;
-  protocol: string;
   host: string;
 }
 
@@ -92,7 +91,7 @@ describe("Official Sentry SDK connects with the provided app DSN", () => {
     const dsnUrl = new URL(created.dsn);
 
     expect(created.number).toBeGreaterThan(0);
-    expect(dsnUrl.protocol).toBe(`${created.protocol}:`);
+    expect(dsnUrl.protocol).toBe(new URL(baseUrl).protocol);
     expect(dsnUrl.host).toBe(created.host);
     expect(dsnUrl.username).toBe(created.publicKey);
     expect(dsnUrl.pathname).toBe(`/${created.number}`);

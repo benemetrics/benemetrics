@@ -10,8 +10,6 @@ import { alertIncidents } from "db/schema/alert-incidents";
 import { eq, asc, desc, sql } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
 
-// The DSN honours the app's own protocol so local (http) apps get a
-// usable DSN instead of an always-https one.
 export function toAppResponse(app: AppRecord) {
   return {
     id: app.id,
@@ -21,10 +19,9 @@ export function toAppResponse(app: AppRecord) {
     name: app.name,
     platform: app.platform,
     ingestKey: app.ingestKey,
-    dsn: `${app.protocol}://${app.publicKey}@${app.host}/${app.number}`,
+    dsn: `http://${app.publicKey}@${app.host}/${app.number}`,
     publicKey: app.publicKey,
     host: app.host,
-    protocol: app.protocol,
     createdAt: app.createdAt,
   };
 }

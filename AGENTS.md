@@ -107,6 +107,7 @@ Route handler (backend/<domain>/index.ts)  ->  DAO (db/dao/*)  ->  Drizzle
 - Postgres everywhere: dev/test run in-process PGlite, production runs real Postgres via `drizzle-orm/bun-sql`. Same dialect, same `db/schema`, same `db/migrations` (applied at startup by `db/index.ts`) — never reintroduce a second dialect or hand-maintained DDL.
 - Raw counts must use `db.$count(...)` or cast `count(*)::int`: Bun SQL returns `int8` values outside i32 range as `BigInt` while PGlite returns `number`. Report deleted rows via `.returning()` + `.length`, never driver-specific `rowCount`/`changes`.
 - Sentry SDKs require a numeric DSN project id: the app DSN path is the DB-generated `apps.number`; `resolveApp` resolves it via `findByNumber` and keeps the ingest-key / project-id + public-key fallback. Keep that fallback when changing ingestion routing.
+- App DSNs are always `http://` (the backend serves plain HTTP; TLS is a reverse-proxy concern). NEVER derive `https` from the host name — the wrong scheme makes SDKs fail the TLS handshake.
 - ClickHouse is the optional events store (`@clickhouse/client`): stored events are pushed to it best-effort at store time, and the events API list/get reads from it when it is available with Postgres fallback (`backend/events-store.ts`). Postgres stays the source of truth (metrics/alerting never read ClickHouse); keep every ClickHouse path failure-tolerant.
 
 For full endpoint tables, schema columns, and rationale, see `BACKEND_API.md`.

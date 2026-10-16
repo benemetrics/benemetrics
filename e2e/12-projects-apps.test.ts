@@ -36,7 +36,6 @@ interface AppResponse {
   dsn: string;
   publicKey: string;
   host: string;
-  protocol: string;
   createdAt: string;
   environment?: EnvironmentCombo;
 }
@@ -246,7 +245,7 @@ describe("Projects & Apps Management", () => {
       expect(copyApp.ingestKey).not.toBe(sourceApp.ingestKey);
       expect(copyApp.publicKey).not.toBe(sourceApp.publicKey);
       expect(copyApp.dsn).not.toBe(sourceApp.dsn);
-      expect(copyApp.dsn).toBe(`${copyApp.protocol}://${copyApp.publicKey}@${copyApp.host}/${copyApp.number}`);
+      expect(copyApp.dsn).toBe(`http://${copyApp.publicKey}@${copyApp.host}/${copyApp.number}`);
       // The app lands in the copied environment, not the original.
       expect(copyApp.environment!.name).toBe("Staging");
       expect(copyApp.environment!.slug).toBe("staging");
@@ -412,8 +411,7 @@ describe("Projects & Apps Management", () => {
       expect(data.name).toBe("Billing Worker");
       expect(data.platform).toBe("node");
       expect(data.ingestKey).toStartWith(`${project.slug}-`);
-      expect(data.protocol).toBe("http");
-      expect(data.dsn).toBe(`${data.protocol}://${data.publicKey}@${data.host}/${data.number}`);
+      expect(data.dsn).toBe(`http://${data.publicKey}@${data.host}/${data.number}`);
       // App-environment combo: the app is created with its default environment.
       expect(data.environment).toBeDefined();
       expect(data.environment!.slug).toBe("testing");
@@ -439,8 +437,8 @@ describe("Projects & Apps Management", () => {
       expect(data.environment!.isDefault).toBe(false);
     });
 
-    it("should use https for non-local hosts", async () => {
-      const createProjectResponse = await apiRequest("POST", "/api/admin/projects", { name: "Https-" + uniq() });
+    it("should use http for non-local hosts", async () => {
+      const createProjectResponse = await apiRequest("POST", "/api/admin/projects", { name: "Http-" + uniq() });
       const project = await createProjectResponse.json() as ProjectResponse;
 
       const response = await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
@@ -451,8 +449,21 @@ describe("Projects & Apps Management", () => {
 
       expect(response.status).toBe(200);
       const data = await response.json() as AppResponse;
-      expect(data.protocol).toBe("https");
-      expect(data.dsn).toStartWith("https://");
+      expect(data.dsn).toBe(`http://${data.publicKey}@benemetrics.app/${data.number}`);
+    });
+
+    it("should use http for private network hosts", async () => {
+      const createProjectResponse = await apiRequest("POST", "/api/admin/projects", { name: "Lan-" + uniq() });
+      const project = await createProjectResponse.json() as ProjectResponse;
+
+      const response = await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
+        name: "LAN Worker",
+        host: "192.168.1.176:31337",
+      });
+
+      expect(response.status).toBe(200);
+      const data = await response.json() as AppResponse;
+      expect(data.dsn).toBe(`http://${data.publicKey}@192.168.1.176:31337/${data.number}`);
     });
 
     it("should default the host when none is provided", async () => {

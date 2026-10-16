@@ -95,7 +95,6 @@ export interface AppDto {
   dsn: string;
   publicKey: string;
   host: string;
-  protocol: string;
   createdAt: string;
 }
 

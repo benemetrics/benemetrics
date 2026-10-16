@@ -9,6 +9,7 @@ RUN bun install --frozen-lockfile
 # Copy source code
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
+COPY db/ ./db/
 COPY tsconfig.json bunfig.toml ./
 
 # Compile Tailwind CSS
@@ -20,6 +21,14 @@ RUN sed -i 's|href="./global.css"|href="./global.compiled.css"|' frontend/index.
 # Bundle the application (backend + frontend HTML import)
 # https://bun.com/docs/bundler/fullstack#ahead-of-time-bundling
 RUN bun build --target=bun --production --outdir=dist ./backend/index.ts
+
+# Drizzle reads db/migrations and the PGlite fallback loads its WASM/data
+# assets from disk at runtime, relative to the bundle directory
+RUN cp -r db/migrations dist/migrations \
+ && cp node_modules/@electric-sql/pglite/dist/pglite.data \
+       node_modules/@electric-sql/pglite/dist/pglite.wasm \
+       node_modules/@electric-sql/pglite/dist/initdb.wasm \
+       dist/
 
 # Production stage
 FROM oven/bun:1-slim

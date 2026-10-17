@@ -102,6 +102,12 @@ a.nav-item, a.back-link { text-decoration: none; }
 .detail-user strong { display: block; color: var(--ink); font-size: 11px; }
 .detail-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .payload-json { max-height: 380px; overflow: auto; margin: 0; padding: 13px; border: 1px solid #323a4a; border-radius: 10px; background: #1d2430; color: #c8d3e8; font-family: "Geist Mono"; font-size: 9px; line-height: 1.6; }
+
+/* Session replay section on the issue detail page */
+.replay-panel { margin-bottom: 13px; }
+.replay-meta { display: flex; flex-wrap: wrap; gap: 6px; padding: 13px 17px 0; }
+.replay-stage { margin: 13px 17px 17px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-subtle); }
+.replay-panel > .panel-subtitle { padding: 0 17px 16px; }
 .avatar { border-radius: 50%; background: #d7dcff; color: #4547b5; }
 
 .main { margin-left: 236px; width: calc(100% - 236px); min-width: 0; }

@@ -219,7 +219,24 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
     const body = (await res.json()) as any;
     expect(body.name).toBe("~/dist/app.js.map");
     expect(body.dist).toBe("web");
-    expect(body.size).toBeGreaterThan(0);
+    // Byte size is derived from the stored document at read time.
+    expect(body.size).toBe(Buffer.byteLength(JSON.stringify(SOURCE_MAP), "utf8"));
+  });
+
+  it("records token usage on the token metadata", async () => {
+    const res = await adminRequest(
+      "GET",
+      `/api/admin/source-map-tokens?projectId=${projectId}`,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    const record = body.data.find(
+      (token: { tokenPrefix?: string }) =>
+        token.tokenPrefix === uploadToken.slice(0, 10),
+    );
+    expect(record).toBeDefined();
+    expect(record.lastUsedAt).not.toBeNull();
+    expect(Number.isNaN(Date.parse(record.lastUsedAt))).toBe(false);
   });
 
   it("re-uploading an artifact updates it instead of failing", async () => {

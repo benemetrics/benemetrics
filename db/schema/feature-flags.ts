@@ -23,8 +23,6 @@ export const featureFlags = pgTable(
     experiment: text("experiment"),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-    createdBy: text("created_by").notNull(),
-    updatedBy: text("updated_by").notNull(),
   },
   (table) => ({
     keyIdx: index("feature_flags_key_idx").on(table.key),

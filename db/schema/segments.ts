@@ -1,7 +1,6 @@
 import {
   pgTable,
   text,
-  integer,
   index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
@@ -11,9 +10,7 @@ export const segments = pgTable("segments", {
   name: text("name").notNull(),
   description: text("description").default(""),
   rules: text("rules").notNull().default("[]"),
-  userCount: integer("user_count").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
   nameIdx: index("segments_name_idx").on(table.name),
 }));

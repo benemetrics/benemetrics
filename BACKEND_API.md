@@ -440,7 +440,6 @@ Guard wiring:
 | `rollout_percentage` | integer | default `100` |
 | `experiment` | text | JSON string, nullable |
 | `created_at` / `updated_at` | text | default `CURRENT_TIMESTAMP` |
-| `created_by` / `updated_by` | text | not null |
 
 **segments**
 | column | type | notes |
@@ -449,8 +448,7 @@ Guard wiring:
 | `name` | text | not null, indexed |
 | `description` | text | default `""` |
 | `rules` | text | JSON string, default `[]` |
-| `user_count` | integer | default `0` |
-| `created_at` / `updated_at` | text | default `CURRENT_TIMESTAMP` |
+| `created_at` | text | default `CURRENT_TIMESTAMP` |
 
 **environments**
 | column | type | notes |

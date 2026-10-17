@@ -35,6 +35,17 @@ function sanitizeKeyPart(value: string): string {
   return sanitized.length > 0 ? sanitized : "_";
 }
 
+// The prefix a session's segments live under. Shared with the read path
+// (`backend/replays`) so both derive the same location from the ids they
+// hold, without the storage backend or pointers being recorded anywhere.
+export function replayObjectPrefix(context: {
+  projectId: string;
+  appId: string;
+  replayId: string;
+}): string {
+  return `replays/${sanitizeKeyPart(context.projectId)}/${sanitizeKeyPart(context.appId)}/${sanitizeKeyPart(context.replayId)}/`;
+}
+
 // Groups a session's segments under its replay id when the envelope
 // carries replay metadata, falling back to the message id otherwise.
 function replayKeyFor(items: ParsedEnvelope["items"], fallback: string): string {
@@ -74,10 +85,12 @@ export async function offloadReplayItems(
   items: ParsedEnvelope["items"],
   context: { projectId: string; appId: string; messageId: string },
 ): Promise<ParsedEnvelope["items"]> {
-  const projectId = sanitizeKeyPart(context.projectId);
-  const appId = sanitizeKeyPart(context.appId);
   const messageId = sanitizeKeyPart(context.messageId);
-  const replayKey = replayKeyFor(items, messageId);
+  const prefix = replayObjectPrefix({
+    projectId: context.projectId,
+    appId: context.appId,
+    replayId: replayKeyFor(items, messageId),
+  });
 
   const result: ParsedEnvelope["items"] = [];
 
@@ -89,7 +102,7 @@ export async function offloadReplayItems(
     }
 
     const serialized = JSON.stringify(item.payload);
-    const key = `replays/${projectId}/${appId}/${replayKey}/${messageId}-${index}.json`;
+    const key = `${prefix}${messageId}-${index}.json`;
     try {
       await putObjectBounded(key, serialized);
       const pointer: OffloadedItemPayload = { key };

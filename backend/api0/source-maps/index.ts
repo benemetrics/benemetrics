@@ -178,7 +178,6 @@ export const sourceMapUploadRoutes = new Elysia({
         dist: typeof dist === "string" ? dist : null,
         filename: name,
         mapJson,
-        size: file.size,
       });
 
       return status(201, { ...toArtifactBase(created), dateCreated: created.createdAt });

@@ -4,8 +4,6 @@ import { type as arktype } from "arktype";
 import { featureFlagDAO } from "db/dao/feature-flags";
 import { publishFlagChange } from "backend/flags-events";
 
-const ADMIN_ACTOR = "admin@test.com";
-
 export const featureFlagRoutes = new Elysia({ prefix: "feature-flags" })
   .post(
     "/",
@@ -31,8 +29,6 @@ export const featureFlagRoutes = new Elysia({ prefix: "feature-flags" })
         status: "draft",
         rolloutPercentage: 100,
         experiment: body.experiment != null ? JSON.stringify(body.experiment) : null,
-        createdBy: ADMIN_ACTOR,
-        updatedBy: ADMIN_ACTOR,
       });
 
       publishFlagChange({ type: "create", flagKey: created.key, flag: created });
@@ -84,8 +80,8 @@ export const featureFlagRoutes = new Elysia({ prefix: "feature-flags" })
     "/:id",
     async ({ params: { id }, body }) => {
       // Only user-facing configuration is patchable; internal columns
-      // (id, createdBy, createdAt, updatedBy, updatedAt) cannot be set by
-      // the client. Status changes go through /:id/status.
+      // (id, createdAt, updatedAt) cannot be set by the client. Status
+      // changes go through /:id/status.
       const updated = await featureFlagDAO.updateOrThrow(id, {
         ...(body.key !== undefined ? { key: body.key } : {}),
         ...(body.name !== undefined ? { name: body.name } : {}),
@@ -112,7 +108,6 @@ export const featureFlagRoutes = new Elysia({ prefix: "feature-flags" })
         ...(body.rolloutPercentage !== undefined
           ? { rolloutPercentage: body.rolloutPercentage }
           : {}),
-        updatedBy: ADMIN_ACTOR,
         updatedAt: new Date().toISOString(),
       });
       publishFlagChange({ type: "update", flagKey: updated.key, flag: updated });
@@ -139,7 +134,6 @@ export const featureFlagRoutes = new Elysia({ prefix: "feature-flags" })
     async ({ params: { id }, body }) => {
       const updated = await featureFlagDAO.updateOrThrow(id, {
         status: body.status,
-        updatedBy: ADMIN_ACTOR,
         updatedAt: new Date().toISOString(),
       });
       publishFlagChange({ type: "status", flagKey: updated.key, flag: updated });

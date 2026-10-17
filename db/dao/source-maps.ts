@@ -27,7 +27,6 @@ export const sourceMapDAO = {
           environmentId: data.environmentId,
           dist: data.dist ?? null,
           mapJson: data.mapJson,
-          size: data.size,
           createdAt: now,
         },
       })

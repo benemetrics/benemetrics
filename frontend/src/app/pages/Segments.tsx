@@ -218,14 +218,6 @@ export function Segments() {
               <span>Created</span>
               <strong>{ago(selected.createdAt)}</strong>
             </div>
-            <div>
-              <span>Updated</span>
-              <strong>{ago(selected.updatedAt)}</strong>
-            </div>
-            <div>
-              <span>Tracked users</span>
-              <strong>{selected.userCount}</strong>
-            </div>
           </div>
           <div className="segment-rules">
             <div className="preview-label">TARGETING RULES</div>

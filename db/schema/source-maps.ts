@@ -1,7 +1,6 @@
 import {
   pgTable,
   text,
-  integer,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -20,7 +19,6 @@ export const sourceMaps = pgTable(
     dist: text("dist"),
     filename: text("filename").notNull(),
     mapJson: text("map_json").notNull(),
-    size: integer("size").notNull().default(0),
     createdAt: text("created_at").notNull(),
   },
   (table) => ({

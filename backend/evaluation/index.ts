@@ -283,7 +283,6 @@ export const evaluationRoutes = new Elysia({ prefix: "api/sentry/flags" })
       if (pauseTriggered) {
         await featureFlagDAO.updateOrThrow(flag.id, {
           status: "paused",
-          updatedBy: "experiment-guardrail",
           updatedAt: new Date().toISOString(),
         });
       }

@@ -259,9 +259,7 @@ export interface SegmentDto {
   name: string;
   description: string;
   rules: Array<Record<string, unknown>>;
-  userCount: number;
   createdAt: string;
-  updatedAt: string;
 }
 
 // Releases (admin) — summary adds computed issue metrics.

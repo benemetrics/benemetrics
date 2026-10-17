@@ -43,8 +43,6 @@ interface FeatureFlag {
   experiment?: ExperimentConfig;
   createdAt: Date;
   updatedAt: Date;
-  createdBy: string;
-  updatedBy: string;
 }
 
 interface Segment {
@@ -52,9 +50,7 @@ interface Segment {
   name: string;
   description: string;
   rules: TargetingRule[];
-  userCount: number;
   createdAt: Date;
-  updatedAt: Date;
 }
 
 interface FeatureFlagCreateRequest {

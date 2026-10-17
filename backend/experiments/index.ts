@@ -14,7 +14,6 @@ async function updateExperimentStatus(
   const experiment = flag.experiment ?? { enabled: false };
   const updated = await featureFlagDAO.updateOrThrow(flagId, {
     experiment: JSON.stringify({ ...experiment, status }),
-    updatedBy: "admin@test.com",
     updatedAt: new Date().toISOString(),
   });
   publishFlagChange({ type: "status", flagKey: updated.key, flag: updated });
@@ -55,7 +54,6 @@ export const experimentRoutes = new Elysia({ prefix: "experiments" })
         variants: JSON.stringify(variants),
         defaultValue: String(winner?.value ?? ""),
         rolloutPercentage: 100,
-        updatedBy: "admin@test.com",
         updatedAt: new Date().toISOString(),
       });
       publishFlagChange({ type: "update", flagKey: updated.key, flag: updated });

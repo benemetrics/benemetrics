@@ -15,7 +15,7 @@ type ArtifactFields = Pick<
   | "release"
   | "dist"
   | "filename"
-  | "size"
+  | "mapJson"
 >;
 
 export function toArtifactBase(map: ArtifactFields) {
@@ -27,7 +27,9 @@ export function toArtifactBase(map: ArtifactFields) {
     release: map.release,
     dist: map.dist,
     name: map.filename,
-    size: map.size,
+    // Byte size of the uploaded map document, computed from the stored
+    // text instead of being persisted as a second copy of the same fact.
+    size: Buffer.byteLength(map.mapJson, "utf8"),
   };
 }
 

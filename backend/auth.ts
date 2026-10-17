@@ -155,5 +155,13 @@ export async function validateUploadAuth(
   if (token.expiresAt && token.expiresAt <= new Date().toISOString())
     return { valid: false, error: "Expired upload token" };
 
+  // Bookkeeping for the admin token list; never fail an upload because
+  // the usage timestamp could not be written.
+  try {
+    await sourceMapTokenDAO.touchLastUsed(token.id);
+  } catch (error) {
+    console.warn("[Auth] Failed to record upload token use:", error);
+  }
+
   return { valid: true, token };
 }

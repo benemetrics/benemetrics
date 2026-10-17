@@ -24,7 +24,6 @@ export const segmentDAO = {
         ...data,
         id: data.id ?? crypto.randomUUID(),
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       })
       .returning();
     if (!row) {

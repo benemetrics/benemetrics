@@ -47,8 +47,7 @@ Create a new feature flag. Requires **Admin OAuth2/OIDC authentication**.
   "segments": [],
   "status": "draft",
   "createdAt": "2024-01-15T10:30:00Z",
-  "updatedAt": "2024-01-15T10:30:00Z",
-  "createdBy": "admin@company.com"
+  "updatedAt": "2024-01-15T10:30:00Z"
 }
 ```
 
@@ -117,9 +116,7 @@ Get a specific feature flag with full details. Requires **Admin OAuth2/OIDC auth
   "status": "active",
   "rolloutPercentage": 50,
   "createdAt": "2024-01-15T10:30:00Z",
-  "updatedAt": "2024-01-15T14:22:00Z",
-  "createdBy": "admin@company.com",
-  "updatedBy": "admin@company.com"
+  "updatedAt": "2024-01-15T14:22:00Z"
 }
 ```
 
@@ -227,7 +224,7 @@ List all segments. Requires **Admin OAuth2/OIDC authentication**.
 
 ### `GET /api/admin/segments/:id`
 
-Get segment with user count and matching users preview. Requires **Admin OAuth2/OIDC authentication**.
+Get a segment. Requires **Admin OAuth2/OIDC authentication**.
 
 **Response:**
 ```json
@@ -236,13 +233,7 @@ Get segment with user count and matching users preview. Requires **Admin OAuth2/
   "name": "Premium Users",
   "description": "Users with active premium subscription",
   "rules": [...],
-  "userCount": 1250,
-  "sampleUsers": [
-    { "id": "user_1", "email": "john@example.com", "name": "John Doe" },
-    { "id": "user_2", "email": "jane@example.com", "name": "Jane Smith" }
-  ],
-  "createdAt": "2024-01-10T09:00:00Z",
-  "updatedAt": "2024-01-15T11:30:00Z"
+  "createdAt": "2024-01-10T09:00:00Z"
 }
 ```
 

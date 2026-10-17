@@ -1,8 +1,8 @@
 import { Elysia, file } from "elysia";
 import { type as arktype } from "arktype";
 import { S3Client } from "bun";
-import { mkdir, rename, unlink } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { mkdir, readdir, rename, unlink } from "node:fs/promises";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { adminAuthEnforced, validateAdminAuth } from "../auth";
 import { notFound, unauthorized } from "../errors";
 
@@ -72,12 +72,8 @@ export function resolveLocalObjectPath(key: string): string | null {
   return full;
 }
 
-async function putObjectS3(
-  config: S3Config,
-  key: string,
-  body: string,
-): Promise<void> {
-  const client = new S3Client({
+function makeS3Client(config: S3Config): S3Client {
+  return new S3Client({
     bucket: config.bucket,
     ...(config.endpoint ? { endpoint: config.endpoint } : {}),
     ...(config.region ? { region: config.region } : {}),
@@ -85,6 +81,14 @@ async function putObjectS3(
     ...(config.secretAccessKey ? { secretAccessKey: config.secretAccessKey } : {}),
     ...(config.sessionToken ? { sessionToken: config.sessionToken } : {}),
   });
+}
+
+async function putObjectS3(
+  config: S3Config,
+  key: string,
+  body: string,
+): Promise<void> {
+  const client = makeS3Client(config);
   await client.write(key, body, { type: "application/json" });
 }
 
@@ -122,6 +126,79 @@ export async function putObject(
   }
 
   await putObjectLocal(key, body);
+}
+
+// Reads one object back. Keys address the backend active at read time
+// (never the one that wrote them); a missing object is `null` rather than
+// an error so callers can treat absence as data.
+export async function getObjectText(key: string): Promise<string | null> {
+  const config = readS3Config();
+  if (config) {
+    const object = makeS3Client(config).file(key);
+    if (!(await object.exists())) return null;
+    return await object.text();
+  }
+
+  const full = resolveLocalObjectPath(key);
+  if (!full) return null;
+  const object = Bun.file(full);
+  if (!(await object.exists())) return null;
+  return await object.text();
+}
+
+// Lists object keys under a prefix (one replay's segment directory). Keys
+// come back sorted so callers get a deterministic order; the local backend
+// skips the temp names an interrupted write may leave behind.
+export async function listObjectKeys(
+  prefix: string,
+  limit = 1000,
+): Promise<string[]> {
+  const config = readS3Config();
+  if (config) {
+    const client = makeS3Client(config);
+    const keys: string[] = [];
+    let continuationToken: string | undefined;
+    while (keys.length < limit) {
+      const page = await client.list({
+        prefix,
+        maxKeys: Math.min(1000, limit - keys.length),
+        ...(continuationToken ? { continuationToken } : {}),
+      });
+      for (const object of page.contents ?? []) {
+        if (object.key) keys.push(object.key);
+      }
+      if (!page.isTruncated || !page.nextContinuationToken) break;
+      continuationToken = page.nextContinuationToken;
+    }
+    return keys.sort();
+  }
+
+  const root = localStorageDir();
+  const directory = resolveLocalObjectPath(prefix);
+  if (!directory) return [];
+
+  const keys: string[] = [];
+  const walk = async (dir: string): Promise<void> => {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return; // an absent directory lists as empty
+    }
+    for (const entry of entries) {
+      if (keys.length >= limit) return;
+      const full = resolve(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(full);
+        continue;
+      }
+      if (!entry.isFile() || entry.name.endsWith(".tmp")) continue;
+      keys.push(relative(root, full).split(sep).join("/"));
+    }
+  };
+
+  await walk(directory);
+  return keys.sort();
 }
 
 // Serves offloaded objects straight from the local storage directory

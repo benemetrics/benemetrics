@@ -269,19 +269,17 @@ describe("Feature Flags Management API", () => {
         type: "boolean",
         defaultValue: false
       });
-      const created = await createResponse.json() as FeatureFlag & { createdBy: string };
+      const created = await createResponse.json() as FeatureFlag;
 
       const response = await apiRequest("PATCH", `/api/admin/feature-flags/${created.id}`, {
         id: crypto.randomUUID(),
-        createdBy: "attacker",
         createdAt: "1970-01-01T00:00:00.000Z",
         name: "Renamed"
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json() as FeatureFlag & { createdBy: string };
+      const data = await response.json() as FeatureFlag;
       expect(data.id).toBe(created.id);
-      expect(data.createdBy).toBe(created.createdBy);
       expect(data.createdAt).toBe(created.createdAt);
       expect(data.name).toBe("Renamed");
     });

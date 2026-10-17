@@ -108,27 +108,27 @@ async function putObjectLocal(key: string, body: string): Promise<void> {
   }
 }
 
-// Writes one JSON object and reports the backend that accepted it so the
-// caller can record it in the stored pointer.
+// Writes one JSON object to the configured backend. The backend is not
+// reported back: readers resolve keys against the active configuration,
+// so switching backends means migrating the objects with them.
 export async function putObject(
   key: string,
   body: string,
-): Promise<StorageBackend> {
+): Promise<void> {
   const config = readS3Config();
   if (config) {
     await putObjectS3(config, key, body);
-    return "s3";
+    return;
   }
 
   await putObjectLocal(key, body);
-  return "local";
 }
 
 // Serves offloaded objects straight from the local storage directory
-// (`GET /storage/<key>`, the `key` of a `{ storage: "local" }` pointer).
-// Only meaningful while the local backend is active: with S3 configured
-// the objects live in the bucket and this surface stays off. Guarded like
-// the other UI surfaces — open in local dev/test, admin token once
+// (`GET /storage/<key>`, the `key` of an offloaded item payload). Only
+// meaningful while the local backend is active: with S3 configured the
+// objects live in the bucket and this surface stays off. Guarded like the
+// other UI surfaces — open in local dev/test, admin token once
 // `adminAuthEnforced()`.
 export const storageRoutes = new Elysia({ prefix: "storage" })
   .onBeforeHandle(({ request }) => {

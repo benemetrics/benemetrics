@@ -365,7 +365,7 @@ Issues live in Postgres (source of truth for alerting; ClickHouse stays the opti
 
 | Method | Path          | Description                                                                                          | Auth |
 | ------ | ------------- | ---------------------------------------------------------------------------------------------------- | ---- |
-| GET    | `/storage/*`  | Serve an offloaded object from `LOCAL_STORAGE_DIR` (`key` of a `{ storage: "local", … }` pointer), Range-capable | Open in dev/test; admin bearer token once `adminAuthEnforced()` |
+| GET    | `/storage/*`  | Serve an offloaded object from `LOCAL_STORAGE_DIR` (the `key` of an offloaded item payload), Range-capable | Open in dev/test; admin bearer token once `adminAuthEnforced()` |
 
 Only active while the local backend is in use: with `S3_BUCKET` configured the objects live in the bucket and the route answers `404`. Keys are resolved inside the storage root (traversal-safe), so only objects written by the offload are reachable; missing objects are plain `404`s.
 
@@ -442,7 +442,7 @@ Guard wiring:
 | `id` | text | PK (event id) |
 | `project_id` | text | indexed |
 | `envelope_header` | text | JSON string |
-| `envelope_items` | text | JSON string; offloaded payloads keep an `{ offloaded: true, storage: "s3" \| "local", key, bytes }` pointer |
+| `envelope_items` | text | JSON string; offloaded payloads keep a `{ key }` pointer instead of the payload |
 | `raw` | text | original envelope body; blanked when items were offloaded to the object store |
 | `received_at` | text | indexed |
 
@@ -580,7 +580,7 @@ Each DAO is a plain object exported as `<entity>DAO` (e.g. `storedEventDAO`, `fe
 - `convertSpanToTransaction`: turns Sentry **span** items (`version: 2`) into transaction-shaped payloads (segment span becomes the transaction; child spans collected; `sentry.measurement.*` attributes become `measurements`).
 - `normalizeTransactionPayload`: hoists trace metadata from `contexts.trace`.
 - Storage: parsed items are saved to `stored_events` (`raw` keeps the original body) via `storedEventDAO.create`, which uses `onConflictDoNothing` so duplicate `event_id` retries are idempotent (no error, no duplicate row, no re-publish).
-- **Replay offload** (`backend/events/offload.ts`): `replay_recording` item payloads are written to the object store before the message is published or stored — S3-compatible storage when `S3_BUCKET` is configured, the local `LOCAL_STORAGE_DIR` directory otherwise — under `replays/<projectId>/<appId>/<replayId|messageId>/<messageId>-<index>.json`, and the stored item keeps `{ offloaded: true, storage, key, bytes }` instead; the row's `raw` body is blanked so the segment is not stored again (Postgres + the ClickHouse copy). Best-effort: when the write fails or exceeds the 5s bound, the payload stays inline and ingestion is never affected. The `replay_event` metadata stays inline, so `GET /events/:id` returns it — or the pointer itself for recording-only envelopes — and while the local backend is active the pointer's `key` is fetchable at `/storage/<key>` (§5.12).
+- **Replay offload** (`backend/events/offload.ts`): `replay_recording` item payloads are written to the object store before the message is published or stored — S3-compatible storage when `S3_BUCKET` is configured, the local `LOCAL_STORAGE_DIR` directory otherwise — under `replays/<projectId>/<appId>/<replayId|messageId>/<messageId>-<index>.json`, and the stored item keeps just the object key (`{ key }`) instead; readers resolve keys against the active storage configuration, so switching backends means migrating the objects. The row's `raw` body is blanked so the segment is not stored again (Postgres + the ClickHouse copy). Best-effort: when the write fails or exceeds the 5s bound, the payload stays inline and ingestion is never affected. The `replay_event` metadata stays inline, so `GET /events/:id` returns it — or the pointer itself for recording-only envelopes — and while the local backend is active the pointer's `key` is fetchable at `/storage/<key>` (§5.12).
 - **NATS/ClickHouse** (`initNats`, `initClickHouse`): NATS-first ingestion — with a broker connected the handler publishes the envelope (`publishEvent`, 2s PubAck timeout) and consumers do the work: `sentry-events-consumer` (durable, sequential) persists to Postgres and pushes to ClickHouse best-effort, an ephemeral per-instance consumer fans out to WebSocket clients at `/events/live/feed`, and `sentry-releases-consumer` handles release events. When NATS is unavailable the handler applies the same `applyEventMessage` path in-process. ClickHouse is optional: `initClickHouse` probes and ensures the `sentry_events` table (`appId` included) at boot; stored events are pushed best-effort while it is available, and `/events` list + get read from it with per-request Postgres fallback (`backend/events-store.ts`). `/events/clear` clears both stores.
 
 ---

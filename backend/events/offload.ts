@@ -1,4 +1,4 @@
-import { putObject, type StorageBackend } from "../storage";
+import { putObject } from "../storage";
 import type { ParsedEnvelope } from "./utils";
 
 // Replay recording segments are rrweb batches that can reach hundreds of
@@ -7,19 +7,17 @@ import type { ParsedEnvelope } from "./utils";
 // and re-parsed on every events list/alerting sweep. At ingestion the
 // recordings are moved to the object store — S3 when `S3_BUCKET` is
 // configured, the local `LOCAL_STORAGE_DIR` directory otherwise — and
-// the item keeps a small pointer instead. The offload is best-effort:
-// when the write fails or stalls the payload stays inline and ingestion
-// is never affected.
+// the item keeps just the object key. The backend is not recorded: reads
+// resolve the key against the storage configuration active at read time.
+// The offload is best-effort: when the write fails or stalls the payload
+// stays inline and ingestion is never affected.
 
+// A recording payload that lives in the object store. Shape check for
+// readers: the recording item payload is an rrweb array when inline and
+// an object carrying `key` when offloaded.
 export interface OffloadedItemPayload {
-  /** Marks a payload that lives in the object store. */
-  offloaded: true;
-  /** Backend holding the object: S3-compatible storage or the local directory. */
-  storage: StorageBackend;
   /** Object key below the bucket / local storage directory. */
   key: string;
-  /** Serialized payload size in bytes. */
-  bytes: number;
 }
 
 const OFFLOADED_ITEM_TYPES = new Set(["replay_recording"]);
@@ -55,10 +53,10 @@ function replayKeyFor(items: ParsedEnvelope["items"], fallback: string): string 
 async function putObjectBounded(
   key: string,
   body: string,
-): Promise<StorageBackend> {
+): Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    return await Promise.race([
+    await Promise.race([
       putObject(key, body),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
@@ -100,13 +98,8 @@ export async function offloadReplayItems(
     const serialized = JSON.stringify(item.payload);
     const key = `replays/${projectId}/${appId}/${replayKey}/${messageId}-${index}.json`;
     try {
-      const storage = await putObjectBounded(key, serialized);
-      const pointer: OffloadedItemPayload = {
-        offloaded: true,
-        storage,
-        key,
-        bytes: Buffer.byteLength(serialized, "utf8"),
-      };
+      await putObjectBounded(key, serialized);
+      const pointer: OffloadedItemPayload = { key };
       result.push({ header: item.header, payload: pointer });
       offloaded += 1;
     } catch (err) {

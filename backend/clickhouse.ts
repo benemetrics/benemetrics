@@ -15,7 +15,7 @@ const CLICKHOUSE_USER = process.env.CLICKHOUSE_USER || "default";
 const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || "";
 
 const TABLE = `${CLICKHOUSE_DATABASE}.sentry_events`;
-const COLUMNS = "id, projectId, appId, envelopeHeader, envelopeItems, raw, receivedAt";
+const COLUMNS = "id, projectId, appId, envelopeHeader, envelopeItems, receivedAt";
 
 let available = false;
 let client: ClickHouseClient | null = null;
@@ -60,7 +60,6 @@ interface ClickHouseEventRow {
   appId: string;
   envelopeHeader: string;
   envelopeItems: string;
-  raw: string;
   receivedAt: string;
 }
 
@@ -71,7 +70,6 @@ function toStoredEvent(row: ClickHouseEventRow): StoredEvent {
     appId: row.appId || null,
     envelopeHeader: row.envelopeHeader,
     envelopeItems: row.envelopeItems,
-    raw: row.raw,
     receivedAt: toIsoTimestamp(row.receivedAt),
   };
 }
@@ -85,7 +83,6 @@ export async function initClickHouse(): Promise<void> {
       appId String,
       envelopeHeader String,
       envelopeItems String,
-      raw String,
       receivedAt DateTime
     )
     ENGINE = MergeTree()
@@ -101,6 +98,11 @@ export async function initClickHouse(): Promise<void> {
     await clickhouse.command({ query: createTableQuery });
     await clickhouse.command({
       query: `ALTER TABLE ${TABLE} ADD COLUMN IF NOT EXISTS appId String AFTER projectId`,
+    });
+    // `raw` was a full copy of the envelope; it is no longer stored
+    // anywhere (Postgres dropped it too).
+    await clickhouse.command({
+      query: `ALTER TABLE ${TABLE} DROP COLUMN IF EXISTS raw`,
     });
     available = true;
     console.log("[ClickHouse] Connected and table ensured");
@@ -121,7 +123,6 @@ async function insertEventRow(event: SentryEventMessage): Promise<void> {
         appId: event.appId ?? "",
         envelopeHeader: event.envelopeHeader,
         envelopeItems: event.envelopeItems,
-        raw: event.raw,
         receivedAt: event.receivedAt,
       },
     ],

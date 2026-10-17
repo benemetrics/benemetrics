@@ -33,7 +33,6 @@ export async function applyEventMessage(
     appId: event.appId,
     envelopeHeader: event.envelopeHeader,
     envelopeItems: event.envelopeItems,
-    raw: event.raw,
     receivedAt: event.receivedAt,
   });
   if (!stored) return false;

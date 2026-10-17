@@ -102,23 +102,21 @@ export function parseEnvelope(raw: string): ParsedEnvelope | null {
   }
 }
 
-// Envelopes are stored as a header and a normalized items array; falls
-// back to the raw text for rows stored before the items column was
-// populated.
+// Envelopes are stored as a header plus a normalized items array; the
+// items JSON column is the single source of truth.
 export function parseStoredEnvelope(stored: {
   envelopeHeader: string;
   envelopeItems: string;
-  raw: string;
 }): ParsedEnvelope | null {
   try {
     const header = JSON.parse(stored.envelopeHeader || "{}") as EnvelopeHeader;
     const items = JSON.parse(stored.envelopeItems);
-    if (Array.isArray(items) && items.length > 0) {
+    if (Array.isArray(items)) {
       return { header, items: items as ParsedEnvelope["items"] };
     }
   } catch {
   }
-  return parseEnvelope(stored.raw);
+  return null;
 }
 
 export function extractEventId(parsed: { header: EnvelopeHeader; items: Array<{ header: ItemHeader; payload: unknown }> }): string {

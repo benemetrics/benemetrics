@@ -129,7 +129,6 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
       projectId: "*",
       envelopeHeader: "{}",
       envelopeItems: "[]",
-      raw: "",
       receivedAt: new Date().toISOString(),
       type: "clear",
     };
@@ -207,7 +206,7 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
       const convertedParsed = { header: parsed.header, items: convertedItems };
 
       const eventId = extractEventId(convertedParsed);
-      const { items: storedItems, offloaded } = await offloadReplayItems(convertedItems, {
+      const storedItems = await offloadReplayItems(convertedItems, {
         projectId: app.projectId,
         appId: app.id,
         messageId: eventId,
@@ -221,9 +220,6 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
         appId: app.id,
         envelopeHeader,
         envelopeItems,
-        // `raw` repeats every payload; once the recordings live in the
-        // object store, storing the body again would re-inflate the row.
-        raw: offloaded > 0 ? "" : rawBody,
         receivedAt,
         type: "envelope",
       };
@@ -259,7 +255,6 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
         appId: app.id,
         envelopeHeader,
         envelopeItems,
-        raw: rawBody,
         receivedAt,
         type: "store",
       };

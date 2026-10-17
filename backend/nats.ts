@@ -15,7 +15,6 @@ export interface SentryEventMessage {
   appId?: string;
   envelopeHeader: string;
   envelopeItems: string;
-  raw: string;
   receivedAt: string;
   type: "envelope" | "store" | "clear";
 }

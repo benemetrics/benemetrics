@@ -27,9 +27,6 @@ export interface OtlpEnvelope {
   id: string;
   envelopeHeader: string;
   envelopeItems: string;
-  // Full Sentry envelope text (header, item header and
-  // payload lines) as stored in the raw column.
-  raw: string;
 }
 
 function randomHex(length: number): string {
@@ -253,17 +250,11 @@ export function convertOtlpToEnvelopes(
       sent_at: new Date().toISOString(),
       sdk: { name: "otlp-json", version: "1.0" },
     };
-    const payloadJson = JSON.stringify(transaction);
 
     envelopes.push({
       id: eventId,
       envelopeHeader: JSON.stringify(header),
       envelopeItems: JSON.stringify([{ header: itemHeader, payload: transaction }]),
-      raw: [
-        JSON.stringify(header),
-        JSON.stringify(itemHeader),
-        payloadJson,
-      ].join("\n"),
     });
   }
   return envelopes;

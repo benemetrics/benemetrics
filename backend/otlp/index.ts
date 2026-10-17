@@ -31,7 +31,6 @@ export const otlpRoutes = new Elysia({ prefix: "api" })
           appId: app.id,
           envelopeHeader: envelope.envelopeHeader,
           envelopeItems: envelope.envelopeItems,
-          raw: envelope.raw,
           receivedAt,
           type: "envelope",
         };

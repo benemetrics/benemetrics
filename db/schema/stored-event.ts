@@ -12,7 +12,6 @@ export const storedEvents = pgTable("stored_events", {
   appId: text("app_id"),
   envelopeHeader: text("envelope_header").notNull(),
   envelopeItems: text("envelope_items").notNull(),
-  raw: text("raw").notNull(),
   receivedAt: text("received_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
   projectIdIdx: index("stored_events_project_id_idx").on(table.projectId),

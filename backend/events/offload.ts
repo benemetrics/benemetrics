@@ -70,23 +70,16 @@ async function putObjectBounded(
   }
 }
 
-export interface OffloadResult {
-  items: ParsedEnvelope["items"];
-  /** How many item payloads were moved to the object store. */
-  offloaded: number;
-}
-
 export async function offloadReplayItems(
   items: ParsedEnvelope["items"],
   context: { projectId: string; appId: string; messageId: string },
-): Promise<OffloadResult> {
+): Promise<ParsedEnvelope["items"]> {
   const projectId = sanitizeKeyPart(context.projectId);
   const appId = sanitizeKeyPart(context.appId);
   const messageId = sanitizeKeyPart(context.messageId);
   const replayKey = replayKeyFor(items, messageId);
 
   const result: ParsedEnvelope["items"] = [];
-  let offloaded = 0;
 
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]!;
@@ -101,7 +94,6 @@ export async function offloadReplayItems(
       await putObjectBounded(key, serialized);
       const pointer: OffloadedItemPayload = { key };
       result.push({ header: item.header, payload: pointer });
-      offloaded += 1;
     } catch (err) {
       console.error(
         `[storage] Keeping "${key}" inline after write failure:`,
@@ -111,5 +103,5 @@ export async function offloadReplayItems(
     }
   }
 
-  return { items: result, offloaded };
+  return result;
 }

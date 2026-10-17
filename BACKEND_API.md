@@ -441,10 +441,10 @@ Guard wiring:
 | --- | --- | --- |
 | `id` | text | PK (event id) |
 | `project_id` | text | indexed |
+| `app_id` | text | indexed, nullable for legacy rows |
 | `envelope_header` | text | JSON string |
 | `envelope_items` | text | JSON string; offloaded payloads keep a `{ key }` pointer instead of the payload |
-| `raw` | text | original envelope body; blanked when items were offloaded to the object store |
-| `received_at` | text | indexed |
+| `received_at` | text | indexed ISO timestamp of ingestion |
 
 **feature_flags**
 | column | type | notes |
@@ -579,8 +579,8 @@ Each DAO is a plain object exported as `<entity>DAO` (e.g. `storedEventDAO`, `fe
 - `extractEventId`: header `event_id` → event/transaction payload `event_id` → span `trace_id` → random UUID.
 - `convertSpanToTransaction`: turns Sentry **span** items (`version: 2`) into transaction-shaped payloads (segment span becomes the transaction; child spans collected; `sentry.measurement.*` attributes become `measurements`).
 - `normalizeTransactionPayload`: hoists trace metadata from `contexts.trace`.
-- Storage: parsed items are saved to `stored_events` (`raw` keeps the original body) via `storedEventDAO.create`, which uses `onConflictDoNothing` so duplicate `event_id` retries are idempotent (no error, no duplicate row, no re-publish).
-- **Replay offload** (`backend/events/offload.ts`): `replay_recording` item payloads are written to the object store before the message is published or stored — S3-compatible storage when `S3_BUCKET` is configured, the local `LOCAL_STORAGE_DIR` directory otherwise — under `replays/<projectId>/<appId>/<replayId|messageId>/<messageId>-<index>.json`, and the stored item keeps just the object key (`{ key }`) instead; readers resolve keys against the active storage configuration, so switching backends means migrating the objects. The row's `raw` body is blanked so the segment is not stored again (Postgres + the ClickHouse copy). Best-effort: when the write fails or exceeds the 5s bound, the payload stays inline and ingestion is never affected. The `replay_event` metadata stays inline, so `GET /events/:id` returns it — or the pointer itself for recording-only envelopes — and while the local backend is active the pointer's `key` is fetchable at `/storage/<key>` (§5.12).
+- Storage: parsed items are saved to `stored_events` (`envelope_header` + `envelope_items`) via `storedEventDAO.create`, which uses `onConflictDoNothing` so duplicate `event_id` retries are idempotent (no error, no duplicate row, no re-publish).
+- **Replay offload** (`backend/events/offload.ts`): `replay_recording` item payloads are written to the object store before the message is published or stored — S3-compatible storage when `S3_BUCKET` is configured, the local `LOCAL_STORAGE_DIR` directory otherwise — under `replays/<projectId>/<appId>/<replayId|messageId>/<messageId>-<index>.json`, and the stored item keeps just the object key (`{ key }`) instead; readers resolve keys against the active storage configuration, so switching backends means migrating the objects. Best-effort: when the write fails or exceeds the 5s bound, the payload stays inline and ingestion is never affected. The `replay_event` metadata stays inline, so `GET /events/:id` returns it — or the pointer itself for recording-only envelopes — and while the local backend is active the pointer's `key` is fetchable at `/storage/<key>` (§5.12).
 - **NATS/ClickHouse** (`initNats`, `initClickHouse`): NATS-first ingestion — with a broker connected the handler publishes the envelope (`publishEvent`, 2s PubAck timeout) and consumers do the work: `sentry-events-consumer` (durable, sequential) persists to Postgres and pushes to ClickHouse best-effort, an ephemeral per-instance consumer fans out to WebSocket clients at `/events/live/feed`, and `sentry-releases-consumer` handles release events. When NATS is unavailable the handler applies the same `applyEventMessage` path in-process. ClickHouse is optional: `initClickHouse` probes and ensures the `sentry_events` table (`appId` included) at boot; stored events are pushed best-effort while it is available, and `/events` list + get read from it with per-request Postgres fallback (`backend/events-store.ts`). `/events/clear` clears both stores.
 
 ---

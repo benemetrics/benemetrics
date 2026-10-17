@@ -4,12 +4,11 @@
  * At ingestion `replay_recording` item payloads are written to the object
  * store — S3-compatible storage when S3_BUCKET is configured, the local
  * LOCAL_STORAGE_DIR directory otherwise — and the item keeps just the
- * object key (`{ key }`) with the duplicated `raw` body blanked so the
- * segment is not stored again (Postgres + the best-effort ClickHouse
- * copy). When the write fails, the payload stays inline and ingestion is
- * unaffected. While the local backend is active the objects are served
- * back at GET /storage/<key>; with S3 configured that surface stays off
- * (404).
+ * object key (`{ key }`) instead of the segment, so the segment is not
+ * stored again (Postgres + the best-effort ClickHouse copy). When the
+ * write fails, the payload stays inline and ingestion is unaffected.
+ * While the local backend is active the objects are served back at
+ * GET /storage/<key>; with S3 configured that surface stays off (404).
  *
  * The stub below speaks just enough path-style S3 (object PUT) for Bun's
  * S3Client; request signatures are not checked.
@@ -203,8 +202,7 @@ describe("Replay segment offload to S3-compatible storage", () => {
     expect(JSON.parse(upload.body)).toEqual(recording);
 
     // The stored row keeps the metadata inline and just the object key
-    // instead of the segment; `raw` (which repeats every payload) is
-    // blanked.
+    // instead of the segment.
     const stored = await storedEventDAO.findById(eventId);
     expect(stored).toBeDefined();
     const storedItems = JSON.parse(stored!.envelopeItems) as Array<{
@@ -217,7 +215,6 @@ describe("Replay segment offload to S3-compatible storage", () => {
     expect(
       storedItems.find((item) => item.header.type === "replay_recording")!.payload,
     ).toEqual({ key });
-    expect(stored!.raw).toBe("");
 
     // The events API still serves the row: list summary + detail metadata.
     const list = await apiGet<{ data: Array<{ id: string; itemTypes: string[] }> }>(
@@ -280,7 +277,6 @@ describe("Replay segment offload to S3-compatible storage", () => {
       payload: unknown;
     }>;
     expect(storedItems[0]!.payload).toEqual(event);
-    expect(stored!.raw).not.toBe("");
 
     const detail = await apiGet<Record<string, unknown>>(`/events/${eventId}`);
     expect(detail.message).toBe(event.message);
@@ -307,7 +303,7 @@ describe("Replay segment offload to S3-compatible storage", () => {
       expect(uploads).toHaveLength(0);
 
       // The segment landed under the storage directory, keyed exactly
-      // like the S3 objects; the row keeps the local key and no raw copy.
+      // like the S3 objects; the row keeps just the key.
       const key = objectKeyFor({ replayKey: eventId, eventId, index: 0 });
       const fileText = await Bun.file(join(dir, key)).text();
       expect(JSON.parse(fileText)).toEqual(recording);
@@ -319,7 +315,6 @@ describe("Replay segment offload to S3-compatible storage", () => {
         payload: unknown;
       }>;
       expect(storedItems[0]!.payload).toEqual(pointer);
-      expect(stored!.raw).toBe("");
 
       const detail = await apiGet<unknown>(`/events/${eventId}`);
       expect(detail).toEqual(pointer);
@@ -412,7 +407,6 @@ describe("Replay segment offload to S3-compatible storage", () => {
         payload: unknown;
       }>;
       expect(storedItems[0]!.payload).toEqual(recording);
-      expect(stored!.raw).not.toBe("");
 
       const detail = await apiGet<unknown>(`/events/${eventId}`);
       expect(detail).toEqual(recording);
@@ -445,7 +439,6 @@ describe("Replay segment offload to S3-compatible storage", () => {
       payload: unknown;
     }>;
     expect(storedItems[0]!.payload).toEqual(recording);
-    expect(stored!.raw).not.toBe("");
 
     const detail = await apiGet<unknown>(`/events/${eventId}`);
     expect(detail).toEqual(recording);

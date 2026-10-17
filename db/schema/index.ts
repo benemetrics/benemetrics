@@ -1,5 +1,4 @@
 export { projects, apps } from "./project";
-export { dsnRecords } from "./dsn";
 export { storedEvents } from "./stored-event";
 export { issues } from "./issues";
 export { featureFlags } from "./feature-flags";

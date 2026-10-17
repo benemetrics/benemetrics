@@ -65,7 +65,7 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 | `CLICKHOUSE_TEST_URL` | –                                                  | e2e only: enables the ClickHouse store test (`e2e/22-clickhouse-store.test.ts`) |
 | `ALERT_EVALUATION_INTERVAL_MS` | `60000`                                | Alert rule sweeper interval    |
 | `ADMIN_TOKEN`         | –                                                  | Admin bearer token; accepted only while no OIDC/OAuth2 env is configured (fails closed when unset) |
-| `OIDC_ISSUER`, `OIDC_CLIENT_ID` | –                                       | Presence forces the admin guard on `/events/*` + `/api/dsn/*` |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID` | –                                       | Presence forces the admin guard on `/events/*` + `/storage/*` |
 | `OAUTH_ISSUER`, `OAUTH_CLIENT_ID` | –                                     | Same as OIDC (provider configured) |
 
 - **DB selection logic** lives in `db/index.ts` and is resolved once (singleton `db`):
@@ -100,8 +100,6 @@ backend/
     index.ts          # eventsRoutes (/events/*) + ingestionRoutes (/api/*/*) + alert evaluation hook
     ingestion.ts      # Shared ingestion helpers: resolveAuthorizedApp + NATS-first dispatch
     utils.ts          # Envelope parse/transform helpers (pure functions) + issue fingerprinting
-  dsn/
-    index.ts          # dsnRoutes (/api/dsn/*) — open in dev/test unless adminAuthEnforced()
   storage/
     index.ts          # Object storage: S3 when S3_BUCKET is set, LOCAL_STORAGE_DIR otherwise + storageRoutes (/storage/*) serving local objects
   featureFlags/
@@ -148,7 +146,6 @@ const app = new Elysia()
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   .use(eventsRoutes)        // prefix "events"
   .use(ingestionRoutes)     // prefix "api"
-  .use(dsnRoutes)           // prefix "dsn"
   .use(featureFlagRoutes)   // prefix "feature-flags"
   .use(evaluationRoutes)    // prefix "api/sentry/flags"
   .use(adminRoutes)         // prefix "/api/admin"
@@ -188,7 +185,7 @@ Prefixes below are written **without** a leading slash only where the source omi
 | WS     | `/events/live/feed` | `token`                        | Live event push stream (WebSocket)       |
 | GET    | `/events/:eventId`  | –                              | Fetch one event (parsed envelope item)   |
 
-`/events/*` and `/api/dsn/*` require the admin bearer token once `adminAuthEnforced()` is true (production, `ADMIN_TOKEN` set, or OIDC/OAuth env configured); in dev/test without a configured identity provider they are open.
+`/events/*` and `/storage/*` require the admin bearer token once `adminAuthEnforced()` is true (production, `ADMIN_TOKEN` set, or OIDC/OAuth env configured); in dev/test without a configured identity provider they are open.
 
 ### 5.3 Ingestion (SDK → server)
 
@@ -201,17 +198,9 @@ Prefixes below are written **without** a leading slash only where the source omi
 
 Both routes resolve the target app from the DSN (numeric app number, ingest key or project id in the path, matched against `sentry_key`), validate DSN auth, then persist via `storedEventDAO`. Unknown apps or mismatched keys ⇒ `401`; apps are **never** auto-provisioned during ingestion. Duplicate `event_id`s are ignored (`onConflictDoNothing`) so retries stay idempotent.
 
-### 5.4 DSN management
+### 5.4 DSNs
 
-`backend/dsn/index.ts` → `dsnRoutes` (prefix `api/dsn`)
-
-| Method | Path                | Body / Params                     | Description                  |
-| ------ | ------------------- | --------------------------------- | ---------------------------- |
-| POST   | `/api/dsn/create`   | `{ projectId, host, publicKey? }` | Create or update the DSN for a project (key optional) |
-| GET    | `/api/dsn/:projectId` | `projectId`                     | Fetch DSN for a project      |
-| POST   | `/api/dsn/generate` | `{ projectId, host }`             | Create DSN with a fresh key  |
-
-Each project has at most one DSN record; `create`/`generate` upsert on `projectId`. These routes are open in dev/test while no identity provider is configured and require the admin bearer token once `adminAuthEnforced()` is true.
+DSNs are per app, not per project: `POST /api/admin/projects/:id/apps` creates an app together with its DSN, and every apps response carries it as `dsn`. There is no separate DSN management endpoint.
 
 ### 5.5 Feature flags — CRUD
 
@@ -395,7 +384,7 @@ Both schemes live in `backend/auth.ts` and are applied via Elysia middleware hoo
 Guard wiring:
 
 - `/api/admin/*` is **always** guarded: `backend/admin/index.ts` derives the auth result and fails closed in `onBeforeHandle` (401 before any handler runs).
-- `/events/*`, `/api/dsn/*` and `/storage/*` are open in dev/test only while `adminAuthEnforced()` is false — i.e. no `ADMIN_TOKEN`, no `OIDC_*`/`OAUTH_*` env, and not production. As soon as an identity provider is configured they require the same admin bearer token.
+- `/events/*` and `/storage/*` are open in dev/test only while `adminAuthEnforced()` is false — i.e. no `ADMIN_TOKEN`, no `OIDC_*`/`OAUTH_*` env, and not production. As soon as an identity provider is configured they require the same admin bearer token.
 
 ---
 
@@ -424,16 +413,6 @@ Guard wiring:
 | `ingest_key` | text | not null, **unique**, indexed |
 | `public_key` | text | not null |
 | `host` | text | default `localhost` |
-| `created_at` | text | default `CURRENT_TIMESTAMP` |
-
-**dsn_records**
-| column | type | notes |
-| --- | --- | --- |
-| `id` | text | PK |
-| `project_id` | text | not null, **unique**, indexed |
-| `public_key` | text | not null |
-| `host` | text | default `https` |
-| `protocol` | text | default `https` |
 | `created_at` | text | default `CURRENT_TIMESTAMP` |
 
 **stored_events**
@@ -625,11 +604,11 @@ Each DAO is a plain object exported as `<entity>DAO` (e.g. `storedEventDAO`, `fe
 
 ### Auth
 19. **Centralize auth** in one importable module. Both `validateAuth` and `validateAdminAuth` must live in a shared file and be applied via middleware/`onBeforeHandle`, not copy-pasted per route.
-20. **Authorization is enforced on admin routes**: `/api/admin/*` fails closed in `adminRoutes.onBeforeHandle`; UI surfaces (`/events/*`, `/api/dsn/*`) follow `adminAuthEnforced()`.
+20. **Authorization is enforced on admin routes**: `/api/admin/*` fails closed in `adminRoutes.onBeforeHandle`; UI surfaces (`/events/*`, `/storage/*`) follow `adminAuthEnforced()`.
 21. **Secret handling**: never log tokens/keys; never hardcode real credentials. The e2e suite configures its own `ADMIN_TOKEN` in `e2e/preload.ts` — the app ships no built-in tokens.
 
 ### Testing & quality gates
-22. **Every new endpoint gets an e2e test** under `e2e/` (see `e2e/10-dsn-endpoints.test.ts` for the "start real app on port 0" pattern). Rely on tests, not manual curl, for DSN/ingestion/auth.
+22. **Every new endpoint gets an e2e test** under `e2e/` (see `e2e/12-projects-apps.test.ts` for the "start real app on port 0" pattern). Rely on tests, not manual curl, for DSN/ingestion/auth.
 23. **Run `bun run typecheck` and `bun run test` before pushing.** Do not commit with type errors.
 24. **No `.tmp`, no commented-out dead code, no duplicate files.** If something is unused, delete it.
 25. **Consistent naming**: routes plural and kebab-case (`feature-flags`, `stored-events`), DAO methods as in §7.2, files `index.ts` per module.

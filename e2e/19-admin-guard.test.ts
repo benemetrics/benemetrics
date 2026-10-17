@@ -3,7 +3,7 @@
  *
  * /api/admin/* always requires the configured credentials:
  * unauthenticated mutations must fail with 401 and leave no side
- * effect. The UI surfaces (/events, /api/dsn) are open only while no
+ * effect. The UI surfaces (/events, /storage) are open only while no
  * admin credentials are configured at all. When no OIDC/OAuth2 env is
  * set, ADMIN_TOKEN is the credential; once a provider is configured
  * the admin token is ignored (provider flow stubbed, fails closed).
@@ -73,35 +73,28 @@ describe("Admin guard enforcement", () => {
       const events = await fetch(`${baseUrl}/events`);
       expect(events.status).toBe(200);
 
-      const dsn = await fetch(`${baseUrl}/api/dsn/create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: `open-${Date.now()}`, host: "localhost" }),
-      });
-      expect(dsn.status).toBe(200);
+      // Reachable without auth: an unknown object key is a 404, not a 401.
+      const storage = await fetch(`${baseUrl}/storage/nonexistent-key.json`);
+      expect(storage.status).toBe(404);
     } finally {
       if (configured === undefined) delete process.env.ADMIN_TOKEN;
       else process.env.ADMIN_TOKEN = configured;
     }
   });
 
-  it("requires admin auth on /events and /api/dsn when only ADMIN_TOKEN is configured", async () => {
+  it("requires admin auth on the UI surfaces when ADMIN_TOKEN is configured", async () => {
     const events = await fetch(`${baseUrl}/events`);
     expect(events.status).toBe(401);
 
-    const dsn = await fetch(`${baseUrl}/api/dsn/create`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: `locked-${Date.now()}`, host: "localhost" }),
-    });
-    expect(dsn.status).toBe(401);
+    const storage = await fetch(`${baseUrl}/storage/nonexistent-key.json`);
+    expect(storage.status).toBe(401);
 
     // The same surfaces accept the configured admin token.
     const authed = await fetch(`${baseUrl}/events`, { headers: adminHeaders });
     expect(authed.status).toBe(200);
   });
 
-  it("ignores ADMIN_TOKEN on /events and /api/dsn once OIDC is configured", async () => {
+  it("ignores ADMIN_TOKEN on the UI surfaces once OIDC is configured", async () => {
     // ADMIN_TOKEN is configured for the suite (see e2e/preload.ts), but an
     // identity provider takes precedence: the token stops being accepted.
     process.env.OIDC_ISSUER = "https://idp.example.com";
@@ -109,12 +102,8 @@ describe("Admin guard enforcement", () => {
       const events = await fetch(`${baseUrl}/events`);
       expect(events.status).toBe(401);
 
-      const dsn = await fetch(`${baseUrl}/api/dsn/create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: `locked-${Date.now()}`, host: "localhost" }),
-      });
-      expect(dsn.status).toBe(401);
+      const storage = await fetch(`${baseUrl}/storage/nonexistent-key.json`);
+      expect(storage.status).toBe(401);
 
       // The configured ADMIN_TOKEN is ignored while a provider is set, on
       // the admin API and on the UI surfaces alike (the provider flow is

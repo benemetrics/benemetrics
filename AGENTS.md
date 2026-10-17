@@ -79,7 +79,7 @@ Route handler (backend/<domain>/index.ts)  ->  DAO (db/dao/*)  ->  Drizzle
 - MUST centralize `validateAuth` and `validateAdminAuth` in `backend/auth.ts`; apply via middleware (`onBeforeHandle`), not copy-paste.
 - MUST guard `/api/admin/*` with admin auth (Bearer token only, fail closed).
 - Token model: `ADMIN_TOKEN` is the fallback admin credential, accepted only while no OIDC/OAuth2 env is configured; once a provider is configured admin auth delegates to it (flow still stubbed, fails closed). Without either, `/api/admin/*` rejects every request. NEVER reintroduce built-in dev/test tokens or prefix/length bypasses.
-- UI surfaces (`/events/*`, `/api/dsn/*`, `/storage/*`) are open in dev/test only while `adminAuthEnforced()` is false (no `ADMIN_TOKEN`, no OIDC/OAuth env, not production); they MUST require the admin token as soon as `adminAuthEnforced()` is true.
+- UI surfaces (`/events/*`, `/storage/*`) are open in dev/test only while `adminAuthEnforced()` is false (no `ADMIN_TOKEN`, no OIDC/OAuth env, not production); they MUST require the admin token as soon as `adminAuthEnforced()` is true.
 - NEVER log or hardcode secrets/keys; the e2e `ADMIN_TOKEN` is test-only configuration defined in `e2e/preload.ts`.
 
 ## Ingestion

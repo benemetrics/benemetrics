@@ -61,7 +61,7 @@ export function isAuthProviderConfigured(): boolean {
 }
 
 // Whether admin credentials are enforced on the UI surfaces that are
-// otherwise open in dev (/events, /api/dsn). Always enforced in
+// otherwise open in dev (/events, /storage). Always enforced in
 // production, or when ADMIN_TOKEN / an identity provider is configured.
 export function adminAuthEnforced(): boolean {
   return (

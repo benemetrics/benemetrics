@@ -11,7 +11,7 @@ import { alertIncidentDAO } from "db/dao/alert-incidents";
 import { alertChannelDAO } from "db/dao/alert-channels";
 
 // Rows in project- or
-// globally-scoped tables (DSNs, feature flags, global alert
+// globally-scoped tables (feature flags, global alert
 // rules/channels) are shared and stay in place.
 export async function deleteAppCascade(appId: string): Promise<void> {
   await storedEventDAO.deleteByApp(appId);

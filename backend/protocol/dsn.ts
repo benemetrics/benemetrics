@@ -1,35 +1,3 @@
-interface DsnConfig {
-  projectId: string;
-  publicKey: string;
-  host: string;
-  protocol: string;
-}
-
-interface DsnRecord {
-  id: string;
-  config: DsnConfig;
-  createdAt: Date;
-}
-
-interface DsnCreateRequest {
-  projectId: string;
-  host: string;
-  publicKey?: string;
-}
-
-interface DsnResponse {
-  dsn: string;
-  projectId: string;
-  publicKey: string;
-  host: string;
-  protocol: string;
-}
-
-interface DsnCreateResponse extends DsnResponse {
-  id: string;
-  createdAt: string;
-}
-
 type FeatureFlagType = "boolean" | "string" | "number" | "json";
 type FeatureFlagStatus = "draft" | "active" | "paused" | "archived";
 type Operator = "equals" | "not_equals" | "contains" | "not_contains" | "starts_with" | "ends_with" | "in" | "not_in" | "greater_than" | "less_than" | "greater_than_or_equal" | "less_than_or_equal" | "before" | "after" | "on" | "between";
@@ -221,7 +189,6 @@ interface ExperimentUserEvaluation {
 }
 
 export type {
-  DsnConfig, DsnRecord, DsnCreateRequest, DsnResponse, DsnCreateResponse,
   FeatureFlagType, FeatureFlagStatus, Operator,
   FeatureFlagVariant, TargetingRule, ExperimentConfig,
   FeatureFlag, Segment,

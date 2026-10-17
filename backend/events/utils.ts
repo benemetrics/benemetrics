@@ -180,8 +180,33 @@ export function issueTitle(payload: Record<string, unknown>): string {
   return issueFingerprint(payload);
 }
 
+interface ExceptionFrame {
+  filename?: string;
+  function?: string;
+  in_app?: boolean;
+}
+
+// SDKs order stack frames oldest-first, so the crash site is the LAST
+// frame (verified against @sentry/bun's stack parser). Pick the newest
+// in-app frame like Sentry, falling back to the newest frame with a
+// filename, then the newest frame.
+function crashFrame(
+  frames: ExceptionFrame[] | undefined,
+): ExceptionFrame | undefined {
+  if (!Array.isArray(frames) || frames.length === 0) return undefined;
+  for (let index = frames.length - 1; index >= 0; index -= 1) {
+    const frame = frames[index];
+    if (frame?.in_app === true && frame.filename) return frame;
+  }
+  for (let index = frames.length - 1; index >= 0; index -= 1) {
+    const frame = frames[index];
+    if (frame?.filename) return frame;
+  }
+  return frames[frames.length - 1];
+}
+
 // Groups events the way Sentry groups issues: explicit
-// fingerprint first, then top exception frame, then message.
+// fingerprint first, then the newest in-app frame, then message.
 export function issueFingerprint(
   payload: Record<string, unknown>,
 ): string {
@@ -193,15 +218,13 @@ export function issueFingerprint(
     | {
         values?: Array<{
           type?: string;
-          stacktrace?: {
-            frames?: Array<{ filename?: string; function?: string }>;
-          };
+          stacktrace?: { frames?: ExceptionFrame[] };
         }>;
       }
     | undefined;
   const top = exception?.values?.[0];
   if (top) {
-    const frame = top.stacktrace?.frames?.[0];
+    const frame = crashFrame(top.stacktrace?.frames);
     return `${top.type ?? "Error"}@${frame?.filename ?? ""}:${frame?.function ?? ""}`;
   }
 

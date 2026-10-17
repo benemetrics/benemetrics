@@ -702,5 +702,47 @@ describe("Issue alerting (new issue / regression)", () => {
       );
       expect(noHits.data.length).toBe(0);
     });
+
+    it("fingerprints the crash frame (SDKs send frames oldest-first)", async () => {
+      const t = await makeApp();
+      const exceptionFor = (entry: string) => ({
+        type: "TypeError",
+        value: "cannot checkout",
+        stacktrace: {
+          frames: [
+            { filename: entry, function: "bootstrap", in_app: true },
+            { filename: "src/cart.ts", function: "checkout", in_app: true },
+            { filename: "node_modules/payments-sdk.js", function: "charge", in_app: false },
+          ],
+        },
+      });
+
+      await ingestEvent(t, {
+        event_id: crypto.randomUUID(),
+        level: "error",
+        exception: { values: [exceptionFor("src/entry.ts")] },
+      });
+
+      const issues = await waitFor(
+        () => listIssues(t.id),
+        (list) => list.length === 1,
+      );
+      expect(issues[0]!.fingerprint).toBe("TypeError@src/cart.ts:checkout");
+      expect(issues[0]!.title).toBe("TypeError: cannot checkout");
+
+      // The same crash frame reached through a different outer caller
+      // stays in the same issue (the outermost frame must not drive the
+      // fingerprint).
+      await ingestEvent(t, {
+        event_id: crypto.randomUUID(),
+        level: "error",
+        exception: { values: [exceptionFor("src/retry-entry.ts")] },
+      });
+      const grouped = await waitFor(
+        () => listIssues(t.id),
+        (list) => list[0]?.eventCount === 2,
+      );
+      expect(grouped.length).toBe(1);
+    });
   });
 });

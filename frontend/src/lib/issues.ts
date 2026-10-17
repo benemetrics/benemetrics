@@ -35,9 +35,19 @@ export interface IssueGroup {
   lastSeen: string;
 }
 
-interface ExceptionFrame {
+export interface ExceptionFrame {
   filename?: string;
+  function?: string;
   lineno?: number;
+  colno?: number;
+  in_app?: boolean;
+  context_line?: string;
+  pre_context?: string[];
+  post_context?: string[];
+  /** Original position added by read-time source map symbolication. */
+  original_filename?: string;
+  original_lineno?: number;
+  original_colno?: number;
 }
 
 interface ExceptionValue {
@@ -57,6 +67,24 @@ interface EventPayload {
 
 export function eventPayload(event: StoredEvent): EventPayload {
   return (event.event ?? {}) as EventPayload;
+}
+
+// SDKs order stack frames oldest-first (crash site last), so the crash
+// frame is the newest in-app frame — falling back to the newest frame
+// with a filename, then the newest frame.
+export function crashFrame(
+  frames: ExceptionFrame[] | undefined,
+): ExceptionFrame | undefined {
+  if (!Array.isArray(frames) || frames.length === 0) return undefined;
+  for (let index = frames.length - 1; index >= 0; index -= 1) {
+    const frame = frames[index];
+    if (frame?.in_app === true && frame.filename) return frame;
+  }
+  for (let index = frames.length - 1; index >= 0; index -= 1) {
+    const frame = frames[index];
+    if (frame?.filename) return frame;
+  }
+  return frames[frames.length - 1];
 }
 
 export function eventTitle(event: StoredEvent): string {
@@ -128,16 +156,17 @@ export function groupIssues(events: StoredEvent[]): IssueGroup[] {
   return Array.from(groups, ([key, group]) => {
     const payload = eventPayload(group.latest);
     const first = payload.exception?.values?.[0];
-    const frames = first?.stacktrace?.frames ?? [];
-    const frame = frames[frames.length - 1];
+    const frame = crashFrame(first?.stacktrace?.frames);
+    const file = frame?.original_filename ?? frame?.filename;
+    const line = frame?.original_lineno ?? frame?.lineno;
     const level = payload.level ?? "error";
     return {
       key,
       latestEventId: group.latest.id,
       code: group.latest.id.slice(0, 6).toUpperCase(),
       title: key,
-      source: frame?.filename
-        ? `${frame.filename}:${frame.lineno ?? "?"}`
+      source: file
+        ? `${file}:${line ?? "?"}`
         : payload.culprit ?? "unknown",
       tag: payload.release ?? payload.level ?? "—",
       level,

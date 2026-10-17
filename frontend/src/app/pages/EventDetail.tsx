@@ -3,16 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ScreenIntro } from "../ScreenIntro";
 import { useWorkspace } from "../WorkspaceContext";
 import { AGGREGATE_EVENT_LIMIT, api, listEvents } from "../../lib/api";
-import { payloadSignature, type StoredEvent } from "../../lib/issues";
-
-interface ExceptionFrame {
-  filename?: string;
-  function?: string;
-  lineno?: number;
-  colno?: number;
-  in_app?: boolean;
-  context_line?: string;
-}
+import { payloadSignature, type ExceptionFrame, type StoredEvent } from "../../lib/issues";
 
 interface ExceptionValue {
   type?: string;
@@ -57,7 +48,6 @@ export function EventDetail() {
   const environmentId = environment?.id;
   const applicationId = application?.id;
   const [payload, setPayload] = useState<EventPayload | null>(null);
-  const [receivedAt, setReceivedAt] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [related, setRelated] = useState<StoredEvent[]>([]);
 
@@ -67,11 +57,8 @@ export function EventDetail() {
       try {
         const result = await api.events[eventId].get();
         if (cancelled) return;
-        const stored = result?.data as
-          | { event?: EventPayload | null; receivedAt?: string }
-          | null;
-        setPayload(stored?.event ?? null);
-        setReceivedAt(stored?.receivedAt ?? null);
+        // GET /events/:id returns the event payload itself.
+        setPayload((result?.data as EventPayload | null) ?? null);
         setStatus("ready");
       } catch {
         if (!cancelled) setStatus("error");
@@ -87,6 +74,8 @@ export function EventDetail() {
     ? `${first.type ?? "Error"}: ${first.value ?? ""}`
     : payload?.message ?? payload?.transaction ?? "Event";
   const frames = first?.stacktrace?.frames ?? [];
+  // Stored oldest-first; the crash site (newest frame) goes on top.
+  const displayFrames = [...frames].reverse();
   const tags = Object.entries(payload?.tags ?? {}).slice(0, 12);
   const userId = payload?.user?.email ?? payload?.user?.username ?? payload?.user?.id ?? null;
   const signature = payload ? payloadSignature(payload) : null;
@@ -151,7 +140,6 @@ export function EventDetail() {
   if (payload?.release) contextRows.push(["Release", payload.release]);
   if (payload?.environment) contextRows.push(["Environment", payload.environment]);
   if (payload?.platform) contextRows.push(["Platform", payload.platform]);
-  if (receivedAt) contextRows.push(["Last seen", new Date(receivedAt).toLocaleString()]);
 
   return (
     <div className="screen-stack">
@@ -194,20 +182,43 @@ export function EventDetail() {
               </div>
               {frames.length > 0 ? (
                 <div className="frames">
-                  {frames.slice(0, 12).map((frame, index) => (
-                    <div className="frame-row" key={`${frame.filename}-${index}`}>
-                      <span>{index === 0 ? "▸" : ""}</span>
-                      <strong>
-                        {frame.function || "<anonymous>"}
-                        {frame.in_app && <span className="frame-tag">in app</span>}
-                      </strong>
-                      <small>
-                        {frame.filename ?? "unknown"}
-                        {frame.lineno != null ? `:${frame.lineno}` : ""}
-                      </small>
-                      {frame.context_line && <code>{frame.context_line.trim()}</code>}
-                    </div>
-                  ))}
+                  {displayFrames.slice(0, 12).map((frame, index) => {
+                    const file = frame.original_filename ?? frame.filename ?? "unknown";
+                    const line = frame.original_lineno ?? frame.lineno;
+                    const symbolicated =
+                      frame.original_filename != null &&
+                      frame.original_filename !== frame.filename;
+                    const snippet = frame.context_line
+                      ? [
+                          ...(frame.pre_context ?? []),
+                          frame.context_line,
+                          ...(frame.post_context ?? []),
+                        ]
+                      : [];
+                    return (
+                      <div className="frame-row" key={`${frame.filename}-${index}`}>
+                        <span>{index === 0 ? "▸" : ""}</span>
+                        <strong>
+                          {frame.function || "<anonymous>"}
+                          {frame.in_app && <span className="frame-tag">in app</span>}
+                          {symbolicated && <span className="frame-tag">source map</span>}
+                        </strong>
+                        <small
+                          title={
+                            symbolicated && frame.filename
+                              ? `minified: ${frame.filename}${frame.lineno != null ? `:${frame.lineno}` : ""}`
+                              : undefined
+                          }
+                        >
+                          {file}
+                          {line != null ? `:${line}` : ""}
+                        </small>
+                        {snippet.length > 0 && (
+                          <code className="frame-context">{snippet.join("\n")}</code>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="panel-subtitle">No stack trace in this payload.</div>

@@ -566,6 +566,7 @@ textarea.field-control { height: auto; min-height: 74px; padding: 9px 11px; resi
 .frequency-foot { display: flex; justify-content: space-between; padding: 8px 17px 14px; color: var(--ink-faint); font-size: 8px; }
 .frame-tag { margin-left: 6px; padding: 1px 5px; border-radius: 4px; color: var(--brand); background: var(--brand-soft); font-size: 7px; font-weight: 700; text-transform: uppercase; }
 .frame-row code { grid-column: 2; overflow: hidden; padding: 4px 7px; border-radius: 5px; background: var(--surface-subtle); color: var(--ink-muted); font-family: "Geist Mono"; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.frame-row code.frame-context { overflow-x: auto; text-overflow: clip; white-space: pre; }
 
 /* Web vitals modifiers */
 .vital-row > b.improvement { color: var(--warning); }

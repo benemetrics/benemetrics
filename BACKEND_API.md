@@ -345,7 +345,7 @@ Issues live in Postgres (source of truth for alerting; ClickHouse stays the opti
 | GET    | `/api/admin/issues/:id`     | `id` (uuid)                   | Get one |
 | PATCH  | `/api/admin/issues/:id`     | `{ status: 'unresolved'\|'resolved' }` | Resolve or reopen an issue |
 
-- An issue is keyed by `(appId, fingerprint)` (`fingerprint` groups events like Sentry: explicit fingerprint → top exception frame → message) and tracks `status`, `eventCount`, `firstSeen`, `lastSeen`, and `latestEventId` (stored event id of the latest occurrence, the UI's drill-down target).
+- An issue is keyed by `(appId, fingerprint)` (`fingerprint` groups events like Sentry: explicit fingerprint → newest in-app stack frame — SDKs send frames oldest-first, so the crash site is the last frame — → message) and tracks `status`, `eventCount`, `firstSeen`, `lastSeen`, and `latestEventId` (stored event id of the latest occurrence, the UI's drill-down target).
 - Ingestion transitions: a first-ever fingerprint → **new issue**; a new event for a `resolved` issue → **regression** (status flips back to `unresolved`, `eventCount` increments). Repeats while unresolved only bump `eventCount`/`lastSeen` and never fire alerts.
 - Transitions are race-safe (`onConflictDoNothing` insert + `UPDATE ... WHERE status = 'resolved' RETURNING`), so concurrent deliveries fire exactly one alert.
 - Resolving is what arms the `regression` trigger for the issue's next event.

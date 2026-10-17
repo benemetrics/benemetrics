@@ -5,6 +5,7 @@ import { projectDAO, appDAO, toAppResponse } from "db/dao/project";
 import { environmentDAO } from "db/dao/environments";
 import { deriveSlug, toEnvironmentResponse } from "../environments";
 import { deleteAppCascade } from "../apps";
+import { requestHost } from "../../host";
 import { storedEventDAO } from "db/dao/stored-event";
 import type { Environment } from "db/schema/environments";
 import type { AppRecord } from "db/schema/project";
@@ -128,10 +129,13 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
   )
   .get(
     "/:id",
-    async ({ params: { id } }) => {
+    async ({ params: { id }, request }) => {
       const project = await projectDAO.findByIdOrThrow(id);
       const { data: apps } = await appDAO.listByProject(id, { limit: 100 });
-      return { ...project, apps };
+      return {
+        ...project,
+        apps: apps.map((app) => toAppResponse(app, requestHost(request))),
+      };
     },
     {
       params: arktype({ id: "string.uuid" }),
@@ -160,7 +164,7 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
   )
   .post(
     "/:id/duplicate",
-    async ({ params: { id }, body }) => {
+    async ({ params: { id }, body, request }) => {
       const source = await projectDAO.findByIdOrThrow(id);
 
       const name = body.name?.trim() || `${source.name} (copy)`;
@@ -221,7 +225,6 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
           platform: sourceApp.platform,
           ingestKey: `${project.slug}-${randomKey(12)}`,
           publicKey: randomKey(32),
-          host: sourceApp.host,
         });
         const environment = environmentById.get(environmentId);
         if (!environment) {
@@ -230,6 +233,7 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
         duplicatedApps.push({ app, environment });
       }
 
+      const host = requestHost(request);
       return {
         id: project.id,
         name: project.name,
@@ -238,7 +242,7 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
         appCount: duplicatedApps.length,
         createdAt: project.createdAt,
         apps: duplicatedApps.map(({ app, environment }) => ({
-          ...toAppResponse(app),
+          ...toAppResponse(app, host),
           environment: toEnvironmentResponse(environment),
         })),
       };
@@ -256,9 +260,14 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
     apps
       .get(
         "",
-        async ({ params: { id }, query }) => {
+        async ({ params: { id }, query, request }) => {
           await projectDAO.findByIdOrThrow(id);
-          return appDAO.listByProject(id, { page: query.page, limit: query.limit });
+          const { data, pagination } = await appDAO.listByProject(id, {
+            page: query.page,
+            limit: query.limit,
+          });
+          const host = requestHost(request);
+          return { data: data.map((app) => toAppResponse(app, host)), pagination };
         },
         {
           params: arktype({ id: "string.uuid" }),
@@ -273,8 +282,6 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
         async ({ params: { id }, body, request }) => {
           const project = await projectDAO.findByIdOrThrow(id);
 
-          const host = body.host || request.headers.get("host") || "localhost";
-
           // App-environment combo: the user picks the project and
           // the environment, and the app is created inside it.
           const environment = await resolveEnvironmentForApp(id, body.environment);
@@ -287,11 +294,10 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
             platform: body.platform || "javascript",
             ingestKey: `${project.slug}-${randomKey(12)}`,
             publicKey: randomKey(32),
-            host,
           });
 
           return {
-            ...toAppResponse(app),
+            ...toAppResponse(app, requestHost(request)),
             environment: toEnvironmentResponse(environment),
           };
         },
@@ -300,7 +306,6 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
           body: arktype({
             name: "string",
             platform: "string?",
-            host: "string?",
             environment: "string?",
           }),
         },

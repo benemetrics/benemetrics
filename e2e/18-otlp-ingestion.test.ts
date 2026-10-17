@@ -55,7 +55,6 @@ async function makeApp(): Promise<OtlpApp> {
   const appRecord = await json<{ id: string; ingestKey: string; publicKey: string }>(
     await adminRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `OtlpApp-${uniq()}`,
-      host: "localhost:31337",
     }),
   );
   return { projectId: project.id, ...appRecord };

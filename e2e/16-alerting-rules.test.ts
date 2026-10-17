@@ -58,7 +58,6 @@ async function makeApp(): Promise<AlertApp> {
   const appRecord = await json<{ id: string; ingestKey: string; publicKey: string }>(
     await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `AlertApp-${uniq()}`,
-      host: "localhost:31337",
     }),
   );
   return { projectId: project.id, ...appRecord };

@@ -10,7 +10,10 @@ import { alertIncidents } from "db/schema/alert-incidents";
 import { eq, asc, desc, sql } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
 
-export function toAppResponse(app: AppRecord) {
+// App DSNs are built from the host the user reached the backend through
+// (see backend/host.ts), so nothing deployment-specific is stored: the
+// same row yields the right DSN from any hostname the deployment serves.
+export function toAppResponse(app: AppRecord, host: string) {
   return {
     id: app.id,
     number: app.number,
@@ -19,9 +22,9 @@ export function toAppResponse(app: AppRecord) {
     name: app.name,
     platform: app.platform,
     ingestKey: app.ingestKey,
-    dsn: `http://${app.publicKey}@${app.host}/${app.number}`,
+    dsn: `http://${app.publicKey}@${host}/${app.number}`,
     publicKey: app.publicKey,
-    host: app.host,
+    host,
     createdAt: app.createdAt,
   };
 }
@@ -196,7 +199,9 @@ export const appDAO = {
     ]);
 
     return {
-      data: rows.map(toAppResponse),
+      // Raw rows: callers shape responses with the request host
+      // (toAppResponse appends the DSN).
+      data: rows,
       pagination: {
         page,
         limit,

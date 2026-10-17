@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { appDAO, toAppResponse } from "db/dao/project";
 import { storedEventDAO } from "db/dao/stored-event";
+import { requestHost } from "../../host";
 import { issueDAO } from "db/dao/issues";
 import { releaseDAO } from "db/dao/releases";
 import { sourceMapDAO } from "db/dao/source-maps";
@@ -28,7 +29,8 @@ export async function deleteAppCascade(appId: string): Promise<void> {
 export const appsRoutes = new Elysia({ prefix: "apps" })
   .get(
     "/:appId",
-    async ({ params: { appId } }) => toAppResponse(await appDAO.findByIdOrThrow(appId)),
+    async ({ params: { appId }, request }) =>
+      toAppResponse(await appDAO.findByIdOrThrow(appId), requestHost(request)),
     { params: arktype({ appId: "string.uuid" }) },
   )
   .delete(

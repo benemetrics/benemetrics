@@ -154,7 +154,6 @@ describe("Backend parity — admin UI surfaces", () => {
       await adminRequest("POST", `/api/admin/projects/${project.id}/apps`, {
         name: "Parity App",
         platform: "web",
-        host: "localhost",
       })
     ).json()) as { id: string; environment: { id: string } };
 

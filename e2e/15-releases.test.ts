@@ -94,7 +94,6 @@ async function makeApp(): Promise<{ projectId: string; appId: string; publicKey:
   const appRecord = await json<{ id: string; publicKey: string }>(
     await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `RelApp-${uniq()}`,
-      host: "localhost:31337",
     }),
   );
   return { projectId: project.id, appId: appRecord.id, publicKey: appRecord.publicKey };

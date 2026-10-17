@@ -163,7 +163,6 @@ describe("Event detail stack trace — symbolication in the real UI", () => {
     appRecord = (await (
       await adminRequest("POST", `/api/admin/projects/${project.id}/apps`, {
         name: "web",
-        host: "localhost",
       })
     ).json()) as { id: string; ingestKey: string; publicKey: string };
 

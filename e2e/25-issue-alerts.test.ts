@@ -57,7 +57,6 @@ async function makeApp(): Promise<TestApp> {
   const appRecord = await json<{ id: string; ingestKey: string; publicKey: string }>(
     await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `IssueApp-${uniq()}`,
-      host: "localhost:31337",
     }),
   );
   return { projectId: project.id, ...appRecord };
@@ -67,7 +66,6 @@ async function makeAppInProject(projectId: string): Promise<TestApp> {
   const appRecord = await json<{ id: string; ingestKey: string; publicKey: string }>(
     await apiRequest("POST", `/api/admin/projects/${projectId}/apps`, {
       name: `IssueApp-${uniq()}`,
-      host: "localhost:31337",
     }),
   );
   return { projectId, ...appRecord };

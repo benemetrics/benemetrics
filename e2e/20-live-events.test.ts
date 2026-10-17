@@ -61,7 +61,6 @@ async function makeApp(): Promise<LiveApp> {
   const appRecord = await json<{ id: string; ingestKey: string; publicKey: string }>(
     await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `LiveApp-${uniq()}`,
-      host: "localhost:31337",
     }),
   );
   return { projectId: project.id, ...appRecord };

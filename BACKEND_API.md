@@ -271,8 +271,8 @@ Supported operators: `equals, not_equals, contains, not_contains, starts_with, e
 
 - Project creation auto-creates a default "testing" environment and no app.
 - `POST /api/admin/projects/:id/apps` accepts an optional `environment` name: the app is created inside that project environment (reusing it by slug/name when it exists, creating it otherwise); with no preference the project's default environment is used.
-- App DSNs use `http://` — the backend serves plain HTTP, so HTTPS deployments front it with a reverse proxy; the DSN host defaults to the request's `Host` header.
-- `POST /api/admin/projects/:id/duplicate` accepts `{ name?, slug?, description? }` (name defaults to `"<source> (copy)"`). It creates a new project and copies every environment (fresh ids, same names/slugs, default flag preserved) and every app (fresh id, number, ingest key and public key, so each duplicated app gets its own DSN; name, platform and host are kept). Slug collisions are resolved with `-copy`, `-copy-2`, ... suffixes.
+- App DSNs use `http://` — the backend serves plain HTTP, so HTTPS deployments front it with a reverse proxy. The DSN host is derived at read time (never stored): `X-Forwarded-Host` when a proxy sets it, otherwise the request's `Host` header, so every response points back at the hostname the user reached.
+- `POST /api/admin/projects/:id/duplicate` accepts `{ name?, slug?, description? }` (name defaults to `"<source> (copy)"`). It creates a new project and copies every environment (fresh ids, same names/slugs, default flag preserved) and every app (fresh id, number, ingest key and public key, so each duplicated app gets its own DSN; name and platform are kept). Slug collisions are resolved with `-copy`, `-copy-2`, ... suffixes.
 - Apps are removed by deleting their owning project (`appDAO.delete`); environments are project-scoped and shared, so deleting an app leaves them intact and deleting the project removes them (`environmentDAO.deleteByProject`).
 
 ### 5.8 Admin — segments
@@ -412,7 +412,6 @@ Guard wiring:
 | `platform` | text | default `javascript` |
 | `ingest_key` | text | not null, **unique**, indexed |
 | `public_key` | text | not null |
-| `host` | text | default `localhost` |
 | `created_at` | text | default `CURRENT_TIMESTAMP` |
 
 **stored_events**

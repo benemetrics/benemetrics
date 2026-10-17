@@ -36,7 +36,7 @@ async function bootstrapProjectAndApp(): Promise<void> {
     new Request(`http://localhost:31337/api/admin/projects/${project.id}/apps`, {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify({ name: "Auth App", host: "localhost:31337" }),
+      body: JSON.stringify({ name: "Auth App" }),
     }),
   );
   const created = (await appResponse.json()) as {

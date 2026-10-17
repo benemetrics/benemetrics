@@ -146,7 +146,6 @@ describe("Issues page — resolve/reopen in the real UI", () => {
       await adminRequest("POST", `/api/admin/projects/${project.id}/apps`, {
         name: "Issues UI App",
         platform: "web",
-        host: "localhost",
       })
     ).json()) as { id: string; ingestKey: string; publicKey: string };
 

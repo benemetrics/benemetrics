@@ -53,7 +53,8 @@ async function apiRequest(
   method: string,
   path: string,
   body?: unknown,
-  token: string = ADMIN_TOKEN
+  token: string = ADMIN_TOKEN,
+  extraHeaders: Record<string, string> = {},
 ): Promise<Response> {
   const url = new URL(`${baseUrl}${path}`);
   const options: RequestInit = {
@@ -61,6 +62,7 @@ async function apiRequest(
     headers: {
       "Content-Type": "application/json",
       "Authorization": token,
+      ...extraHeaders,
     },
   };
 
@@ -217,7 +219,6 @@ describe("Projects & Apps Management", () => {
       const appResponse = await apiRequest("POST", `/api/admin/projects/${source.id}/apps`, {
         name: "Source App",
         environment: "Staging",
-        host: "localhost:31337",
       });
       const sourceApp = await appResponse.json() as AppResponse;
 
@@ -300,7 +301,6 @@ describe("Projects & Apps Management", () => {
       const source = await createProjectResponse.json() as ProjectResponse;
       const createAppResponse = await apiRequest("POST", `/api/admin/projects/${source.id}/apps`, {
         name: "Ingest Source",
-        host: "localhost:31337",
       });
       const sourceApp = await createAppResponse.json() as AppResponse;
 
@@ -401,7 +401,6 @@ describe("Projects & Apps Management", () => {
       const response = await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
         name: "Billing Worker",
         platform: "node",
-        host: "localhost:31337",
       });
 
       expect(response.status).toBe(200);
@@ -425,7 +424,6 @@ describe("Projects & Apps Management", () => {
       const response = await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
         name: "Staging Worker",
         environment: "Staging",
-        host: "localhost:31337",
       });
 
       expect(response.status).toBe(200);
@@ -437,44 +435,52 @@ describe("Projects & Apps Management", () => {
       expect(data.environment!.isDefault).toBe(false);
     });
 
-    it("should use http for non-local hosts", async () => {
+    it("derives the DSN host from X-Forwarded-Host behind a proxy", async () => {
       const createProjectResponse = await apiRequest("POST", "/api/admin/projects", { name: "Http-" + uniq() });
       const project = await createProjectResponse.json() as ProjectResponse;
 
-      const response = await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
-        name: "Edge Worker",
-        platform: "go",
-        host: "benemetrics.app",
-      });
+      const response = await apiRequest(
+        "POST",
+        `/api/admin/projects/${project.id}/apps`,
+        { name: "Edge Worker", platform: "go" },
+        ADMIN_TOKEN,
+        { "X-Forwarded-Host": "benemetrics.app" },
+      );
 
       expect(response.status).toBe(200);
       const data = await response.json() as AppResponse;
+      // Always http: the backend serves plain HTTP, TLS is a reverse
+      // proxy concern. The DSN points back at the host the user reached.
+      expect(data.host).toBe("benemetrics.app");
       expect(data.dsn).toBe(`http://${data.publicKey}@benemetrics.app/${data.number}`);
     });
 
-    it("should use http for private network hosts", async () => {
+    it("takes the first host of a chained X-Forwarded-Host", async () => {
       const createProjectResponse = await apiRequest("POST", "/api/admin/projects", { name: "Lan-" + uniq() });
       const project = await createProjectResponse.json() as ProjectResponse;
 
-      const response = await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
-        name: "LAN Worker",
-        host: "192.168.1.176:31337",
-      });
+      const response = await apiRequest(
+        "POST",
+        `/api/admin/projects/${project.id}/apps`,
+        { name: "LAN Worker" },
+        ADMIN_TOKEN,
+        { "X-Forwarded-Host": "192.168.1.176:31337, internal.local" },
+      );
 
       expect(response.status).toBe(200);
       const data = await response.json() as AppResponse;
       expect(data.dsn).toBe(`http://${data.publicKey}@192.168.1.176:31337/${data.number}`);
     });
 
-    it("should default the host when none is provided", async () => {
+    it("derives the DSN host from the request when no proxy header is set", async () => {
       const createProjectResponse = await apiRequest("POST", "/api/admin/projects", { name: "Defhost-" + uniq() });
       const project = await createProjectResponse.json() as ProjectResponse;
 
       const response = await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, { name: "Default Host App" });
       expect(response.status).toBe(200);
       const data = await response.json() as AppResponse;
-      expect(data.dsn).toStartWith("http");
-      expect(data.dsn).toEndWith(`/${data.number}`);
+      expect(data.host).toBe(new URL(baseUrl).host);
+      expect(data.dsn).toBe(`http://${data.publicKey}@${data.host}/${data.number}`);
     });
 
     it("should return 404 for unknown project", async () => {
@@ -496,8 +502,8 @@ describe("Projects & Apps Management", () => {
       const createProjectResponse = await apiRequest("POST", "/api/admin/projects", { name: "ListApps-" + uniq() });
       const project = await createProjectResponse.json() as ProjectResponse;
 
-      await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, { name: "App One", host: "localhost:31337" });
-      await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, { name: "App Two", host: "localhost:31337" });
+      await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, { name: "App One" });
+      await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, { name: "App Two" });
 
       const response = await apiRequest("GET", `/api/admin/projects/${project.id}/apps`);
       expect(response.status).toBe(200);
@@ -515,7 +521,6 @@ describe("Projects & Apps Management", () => {
       const project = await createProjectResponse.json() as ProjectResponse;
       const createAppResponse = await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
         name: "Solo App",
-        host: "localhost:31337",
       });
       const created = await createAppResponse.json() as AppResponse;
 
@@ -538,7 +543,6 @@ describe("Projects & Apps Management", () => {
       const project = await createProjectResponse.json() as ProjectResponse;
       const createAppResponse = await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
         name: "Ingest App",
-        host: "localhost:31337",
       });
       const created = await createAppResponse.json() as AppResponse;
 
@@ -573,7 +577,6 @@ describe("Projects & Apps Management", () => {
       const project = await createProjectResponse.json() as ProjectResponse;
       const createAppResponse = await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
         name: "Idempotent App",
-        host: "localhost:31337",
       });
       const created = await createAppResponse.json() as AppResponse;
 
@@ -650,7 +653,6 @@ describe("Projects & Apps Management", () => {
       const app = await json<AppResponse>(
         await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
           name: "Cascade App",
-          host: "localhost:31337",
         }),
       );
 

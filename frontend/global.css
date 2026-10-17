@@ -574,6 +574,20 @@ textarea.field-control { height: auto; min-height: 74px; padding: 9px 11px; resi
 .frame-row code { grid-column: 2; overflow: hidden; padding: 4px 7px; border-radius: 5px; background: var(--surface-subtle); color: var(--ink-muted); font-family: "Geist Mono"; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .frame-row code.frame-context { overflow-x: auto; text-overflow: clip; white-space: pre; }
 
+/* Issue details: metrics aggregated across the issue's events, and the
+   per-issue event list whose rows switch the details below it. */
+.metrics-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); padding: 4px 17px 12px; }
+.metrics-list > div { min-width: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--surface-subtle); }
+.metrics-list > div:last-child { border-bottom: 0; }
+.metrics-list span { color: var(--ink-faint); font-size: 9px; white-space: nowrap; }
+.metric-values { min-width: 0; color: var(--ink); font-family: "Geist Mono"; font-size: 10px; font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+.metrics-empty { padding: 15px 17px; }
+.issue-events-scroll { max-height: 396px; overflow-y: auto; }
+.issue-events-scroll .data-row:last-child { border-bottom: 0; }
+.issue-events-scroll .data-row.selected { background: var(--surface-subtle); box-shadow: inset 2px 0 var(--brand); }
+.event-cell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.issue-meta .replay-tag { padding: 1px 5px; border-radius: 4px; color: var(--violet); background: var(--violet-soft); font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+
 /* Web vitals modifiers */
 .vital-row > b.improvement { color: var(--warning); }
 .vital-row > b.poor { color: var(--danger); }

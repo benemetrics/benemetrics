@@ -62,6 +62,7 @@ interface EventPayload {
   culprit?: string;
   release?: string;
   level?: string;
+  fingerprint?: unknown[];
   user?: { id?: string; email?: string; username?: string };
 }
 
@@ -85,6 +86,26 @@ export function crashFrame(
     if (frame?.filename) return frame;
   }
   return frames[frames.length - 1];
+}
+
+// Mirrors the ingestion-time grouping key (backend/events/utils.ts
+// issueFingerprint): explicit fingerprint, else the crash frame, else the
+// message. The issue details page matches an issue's events this way, so
+// its list and metrics line up with the backend's issue rows.
+export function payloadFingerprint(payload: unknown): string {
+  const parsed = (payload ?? {}) as EventPayload;
+  if (Array.isArray(parsed.fingerprint) && parsed.fingerprint.length > 0) {
+    return parsed.fingerprint.map(String).join("::");
+  }
+  const first = parsed.exception?.values?.[0];
+  if (first) {
+    const frame = crashFrame(first.stacktrace?.frames);
+    return `${first.type ?? "Error"}@${frame?.filename ?? ""}:${frame?.function ?? ""}`;
+  }
+  if (typeof parsed.message === "string" && parsed.message.trim()) {
+    return `msg:${parsed.message.slice(0, 200)}`;
+  }
+  return "unknown";
 }
 
 export function eventTitle(event: StoredEvent): string {

@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ScreenIntro } from "../ScreenIntro";
 import { useWorkspace } from "../WorkspaceContext";
 import { AGGREGATE_EVENT_LIMIT, api, listEvents } from "../../lib/api";
-import { payloadSignature, type ExceptionFrame, type StoredEvent } from "../../lib/issues";
+import {
+  payloadFingerprint,
+  type ExceptionFrame,
+  type StoredEvent,
+} from "../../lib/issues";
+import { relativeTime } from "../../lib/utils";
 import "rrweb-player/dist/style.css";
 
 interface ExceptionValue {
@@ -29,6 +34,7 @@ interface EventPayload {
   platform?: string;
   transaction?: string;
   replay_id?: string;
+  fingerprint?: unknown[];
   user?: { id?: string; email?: string; username?: string };
   tags?: Record<string, string>;
   exception?: { values?: ExceptionValue[] };
@@ -86,8 +92,167 @@ function replayDuration(events: unknown[]): string | null {
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
+interface MetricValue {
+  value: string;
+  count: number;
+}
+
+interface MetricRow {
+  label: string;
+  values: MetricValue[];
+  /** Distinct values behind the row, the ones shown and the ones trimmed. */
+  distinct: number;
+}
+
+interface IssueMetrics {
+  total: number;
+  userTotal: number;
+  /** Label/value pairs that are not distributions (first/last seen). */
+  plain: Array<[string, string]>;
+  rows: MetricRow[];
+}
+
+const METRIC_VALUES_SHOWN = 3;
+const TAG_KEYS_SHOWN = 6;
+
+function addValue(map: Map<string, number>, value: string | null | undefined): void {
+  if (!value) return;
+  map.set(value, (map.get(value) ?? 0) + 1);
+}
+
+function topValues(
+  map: Map<string, number>,
+  limit: number,
+): { values: MetricValue[]; distinct: number } {
+  const sorted = [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  return {
+    values: sorted.slice(0, limit).map(([value, count]) => ({ value, count })),
+    distinct: sorted.length,
+  };
+}
+
+// Browser/OS/runtime read best as "Name version"; devices have no version.
+function contextLabel(info: ContextInfo | undefined): string | undefined {
+  if (!info) return undefined;
+  const label = [info.name, info.version].filter(Boolean).join(" ").trim();
+  return label || undefined;
+}
+
+function deviceLabel(info: ContextInfo | undefined): string | undefined {
+  if (!info) return undefined;
+  const parts = [info.family, info.model].filter(
+    (part, index, list) => part && list.indexOf(part) === index,
+  );
+  return parts.join(" ") || undefined;
+}
+
+// Aggregates every event of the issue: the SDK context dimensions first,
+// then whatever tag keys the events carry, each with its most frequent
+// values and occurrence counts.
+function buildIssueMetrics(events: StoredEvent[]): IssueMetrics {
+  const dimensions = new Map<string, Map<string, number>>([
+    ["Browser", new Map()],
+    ["OS", new Map()],
+    ["Runtime", new Map()],
+    ["Device", new Map()],
+    ["Release", new Map()],
+    ["Environment", new Map()],
+    ["Platform", new Map()],
+    ["Level", new Map()],
+    ["Users", new Map()],
+    ["Transaction", new Map()],
+  ]);
+  const dimension = (label: string): Map<string, number> => {
+    const existing = dimensions.get(label);
+    if (existing) return existing;
+    const created = new Map<string, number>();
+    dimensions.set(label, created);
+    return created;
+  };
+  const tags = new Map<string, Map<string, number>>();
+  let firstSeen: string | null = null;
+  let lastSeen: string | null = null;
+
+  for (const stored of events) {
+    const payload = (stored.event ?? {}) as EventPayload;
+    const contexts = payload.contexts ?? {};
+    addValue(dimension("Browser"), contextLabel(contexts.browser));
+    addValue(dimension("OS"), contextLabel(contexts.os));
+    addValue(dimension("Runtime"), contextLabel(contexts.runtime));
+    addValue(dimension("Device"), deviceLabel(contexts.device));
+    addValue(dimension("Release"), payload.release);
+    addValue(dimension("Environment"), payload.environment);
+    addValue(dimension("Platform"), payload.platform);
+    addValue(dimension("Level"), payload.level ?? "error");
+    addValue(
+      dimension("Users"),
+      payload.user?.email ?? payload.user?.username ?? payload.user?.id,
+    );
+    addValue(dimension("Transaction"), payload.transaction);
+    for (const [key, value] of Object.entries(payload.tags ?? {})) {
+      let values = tags.get(key);
+      if (!values) {
+        values = new Map();
+        tags.set(key, values);
+      }
+      addValue(values, typeof value === "string" ? value : undefined);
+    }
+    const receivedAt = Date.parse(stored.receivedAt);
+    if (!Number.isNaN(receivedAt)) {
+      if (!firstSeen || receivedAt < Date.parse(firstSeen)) firstSeen = stored.receivedAt;
+      if (!lastSeen || receivedAt > Date.parse(lastSeen)) lastSeen = stored.receivedAt;
+    }
+  }
+
+  const rows: MetricRow[] = [];
+  for (const [label, values] of dimensions) {
+    if (values.size === 0) continue;
+    const { values: top, distinct } = topValues(values, METRIC_VALUES_SHOWN);
+    rows.push({ label, values: top, distinct });
+  }
+  const tagKeys = [...tags.entries()]
+    .map(([key, values]) => ({
+      key,
+      values,
+      coverage: [...values.values()].reduce((total, count) => total + count, 0),
+    }))
+    .sort((a, b) => b.coverage - a.coverage || a.key.localeCompare(b.key))
+    .slice(0, TAG_KEYS_SHOWN);
+  for (const { key, values } of tagKeys) {
+    const { values: top, distinct } = topValues(values, METRIC_VALUES_SHOWN);
+    rows.push({ label: key, values: top, distinct });
+  }
+
+  const plain: Array<[string, string]> = [];
+  if (firstSeen) plain.push(["First seen", agoLabel(firstSeen)]);
+  if (lastSeen) plain.push(["Last seen", agoLabel(lastSeen)]);
+
+  return {
+    total: events.length,
+    userTotal: dimension("Users").size,
+    plain,
+    rows,
+  };
+}
+
+// relativeTime renders "seen 2m ago"; the metrics rows carry their own label.
+function agoLabel(input: string): string {
+  const label = relativeTime(input);
+  return label.startsWith("seen ") ? label.slice("seen ".length) : label;
+}
+
+function metricValueText(row: MetricRow): string {
+  const counts = row.distinct > 1;
+  const parts = row.values.map((entry) =>
+    counts ? `${entry.value} ×${entry.count}` : entry.value,
+  );
+  if (row.distinct > row.values.length) parts.push(`+${row.distinct - row.values.length}`);
+  return parts.join("  ·  ");
+}
+
 export function EventDetail() {
   const { eventId = "" } = useParams();
+  const navigate = useNavigate();
   const { project, environment, application } = useWorkspace();
   const projectId = project?.id;
   const environmentId = environment?.id;
@@ -95,9 +260,13 @@ export function EventDetail() {
   const [payload, setPayload] = useState<EventPayload | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [related, setRelated] = useState<StoredEvent[]>([]);
+  const [relatedStatus, setRelatedStatus] = useState<"idle" | "loading" | "ready" | "error">(
+    "idle",
+  );
   const [replay, setReplay] = useState<ReplayPayload | null>(null);
   const [replayStatus, setReplayStatus] = useState<"loading" | "ready" | "error">("loading");
   const replayStage = useRef<HTMLDivElement | null>(null);
+  const detailsRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -189,13 +358,16 @@ export function EventDetail() {
   const displayFrames = [...frames].reverse();
   const tags = Object.entries(payload?.tags ?? {}).slice(0, 12);
   const userId = payload?.user?.email ?? payload?.user?.username ?? payload?.user?.id ?? null;
-  const signature = payload ? payloadSignature(payload) : null;
+  const fingerprint = payload ? payloadFingerprint(payload) : null;
   const replayDurationLabel = replay ? replayDuration(replay.events) : null;
 
-  // Frequency: same-signature events in the stored window, bucketed hourly.
+  // The stored window the issue panels read from. Matching mirrors the
+  // backend's ingestion-time grouping so the list and metrics contain
+  // exactly the events the backend folded into this issue.
   useEffect(() => {
-    if (!signature) return;
+    if (!fingerprint) return;
     let cancelled = false;
+    setRelatedStatus("loading");
     (async () => {
       try {
         const result = await listEvents({
@@ -205,22 +377,42 @@ export function EventDetail() {
           limit: AGGREGATE_EVENT_LIMIT,
         });
         const list = (result?.data as { data?: StoredEvent[] })?.data ?? [];
-        if (!cancelled) setRelated(list);
+        if (cancelled) return;
+        setRelated(list);
+        setRelatedStatus("ready");
       } catch {
-        // keep the chart empty on failure
+        // the panels keep their empty state on failure
+        if (!cancelled) setRelatedStatus("error");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [signature, projectId, environmentId, applicationId]);
+  }, [fingerprint, projectId, environmentId, applicationId]);
 
+  const issueEvents = useMemo(() => {
+    if (!fingerprint) return [];
+    return related
+      .filter((stored) => stored.itemTypes?.includes("event"))
+      .filter((stored) => payloadFingerprint(stored.event) === fingerprint)
+      .sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt));
+  }, [related, fingerprint]);
+
+  const metrics = useMemo(() => buildIssueMetrics(issueEvents), [issueEvents]);
+
+  const selectEvent = (id: string) => {
+    if (id !== eventId) navigate(`/issues/${id}`);
+    // The details sit below the list; bring the updated event into view.
+    requestAnimationFrame(() => {
+      detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  // Frequency: same-issue events in the stored window, bucketed hourly.
   const buckets = new Array<number>(BUCKET_COUNT).fill(0);
-  if (signature) {
+  if (fingerprint) {
     const now = Date.now();
-    for (const event of related) {
-      if (!event.itemTypes?.includes("event")) continue;
-      if (payloadSignature(event.event) !== signature) continue;
+    for (const event of issueEvents) {
       const age = now - Date.parse(event.receivedAt);
       if (Number.isNaN(age) || age < 0 || age >= BUCKET_COUNT * HOUR_MS) continue;
       const index = BUCKET_COUNT - 1 - Math.floor(age / HOUR_MS);
@@ -282,7 +474,127 @@ export function EventDetail() {
               <div className="filter-chip">transaction: {payload.transaction}</div>
             )}
           </div>
-          <section className="content-grid">
+          <article className="panel">
+            <div className="panel-header">
+              <div>
+                <div className="panel-title">Issue metrics</div>
+                <div className="panel-subtitle">
+                  {relatedStatus === "idle" || relatedStatus === "loading"
+                    ? "Aggregating the events of this issue…"
+                    : relatedStatus === "error"
+                      ? "The events of this issue could not be loaded."
+                      : `Aggregated from ${metrics.total} event${
+                          metrics.total === 1 ? "" : "s"
+                        } in the loaded window`}
+                </div>
+              </div>
+              {relatedStatus === "ready" && metrics.userTotal > 0 && (
+                <div className="filter-chip">
+                  {metrics.userTotal} user{metrics.userTotal === 1 ? "" : "s"}
+                </div>
+              )}
+            </div>
+            {relatedStatus === "ready" && metrics.rows.length > 0 ? (
+              <div className="metrics-list">
+                {metrics.plain.map(([label, value]) => (
+                  <div key={label}>
+                    <span>{label}</span>
+                    <strong className="metric-values">{value}</strong>
+                  </div>
+                ))}
+                {metrics.rows.map((row) => (
+                  <div key={row.label}>
+                    <span>{row.label}</span>
+                    <strong className="metric-values" title={metricValueText(row)}>
+                      {metricValueText(row)}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              relatedStatus === "ready" && (
+                <div className="panel-subtitle metrics-empty">
+                  No events of this issue are in the loaded window.
+                </div>
+              )
+            )}
+          </article>
+          <article className="panel data-panel">
+            <div className="panel-header">
+              <div>
+                <div className="panel-title">Events in this issue</div>
+                <div className="panel-subtitle">
+                  {relatedStatus === "idle" || relatedStatus === "loading"
+                    ? "Matching the loaded event window…"
+                    : relatedStatus === "error"
+                      ? "The event list could not be loaded."
+                      : `${issueEvents.length} event${
+                          issueEvents.length === 1 ? "" : "s"
+                        }: click one to read its details`}
+                </div>
+              </div>
+            </div>
+            <div className="data-head">
+              <span>Event</span>
+              <span>User</span>
+              <span>Release</span>
+              <span>Seen</span>
+            </div>
+            <div className="issue-events-scroll">
+              {issueEvents.map((stored) => {
+                const row = (stored.event ?? {}) as EventPayload;
+                const rowFirst = row.exception?.values?.[0];
+                const replayId = row.contexts?.replay?.replay_id;
+                const hasReplay =
+                  Boolean(replayId) ||
+                  Boolean(
+                    stored.itemTypes?.some(
+                      (type) => type === "replay_event" || type === "replay_recording",
+                    ),
+                  );
+                const user = row.user?.email ?? row.user?.username ?? row.user?.id ?? "—";
+                const line = row.message ?? rowFirst?.value ?? row.transaction ?? stored.id;
+                return (
+                  <div
+                    key={stored.id}
+                    className={`data-row clickable${stored.id === eventId ? " selected" : ""}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => selectEvent(stored.id)}
+                    onKeyDown={(keyEvent) => {
+                      if (keyEvent.key === "Enter") selectEvent(stored.id);
+                    }}
+                  >
+                    <div className="issue-main">
+                      <div className="issue-title">
+                        <span>{stored.id.slice(0, 6).toUpperCase()}</span>
+                        {line}
+                      </div>
+                      <div className="issue-meta">
+                        {hasReplay && (
+                          <span
+                            className="replay-tag"
+                            title={replayId ? `replay ${replayId}` : "replay attached"}
+                          >
+                            replay
+                          </span>
+                        )}
+                        <span>{row.culprit ?? rowFirst?.type ?? row.level ?? "error"}</span>
+                      </div>
+                    </div>
+                    <span className="event-cell" title={user}>
+                      {user}
+                    </span>
+                    <span className="event-cell" title={row.release ?? ""}>
+                      {row.release ?? "—"}
+                    </span>
+                    <span className="event-cell">{relativeTime(stored.receivedAt)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </article>
+          <section className="content-grid" ref={detailsRef}>
             <article className="panel">
               <div className="panel-header">
                 <div>

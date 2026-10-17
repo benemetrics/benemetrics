@@ -11,6 +11,7 @@ import { listStoredEvents, findStoredEventByIdOrThrow } from "../events-store";
 import { addLiveClient, removeLiveClient } from "../live-events";
 import { parseEnvelope, parseStoredEnvelope, extractEventId, normalizeTransactionPayload, convertSpanToTransaction } from "./utils";
 import { dispatchIngestedEvent, readBody, resolveAuthorizedApp } from "./ingestion";
+import { offloadReplayItems } from "./offload";
 import { symbolicateEventPayload } from "../source-maps/resolver";
 
 // Symbolication never fails the read.
@@ -206,8 +207,13 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
       const convertedParsed = { header: parsed.header, items: convertedItems };
 
       const eventId = extractEventId(convertedParsed);
+      const { items: storedItems, offloaded } = await offloadReplayItems(convertedItems, {
+        projectId: app.projectId,
+        appId: app.id,
+        messageId: eventId,
+      });
       const envelopeHeader = JSON.stringify(convertedParsed.header);
-      const envelopeItems = JSON.stringify(convertedParsed.items);
+      const envelopeItems = JSON.stringify(storedItems);
       const receivedAt = new Date().toISOString();
       const message: SentryEventMessage = {
         id: eventId,
@@ -215,7 +221,9 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
         appId: app.id,
         envelopeHeader,
         envelopeItems,
-        raw: rawBody,
+        // `raw` repeats every payload; once the recordings live in the
+        // object store, storing the body again would re-inflate the row.
+        raw: offloaded > 0 ? "" : rawBody,
         receivedAt,
         type: "envelope",
       };

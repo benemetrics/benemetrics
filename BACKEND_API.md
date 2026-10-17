@@ -56,6 +56,10 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 | `CLICKHOUSE_DATABASE` | `default`                                          | ClickHouse database            |
 | `CLICKHOUSE_USER`     | `default`                                          | ClickHouse HTTP user           |
 | `CLICKHOUSE_PASSWORD` | –                                                  | ClickHouse HTTP password       |
+| `S3_BUCKET`           | –                                                  | Enables the replay-segment offload (`AWS_BUCKET` fallback) |
+| `S3_ENDPOINT`         | –                                                  | S3-compatible endpoint (MinIO, R2, …; `AWS_ENDPOINT` fallback) |
+| `S3_REGION`           | `us-east-1`                                        | S3 region (`AWS_REGION` fallback) |
+| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_SESSION_TOKEN` | –              | S3 credentials (`AWS_*` fallbacks are honored) |
 | `NATS_TEST_URL`       | –                                                  | e2e only: enables the NATS broker test (`e2e/21-nats-first.test.ts`) |
 | `CLICKHOUSE_TEST_URL` | –                                                  | e2e only: enables the ClickHouse store test (`e2e/22-clickhouse-store.test.ts`) |
 | `ALERT_EVALUATION_INTERVAL_MS` | `60000`                                | Alert rule sweeper interval    |
@@ -65,7 +69,8 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 
 - **DB selection logic** lives in `db/index.ts` and is resolved once (singleton `db`):
   `NODE_ENV=test` → in-memory PGlite; else `DATABASE_URL` present → Postgres (Bun SQL); else file-backed PGlite in `./.pglite`. Committed migrations in `db/migrations` are applied at startup (idempotent, tracked in `drizzle.__drizzle_migrations`).
-- `docker-compose.yml` provides **Postgres 17** (`:5432`) and **ClickHouse** (`:8123`, `:9000`). NATS must be run separately.
+- `docker-compose.yml` provides **Postgres 17** (`:5432`), **ClickHouse** (`:8123`, `:9000`) and **MinIO** (`:9100` S3 API, `:9101` console; the `sentry-replays` bucket is created by the `minio-init` service). NATS must be run separately.
+- **Object store** (`backend/object-store.ts`): optional S3-compatible storage for large envelope items, enabled by `S3_BUCKET` and used by the envelope route to offload replay segments (§8). The environment is read per call, so the offload can be enabled or disabled without restarts.
 
 Package scripts (`package.json`):
 
@@ -424,8 +429,8 @@ Guard wiring:
 | `id` | text | PK (event id) |
 | `project_id` | text | indexed |
 | `envelope_header` | text | JSON string |
-| `envelope_items` | text | JSON string |
-| `raw` | text | original envelope body |
+| `envelope_items` | text | JSON string; offloaded payloads keep an `{ offloaded: true, key, bytes }` pointer |
+| `raw` | text | original envelope body; blanked when items were offloaded to the object store |
 | `received_at` | text | indexed |
 
 **feature_flags**
@@ -562,6 +567,7 @@ Each DAO is a plain object exported as `<entity>DAO` (e.g. `storedEventDAO`, `fe
 - `convertSpanToTransaction`: turns Sentry **span** items (`version: 2`) into transaction-shaped payloads (segment span becomes the transaction; child spans collected; `sentry.measurement.*` attributes become `measurements`).
 - `normalizeTransactionPayload`: hoists trace metadata from `contexts.trace`.
 - Storage: parsed items are saved to `stored_events` (`raw` keeps the original body) via `storedEventDAO.create`, which uses `onConflictDoNothing` so duplicate `event_id` retries are idempotent (no error, no duplicate row, no re-publish).
+- **Replay offload** (`backend/events/offload.ts`): with `S3_BUCKET` configured, `replay_recording` item payloads are uploaded to `replays/<projectId>/<appId>/<replayId|messageId>/<messageId>-<index>.json` before the message is published or stored, and the stored item keeps `{ offloaded: true, key, bytes }` instead; the row's `raw` body is blanked so the segment is not stored again (Postgres + the ClickHouse copy). Best-effort: without S3 configuration, or when an upload fails or exceeds the 5s bound, the payload stays inline and ingestion is never affected. The `replay_event` metadata stays inline, so `GET /events/:id` returns it — or the pointer itself for recording-only envelopes.
 - **NATS/ClickHouse** (`initNats`, `initClickHouse`): NATS-first ingestion — with a broker connected the handler publishes the envelope (`publishEvent`, 2s PubAck timeout) and consumers do the work: `sentry-events-consumer` (durable, sequential) persists to Postgres and pushes to ClickHouse best-effort, an ephemeral per-instance consumer fans out to WebSocket clients at `/events/live/feed`, and `sentry-releases-consumer` handles release events. When NATS is unavailable the handler applies the same `applyEventMessage` path in-process. ClickHouse is optional: `initClickHouse` probes and ensures the `sentry_events` table (`appId` included) at boot; stored events are pushed best-effort while it is available, and `/events` list + get read from it with per-request Postgres fallback (`backend/events-store.ts`). `/events/clear` clears both stores.
 
 ---
@@ -572,6 +578,7 @@ Each DAO is a plain object exported as `<entity>DAO` (e.g. `storedEventDAO`, `fe
 2. **Sentry SDK DSN constraint**: SDKs require a numeric DSN project id, so every app carries a DB-generated serial `number` used as the DSN path. `resolveApp` resolves numeric paths via `findByNumber` and keeps the ingest-key / project-id + public-key fallbacks for older DSNs; keep those fallbacks when changing ingestion routing.
 3. **ClickHouse is the optional events read store**: stored events are pushed best-effort at store time; the events API serves list/get from it when `initClickHouse` succeeded and falls back to Postgres on any failure. Postgres remains the source of truth for writes, metrics and alerting.
 4. **Identity providers are stubbed**: `adminAuthEnforced()` is env-driven (`ADMIN_TOKEN`, `OIDC_*`, `OAUTH_*`, `NODE_ENV=production`); there is no real OIDC/OAuth login flow yet.
+5. **Object store is offload-only**: replay recordings move to S3-compatible storage when `S3_BUCKET` is set, and the stored pointer is the only reference to them. There is no playback/read endpoint yet, and deleting events (`/events/clear`, app/project deletion) does not delete the objects — retention/lifecycle is a storage-side concern for now.
 
 ---
 

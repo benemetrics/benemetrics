@@ -1,0 +1,114 @@
+import { isObjectStoreEnabled, putObject } from "../object-store";
+import type { ParsedEnvelope } from "./utils";
+
+// Replay recording segments are rrweb batches that can reach hundreds of
+// kilobytes each; stored inline they would be duplicated in the row's
+// `envelope_items` and `raw` columns (and again in the ClickHouse copy)
+// and re-parsed on every events list/alerting sweep. When an
+// S3-compatible object store is configured the recordings are uploaded
+// at ingestion and the item keeps a small pointer instead. The offload
+// is best-effort: without configuration, or when an upload fails or
+// stalls, the payload stays inline and ingestion is never affected.
+
+export interface OffloadedItemPayload {
+  /** Marks a payload that lives in the object store. */
+  offloaded: true;
+  /** Object key inside the configured bucket. */
+  key: string;
+  /** Serialized payload size in bytes. */
+  bytes: number;
+}
+
+const OFFLOADED_ITEM_TYPES = new Set(["replay_recording"]);
+
+// Bounds a single upload so a hung object store cannot stall ingestion;
+// on timeout the payload is kept inline.
+const UPLOAD_TIMEOUT_MS = 5000;
+
+// Object keys embed client-controlled ids, so bound both the accepted
+// characters and the length (S3 keys may not exceed 1024 bytes).
+function sanitizeKeyPart(value: string): string {
+  return value.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 128);
+}
+
+// Groups a session's segments under its replay id when the envelope
+// carries replay metadata, falling back to the message id otherwise.
+function replayKeyFor(items: ParsedEnvelope["items"], fallback: string): string {
+  for (const item of items) {
+    if (item.header.type !== "replay_event") continue;
+    if (item.payload && typeof item.payload === "object") {
+      const replayId = (item.payload as Record<string, unknown>).replay_id;
+      if (typeof replayId === "string" && replayId.length > 0) {
+        return sanitizeKeyPart(replayId);
+      }
+    }
+  }
+  return sanitizeKeyPart(fallback);
+}
+
+async function putObjectBounded(key: string, body: string): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      putObject(key, body),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`upload timed out after ${UPLOAD_TIMEOUT_MS}ms`)),
+          UPLOAD_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+export interface OffloadResult {
+  items: ParsedEnvelope["items"];
+  /** How many item payloads were moved to the object store. */
+  offloaded: number;
+}
+
+export async function offloadReplayItems(
+  items: ParsedEnvelope["items"],
+  context: { projectId: string; appId: string; messageId: string },
+): Promise<OffloadResult> {
+  if (!isObjectStoreEnabled()) return { items, offloaded: 0 };
+
+  const projectId = sanitizeKeyPart(context.projectId);
+  const appId = sanitizeKeyPart(context.appId);
+  const messageId = sanitizeKeyPart(context.messageId);
+  const replayKey = replayKeyFor(items, messageId);
+
+  const result: ParsedEnvelope["items"] = [];
+  let offloaded = 0;
+
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index]!;
+    if (!OFFLOADED_ITEM_TYPES.has(item.header.type)) {
+      result.push(item);
+      continue;
+    }
+
+    const serialized = JSON.stringify(item.payload);
+    const key = `replays/${projectId}/${appId}/${replayKey}/${messageId}-${index}.json`;
+    try {
+      await putObjectBounded(key, serialized);
+      const pointer: OffloadedItemPayload = {
+        offloaded: true,
+        key,
+        bytes: Buffer.byteLength(serialized, "utf8"),
+      };
+      result.push({ header: item.header, payload: pointer });
+      offloaded += 1;
+    } catch (err) {
+      console.error(
+        `[object-store] Keeping "${key}" inline after upload failure:`,
+        err instanceof Error ? err.message : String(err),
+      );
+      result.push(item);
+    }
+  }
+
+  return { items: result, offloaded };
+}

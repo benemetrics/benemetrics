@@ -1,4 +1,4 @@
-import { putObject, type ObjectStoreBackend } from "../object-store";
+import { putObject, type StorageBackend } from "../storage";
 import type { ParsedEnvelope } from "./utils";
 
 // Replay recording segments are rrweb batches that can reach hundreds of
@@ -15,7 +15,7 @@ export interface OffloadedItemPayload {
   /** Marks a payload that lives in the object store. */
   offloaded: true;
   /** Backend holding the object: S3-compatible storage or the local directory. */
-  storage: ObjectStoreBackend;
+  storage: StorageBackend;
   /** Object key below the bucket / local storage directory. */
   key: string;
   /** Serialized payload size in bytes. */
@@ -55,7 +55,7 @@ function replayKeyFor(items: ParsedEnvelope["items"], fallback: string): string 
 async function putObjectBounded(
   key: string,
   body: string,
-): Promise<ObjectStoreBackend> {
+): Promise<StorageBackend> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
@@ -111,7 +111,7 @@ export async function offloadReplayItems(
       offloaded += 1;
     } catch (err) {
       console.error(
-        `[object-store] Keeping "${key}" inline after write failure:`,
+        `[storage] Keeping "${key}" inline after write failure:`,
         err instanceof Error ? err.message : String(err),
       );
       result.push(item);

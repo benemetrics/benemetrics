@@ -7,7 +7,9 @@
  * ({ offloaded: true, storage, key, bytes }) is stored instead, with the
  * duplicated `raw` body blanked so the segment is not stored again
  * (Postgres + the best-effort ClickHouse copy). When the write fails, the
- * payload stays inline and ingestion is unaffected.
+ * payload stays inline and ingestion is unaffected. While the local
+ * backend is active the objects are served back at GET /storage/<key>;
+ * with S3 configured that surface stays off (404).
  *
  * The stub below speaks just enough path-style S3 (object PUT) for Bun's
  * S3Client; request signatures are not checked.
@@ -111,6 +113,17 @@ async function apiGet<T>(path: string): Promise<T> {
     headers: { Authorization: ADMIN_TOKEN },
   });
   return (await response.json()) as T;
+}
+
+// Raw fetch for the storage file server (keeps status/headers/body).
+async function rawGet(
+  path: string,
+  options: { authorized?: boolean; range?: string } = {},
+): Promise<Response> {
+  const headers: Record<string, string> = {};
+  if (options.authorized !== false) headers.Authorization = ADMIN_TOKEN;
+  if (options.range) headers.Range = options.range;
+  return await fetch(`${testServer.baseUrl}${path}`, { headers });
 }
 
 function objectKeyFor(options: {
@@ -328,9 +341,60 @@ describe("Replay segment offload to S3-compatible storage", () => {
       const detail = await apiGet<unknown>(`/events/${eventId}`);
       expect(detail).toEqual(pointer);
 
+      // The ingested object is fetchable over HTTP while local is active.
+      const served = await rawGet(`/storage/${key}`);
+      expect(served.status).toBe(200);
+      expect(served.headers.get("content-type")).toContain("application/json");
+      expect(await served.text()).toBe(fileText);
+
       // The temp write-rename file must not survive a successful write.
       const leftovers = new Bun.Glob(`**/*.tmp`).scanSync({ cwd: dir });
       expect([...leftovers]).toEqual([]);
+    } finally {
+      delete process.env.LOCAL_STORAGE_DIR;
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("serves local objects only while no S3 bucket is configured", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sentry-replays-"));
+    const storageRoot = join(dir, "storage");
+    process.env.LOCAL_STORAGE_DIR = storageRoot;
+
+    try {
+      const key = `replays/verify/${crypto.randomUUID()}-0.json`;
+      const body = JSON.stringify([{ type: 4, data: { served: true } }]);
+      await Bun.write(join(storageRoot, key), body);
+
+      // S3 is configured (beforeEach): the local read surface stays off
+      // even though the object exists on disk.
+      const withS3 = await rawGet(`/storage/${key}`);
+      expect(withS3.status).toBe(404);
+
+      delete process.env.S3_BUCKET;
+      const served = await rawGet(`/storage/${key}`);
+      expect(served.status).toBe(200);
+      expect(served.headers.get("content-type")).toContain("application/json");
+      expect(await served.text()).toBe(body);
+
+      // Elysia's static file handler serves range requests too.
+      const ranged = await rawGet(`/storage/${key}`, { range: "bytes=0-9" });
+      expect(ranged.status).toBe(206);
+      expect(await ranged.text()).toBe(body.slice(0, 10));
+
+      // Guarded like the other UI surfaces once admin auth is enforced.
+      const denied = await rawGet(`/storage/${key}`, { authorized: false });
+      expect(denied.status).toBe(401);
+
+      // Encoded traversal never reaches a file outside the storage root.
+      const canary = `canary-${crypto.randomUUID()}.json`;
+      await Bun.write(join(dir, canary), "canary");
+      const traversal = await rawGet(`/storage/${encodeURIComponent(`../${canary}`)}`);
+      expect(traversal.status).toBe(404);
+
+      // Unknown keys are plain 404s.
+      const missing = await rawGet(`/storage/replays/does-not/exist.json`);
+      expect(missing.status).toBe(404);
     } finally {
       delete process.env.LOCAL_STORAGE_DIR;
       await rm(dir, { recursive: true, force: true });

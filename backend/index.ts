@@ -6,6 +6,7 @@ import { eventsRoutes, ingestionRoutes } from "./events";
 import { otlpRoutes } from "./otlp";
 import { sourceMapUploadRoutes } from "./api0/source-maps";
 import { dsnRoutes } from "./dsn";
+import { storageRoutes } from "./storage";
 import { evaluationRoutes } from "./evaluation";
 import { flagsStreamRoutes } from "./flags-stream";
 import { flagsV1Routes } from "./flags-v1";
@@ -52,6 +53,7 @@ const app = new Elysia({
   .use(otlpRoutes)
   .use(sourceMapUploadRoutes)
   .use(dsnRoutes)
+  .use(storageRoutes)
   .use(evaluationRoutes)
   .use(flagsStreamRoutes)
   .use(flagsV1Routes)

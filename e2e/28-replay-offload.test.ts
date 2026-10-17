@@ -1,18 +1,22 @@
 /**
- * E2E Test: Replay segment offload to S3-compatible object storage
+ * E2E Test: Replay segment offload to object storage
  *
- * When S3_BUCKET is configured, the envelope ingestion route uploads
- * `replay_recording` item payloads and stores a small pointer
- * ({ offloaded: true, key, bytes }) instead — the duplicated `raw` body
- * is blanked so the segment is not stored again (Postgres + the
- * best-effort ClickHouse copy). Without S3, or when an upload fails, the
+ * At ingestion `replay_recording` item payloads are written to the object
+ * store — S3-compatible storage when S3_BUCKET is configured, the local
+ * LOCAL_STORAGE_DIR directory otherwise — and a small pointer
+ * ({ offloaded: true, storage, key, bytes }) is stored instead, with the
+ * duplicated `raw` body blanked so the segment is not stored again
+ * (Postgres + the best-effort ClickHouse copy). When the write fails, the
  * payload stays inline and ingestion is unaffected.
  *
- * The stub below speaks just enough path-style S3 (object PUT/GET) for
- * Bun's S3Client; request signatures are not checked.
+ * The stub below speaks just enough path-style S3 (object PUT) for Bun's
+ * S3Client; request signatures are not checked.
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { startTestServer, type TestServer } from "./test-helpers";
 import { storedEventDAO } from "db/dao/stored-event";
 
@@ -31,18 +35,19 @@ let s3Server: ReturnType<typeof Bun.serve> | null = null;
 let s3Endpoint = "";
 let uploads: UploadedObject[] = [];
 
-// Snapshot the outer environment so the file leaves no S3_* behind.
-const ORIGINAL_S3_ENV = {
+// Snapshot the outer environment so the file leaves no storage env behind.
+const ORIGINAL_ENV = {
   S3_BUCKET: process.env.S3_BUCKET,
   S3_ENDPOINT: process.env.S3_ENDPOINT,
   S3_REGION: process.env.S3_REGION,
   S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
   S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
   S3_SESSION_TOKEN: process.env.S3_SESSION_TOKEN,
+  LOCAL_STORAGE_DIR: process.env.LOCAL_STORAGE_DIR,
 };
 
-function restoreS3Env(): void {
-  for (const [name, value] of Object.entries(ORIGINAL_S3_ENV)) {
+function restoreStorageEnv(): void {
+  for (const [name, value] of Object.entries(ORIGINAL_ENV)) {
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
   }
@@ -138,7 +143,7 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-  restoreS3Env();
+  restoreStorageEnv();
   s3Server?.stop(true);
   testServer?.stop();
 });
@@ -151,6 +156,7 @@ beforeEach(() => {
   process.env.S3_SECRET_ACCESS_KEY = "e2e-secret-key";
   process.env.S3_REGION = "us-east-1";
   delete process.env.S3_SESSION_TOKEN;
+  delete process.env.LOCAL_STORAGE_DIR;
 });
 
 describe("Replay segment offload to S3-compatible storage", () => {
@@ -198,6 +204,7 @@ describe("Replay segment offload to S3-compatible storage", () => {
       storedItems.find((item) => item.header.type === "replay_recording")!.payload,
     ).toEqual({
       offloaded: true,
+      storage: "s3",
       key,
       bytes: Buffer.byteLength(upload.body, "utf8"),
     });
@@ -236,10 +243,14 @@ describe("Replay segment offload to S3-compatible storage", () => {
     expect(uploads).toHaveLength(1);
     expect(uploads[0]!.path).toBe(`/${BUCKET}/${key}`);
 
-    const detail = await apiGet<{ offloaded: boolean; key: string; bytes: number }>(
-      `/events/${eventId}`,
-    );
+    const detail = await apiGet<{
+      offloaded: boolean;
+      storage: string;
+      key: string;
+      bytes: number;
+    }>(`/events/${eventId}`);
     expect(detail.offloaded).toBe(true);
+    expect(detail.storage).toBe("s3");
     expect(detail.key).toBe(key);
     expect(detail.bytes).toBe(Buffer.byteLength(uploads[0]!.body, "utf8"));
   });
@@ -274,36 +285,97 @@ describe("Replay segment offload to S3-compatible storage", () => {
     expect(detail.message).toBe(event.message);
   });
 
-  it("keeps recording payloads inline when S3 is not configured", async () => {
+  it("stores recording payloads in the local directory when S3 is not configured", async () => {
     delete process.env.S3_BUCKET;
-    const eventId = crypto.randomUUID();
-    const recording = replayRecording();
+    const dir = await mkdtemp(join(tmpdir(), "sentry-replays-"));
+    process.env.LOCAL_STORAGE_DIR = dir;
 
-    const response = await sendEnvelope(
-      buildEnvelope({ event_id: eventId, sent_at: new Date().toISOString() }, [
-        {
-          header: { type: "replay_recording", content_type: "application/json" },
-          payload: recording,
-        },
-      ]),
-    );
-    expect(response.status).toBe(200);
-    expect(uploads).toHaveLength(0);
+    try {
+      const eventId = crypto.randomUUID();
+      const recording = replayRecording();
 
-    const stored = await storedEventDAO.findById(eventId);
-    const storedItems = JSON.parse(stored!.envelopeItems) as Array<{
-      header: { type: string };
-      payload: unknown;
-    }>;
-    expect(storedItems[0]!.header.type).toBe("replay_recording");
-    expect(storedItems[0]!.payload).toEqual(recording);
-    expect(stored!.raw).not.toBe("");
+      const response = await sendEnvelope(
+        buildEnvelope({ event_id: eventId, sent_at: new Date().toISOString() }, [
+          {
+            header: { type: "replay_recording", content_type: "application/json" },
+            payload: recording,
+          },
+        ]),
+      );
+      expect(response.status).toBe(200);
+      expect(uploads).toHaveLength(0);
 
-    const detail = await apiGet<unknown>(`/events/${eventId}`);
-    expect(detail).toEqual(recording);
+      // The segment landed under the storage directory, keyed exactly
+      // like the S3 objects; the row keeps a local pointer and no raw copy.
+      const key = objectKeyFor({ replayKey: eventId, eventId, index: 0 });
+      const fileText = await Bun.file(join(dir, key)).text();
+      expect(JSON.parse(fileText)).toEqual(recording);
+      const pointer = {
+        offloaded: true,
+        storage: "local",
+        key,
+        bytes: Buffer.byteLength(fileText, "utf8"),
+      };
+
+      const stored = await storedEventDAO.findById(eventId);
+      const storedItems = JSON.parse(stored!.envelopeItems) as Array<{
+        header: { type: string };
+        payload: unknown;
+      }>;
+      expect(storedItems[0]!.payload).toEqual(pointer);
+      expect(stored!.raw).toBe("");
+
+      const detail = await apiGet<unknown>(`/events/${eventId}`);
+      expect(detail).toEqual(pointer);
+
+      // The temp write-rename file must not survive a successful write.
+      const leftovers = new Bun.Glob(`**/*.tmp`).scanSync({ cwd: dir });
+      expect([...leftovers]).toEqual([]);
+    } finally {
+      delete process.env.LOCAL_STORAGE_DIR;
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
-  it("keeps recording payloads inline when the upload fails", async () => {
+  it("keeps recording payloads inline when the local write fails", async () => {
+    delete process.env.S3_BUCKET;
+    const dir = await mkdtemp(join(tmpdir(), "sentry-replays-"));
+    // Point the storage dir into a regular file so the mkdir fails.
+    await Bun.write(join(dir, "blocked"), "not a directory");
+    process.env.LOCAL_STORAGE_DIR = join(dir, "blocked");
+
+    try {
+      const eventId = crypto.randomUUID();
+      const recording = replayRecording();
+
+      const response = await sendEnvelope(
+        buildEnvelope({ event_id: eventId, sent_at: new Date().toISOString() }, [
+          {
+            header: { type: "replay_recording", content_type: "application/json" },
+            payload: recording,
+          },
+        ]),
+      );
+      expect(response.status).toBe(200);
+      expect(uploads).toHaveLength(0);
+
+      const stored = await storedEventDAO.findById(eventId);
+      const storedItems = JSON.parse(stored!.envelopeItems) as Array<{
+        header: { type: string };
+        payload: unknown;
+      }>;
+      expect(storedItems[0]!.payload).toEqual(recording);
+      expect(stored!.raw).not.toBe("");
+
+      const detail = await apiGet<unknown>(`/events/${eventId}`);
+      expect(detail).toEqual(recording);
+    } finally {
+      delete process.env.LOCAL_STORAGE_DIR;
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps recording payloads inline when the S3 upload fails", async () => {
     // Nothing listens on port 1: the upload rejects immediately.
     process.env.S3_ENDPOINT = "http://127.0.0.1:1";
     const eventId = crypto.randomUUID();

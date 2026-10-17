@@ -23,32 +23,48 @@ services:
         soft: 262144
         hard: 262144
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
+  rustfs:
+    image: rustfs/rustfs:latest
+    depends_on:
+      rustfs-perms:
+        condition: service_completed_successfully
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_OBS_LOG_DIRECTORY: /app/logs
     ports:
       - "9100:9000" # S3 API (9100 because ClickHouse publishes 9000)
-      - "9101:9001" # web console
+      - "9101:9001" # web console (rustfsadmin / rustfsadmin)
     volumes:
-      - minio_data:/data
+      - rustfs_data:/data
+      - rustfs_logs:/app/logs
+
+  # RustFS runs as UID 10001; the named volumes need matching ownership.
+  rustfs-perms:
+    image: alpine
+    command: chown -R 10001:10001 /data /app/logs
+    volumes:
+      - rustfs_data:/data
+      - rustfs_logs:/app/logs
 
   # Creates the bucket the backend offloads replay segments to; safe to
-  # re-run (--ignore-existing).
-  minio-init:
-    image: minio/mc:latest
+  # re-run (an existing bucket is kept).
+  rustfs-init:
+    image: rustfs/rc:latest
     depends_on:
-      - minio
+      - rustfs
     entrypoint: >
       /bin/sh -c "
-      until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
-      mc mb --ignore-existing local/sentry-replays;
+      until rc alias set local http://rustfs:9000 rustfsadmin rustfsadmin; do sleep 1; done;
+      until rc ls local/ >/dev/null 2>&1; do sleep 1; done;
+      rc ls local/sentry-replays >/dev/null 2>&1 || rc mb local/sentry-replays;
       "
 
 volumes:
   postgres_data:
   clickhouse_data:
   clickhouse_logs:
-  minio_data:
+  rustfs_data:
+  rustfs_logs:

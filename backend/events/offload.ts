@@ -1,19 +1,22 @@
-import { isObjectStoreEnabled, putObject } from "../object-store";
+import { putObject, type ObjectStoreBackend } from "../object-store";
 import type { ParsedEnvelope } from "./utils";
 
 // Replay recording segments are rrweb batches that can reach hundreds of
 // kilobytes each; stored inline they would be duplicated in the row's
 // `envelope_items` and `raw` columns (and again in the ClickHouse copy)
-// and re-parsed on every events list/alerting sweep. When an
-// S3-compatible object store is configured the recordings are uploaded
-// at ingestion and the item keeps a small pointer instead. The offload
-// is best-effort: without configuration, or when an upload fails or
-// stalls, the payload stays inline and ingestion is never affected.
+// and re-parsed on every events list/alerting sweep. At ingestion the
+// recordings are moved to the object store — S3 when `S3_BUCKET` is
+// configured, the local `LOCAL_STORAGE_DIR` directory otherwise — and
+// the item keeps a small pointer instead. The offload is best-effort:
+// when the write fails or stalls the payload stays inline and ingestion
+// is never affected.
 
 export interface OffloadedItemPayload {
   /** Marks a payload that lives in the object store. */
   offloaded: true;
-  /** Object key inside the configured bucket. */
+  /** Backend holding the object: S3-compatible storage or the local directory. */
+  storage: ObjectStoreBackend;
+  /** Object key below the bucket / local storage directory. */
   key: string;
   /** Serialized payload size in bytes. */
   bytes: number;
@@ -26,9 +29,12 @@ const OFFLOADED_ITEM_TYPES = new Set(["replay_recording"]);
 const UPLOAD_TIMEOUT_MS = 5000;
 
 // Object keys embed client-controlled ids, so bound both the accepted
-// characters and the length (S3 keys may not exceed 1024 bytes).
+// characters and the length (S3 keys may not exceed 1024 bytes). Dots are
+// excluded so a key part can never be `.`/`..` and climb out of its
+// directory (the local backend also re-checks the resolved path).
 function sanitizeKeyPart(value: string): string {
-  return value.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 128);
+  const sanitized = value.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 128);
+  return sanitized.length > 0 ? sanitized : "_";
 }
 
 // Groups a session's segments under its replay id when the envelope
@@ -46,10 +52,13 @@ function replayKeyFor(items: ParsedEnvelope["items"], fallback: string): string 
   return sanitizeKeyPart(fallback);
 }
 
-async function putObjectBounded(key: string, body: string): Promise<void> {
+async function putObjectBounded(
+  key: string,
+  body: string,
+): Promise<ObjectStoreBackend> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    await Promise.race([
+    return await Promise.race([
       putObject(key, body),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
@@ -73,8 +82,6 @@ export async function offloadReplayItems(
   items: ParsedEnvelope["items"],
   context: { projectId: string; appId: string; messageId: string },
 ): Promise<OffloadResult> {
-  if (!isObjectStoreEnabled()) return { items, offloaded: 0 };
-
   const projectId = sanitizeKeyPart(context.projectId);
   const appId = sanitizeKeyPart(context.appId);
   const messageId = sanitizeKeyPart(context.messageId);
@@ -93,9 +100,10 @@ export async function offloadReplayItems(
     const serialized = JSON.stringify(item.payload);
     const key = `replays/${projectId}/${appId}/${replayKey}/${messageId}-${index}.json`;
     try {
-      await putObjectBounded(key, serialized);
+      const storage = await putObjectBounded(key, serialized);
       const pointer: OffloadedItemPayload = {
         offloaded: true,
+        storage,
         key,
         bytes: Buffer.byteLength(serialized, "utf8"),
       };
@@ -103,7 +111,7 @@ export async function offloadReplayItems(
       offloaded += 1;
     } catch (err) {
       console.error(
-        `[object-store] Keeping "${key}" inline after upload failure:`,
+        `[object-store] Keeping "${key}" inline after write failure:`,
         err instanceof Error ? err.message : String(err),
       );
       result.push(item);

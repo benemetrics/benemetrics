@@ -23,6 +23,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *.sqlite-shm
 .pglite
 
+# local object storage (LOCAL_STORAGE_DIR default)
+.storage
+
 # dotenv environment variable files
 .env
 .env.development.local

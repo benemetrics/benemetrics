@@ -12,6 +12,12 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
+    # The image restricts the passwordless `default` user to localhost when no
+    # credentials are configured; skip that so the backend's defaults
+    # (CLICKHOUSE_USER/PASSWORD unset) keep working in dev. Production
+    # deployments terminate with real credentials.
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
     ports:
       - "8123:8123"
       - "9000:9000"
@@ -22,6 +28,17 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+
+  nats:
+    image: nats:latest
+    command: ["-c", "/etc/nats/nats-server.conf"]
+    ports:
+      - "4222:4222" # clients
+      - "8222:8222" # monitoring
+      - "9222:9222" # WebSocket (UI live feed)
+    volumes:
+      - ./infra/nats-server.conf:/etc/nats/nats-server.conf:ro
+      - nats_data:/data
 
   rustfs:
     image: rustfs/rustfs:latest
@@ -66,5 +83,6 @@ volumes:
   postgres_data:
   clickhouse_data:
   clickhouse_logs:
+  nats_data:
   rustfs_data:
   rustfs_logs:

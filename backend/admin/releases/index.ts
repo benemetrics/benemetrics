@@ -2,7 +2,7 @@ import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { appDAO } from "db/dao/project";
 import { releaseDAO } from "db/dao/releases";
-import { storedEventDAO } from "db/dao/stored-event";
+import { listClickHouseEventsForProject } from "../../clickhouse";
 import { computeIssueMetrics } from "./metrics";
 import type { Release } from "db/schema/releases";
 
@@ -136,7 +136,7 @@ export const releaseRoutes = new Elysia({ prefix: "releases" })
       const release = await releaseDAO.findByIdOrThrow(id);
       const app = await appDAO.findByIdOrThrow(release.appId);
 
-      const events = await storedEventDAO.listByProject(app.projectId);
+      const events = await listClickHouseEventsForProject(app.projectId);
       const issueMetrics = computeIssueMetrics(events, release.version);
 
       return { ...toReleaseResponse(release), ...issueMetrics };

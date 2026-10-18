@@ -1,7 +1,6 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { appDAO, toAppResponse } from "db/dao/project";
-import { storedEventDAO } from "db/dao/stored-event";
 import { requestHost } from "../../host";
 import { issueDAO } from "db/dao/issues";
 import { releaseDAO } from "db/dao/releases";
@@ -14,8 +13,9 @@ import { alertChannelDAO } from "db/dao/alert-channels";
 // Rows in project- or
 // globally-scoped tables (feature flags, global alert
 // rules/channels) are shared and stay in place.
+// Stored events are not cascaded: they live in ClickHouse (NATS-fed),
+// not in Postgres.
 export async function deleteAppCascade(appId: string): Promise<void> {
-  await storedEventDAO.deleteByApp(appId);
   await issueDAO.deleteByApp(appId);
   await releaseDAO.deleteByApp(appId);
   await sourceMapDAO.deleteByApp(appId);

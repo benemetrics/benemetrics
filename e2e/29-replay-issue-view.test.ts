@@ -106,6 +106,20 @@ async function apiGet<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+// Ingestion is asynchronous (NATS -> ClickHouse): the replay link is
+// readable once the stored event is visible, so poll instead of racing.
+async function waitForReplay(eventId: string, timeoutMs = 10000): Promise<ReplayPayload> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const response = await fetch(`${testServer.baseUrl}/replays/by-event/${eventId}`, {
+      headers: { Authorization: ADMIN_TOKEN },
+    });
+    if (response.ok) return (await response.json()) as ReplayPayload;
+    await Bun.sleep(100);
+  }
+  throw new Error(`replay for event ${eventId} never became available`);
+}
+
 function replayMeta(replayId: string, segmentId: number, timestamp: number) {
   return {
     type: "replay_event",
@@ -121,7 +135,11 @@ function replayMeta(replayId: string, segmentId: number, timestamp: number) {
 
 // A realistic rrweb batch: session meta, a full snapshot and incrementals,
 // each carrying the millisecond timestamp playback order is derived from.
-function replayRecording(href: string, timestamp: number, label: string) {
+function replayRecording(
+  href: string,
+  timestamp: number,
+  label: string,
+): Array<Record<string, unknown>> {
   return [
     { type: 4, data: { href, width: 1280, height: 720 }, timestamp, delay: 0 },
     {
@@ -186,13 +204,14 @@ async function sendRecording(
   messageId: string,
   replayId: string,
   segmentId: number,
-  recording: unknown[],
+  recording: Array<Record<string, unknown>>,
+  timestampSeconds: number,
 ): Promise<void> {
   const response = await sendEnvelope(
     buildEnvelope({ event_id: messageId, sent_at: new Date().toISOString() }, [
       {
         header: { type: "replay_event", content_type: "application/json" },
-        payload: replayMeta(replayId, segmentId, recording[0] && ((recording[0] as any).timestamp ?? 0) / 1000),
+        payload: replayMeta(replayId, segmentId, timestampSeconds),
       },
       {
         header: { type: "replay_recording", content_type: "application/json" },
@@ -257,12 +276,14 @@ describe("Session replay on the issue details page", () => {
       REPLAY_ID,
       0,
       replayRecording("https://example.com/checkout", EARLY_START_MS, "checkout"),
+      EARLY_START_MS / 1000,
     );
     await sendRecording(
       LATE_SEGMENT_ID,
       REPLAY_ID,
       1,
       replayRecording("https://example.com/thank-you", LATE_START_MS, "thank-you"),
+      LATE_START_MS / 1000,
     );
 
     // An occurrence without any replay link, for the empty state.
@@ -283,7 +304,7 @@ describe("Session replay on the issue details page", () => {
   });
 
   it("assembles the linked replay's segments in playback order", async () => {
-    const replay = await apiGet<ReplayPayload>(`/replays/by-event/${errorEventId}`);
+    const replay = await waitForReplay(errorEventId);
 
     expect(replay.replayId).toBe(REPLAY_ID);
     expect(replay.available).toBe(true);
@@ -313,7 +334,7 @@ describe("Session replay on the issue details page", () => {
       }),
     );
 
-    const replay = await apiGet<ReplayPayload>(`/replays/by-event/${eventId}`);
+    const replay = await waitForReplay(eventId);
     expect(replay.replayId).toBe(replayId);
     expect(replay.available).toBe(true);
     expect(replay.segments).toEqual([]);
@@ -321,7 +342,7 @@ describe("Session replay on the issue details page", () => {
   }, 30000);
 
   it("reports no replay for events without a replay link", async () => {
-    const replay = await apiGet<ReplayPayload>(`/replays/by-event/${plainEventId}`);
+    const replay = await waitForReplay(plainEventId);
     expect(replay.replayId).toBeNull();
     expect(replay.available).toBe(true);
     expect(replay.segments).toEqual([]);

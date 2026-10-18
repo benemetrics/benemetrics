@@ -251,14 +251,22 @@ describe("Event detail stack trace — symbolication in the real UI", () => {
     await clickNav("Issues");
     await waitForTextInUI("TypeError: boom");
 
-    const clicked =
-      (await view.evaluate(`(() => {
-        const rows = Array.from(document.querySelectorAll(".data-row"));
-        const row = rows.find((el) => (el.textContent || "").includes("TypeError: boom"));
-        if (!row) return false;
-        row.click();
-        return true;
-      })()`)) ?? false;
+    // The same title is rendered on the Overview page, so a bare text
+    // match does not prove the Issues table has rendered: wait for the
+    // row itself before clicking it.
+    const deadline = Date.now() + 15000;
+    let clicked = false;
+    while (!clicked && Date.now() < deadline) {
+      clicked =
+        (await view.evaluate(`(() => {
+          const rows = Array.from(document.querySelectorAll(".data-row"));
+          const row = rows.find((el) => (el.textContent || "").includes("TypeError: boom"));
+          if (!row) return false;
+          row.click();
+          return true;
+        })()`)) ?? false;
+      if (!clicked) await Bun.sleep(200);
+    }
     expect(clicked).toBe(true);
 
     await waitForTextInUI("Stack trace");

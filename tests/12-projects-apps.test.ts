@@ -9,7 +9,13 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
+import {
+  handleFetch as fetch,
+  TEST_ORIGIN,
+  waitForApiGet,
+  waitForStoredEvent,
+} from "./test-helpers";
+import { evaluateRulesForApp } from "../backend/alerting/evaluation";
 
 const baseUrl = TEST_ORIGIN;
 const ADMIN_TOKEN = "Bearer e2e-admin-token";
@@ -316,9 +322,7 @@ describe("Projects & Apps Management", () => {
       });
       expect(ingestResponse.status).toBe(200);
 
-      const eventResponse = await fetch(`${baseUrl}/events/${eventId}`, { headers: { Authorization: ADMIN_TOKEN } });
-      expect(eventResponse.status).toBe(200);
-      const event = await eventResponse.json() as { message: string };
+      const event = await waitForApiGet<{ message: string }>(`/events/${eventId}`);
       expect(event.message).toBe("hello from duplicated dsn");
 
       // The original app DSN keeps working alongside the copy.
@@ -336,8 +340,7 @@ describe("Projects & Apps Management", () => {
         body: envelope2,
       });
       expect(originalIngest.status).toBe(200);
-      const event2Response = await fetch(`${baseUrl}/events/${eventId2}`, { headers: { Authorization: ADMIN_TOKEN } });
-      const event2 = await event2Response.json() as { message: string };
+      const event2 = await waitForApiGet<{ message: string }>(`/events/${eventId2}`);
       expect(event2.message).toBe("hello from original dsn");
     });
 
@@ -558,9 +561,7 @@ describe("Projects & Apps Management", () => {
       const ingestData = await ingestResponse.json() as { id: string };
       expect(ingestData.id).toBe(eventId);
 
-      const eventResponse = await fetch(`${baseUrl}/events/${eventId}`, { headers: { Authorization: ADMIN_TOKEN } });
-      expect(eventResponse.status).toBe(200);
-      const event = await eventResponse.json() as { message: string };
+      const event = await waitForApiGet<{ message: string }>(`/events/${eventId}`);
       expect(event.message).toBe("hello from app dsn");
     });
 
@@ -599,9 +600,7 @@ describe("Projects & Apps Management", () => {
       expect(secondBody.id).toBe(eventId);
 
       // The stored event is still retrievable exactly once.
-      const eventResponse = await fetch(`${baseUrl}/events/${eventId}`, { headers: { Authorization: ADMIN_TOKEN } });
-      expect(eventResponse.status).toBe(200);
-      const event = await eventResponse.json() as { message: string };
+      const event = await waitForApiGet<{ message: string }>(`/events/${eventId}`);
       expect(event.message).toBe("sent twice");
     });
   });
@@ -638,7 +637,7 @@ describe("Projects & Apps Management", () => {
       expect(envResponse.status).toBe(200);
     });
 
-    it("cascades app-scoped rows on app delete (events, releases, rules, incidents)", async () => {
+    it("cascades app-scoped rows on app delete (releases, rules, incidents)", async () => {
       const project = await json<ProjectResponse>(
         await apiRequest("POST", "/api/admin/projects", { name: "Cascade-" + uniq() }),
       );
@@ -661,8 +660,9 @@ describe("Projects & Apps Management", () => {
         }),
       );
 
-      // Ingest an error event through the app DSN (fallback path, no
-      // NATS in tests). Server-side this also records the release.
+      // Ingest an error event through the app DSN. Ingestion publishes to
+      // NATS; the release row and the issue/alerts side effects are
+      // applied asynchronously by the consumers.
       const eventId = crypto.randomUUID();
       const ingestUrl = new URL(`${baseUrl}/api/${app.ingestKey}/store/`);
       ingestUrl.searchParams.set("sentry_key", app.publicKey);
@@ -687,6 +687,12 @@ describe("Projects & Apps Management", () => {
       );
       const releaseId = releases.data[0]!.id;
 
+      // The ingestion-triggered evaluation is best-effort and can run
+      // before the event is visible in ClickHouse; wait for the store,
+      // then evaluate once (the cooldown keeps it one-shot).
+      await waitForStoredEvent(eventId);
+      evaluateRulesForApp(app.id);
+
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<{ id: string; ruleId: string }> }>(
@@ -702,7 +708,10 @@ describe("Projects & Apps Management", () => {
       // App-scoped rows die with the app...
       expect((await apiRequest("GET", `/api/admin/releases/${releaseId}`)).status).toBe(404);
       expect((await apiRequest("GET", `/api/admin/alerting/rules/${rule.id}`)).status).toBe(404);
-      expect((await fetch(`${baseUrl}/events/${eventId}`, { headers: { Authorization: ADMIN_TOKEN } })).status).toBe(404);
+
+      // ...but stored events do not: they live in ClickHouse and are
+      // truncated by /events/clear (entity-scoped cleanup is deferred).
+      expect((await fetch(`${baseUrl}/events/${eventId}`, { headers: { Authorization: ADMIN_TOKEN } })).status).toBe(200);
 
       // ...and so do its incidents, which are plain history rows.
       const remainingIncidents = await json<{ data: Array<{ id: string }> }>(

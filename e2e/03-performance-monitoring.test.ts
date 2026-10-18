@@ -7,7 +7,7 @@
 
 import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
-import { startTestServer, type TestServer } from "./test-helpers";
+import { clearStoredEvents, startTestServer, waitForEventListItem, type TestServer } from "./test-helpers";
 
 let SERVER_URL = "";
 let testServer: TestServer | null = null;
@@ -60,7 +60,7 @@ async function waitForEvent(eventId: string, timeout: number = 5000): Promise<Te
 }
 
 async function clearEvents(): Promise<void> {
-  await apiRequest("POST", "/events/clear");
+  await clearStoredEvents(SERVER_URL);
 }
 
 function initSentryForTest(config: { dsn: string; release?: string }): void {
@@ -120,8 +120,10 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
     await Sentry.flush(5000);
 
-    const events = await fetchAllEvents();
-    const transactionEvent = events.find((e) => e.itemTypes.includes("transaction"));
+    const transactionEvent = await waitForEventListItem(
+      SERVER_URL,
+      (item) => item.itemTypes.includes("transaction"),
+    );
     expect(transactionEvent).toBeDefined();
 
     const transaction = await fetchEvent(transactionEvent!.id);
@@ -163,8 +165,10 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
     await Sentry.flush(5000);
 
-    const events = await fetchAllEvents();
-    const transactionEvent = events.find((e) => e.itemTypes.includes("transaction"));
+    const transactionEvent = await waitForEventListItem(
+      SERVER_URL,
+      (item) => item.itemTypes.includes("transaction"),
+    );
     expect(transactionEvent).toBeDefined();
 
     const transaction = await fetchEvent(transactionEvent!.id);
@@ -191,8 +195,10 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
     await Sentry.flush(5000);
 
-    const events = await fetchAllEvents();
-    const transactionEvent = events.find((e) => e.itemTypes.includes("transaction"));
+    const transactionEvent = await waitForEventListItem(
+      SERVER_URL,
+      (item) => item.itemTypes.includes("transaction"),
+    );
     expect(transactionEvent).toBeDefined();
 
     const transaction = await fetchEvent(transactionEvent!.id);
@@ -217,8 +223,10 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
     await Sentry.flush(5000);
 
-    const events = await fetchAllEvents();
-    const transactionEvent = events.find((e) => e.itemTypes.includes("transaction"));
+    const transactionEvent = await waitForEventListItem(
+      SERVER_URL,
+      (item) => item.itemTypes.includes("transaction"),
+    );
     expect(transactionEvent).toBeDefined();
 
     const transaction = await fetchEvent(transactionEvent!.id);
@@ -238,8 +246,10 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
     await Sentry.flush(5000);
 
-    const events = await fetchAllEvents();
-    const transactionEvent = events.find((e) => e.itemTypes.includes("transaction"));
+    const transactionEvent = await waitForEventListItem(
+      SERVER_URL,
+      (item) => item.itemTypes.includes("transaction"),
+    );
     expect(transactionEvent).toBeDefined();
 
     const transaction = await fetchEvent(transactionEvent!.id);
@@ -291,8 +301,10 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
     expect(result).toBeDefined();
     await Sentry.flush(5000);
 
-    const events = await fetchAllEvents();
-    const transactionEvent = events.find((e) => e.itemTypes.includes("transaction"));
+    const transactionEvent = await waitForEventListItem(
+      SERVER_URL,
+      (item) => item.itemTypes.includes("transaction"),
+    );
     expect(transactionEvent).toBeDefined();
 
     const transaction = await fetchEvent(transactionEvent!.id);

@@ -3,7 +3,7 @@ import { drizzle as pgliteDrizzle } from "drizzle-orm/pglite";
 import { migrate as pgliteMigrate } from "drizzle-orm/pglite/migrator";
 import { drizzle as pgDrizzle } from "drizzle-orm/bun-sql";
 import { migrate as pgMigrate } from "drizzle-orm/bun-sql/migrator";
-import { projects, apps, featureFlags, segments, storedEvents, environments, releases, experimentAssignments, experimentMetrics, alertChannels, alertRules, alertIncidents, sourceMapTokens, sourceMaps } from "./schema/index";
+import { projects, apps, featureFlags, segments, environments, releases, experimentAssignments, experimentMetrics, alertChannels, alertRules, alertIncidents, sourceMapTokens, sourceMaps } from "./schema/index";
 
 type Database = ReturnType<typeof pgliteDrizzle>;
 
@@ -62,4 +62,4 @@ export async function closeDb(): Promise<void> {
   await client.close();
 }
 
-export { projects, apps, featureFlags, segments, storedEvents, environments, releases, experimentAssignments, experimentMetrics, alertChannels, alertRules, alertIncidents, sourceMapTokens, sourceMaps };
+export { projects, apps, featureFlags, segments, environments, releases, experimentAssignments, experimentMetrics, alertChannels, alertRules, alertIncidents, sourceMapTokens, sourceMaps };

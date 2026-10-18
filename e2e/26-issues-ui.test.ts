@@ -183,14 +183,18 @@ describe("Issues page — resolve/reopen in the real UI", () => {
 
   it("lists the ingested error as an unresolved issue", async () => {
     await clickNav("Issues");
-    const body = await waitForTextInUI(message);
+    // The Overview page renders the same issue title, so a bare text
+    // match does not prove the Issues table has rendered: wait for the
+    // row itself before reading the status column.
+    await waitForRow(message, true);
+    const body = (await view.evaluate("document.body.innerText")) ?? "";
     expect(body).toContain("unresolved");
     expect(body).toContain("Status: Unresolved");
   }, 30000);
 
   it("resolves the issue and reopens it from the resolved filter", async () => {
     await clickNav("Issues");
-    await waitForTextInUI(message);
+    await waitForRow(message, true);
 
     expect(await clickRowAction(message, "Resolve")).toBe(true);
     await waitForRow(message, false);
@@ -213,7 +217,7 @@ describe("Issues page — resolve/reopen in the real UI", () => {
 
   it("searches the list through the server-side q filter", async () => {
     await clickNav("Issues");
-    await waitForTextInUI(message);
+    await waitForRow(message, true);
 
     const typed = await view.evaluate(`(() => {
       const el = document.querySelector(".toolbar-input");

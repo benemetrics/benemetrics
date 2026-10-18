@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
+import { handleFetch as fetch, TEST_ORIGIN, waitFor } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
 const ADMIN_TOKEN = "Bearer e2e-admin-token";
@@ -415,8 +415,12 @@ describe("Environments (project 1..* environment, shared by apps)", () => {
 
       type EventsBody = { data: Array<{ event: { message?: string } | null }> };
 
-      const all = await json<EventsBody>(
-        await apiRequest("GET", `/events?projectId=${projectId}`),
+      // Ingestion is asynchronous (NATS -> ClickHouse): poll until both
+      // events are visible before asserting on the filtered lists.
+      const all = await waitFor(
+        async () =>
+          json<EventsBody>(await apiRequest("GET", `/events?projectId=${projectId}`)),
+        (body) => body.data.length === 2,
       );
       expect(all.data).toHaveLength(2);
 
@@ -461,8 +465,10 @@ describe("Environments (project 1..* environment, shared by apps)", () => {
 
       type EventsBody = { data: Array<{ event: { message?: string } | null }> };
 
-      const all = await json<EventsBody>(
-        await apiRequest("GET", `/events?projectId=${projectId}`),
+      const all = await waitFor(
+        async () =>
+          json<EventsBody>(await apiRequest("GET", `/events?projectId=${projectId}`)),
+        (body) => body.data.length === 2,
       );
       expect(all.data).toHaveLength(2);
 

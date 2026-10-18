@@ -44,11 +44,15 @@ export async function processReleaseEvent(
   });
 }
 
-export function startReleasesConsumer(jetstream: JetStreamClient): void {
+export function startReleasesConsumer(
+  jetstream: JetStreamClient,
+  consumerName: string,
+): void {
   const run = async () => {
     try {
       const opts = consumerOpts();
-      opts.durable("sentry-releases-consumer");
+      opts.durable(consumerName);
+      opts.deliverNew();
       opts.deliverTo(createInbox());
       opts.manualAck();
       opts.ackExplicit();
@@ -94,34 +98,4 @@ export function startReleasesConsumer(jetstream: JetStreamClient): void {
   };
 
   void run();
-}
-
-// In-process fallback used when NATS is unavailable: release tracking
-// keeps working without a broker.
-const localQueue: SentryEventMessage[] = [];
-let draining = false;
-
-export function enqueueReleaseEvent(event: SentryEventMessage): void {
-  localQueue.push(event);
-  void drainLocalQueue();
-}
-
-async function drainLocalQueue(): Promise<void> {
-  if (draining) return;
-  draining = true;
-  try {
-    while (localQueue.length > 0) {
-      const batch = localQueue.splice(0, CONCURRENCY);
-      await Promise.allSettled(
-        batch.map((event) =>
-          processReleaseEvent(event).catch((err) => {
-            console.error("[releases] Failed to record release:", describe(err));
-          }),
-        ),
-      );
-    }
-  } finally {
-    draining = false;
-  }
-  if (localQueue.length > 0) void drainLocalQueue();
 }

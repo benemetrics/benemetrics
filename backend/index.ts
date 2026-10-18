@@ -14,7 +14,6 @@ import { adminRoutes } from "./admin";
 import { startAlertSweeper } from "./alerting/evaluation";
 import { initNats } from "./nats";
 import { initClickHouse } from "./clickhouse";
-import { storedEventDAO } from "db/dao/stored-event";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 
@@ -43,10 +42,9 @@ const app = new Elysia({
     set.status = 500;
     return { error: "Internal Server Error" };
   })
-  .get("/health", async () => {
-    const { pagination } = await storedEventDAO.list({ limit: 1 });
-    return { status: "ok", eventsStored: pagination.total, timestamp: new Date().toISOString() };
-  })
+  // Liveness probe for Docker/orchestration only. The UI does not read it:
+  // dashboard counts come from the events API.
+  .get("/health", () => ({ status: "ok" }))
   .get("/", () => Response.redirect("/ui"))
   .use(eventsRoutes)
   .use(ingestionRoutes)
@@ -63,8 +61,19 @@ if (import.meta.main) {
   logAuthMode();
   app.listen(SERVER_PORT, async () => {
     console.log(`[Server] Sentry backend listening on port ${SERVER_PORT}`);
-    await initNats();
-    await initClickHouse();
+    try {
+      // Boot order: NATS (stream + durable pull consumers) before
+      // ClickHouse (engine tables + views). Both retry a few times and
+      // then fail fast — the server never runs half-wired.
+      await initNats();
+      await initClickHouse();
+    } catch (err) {
+      console.error(
+        "[Server] Failed to initialize required services:",
+        err instanceof Error ? err.message : err,
+      );
+      process.exit(1);
+    }
     startAlertSweeper();
   });
 }

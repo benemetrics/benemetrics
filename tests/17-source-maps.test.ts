@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
+import { handleFetch as fetch, TEST_ORIGIN, waitForApiGet } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
 
@@ -323,9 +323,9 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
     });
     expect(ingestRes.status).toBe(200);
 
-    const eventRes = await fetch(`${baseUrl}/events/${eventId}`, { headers: ADMIN_HEADERS });
-    expect(eventRes.status).toBe(200);
-    const event = (await eventRes.json()) as any;
+    // Reads apply symbolication at request time; the event itself arrives
+    // through NATS -> ClickHouse, so poll for its visibility.
+    const event = await waitForApiGet<any>(`/events/${eventId}`);
     expect(event.release).toBe("e2e-1.0.0");
 
     const frames = event.exception.values[0].stacktrace.frames;
@@ -357,9 +357,7 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
     });
     expect(ingestRes.status).toBe(200);
 
-    const eventRes = await fetch(`${baseUrl}/events/${eventId}`, { headers: ADMIN_HEADERS });
-    expect(eventRes.status).toBe(200);
-    const event = (await eventRes.json()) as any;
+    const event = await waitForApiGet<any>(`/events/${eventId}`);
     const frame = event.exception.values[0].stacktrace.frames[0];
     expect(frame.original_filename).toBeUndefined();
     expect(frame.filename).toBe("app.js");

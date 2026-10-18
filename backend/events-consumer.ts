@@ -1,8 +1,7 @@
 import { consumerOpts, createInbox, type JetStreamClient } from "nats";
-import { storedEventDAO } from "db/dao/stored-event";
 import { issueDAO } from "db/dao/issues";
 import { processIngestedEvent } from "./alerting/evaluation";
-import { clearClickHouseEvents, pushClickHouseEvent } from "./clickhouse";
+import { clearClickHouseEvents } from "./clickhouse";
 import { broadcastLive, buildLiveEvent } from "./live-events";
 import { SUBJECT, type SentryEventMessage } from "./nats";
 
@@ -10,37 +9,23 @@ function describe(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-// Returns false when the event id already existed, so retries never
-// repeat side effects.
-export async function applyEventMessage(
-  event: SentryEventMessage,
-): Promise<boolean> {
+// Postgres side effects of an ingested event: issues/alerts (one-shot and
+// race-safe, so redeliveries never duplicate them) and — for `clear` —
+// truncating the ClickHouse events plus the derived issue state. The
+// event payload itself is stored by ClickHouse from its own consumer;
+// this path never touches it, so a ClickHouse outage cannot stall issue
+// tracking (only `clear`, which has nothing to apply until it can
+// truncate).
+export async function applyEventMessage(event: SentryEventMessage): Promise<void> {
   if (event.type === "clear") {
-    await storedEventDAO.clear();
-    // Issues are derived from stored events; clearing the events clears
-    // the derived issue state too.
-    await issueDAO.clear();
-    // ClickHouse holds a best-effort copy of events; clear it too so the
-    // events API does not keep serving previous rows.
     await clearClickHouseEvents();
-    broadcastLive({ type: "clear" });
-    return true;
+    // Issues are derived from stored events; clearing the events clears
+    // the derived issue state too. The live feed is fanned out by its own
+    // consumer, not from here.
+    await issueDAO.clear();
+    return;
   }
 
-  const [stored] = await storedEventDAO.create({
-    id: event.id,
-    projectId: event.projectId,
-    appId: event.appId,
-    envelopeHeader: event.envelopeHeader,
-    envelopeItems: event.envelopeItems,
-    receivedAt: event.receivedAt,
-  });
-  if (!stored) return false;
-
-  // Analytics are best-effort: a ClickHouse outage must not affect the
-  // Postgres write, the live push or the response.
-  pushClickHouseEvent(event);
-  broadcastLive(buildLiveEvent(event));
   if (event.appId) {
     processIngestedEvent(
       event.appId,
@@ -49,16 +34,20 @@ export async function applyEventMessage(
       event.id,
     );
   }
-  return true;
 }
 
 // Control messages (e.g. "clear") are applied after the events that
-// preceded them.
-export function startEventsConsumer(jetstream: JetStreamClient): void {
+// preceded them. `deliverNew` matters when the durable is created for the
+// first time: a fresh consumer must not replay the whole stream.
+export function startEventsConsumer(
+  jetstream: JetStreamClient,
+  consumerName: string,
+): void {
   const run = async () => {
     try {
       const opts = consumerOpts();
-      opts.durable("sentry-events-consumer");
+      opts.durable(consumerName);
+      opts.deliverNew();
       opts.deliverTo(createInbox());
       opts.manualAck();
       opts.ackExplicit();
@@ -79,7 +68,7 @@ export function startEventsConsumer(jetstream: JetStreamClient): void {
           await applyEventMessage(event);
           msg.ack();
         } catch (err) {
-          console.error("[events] Failed to persist event:", describe(err));
+          console.error("[events] Failed to apply event side effects:", describe(err));
           msg.nak();
         }
       }

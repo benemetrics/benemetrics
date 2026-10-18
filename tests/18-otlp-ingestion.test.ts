@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
+import { handleFetch as fetch, TEST_ORIGIN, waitFor, waitForApiGet } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
 
@@ -126,9 +126,7 @@ describe("OTLP/JSON ingestion", () => {
     const { ids } = await json<{ ids: string[] }>(response);
     expect(ids).toEqual([rootSpanId]);
 
-    const event = await json<Record<string, any>>(
-      await fetch(`${baseUrl}/events/${rootSpanId}`, { headers: { Authorization: ADMIN_TOKEN } }),
-    );
+    const event = await waitForApiGet<Record<string, any>>(`/events/${rootSpanId}`);
     expect(event.transaction).toBe("GET /api/orders");
     expect(event.trace_id).toBe(traceId);
     expect(event.contexts.trace.trace_id).toBe(traceId);
@@ -157,9 +155,7 @@ describe("OTLP/JSON ingestion", () => {
     const response = await postOtlp(appRecord, otlpBatch(failing));
     expect(response.status).toBe(200);
 
-    const event = await json<Record<string, any>>(
-      await fetch(`${baseUrl}/events/${failingSpanId}`, { headers: { Authorization: ADMIN_TOKEN } }),
-    );
+    const event = await waitForApiGet<Record<string, any>>(`/events/${failingSpanId}`);
     expect(event.status).toBe("error");
     expect(event.measurements.duration.value).toBe(150);
     expect(event.tags["http.status_code"]).toBe("500");
@@ -179,9 +175,7 @@ describe("OTLP/JSON ingestion", () => {
     expect(ids).toContain(second.spanId as string);
 
     for (const id of ids) {
-      const event = await json<Record<string, any>>(
-        await fetch(`${baseUrl}/events/${id}`, { headers: { Authorization: ADMIN_TOKEN } }),
-      );
+      const event = await waitForApiGet<Record<string, any>>(`/events/${id}`);
       expect(event.transaction).toBe("GET /api/orders");
       expect(event.spans).toHaveLength(0);
     }
@@ -232,14 +226,18 @@ describe("OTLP/JSON ingestion", () => {
     const response = await postOtlp(appRecord, otlpBatch(root));
     expect(response.status).toBe(200);
 
-    const feed = await json<{
-      data: Array<{ id: string; itemTypes: string[] }>;
-      pagination: { total: number };
-    }>(
-      await fetch(
-        `${baseUrl}/events/?projectId=${encodeURIComponent(appRecord.projectId)}&limit=1`,
-        { headers: { Authorization: ADMIN_TOKEN } },
-      ),
+    const feed = await waitFor(
+      async () =>
+        json<{
+          data: Array<{ id: string; itemTypes: string[] }>;
+          pagination: { total: number };
+        }>(
+          await fetch(
+            `${baseUrl}/events/?projectId=${encodeURIComponent(appRecord.projectId)}&limit=1`,
+            { headers: { Authorization: ADMIN_TOKEN } },
+          ),
+        ),
+      (body) => body.data.some((item) => item.id === rootSpanId),
     );
     const stored = feed.data.find((item) => item.id === rootSpanId);
     expect(stored).toBeDefined();

@@ -1,13 +1,13 @@
-// Metrics are computed from stored_events of one app; a rule
-// breaches when the metric crosses its threshold. Breaching
+// Metrics are computed from the app's stored events in ClickHouse; a
+// rule breaches when the metric crosses its threshold. Breaching
 // rules dispatch a uniform notification to their channels
 // (or every effective channel when none are selected), record
 // an incident and respect the cooldown between notifications.
 
-import { storedEventDAO } from "db/dao/stored-event";
 import { alertRuleDAO } from "db/dao/alert-rules";
 import { alertIncidentDAO } from "db/dao/alert-incidents";
 import { appDAO } from "db/dao/project";
+import { listClickHouseEventsForApp } from "../clickhouse";
 import { issueFingerprint } from "../events/utils";
 import { trackIssuesForEvent, type TrackedIssue } from "../issues/tracking";
 import { resolveEffectiveAlertConfig } from "./resolver";
@@ -18,7 +18,6 @@ import {
   deliverAlertToChannels,
 } from "./notifiers";
 import type { AlertIncident, AlertMetric } from "../protocol/alerting";
-import type { StoredEvent } from "db/schema/stored-event";
 
 const DEFAULT_MEASUREMENT = "duration";
 
@@ -30,7 +29,9 @@ interface ParsedAppEvent {
   allPayloads: Array<Record<string, unknown>>;
 }
 
-function parseAppEvents(events: StoredEvent[]): ParsedAppEvent[] {
+function parseAppEvents(
+  events: Array<{ receivedAt: string; envelopeItems: string }>,
+): ParsedAppEvent[] {
   return events.map((event) => {
     const parsed: ParsedAppEvent = {
       receivedAt: event.receivedAt,
@@ -163,7 +164,7 @@ async function evaluateRules(appId: string): Promise<AlertIncident[]> {
   if (enabled.length === 0) return [];
 
   const incidents: AlertIncident[] = [];
-  const events = parseAppEvents(await storedEventDAO.listByApp(appId));
+  const events = parseAppEvents(await listClickHouseEventsForApp(appId));
   for (const rule of enabled) {
     const { metric, operator, threshold, windowSeconds } = rule;
     if (

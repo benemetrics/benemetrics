@@ -5,7 +5,8 @@
  * store — S3-compatible storage when S3_BUCKET is configured, the local
  * LOCAL_STORAGE_DIR directory otherwise — and the item keeps just the
  * object key (`{ key }`) instead of the segment, so the segment is not
- * stored again (Postgres + the best-effort ClickHouse copy). When the
+ * stored again (ClickHouse is the events store; ingestion reaches it
+ * asynchronously through NATS). When the
  * write fails, the payload stays inline and ingestion is unaffected.
  * While the local backend is active the objects are served back at
  * GET /storage/<key>; with S3 configured that surface stays off (404).
@@ -18,8 +19,12 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { handleFetch as fetch, startTestApp, type TestApp } from "./test-helpers";
-import { storedEventDAO } from "db/dao/stored-event";
+import {
+  handleFetch as fetch,
+  startTestApp,
+  waitForStoredEvent,
+  type TestApp,
+} from "./test-helpers";
 
 const BUCKET = "sentry-replays";
 const ADMIN_TOKEN = "Bearer e2e-admin-token";
@@ -202,9 +207,8 @@ describe("Replay segment offload to S3-compatible storage", () => {
 
     // The stored row keeps the metadata inline and just the object key
     // instead of the segment.
-    const stored = await storedEventDAO.findById(eventId);
-    expect(stored).toBeDefined();
-    const storedItems = JSON.parse(stored!.envelopeItems) as Array<{
+    const stored = await waitForStoredEvent(eventId);
+    const storedItems = JSON.parse(stored.envelopeItems) as Array<{
       header: { type: string };
       payload: unknown;
     }>;
@@ -248,6 +252,7 @@ describe("Replay segment offload to S3-compatible storage", () => {
     expect(uploads).toHaveLength(1);
     expect(uploads[0]!.path).toBe(`/${BUCKET}/${key}`);
 
+    await waitForStoredEvent(eventId);
     const detail = await apiGet<{ key: string }>(`/events/${eventId}`);
     expect(detail.key).toBe(key);
   });
@@ -270,8 +275,8 @@ describe("Replay segment offload to S3-compatible storage", () => {
     expect(response.status).toBe(200);
     expect(uploads).toHaveLength(0);
 
-    const stored = await storedEventDAO.findById(eventId);
-    const storedItems = JSON.parse(stored!.envelopeItems) as Array<{
+    const stored = await waitForStoredEvent(eventId);
+    const storedItems = JSON.parse(stored.envelopeItems) as Array<{
       header: { type: string };
       payload: unknown;
     }>;
@@ -308,8 +313,8 @@ describe("Replay segment offload to S3-compatible storage", () => {
       expect(JSON.parse(fileText)).toEqual(recording);
       const pointer = { key };
 
-      const stored = await storedEventDAO.findById(eventId);
-      const storedItems = JSON.parse(stored!.envelopeItems) as Array<{
+      const stored = await waitForStoredEvent(eventId);
+      const storedItems = JSON.parse(stored.envelopeItems) as Array<{
         header: { type: string };
         payload: unknown;
       }>;
@@ -400,8 +405,8 @@ describe("Replay segment offload to S3-compatible storage", () => {
       expect(response.status).toBe(200);
       expect(uploads).toHaveLength(0);
 
-      const stored = await storedEventDAO.findById(eventId);
-      const storedItems = JSON.parse(stored!.envelopeItems) as Array<{
+      const stored = await waitForStoredEvent(eventId);
+      const storedItems = JSON.parse(stored.envelopeItems) as Array<{
         header: { type: string };
         payload: unknown;
       }>;
@@ -432,8 +437,8 @@ describe("Replay segment offload to S3-compatible storage", () => {
     expect(response.status).toBe(200);
     expect(uploads).toHaveLength(0);
 
-    const stored = await storedEventDAO.findById(eventId);
-    const storedItems = JSON.parse(stored!.envelopeItems) as Array<{
+    const stored = await waitForStoredEvent(eventId);
+    const storedItems = JSON.parse(stored.envelopeItems) as Array<{
       header: { type: string };
       payload: unknown;
     }>;

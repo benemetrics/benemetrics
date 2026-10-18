@@ -6,7 +6,6 @@ import { environmentDAO } from "db/dao/environments";
 import { deriveSlug, toEnvironmentResponse } from "../environments";
 import { deleteAppCascade } from "../apps";
 import { requestHost } from "../../host";
-import { storedEventDAO } from "db/dao/stored-event";
 import type { Environment } from "db/schema/environments";
 import type { AppRecord } from "db/schema/project";
 
@@ -150,7 +149,7 @@ export const projectRoutes = new Elysia({ prefix: "projects" })
       for (const app of apps) await deleteAppCascade(app.id);
 
       // Cascade to rows scoped to the project but not to a single app.
-      await storedEventDAO.deleteByProject(id);
+      // (Stored events live in ClickHouse and are not cascaded here.)
       // Environments are project-scoped and shared by the project's
       // apps, so they are removed with the project.
       await environmentDAO.deleteByProject(id);

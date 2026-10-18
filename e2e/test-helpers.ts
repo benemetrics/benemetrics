@@ -10,10 +10,83 @@
 
 import app from "../backend/index";
 
-const ADMIN_HEADERS = {
+export const ADMIN_HEADERS = {
   "Content-Type": "application/json",
   Authorization: "Bearer e2e-admin-token",
 };
+
+/** Polls `fn` until the predicate holds; returns the last value either way. */
+export async function waitFor<T>(
+  fn: () => Promise<T>,
+  predicate: (value: T) => boolean,
+  timeoutMs = 10000,
+): Promise<T> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const value = await fn();
+    if (predicate(value)) return value;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return await fn();
+}
+
+// Ingestion is asynchronous (NATS -> ClickHouse): fetches wait for the
+// event to become visible instead of racing the pipeline.
+export async function waitForEventById(
+  baseUrl: string,
+  eventId: string,
+  timeoutMs = 10000,
+): Promise<Record<string, any> | null> {
+  return await waitFor(
+    async () => {
+      const response = await fetch(`${baseUrl}/events/${eventId}`, {
+        headers: ADMIN_HEADERS,
+      });
+      if (response.status === 404) return null;
+      return (await response.json()) as Record<string, any>;
+    },
+    (value) => value !== null,
+    timeoutMs,
+  );
+}
+
+/** Polls the events list until an item matches; returns the item or null. */
+export async function waitForEventListItem<
+  T extends { id: string; itemTypes: string[] } = { id: string; itemTypes: string[] },
+>(
+  baseUrl: string,
+  predicate: (item: T) => boolean,
+  timeoutMs = 10000,
+): Promise<T | null> {
+  return await waitFor(
+    async () => {
+      const response = await fetch(`${baseUrl}/events?limit=100`, {
+        headers: ADMIN_HEADERS,
+      });
+      const body = (await response.json()) as { data?: T[] };
+      return (body.data ?? []).find(predicate) ?? null;
+    },
+    (value) => value !== null,
+    timeoutMs,
+  );
+}
+
+// Clears stored events and waits for the asynchronous truncate to drain:
+// the clear travels through NATS, so a late truncate would otherwise
+// wipe the next test's freshly ingested events.
+export async function clearStoredEvents(baseUrl: string): Promise<void> {
+  await fetch(`${baseUrl}/events/clear`, { method: "POST", headers: ADMIN_HEADERS });
+  await waitFor(
+    async () => {
+      const response = await fetch(`${baseUrl}/events?limit=1`, {
+        headers: ADMIN_HEADERS,
+      });
+      const body = (await response.json()) as { pagination?: { total?: number } };
+      return body.pagination?.total ?? -1;
+    },
+    (total) => total === 0,
+  );
+}
 
 export interface TestServer {
   baseUrl: string;

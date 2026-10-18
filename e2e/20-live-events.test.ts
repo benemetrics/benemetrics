@@ -1,10 +1,11 @@
 /**
  * E2E Test: live event WebSocket feed (/events/live/feed)
  *
- * E2E runs without a NATS broker, so ingestion uses the in-process
- * fallback and events are broadcast directly from the request path:
- *   - newly stored envelopes are pushed to connected clients
- *   - duplicate event ids are not re-broadcast (idempotent ingestion)
+ * The backend fan-out mirrors the NATS stream (a dedicated live consumer
+ * broadcasts every message):
+ *   - every published envelope is pushed to connected clients
+ *   - a retried (duplicate) event id is broadcast again like any other
+ *     message; the store collapses duplicates, the feed mirrors the stream
  *   - "clear" is broadcast so clients can refresh
  *   - once admin auth is enforced the upgrade requires a token, which
  *     may arrive as ?token= (browsers cannot set WS headers)
@@ -195,7 +196,7 @@ describe("live event WebSocket feed", () => {
     }
   });
 
-  it("does not re-broadcast duplicate event ids", async () => {
+  it("broadcasts every published message for an event id", async () => {
     const appRecord = await makeApp();
     const feed = await connectLive();
     try {
@@ -205,10 +206,18 @@ describe("live event WebSocket feed", () => {
       expect((await ingestEvent(appRecord, event)).status).toBe(200);
       await feed.waitFor((candidate) => candidate.type === "event" && candidate.id === eventId);
 
-      // Retrying the same event id must not push a second live message.
+      // The feed mirrors the stream: a retry publishes again and is
+      // broadcast again. Duplicates collapse in the store
+      // (ReplacingMergeTree), not in the live feed.
       expect((await ingestEvent(appRecord, event)).status).toBe(200);
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      expect(feed.count((candidate) => candidate.type === "event" && candidate.id === eventId)).toBe(1);
+      const start = Date.now();
+      while (
+        feed.count((candidate) => candidate.type === "event" && candidate.id === eventId) < 2 &&
+        Date.now() - start < 5000
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      expect(feed.count((candidate) => candidate.type === "event" && candidate.id === eventId)).toBe(2);
     } finally {
       feed.close();
     }

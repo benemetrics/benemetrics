@@ -3,10 +3,9 @@ import { ApiError, ErrorCode, badRequest, unauthorized } from "backend/errors";
 import { type as arktype } from "arktype";
 import { appDAO } from "db/dao/project";
 import { environmentDAO } from "db/dao/environments";
-import type { StoredEvent } from "db/schema/stored-event";
+import type { StoredEvent } from "../protocol/events";
 import { adminAuthEnforced, validateAdminAuth, validateAdminToken } from "../auth";
-import { publishEvent, type SentryEventMessage } from "../nats";
-import { applyEventMessage } from "../events-consumer";
+import { type SentryEventMessage } from "../nats";
 import { listStoredEvents, findStoredEventByIdOrThrow } from "../events-store";
 import { addLiveClient, removeLiveClient } from "../live-events";
 import { parseEnvelope, parseStoredEnvelope, extractEventId, normalizeTransactionPayload, convertSpanToTransaction } from "./utils";
@@ -101,8 +100,8 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
         appIds = apps.map((app) => app.id);
       }
 
-      // ClickHouse serves this list when it is available; Postgres
-      // otherwise (see backend/events-store.ts).
+      // ClickHouse is the events store; the reads go through the facade
+      // in backend/events-store.ts.
       const { data, pagination } = await listStoredEvents({
         page: page ?? undefined,
         limit: limit ?? undefined,
@@ -133,10 +132,10 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
       type: "clear",
     };
 
-    // NATS-first: without NATS, apply it in-process.
-    if (await publishEvent(message)) return { success: true };
-
-    await applyEventMessage(message);
+    // The side-effects consumer truncates the ClickHouse events and the
+    // derived issue state; publishing keeps the clear ordered after the
+    // events that preceded it.
+    await dispatchIngestedEvent(message);
     return { success: true };
   })
   .get(
@@ -224,7 +223,8 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
         type: "envelope",
       };
 
-      // NATS-first: without NATS it is applied in-process.
+      // Publishes to NATS; a broker failure answers 503 — no in-process
+      // fallback (ClickHouse ingests from the stream).
       await dispatchIngestedEvent(message);
       return { id: eventId };
     },
@@ -259,7 +259,8 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
         type: "store",
       };
 
-      // NATS-first: without NATS it is applied in-process.
+      // Publishes to NATS; a broker failure answers 503 — no in-process
+      // fallback (ClickHouse ingests from the stream).
       await dispatchIngestedEvent(message);
       return { id: eventId };
     },

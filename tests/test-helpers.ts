@@ -7,6 +7,9 @@
  */
 
 import app from "../backend/index";
+import { listStoredEvents, findStoredEventById } from "../backend/events-store";
+import type { StoredEvent } from "../backend/protocol/events";
+import { connect, type NatsConnection } from "nats";
 
 /** Canonical origin for in-process requests; DSN hosts derive from it. */
 export const TEST_ORIGIN = "http://test.local";
@@ -35,6 +38,8 @@ export interface TestApp {
   dsn: string;
   projectId: string;
   appId: string;
+  ingestKey: string;
+  publicKey: string;
 }
 
 /** Provisions a project + app through the admin API (no server started). */
@@ -57,9 +62,21 @@ export async function startTestApp(): Promise<TestApp> {
   if (!appResponse.ok) {
     throw new Error(`Failed to create test app: ${appResponse.status}`);
   }
-  const created = (await appResponse.json()) as { id: string; dsn: string };
+  const created = (await appResponse.json()) as {
+    id: string;
+    dsn: string;
+    ingestKey: string;
+    publicKey: string;
+  };
 
-  return { baseUrl: TEST_ORIGIN, dsn: created.dsn, projectId: project.id, appId: created.id };
+  return {
+    baseUrl: TEST_ORIGIN,
+    dsn: created.dsn,
+    projectId: project.id,
+    appId: created.id,
+    ingestKey: created.ingestKey,
+    publicKey: created.publicKey,
+  };
 }
 
 /** Polls `fn` until `predicate` passes; returns the last observed value. */
@@ -76,4 +93,91 @@ export async function waitFor<T>(
     await Bun.sleep(100);
   }
   return last;
+}
+
+/**
+ * Polls ClickHouse until the stored event is visible. Ingestion is a
+ * publish: the engine consumer inserts asynchronously.
+ */
+export async function waitForStoredEvent(
+  eventId: string,
+  timeoutMs = 10000,
+): Promise<StoredEvent> {
+  const stored = await waitFor(
+    () => findStoredEventById(eventId),
+    (value) => value !== undefined,
+    timeoutMs,
+  );
+  if (!stored) throw new Error(`Event ${eventId} did not land in ClickHouse`);
+  return stored;
+}
+
+/** Polls an admin GET until it succeeds (event reads lag behind ingestion). */
+export async function waitForApiGet<T>(path: string, timeoutMs = 10000): Promise<T> {
+  const response = await waitFor(
+    () => handleFetch(`${TEST_ORIGIN}${path}`, { headers: ADMIN_HEADERS }),
+    (result) => result.status === 200,
+    timeoutMs,
+  );
+  if (!response.ok) {
+    throw new Error(`GET ${path} did not succeed: ${response.status}`);
+  }
+  return (await response.json()) as T;
+}
+
+/**
+ * Clears events and waits until the truncate has been applied — the clear
+ * travels through NATS, so a follow-up ingest could otherwise race it.
+ */
+export async function clearEvents(): Promise<void> {
+  const response = await handleFetch(`${TEST_ORIGIN}/events/clear`, {
+    method: "POST",
+    headers: ADMIN_HEADERS,
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to clear events: ${response.status}`);
+  }
+  await waitFor(
+    async () => (await listStoredEvents({ page: 1, limit: 1 })).pagination.total,
+    (total) => total === 0,
+    10000,
+  );
+}
+
+/** The JetStream stream/consumers the suite relies on (backend/nats.ts). */
+export const TEST_STREAM = "SENTRIES";
+export const TEST_EVENTS_SUBJECT = "sentry.events";
+
+/** Connects to the broker the backend uses (the suite requires NATS). */
+export async function connectTestNats(): Promise<NatsConnection> {
+  return connect({ servers: process.env.NATS_SERVERS || "nats://localhost:4222" });
+}
+
+/**
+ * Waits until a durable consumer has acknowledged up to `streamSeq` and
+ * has nothing pending — i.e. the hop that consumes the message is done.
+ * A pull consumer may not have pulled yet, so the ack floor is checked
+ * together with the pending count.
+ */
+export async function waitForConsumerAck(
+  consumer: string,
+  streamSeq: number,
+  timeoutMs = 10000,
+): Promise<void> {
+  const nats = await connectTestNats();
+  try {
+    const manager = await nats.jetstreamManager();
+    await waitFor(
+      async () => {
+        const info = await manager.consumers.info(TEST_STREAM, consumer);
+        return (
+          info.ack_floor.stream_seq >= streamSeq && (info.num_ack_pending ?? 0) === 0
+        );
+      },
+      (done) => done,
+      timeoutMs,
+    );
+  } finally {
+    await nats.close();
+  }
 }

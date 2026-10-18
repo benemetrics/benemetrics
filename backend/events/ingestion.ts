@@ -1,10 +1,8 @@
-import { unauthorized } from "backend/errors";
+import { serviceUnavailable, unauthorized } from "backend/errors";
 import { appDAO } from "db/dao/project";
 import type { AppRecord } from "db/schema/project";
 import { validateAuth } from "../auth";
 import { publishEvent, type SentryEventMessage } from "../nats";
-import { applyEventMessage } from "../events-consumer";
-import { enqueueReleaseEvent } from "../releases-consumer";
 
 // DSNs generated for apps route ingestion through the app's numeric
 // `number` (path segment) with the public key as the `sentry_key`
@@ -62,15 +60,20 @@ export async function readBody(request: Request): Promise<string> {
   return await request.text();
 }
 
-// NATS-first: when the broker is connected the consumers persist the
-// event; without NATS the same applyEventMessage path runs in-process,
-// followed by release metrics. Duplicate event ids stay idempotent on
-// both paths.
+// Ingestion is a publish: the side-effects consumer (Postgres) and the
+// ClickHouse engine consumer each pull the message from JetStream with
+// their own durable consumer. A publish failure is a 503 — at-least-once
+// delivery is JetStream's job, never a second in-process write path.
 export async function dispatchIngestedEvent(
   message: SentryEventMessage,
 ): Promise<void> {
-  if (await publishEvent(message)) return;
-
-  const stored = await applyEventMessage(message);
-  if (stored) enqueueReleaseEvent(message);
+  try {
+    await publishEvent(message);
+  } catch (err) {
+    console.error(
+      "[ingestion] Failed to publish event to NATS:",
+      err instanceof Error ? err.message : err,
+    );
+    throw serviceUnavailable("Event ingestion is unavailable - the message broker is not connected");
+  }
 }

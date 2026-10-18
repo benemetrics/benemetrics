@@ -8,6 +8,7 @@ export const ErrorCode = {
   NOT_FOUND: "NOT_FOUND",
   CONFLICT: "CONFLICT",
   PAYLOAD_TOO_LARGE: "PAYLOAD_TOO_LARGE",
+  SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
   INTERNAL: "INTERNAL",
 } as const;
 
@@ -20,6 +21,7 @@ const HTTP_STATUS: Record<ErrorCode, number> = {
   NOT_FOUND: 404,
   CONFLICT: 409,
   PAYLOAD_TOO_LARGE: 413,
+  SERVICE_UNAVAILABLE: 503,
   INTERNAL: 500,
 };
 
@@ -62,6 +64,10 @@ export function conflict(message: string): ApiError {
 
 export function payloadTooLarge(message: string): ApiError {
   return new ApiError(ErrorCode.PAYLOAD_TOO_LARGE, message);
+}
+
+export function serviceUnavailable(message: string): ApiError {
+  return new ApiError(ErrorCode.SERVICE_UNAVAILABLE, message);
 }
 
 export function internalError(message: string): ApiError {

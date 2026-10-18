@@ -13,7 +13,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
+import { evaluateRulesForApp } from "../backend/alerting/evaluation";
+import { handleFetch as fetch, TEST_ORIGIN, waitForStoredEvent } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
 
@@ -64,8 +65,13 @@ async function makeApp(): Promise<AlertApp> {
 
 // Legacy store ingestion: the path segment is the app ingest key and the
 // DSN public key is sent as the sentry_key query param.
+//
+// Ingestion is asynchronous (NATS -> ClickHouse): after the stored event
+// is visible, the app's threshold rules are evaluated once explicitly —
+// the per-app work queue keeps that evaluation ordered after any
+// ingestion-triggered issue tracking (cooldowns keep it one-shot).
 async function ingestEvent(app: AlertApp, event: Record<string, unknown>): Promise<Response> {
-  return fetch(
+  const response = await fetch(
     `${baseUrl}/api/${app.ingestKey}/store/?sentry_key=${encodeURIComponent(app.publicKey)}`,
     {
       method: "POST",
@@ -73,6 +79,12 @@ async function ingestEvent(app: AlertApp, event: Record<string, unknown>): Promi
       body: JSON.stringify(event),
     },
   );
+  const eventId = event.event_id;
+  if (response.ok && typeof eventId === "string") {
+    await waitForStoredEvent(eventId);
+    evaluateRulesForApp(app.id);
+  }
+  return response;
 }
 
 async function waitFor<T>(

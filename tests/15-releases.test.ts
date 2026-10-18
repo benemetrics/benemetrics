@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
+import { handleFetch as fetch, TEST_ORIGIN, waitForStoredEvent } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
 const ADMIN_TOKEN = "Bearer e2e-admin-token";
@@ -363,29 +363,40 @@ describe("Releases (auto-created from ingestion)", () => {
     const { projectId, appId, publicKey } = await makeApp();
     const tag = uniq();
 
+    const firstPayment = crypto.randomUUID();
+    const nullPointer = crypto.randomUUID();
+    const secondPayment = crypto.randomUUID();
+    const timeout = crypto.randomUUID();
+
     await ingestStore(projectId, publicKey, {
-      event_id: crypto.randomUUID(),
+      event_id: firstPayment,
       release: "6.0.0",
       message: `Payment failed ${tag}`,
     });
     await sleep(5);
     await ingestStore(projectId, publicKey, {
-      event_id: crypto.randomUUID(),
+      event_id: nullPointer,
       release: "6.0.0",
       message: `Null pointer ${tag}`,
     });
     await sleep(5);
     await ingestStore(projectId, publicKey, {
-      event_id: crypto.randomUUID(),
+      event_id: secondPayment,
       release: "6.1.0",
       message: `Payment failed ${tag}`,
     });
     await sleep(5);
     await ingestStore(projectId, publicKey, {
-      event_id: crypto.randomUUID(),
+      event_id: timeout,
       release: "6.1.0",
       message: `Timeout ${tag}`,
     });
+
+    // The summary reads the stored events from ClickHouse; wait for all
+    // four before comparing releases.
+    for (const eventId of [firstPayment, nullPointer, secondPayment, timeout]) {
+      await waitForStoredEvent(eventId);
+    }
 
     const v60 = await waitForRelease(appId, "6.0.0", { eventCount: 2 });
     const v61 = await waitForRelease(appId, "6.1.0", { eventCount: 2 });

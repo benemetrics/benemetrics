@@ -3,7 +3,6 @@ import { projects, apps, type Project, type ProjectInsert, type AppRecord, type 
 import { releases } from "db/schema/releases";
 import { sourceMaps } from "db/schema/source-maps";
 import { sourceMapTokens } from "db/schema/source-map-tokens";
-import { storedEvents } from "db/schema/stored-event";
 import { alertChannels } from "db/schema/alert-channels";
 import { alertRules } from "db/schema/alert-rules";
 import { alertIncidents } from "db/schema/alert-incidents";
@@ -244,7 +243,6 @@ export const appDAO = {
     // survive app deletion.
     await db.delete(sourceMapTokens).where(eq(sourceMapTokens.appId, id));
     await db.delete(sourceMaps).where(eq(sourceMaps.appId, id));
-    await db.delete(storedEvents).where(eq(storedEvents.appId, id));
     await db.delete(alertIncidents).where(eq(alertIncidents.appId, id));
     await db.delete(alertRules).where(eq(alertRules.appId, id));
     await db.delete(alertChannels).where(eq(alertChannels.appId, id));

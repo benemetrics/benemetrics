@@ -1,9 +1,10 @@
 import { Outlet } from "react-router-dom";
-import { WorkspaceProvider } from "./WorkspaceContext";
-import { AppSidebar } from "./AppSidebar";
-import { Topbar } from "./Topbar";
-import { MobileNavBar } from "./MobileNavBar";
-import { Toaster } from "./Toaster";
+import { WorkspaceProvider } from "./WorkspaceContext.tsx";
+import { AppSidebar } from "./AppSidebar.tsx";
+import { AuthPrompt } from "./AuthPrompt.tsx";
+import { Topbar } from "./Topbar.tsx";
+import { MobileNavBar } from "./MobileNavBar.tsx";
+import { Toaster } from "./Toaster.tsx";
 
 export function AppChrome() {
   return (
@@ -11,6 +12,7 @@ export function AppChrome() {
       <div className="app-shell">
         <AppSidebar />
         <div className="main">
+          <AuthPrompt />
           <Topbar />
           <div className="page">
             <Outlet />

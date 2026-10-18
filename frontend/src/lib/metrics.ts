@@ -1,5 +1,5 @@
-import { api } from './api';
-import { formatMs } from './utils';
+import { api } from './api.ts';
+import { formatMs } from './utils.ts';
 
 // The metrics API client: samples live in ClickHouse and are served as
 // bucketed series and per-dimension breakdowns. Units and rating bands

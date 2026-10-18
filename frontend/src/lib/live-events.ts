@@ -22,7 +22,7 @@ import {
   convertSpanToTransaction,
   normalizeTransactionPayload,
   parseStoredEnvelope,
-} from "../../../backend/events/utils";
+} from "../../../backend-backup/events/utils";
 
 export interface LiveEventItem {
   /** Event id, as stored (duplicate retries collapse by this id). */

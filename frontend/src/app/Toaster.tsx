@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { subscribeToasts } from "../lib/toast";
+import { subscribeToasts } from "../lib/toast.ts";
 
 export function Toaster() {
   const [message, setMessage] = useState<string | null>(null);

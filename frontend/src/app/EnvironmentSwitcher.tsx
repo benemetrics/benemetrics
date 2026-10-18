@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useWorkspace } from "./WorkspaceContext";
-import { ALL_ENVIRONMENTS } from "./workspace";
-import type { EnvironmentDto } from "../lib/api";
+import { useWorkspace } from "./WorkspaceContext.tsx";
+import { ALL_ENVIRONMENTS } from "./workspace.ts";
+import type { EnvironmentDto } from "../lib/api.ts";
 
 export function EnvironmentSwitcher() {
   const { environments, environment, setEnvironment, createEnvironmentWithName } = useWorkspace();

@@ -1,9 +1,4 @@
-import {
-  pgTable,
-  text,
-  real,
-  index,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, real, index } from "drizzle-orm/pg-core";
 
 export const experimentMetrics = pgTable(
   "experiment_metrics",
@@ -17,11 +12,9 @@ export const experimentMetrics = pgTable(
     recordedAt: text("recorded_at").notNull(),
   },
   (table) => ({
-    flagMetricIdx: index("experiment_metrics_flag_metric_idx").on(
-      table.flagId,
-      table.metricName,
-    ),
+    flagMetricIdx: index("experiment_metrics_flag_metric_idx").on(table.flagId, table.metricName),
   }),
 );
 
 export type ExperimentMetric = typeof experimentMetrics.$inferSelect;
+export type ExperimentMetricInsert = typeof experimentMetrics.$inferInsert;

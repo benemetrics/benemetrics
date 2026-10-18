@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScreenIntro } from "../ScreenIntro";
-import { useWorkspace } from "../WorkspaceContext";
+import { ScreenIntro } from "../ScreenIntro.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
 import {
   fetchMetricBreakdown,
   fetchMetricSeries,
@@ -15,8 +15,8 @@ import {
   type MetricBreakdownRow,
   type MetricRating,
   type MetricSeriesPoint,
-} from "../../lib/metrics";
-import { formatMs, POLL_INTERVAL_MS } from "../../lib/utils";
+} from "../../lib/metrics.ts";
+import { formatMs, POLL_INTERVAL_MS } from "../../lib/utils.ts";
 
 // The performance dashboard reads the metrics API (the raw samples in
 // ClickHouse), never a slice of stored events: the window summary is a

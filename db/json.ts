@@ -1,9 +1,12 @@
-// JSON columns are stored as text.
-export function parseJson<T>(raw: string | null | undefined, fallback: T): T {
-  if (raw === null || raw === undefined) return fallback;
+export function parseJson<T>(value: string | null, fallback: T): T {
+  if (!value) return fallback;
   try {
-    return JSON.parse(raw) as T;
+    return JSON.parse(value) as T;
   } catch {
     return fallback;
   }
+}
+
+export function stringifyJson(value: unknown): string {
+  return JSON.stringify(value);
 }

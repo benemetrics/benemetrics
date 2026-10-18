@@ -1,13 +1,5 @@
-import {
-  pgTable,
-  text,
-  index,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, index, uniqueIndex } from "drizzle-orm/pg-core";
 
-// A source map artifact uploaded for a release. `filename` is the
-// artifact name sentry-cli sends (the --url-prefix path, e.g.
-// "~/dist/app.js.map"); `mapJson` is the raw map document.
 export const sourceMaps = pgTable(
   "source_maps",
   {
@@ -23,15 +15,8 @@ export const sourceMaps = pgTable(
   },
   (table) => ({
     projectIdIdx: index("source_maps_project_id_idx").on(table.projectId),
-    releaseIdx: index("source_maps_project_release_idx").on(
-      table.projectId,
-      table.release,
-    ),
-    artifactUnique: uniqueIndex("source_maps_artifact_idx").on(
-      table.projectId,
-      table.release,
-      table.filename,
-    ),
+    projectReleaseIdx: index("source_maps_project_release_idx").on(table.projectId, table.release),
+    artifactUnique: uniqueIndex("source_maps_artifact_unique").on(table.projectId, table.release, table.filename),
   }),
 );
 

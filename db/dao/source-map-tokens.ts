@@ -1,152 +1,128 @@
-import { db } from "db";
-import {
-  sourceMapTokens,
-  type SourceMapToken,
-  type SourceMapTokenInsert,
-} from "db/schema/source-map-tokens";
-import { and, desc, eq } from "drizzle-orm";
-import { internalError, notFound } from "backend/errors";
+import { db } from "../index.ts";
+import { sourceMapTokens } from "../schema/source-map-tokens.ts";
+import { eq, desc } from "drizzle-orm";
+import { notFound, conflict } from "../../backend/errors.ts";
+import { crypto } from "../../backend/utils/crypto.ts";
 
-// Raw tokens are only ever returned at creation/rotation time;
-// at rest we keep the SHA-256 hash plus a short display prefix.
-export function generateUploadToken(): {
-  raw: string;
-  hash: string;
-  prefix: string;
-} {
-  const raw = "smt_" + crypto.randomUUID().replace(/-/g, "");
-  const hash = new Bun.CryptoHasher("sha256").update(raw).digest("hex");
-  return { raw, hash, prefix: raw.slice(0, 10) };
+function generateToken(): { token: string; tokenHash: string; tokenPrefix: string } {
+  const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+  const tokenPrefix = token.slice(0, 8);
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  return { token, tokenHash, tokenPrefix };
 }
-
-export function hashUploadToken(raw: string): string {
-  return new Bun.CryptoHasher("sha256").update(raw).digest("hex");
-}
-
-type TokenCreateInput = Omit<
-  SourceMapTokenInsert,
-  "id" | "tokenHash" | "tokenPrefix" | "createdAt"
->;
 
 export const sourceMapTokenDAO = {
-  create: async (data: TokenCreateInput) => {
-    const { raw, hash, prefix } = generateUploadToken();
-    const [record] = await db
+  async create(data: {
+    name: string;
+    projectId: string;
+    appId: string;
+    environmentId: string;
+    createdBy: string;
+    expiresAt?: string;
+  }) {
+    const { token, tokenHash, tokenPrefix } = generateToken();
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const result = await db
       .insert(sourceMapTokens)
       .values({
-        ...data,
-        id: crypto.randomUUID(),
-        tokenHash: hash,
-        tokenPrefix: prefix,
-        createdAt: new Date().toISOString(),
+        id,
+        projectId: data.projectId,
+        appId: data.appId,
+        environmentId: data.environmentId,
+        tokenHash,
+        tokenPrefix,
+        name: data.name,
+        createdBy: data.createdBy,
+        createdAt: now,
+        expiresAt: data.expiresAt ?? null,
       })
+      .onConflictDoNothing()
       .returning();
-    if (!record) {
-      throw internalError("Failed to create source map token");
+
+    if (result.length === 0) {
+      throw conflict("Token creation failed");
     }
-    return { token: raw, record };
+    return { token, record: result[0] };
   },
 
-  findById: async (id: string): Promise<SourceMapToken | undefined> =>
-    (
-      await db
-        .select()
-        .from(sourceMapTokens)
-        .where(eq(sourceMapTokens.id, id))
-        .limit(1)
-    )[0],
+  async findById(id: string) {
+    const result = await db.select().from(sourceMapTokens).where(eq(sourceMapTokens.id, id)).limit(1);
+    return result[0];
+  },
 
-  findByIdOrThrow: async (id: string) => {
-    const token = await sourceMapTokenDAO.findById(id);
-    if (!token) throw notFound("Upload token", id);
+  async findByIdOrThrow(id: string) {
+    const token = await this.findById(id);
+    if (!token) throw new Error("Token not found");
     return token;
   },
 
-  findByHash: async (hash: string): Promise<SourceMapToken | undefined> =>
-    (
-      await db
-        .select()
-        .from(sourceMapTokens)
-        .where(eq(sourceMapTokens.tokenHash, hash))
-        .limit(1)
-    )[0],
-
-  // Rotation replaces the hash; the previous raw token stops
-  // working immediately.
-  rotate: async (id: string) => {
-    const { raw, hash, prefix } = generateUploadToken();
-    const rows = await db
-      .update(sourceMapTokens)
-      .set({ tokenHash: hash, tokenPrefix: prefix, revokedAt: null })
-      .where(eq(sourceMapTokens.id, id))
-      .returning();
-    return rows[0] ? { token: raw, record: rows[0]! } : null;
+  async findByHash(tokenHash: string) {
+    const result = await db
+      .select()
+      .from(sourceMapTokens)
+      .where(eq(sourceMapTokens.tokenHash, tokenHash))
+      .limit(1);
+    return result[0];
   },
 
-  list: async (options: {
-    projectId?: string;
-    environmentId?: string;
-    page?: number;
-    limit?: number;
-  }) => {
+  async list(options: { projectId?: string; environmentId?: string; page?: number; limit?: number } = {}) {
     const page = options.page ?? 1;
-    const limit = options.limit ?? 20;
+    const limit = Math.min(options.limit ?? 20, 100);
     const offset = (page - 1) * limit;
-    const conditions = [
-      ...(options.projectId
-        ? [eq(sourceMapTokens.projectId, options.projectId)]
-        : []),
-      ...(options.environmentId
-        ? [eq(sourceMapTokens.environmentId, options.environmentId)]
-        : []),
-    ];
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [rows, total] = await Promise.all([
-      db
-        .select()
-        .from(sourceMapTokens)
-        .where(where)
-        .orderBy(desc(sourceMapTokens.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.$count(sourceMapTokens, where),
+    let query = db.select().from(sourceMapTokens);
+
+    if (options.projectId) {
+      query = query.where(eq(sourceMapTokens.projectId, options.projectId));
+    }
+    if (options.environmentId) {
+      query = query.where(eq(sourceMapTokens.environmentId, options.environmentId));
+    }
+
+    const [data, totalResult] = await Promise.all([
+      query.limit(limit).offset(offset).orderBy(desc(sourceMapTokens.createdAt)),
+      db.$count(sourceMapTokens),
     ]);
 
     return {
-      data: rows,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      data,
+      pagination: {
+        page: options.page ?? 1,
+        limit: Math.min(options.limit ?? 20, 100),
+        total: totalResult,
+        totalPages: Math.ceil(totalResult / Math.min(options.limit ?? 20, 100)),
+      },
     };
   },
 
-  // Best-effort bookkeeping for the admin token list: the last time the
-  // token authenticated a source map upload request.
-  touchLastUsed: async (id: string) => {
-    await db
+  async rotate(id: string) {
+    const { token, tokenHash, tokenPrefix } = generateToken();
+    const now = new Date().toISOString();
+
+    const result = await db
       .update(sourceMapTokens)
-      .set({ lastUsedAt: new Date().toISOString() })
-      .where(eq(sourceMapTokens.id, id));
-  },
-
-  // Soft revoke: keeps the audit trail, invalidates the token.
-  revoke: async (id: string) =>
-    (
-      await db
-        .update(sourceMapTokens)
-        .set({ revokedAt: new Date().toISOString() })
-        .where(eq(sourceMapTokens.id, id))
-        .returning()
-    )[0],
-
-  delete: async (id: string) => {
-    const deleted = await db
-      .delete(sourceMapTokens)
+      .set({
+        tokenHash,
+        tokenPrefix,
+        revokedAt: now,
+        createdAt: now,
+      })
       .where(eq(sourceMapTokens.id, id))
-      .returning({ id: sourceMapTokens.id });
-    return deleted.length > 0;
+      .returning();
+
+    if (result.length === 0) return null;
+    return { token, record: result[0] };
   },
 
-  deleteByApp: async (appId: string) => {
-    await db.delete(sourceMapTokens).where(eq(sourceMapTokens.appId, appId));
+  async revoke(id: string) {
+    const now = new Date().toISOString();
+    const result = await db
+      .update(sourceMapTokens)
+      .set({ revokedAt: now })
+      .where(eq(sourceMapTokens.id, id))
+      .returning();
+    return result.length > 0;
   },
 };

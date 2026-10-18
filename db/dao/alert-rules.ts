@@ -1,144 +1,139 @@
-import { db } from "db";
-import {
-  alertRules,
-  type AlertRuleRow,
-  type AlertRuleInsert,
-} from "db/schema/alert-rules";
-import { desc, eq, isNull } from "drizzle-orm";
-import { conflict, notFound } from "backend/errors";
-import { uniqueViolationConstraint } from "db/pg-errors";
-
-type AlertRuleCreateInput = Omit<AlertRuleInsert, "id"> & {
-  id?: string;
-};
-
-const SCOPE_NAME_CONSTRAINT = "alert_rules_scope_name_idx";
-const GLOBAL_NAME_CONSTRAINT = "alert_rules_global_name_idx";
-
-// appId IS NULL is the global scope.
-function scopeCondition(appId: string | null) {
-  return appId === null
-    ? isNull(alertRules.appId)
-    : eq(alertRules.appId, appId);
-}
+import { db } from "../index.ts";
+import { alertRules } from "../schema/alert-rules.ts";
+import { eq, desc, or } from "drizzle-orm";
+import { notFound, conflict } from "../../backend/errors.ts";
+import { crypto } from "../../backend/utils/crypto.ts";
 
 export const alertRuleDAO = {
-  create: async (data: AlertRuleCreateInput) => {
+  async create(data: {
+    name: string;
+    trigger: string;
+    metric?: string;
+    operator?: string;
+    threshold?: number;
+    windowSeconds?: number;
+    cooldownSeconds?: number;
+    channelIds?: string[];
+    measurement?: string;
+    appId?: string;
+  }) {
+    const id = crypto.randomUUID();
     const now = new Date().toISOString();
-    const [created] = await db
+
+    const result = await db
       .insert(alertRules)
       .values({
-        ...data,
-        id: data.id ?? crypto.randomUUID(),
+        id,
+        name: data.name,
+        trigger: data.trigger,
+        metric: data.metric ?? null,
+        operator: data.operator ?? null,
+        threshold: data.threshold ?? null,
+        windowSeconds: data.windowSeconds ?? null,
         cooldownSeconds: data.cooldownSeconds ?? 3600,
-        channelIds: data.channelIds ?? "[]",
+        channelIds: JSON.stringify(data.channelIds ?? []),
+        measurement: data.measurement ?? null,
+        appId: data.appId ?? null,
+        isEnabled: 1,
         createdAt: now,
         updatedAt: now,
       })
       .onConflictDoNothing()
       .returning();
-    if (!created) {
-      throw conflict(`Alert rule already exists in this scope: ${data.name}`);
+
+    if (result.length === 0) {
+      throw conflict(`Alert rule with name "${data.name}" already exists in this scope`);
     }
-    return created;
+    return result[0];
   },
 
-  findById: async (id: string): Promise<AlertRuleRow | undefined> =>
-    (
-      await db
-        .select()
-        .from(alertRules)
-        .where(eq(alertRules.id, id))
-        .limit(1)
-    )[0],
+  async findById(id: string) {
+    const result = await db.select().from(alertRules).where(eq(alertRules.id, id)).limit(1);
+    return result[0];
+  },
 
-  findByIdOrThrow: async (id: string) => {
-    const rule = await alertRuleDAO.findById(id);
-    if (!rule) {
-      throw notFound("Alert rule", id);
-    }
+  async findByIdOrThrow(id: string) {
+    const rule = await this.findById(id);
+    if (!rule) throw new Error("Alert rule not found");
     return rule;
   },
 
-  list: async (appId: string | null): Promise<AlertRuleRow[]> =>
-    db
-      .select()
-      .from(alertRules)
-      .where(scopeCondition(appId))
-      .orderBy(desc(alertRules.createdAt)),
-
-  listPaged: async (options: {
-    appId: string | null;
-    page?: number;
-    limit?: number;
-  }): Promise<{
-    data: AlertRuleRow[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
-  }> => {
+  async list(options: { appId?: string; page?: number; limit?: number } = {}) {
     const page = options.page ?? 1;
-    const limit = options.limit ?? 20;
+    const limit = Math.min(options.limit ?? 20, 100);
     const offset = (page - 1) * limit;
-    const where = scopeCondition(options.appId);
 
-    const [rows, total] = await Promise.all([
-      db
-        .select()
-        .from(alertRules)
-        .where(where)
-        .orderBy(desc(alertRules.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.$count(alertRules, where),
+    let query = db.select().from(alertRules);
+
+    if (options.appId) {
+      query = query.where(eq(alertRules.appId, options.appId));
+    } else {
+      query = query.where(eq(alertRules.appId, null));
+    }
+
+    const [data, totalResult] = await Promise.all([
+      query.limit(limit).offset(offset).orderBy(desc(alertRules.createdAt)),
+      db.$count(alertRules),
     ]);
 
     return {
-      data: rows,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      data,
+      pagination: {
+        page: options.page ?? 1,
+        limit: Math.min(options.limit ?? 20, 100),
+        total: totalResult,
+        totalPages: Math.ceil(totalResult / Math.min(options.limit ?? 20, 100)),
+      },
     };
   },
 
-  updateOrThrow: async (id: string, data: Partial<AlertRuleInsert>) => {
-    try {
-      const [updated] = await db
-        .update(alertRules)
-        .set({ ...data, updatedAt: new Date().toISOString() })
-        .where(eq(alertRules.id, id))
-        .returning();
-      if (!updated) {
-        throw notFound("Alert rule", id);
-      }
-      return updated;
-    } catch (err) {
-      const constraint = uniqueViolationConstraint(err);
-      if (
-        data.name !== undefined &&
-        (constraint === SCOPE_NAME_CONSTRAINT ||
-          constraint === GLOBAL_NAME_CONSTRAINT)
-      ) {
-        throw conflict(`Alert rule already exists in this scope: ${data.name}`);
-      }
-      throw err;
-    }
-  },
+  async updateOrThrow(id: string, patch: Partial<{
+    name: string;
+    trigger: string;
+    metric: string;
+    operator: string;
+    threshold: number;
+    windowSeconds: number;
+    cooldownSeconds: number;
+    channelIds: string[];
+    measurement: string;
+    isEnabled: number;
+  }>) {
+    const now = new Date().toISOString();
+    const updateData: Record<string, unknown> = { updatedAt: now };
 
-  delete: async (id: string) => {
-    const deleted = await db
-      .delete(alertRules)
-      .where(eq(alertRules.id, id))
-      .returning({ id: alertRules.id });
-    return deleted.length > 0;
-  },
+    if (patch.name !== undefined) updateData.name = patch.name;
+    if (patch.trigger !== undefined) updateData.trigger = patch.trigger;
+    if (patch.metric !== undefined) updateData.metric = patch.metric;
+    if (patch.operator !== undefined) updateData.operator = patch.operator;
+    if (patch.threshold !== undefined) updateData.threshold = patch.threshold;
+    if (patch.windowSeconds !== undefined) updateData.windowSeconds = patch.windowSeconds;
+    if (patch.cooldownSeconds !== undefined) updateData.cooldownSeconds = patch.cooldownSeconds;
+    if (patch.channelIds !== undefined) updateData.channelIds = JSON.stringify(patch.channelIds);
+    if (patch.measurement !== undefined) updateData.measurement = patch.measurement;
+    if (patch.isEnabled !== undefined) updateData.isEnabled = patch.isEnabled;
 
-  // Removes the app-scoped overrides only; global (appId = null)
-  // rules are shared and stay in place.
-  deleteByApp: async (appId: string) => {
-    await db.delete(alertRules).where(eq(alertRules.appId, appId));
-  },
-
-  touchTriggered: async (id: string, triggeredAt: string) => {
-    await db
+    const result = await db
       .update(alertRules)
-      .set({ lastTriggeredAt: triggeredAt })
-      .where(eq(alertRules.id, id));
+      .set(updateData)
+      .where(eq(alertRules.id, id))
+      .returning();
+
+    if (result.length === 0) throw new Error("Alert rule not found");
+    return result[0];
+  },
+
+  async delete(id: string) {
+    const result = await db.delete(alertRules).where(eq(alertRules.id, id)).returning();
+    return result.length > 0;
+  },
+
+  async touchTriggered(id: string, triggeredAt: string) {
+    const result = await db
+      .update(alertRules)
+      .set({ lastTriggeredAt: triggeredAt, updatedAt: new Date().toISOString() })
+      .where(eq(alertRules.id, id))
+      .returning();
+    return result[0];
   },
 };

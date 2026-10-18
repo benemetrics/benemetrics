@@ -3,154 +3,173 @@
 > Audience: backend engineers (including juniors) working in `backend/` and `db/`.
 > Goal: explain how the API is structured, how the database is organized, and the rules we follow so new code looks like it was written by the same person.
 
----
+**Architecture Reference Documents** (in `docs/`) — **GROUND TRUTH**
+- [`models.md`](docs/models.md) — Project → Environment → App hierarchy, invariants, scoped reads
+- [`metrics.md`](docs/metrics.md) — Metric taxonomy, NATS→ClickHouse pipeline, series/breakdown APIs, alerting integration
+- [`source-maps.md`](docs/source-maps.md) — Artifact storage, upload tokens, VLQ symbolication, CLI surface
+- [`feature-flags.md`](docs/feature-flags.md) — Global flags, evaluation priority, experiments (Wilson CI + z-test), 3 surfaces
+- [`session-replays.md`](docs/session-replays.md) — rrweb offload, object-store backends, playback assembly
+- [`alerting.md`](docs/alerting.md) — Alerting system (channels, rules, sweeper, incident model)
+- [`issues.md`](docs/issues.md) — Issue tracking, fingerprinting, query protocol, scoped reads
+- [`permission.md`](docs/permission.md) — Admin auth model, scoped reads, group rules + whitelist
 
-## 1. Stack at a glance
-
-| Concern            | Choice                                                              |
-| ------------------ | ------------------------------------------------------------------- |
-| Runtime            | **Bun** (`bun run backend/index.ts`)                                |
-| HTTP framework     | **Elysia v1.4** (`elysia`)                                          |
-| Validation         | **ArkType** (`arktype`) — via ArkType's `type()` and Elysia schemas |
-| ORM                | **Drizzle ORM**                                                     |
-| Default DB (dev)   | **PGlite** (Postgres in WASM, file-backed `./.pglite`)              |
-| Test DB            | in-memory **PGlite** when `NODE_ENV=test`                           |
-| Production DB      | **PostgreSQL** when `DATABASE_URL` is set (`drizzle-orm/bun-sql`)   |
-| Migrations         | `drizzle-kit` → `db/migrations/*`, applied at startup               |
-| Messaging          | **NATS JetStream** optional (`sentry.events` subject, `SENTRIES` stream; NATS-first ingestion when connected) |
-| Analytics store    | **ClickHouse** optional events store (`sentry_events`, `@clickhouse/client`, HTTP `:8123`) |
-| Frontend client    | Eden Treaty (`@elysiajs/eden`) consumes the exported `App` type     |
-
-Entry point: **`backend/index.ts`** (exports the Elysia `app` for tests, and listens on start).
+**Enforcement:** The `docs/` documents are the **single source of architectural truth**. This document MUST be consistent with `docs/`. When changing architecture: update `docs/` FIRST, then this document.
 
 ---
 
-## 1.1 Business rules
+## 1. Stack at a Glance
+
+| Concern | Choice |
+|---------|--------|
+| Runtime | **Bun** (`bun run backend/index.ts`) |
+| HTTP Framework | **Elysia v1.x** (`elysia`) |
+| Validation | **ArkType** (`arktype`) — via `import { type as arktype } from "arktype"` |
+| ORM | **Drizzle ORM** (`drizzle-orm/pg-core`, `drizzle-orm/bun-sql`) |
+| Default DB (dev) | **PGlite** (Postgres in WASM, file-backed `./.pglite`) |
+| Test DB | In-memory **PGlite** when `NODE_ENV=test` |
+| Production DB | **PostgreSQL** when `DATABASE_URL` is set (`drizzle-orm/bun-sql`) |
+| Migrations | `drizzle-kit` → `db/migrations/*`, applied at startup |
+| Messaging | **NATS JetStream** (required) — `sentry.events`, `sentry.metrics` subjects on `SENTRIES` stream |
+| Analytics Store | **ClickHouse** (required) — `sentry_events`, `sentry_metrics` via NATS engine tables + MVs |
+| Object Store | **S3-compatible** (required) — `S3_BUCKET` for replay segments; RustFS in dev (`:9100`) |
+| Frontend Client | Eden Treaty (`@elysiajs/eden`) consumes exported `App` type |
+
+**Entry point:** `backend/index.ts` (exports Elysia `app` for tests, listens on start).
+
+---
+
+## 1.1 Business Rules (Invariants)
 
 The domain hierarchy is strictly **Project → Environment (shared by apps)**. It MUST NOT be flattened.
 
 - A **project** owns many **apps** (`apps.project_id`); every app belongs to exactly one project.
 - A **project** owns many **environments** (`environments.project_id`); every environment belongs to exactly one project and is shared by all of its apps.
 - An **app** is created inside an environment (`apps.environment_id`); the same environment may serve many apps.
-- An environment **slug** is unique within its project, but the same slug MAY be reused across different projects.
+- An environment **slug** is unique within its project; the same slug MAY be reused across different projects.
 - Every project has **exactly one default environment** (`environments.is_default = 1`):
-  - project creation auto-creates a default "testing" environment (and no app);
-  - the first environment created becomes the default;
-  - promoting another environment to default demotes the previous default;
-  - deleting the default promotes the oldest remaining environment.
+  - Project creation auto-creates a default "testing" environment (and no app).
+  - The first environment created becomes the default.
+  - Promoting another environment to default demotes the previous default.
+  - Deleting the default promotes the oldest remaining environment.
 - Deleting an **app** MUST NOT delete its environments (they are shared); deleting a **project** cascades to its apps AND environments; deleting an **environment** cascades to the apps created inside it.
 - Environments are admin-only: exposed exclusively via `/api/admin/environments/*`.
+- **Feature flags are global** — not scoped to project/environment/app.
+- **Experiments** layer on flags: sticky assignment, metric tracking, statistical analysis (Wilson CI + z-test).
 
 ---
 
-## 2. Runtime configuration
+## 2. Runtime Configuration
 
-| Env var               | Default                                            | Used for                       |
-| --------------------- | -------------------------------------------------- | ------------------------------ |
-| `PORT`                | `31337`                                            | HTTP server port               |
-| `NODE_ENV`            | –                                                  | `test` ⇒ in-memory PGlite      |
-| `DATABASE_URL`        | –                                                  | If set ⇒ PostgreSQL            |
-| `NATS_SERVERS`        | `nats://localhost:4222`                            | JetStream connection           |
-| `CLICKHOUSE_HOST`     | `localhost`                                        | ClickHouse HTTP host           |
-| `CLICKHOUSE_PORT`     | `8123`                                             | ClickHouse HTTP port           |
-| `CLICKHOUSE_DATABASE` | `default`                                          | ClickHouse database            |
-| `CLICKHOUSE_USER`     | `default`                                          | ClickHouse HTTP user           |
-| `CLICKHOUSE_PASSWORD` | –                                                  | ClickHouse HTTP password       |
-| `S3_BUCKET`           | –                                                  | Enables the S3 object-store backend for the replay-segment offload (`AWS_BUCKET` fallback) |
-| `S3_ENDPOINT`         | –                                                  | S3-compatible endpoint (RustFS, R2, …; `AWS_ENDPOINT` fallback) |
-| `S3_REGION`           | `us-east-1`                                        | S3 region (`AWS_REGION` fallback) |
-| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_SESSION_TOKEN` | –              | S3 credentials (`AWS_*` fallbacks are honored) |
-| `LOCAL_STORAGE_DIR`   | `./.storage`                                       | Local object-store directory used when `S3_BUCKET` is unset (served at `/storage/*`) |
-| `NATS_TEST_URL`       | –                                                  | e2e only: enables the NATS broker test (`e2e/21-nats-first.test.ts`) |
-| `CLICKHOUSE_TEST_URL` | –                                                  | e2e only: enables the ClickHouse store test (`tests/22-clickhouse-store.test.ts`) |
-| `ALERT_EVALUATION_INTERVAL_MS` | `60000`                                | Alert rule sweeper interval    |
-| `ADMIN_TOKEN`         | –                                                  | Admin bearer token; accepted only while no OIDC/OAuth2 env is configured (fails closed when unset) |
-| `OIDC_ISSUER`, `OIDC_CLIENT_ID` | –                                       | Presence forces the admin guard on `/events/*` + `/storage/*` |
-| `OAUTH_ISSUER`, `OAUTH_CLIENT_ID` | –                                     | Same as OIDC (provider configured) |
+| Env Var | Default | Purpose |
+|---------|---------|---------|
+| `PORT` | `31337` | HTTP server port |
+| `NODE_ENV` | – | `test` ⇒ in-memory PGlite |
+| `DATABASE_URL` | – | If set ⇒ PostgreSQL (production) |
+| `NATS_SERVERS` | `nats://localhost:4222` | JetStream connection |
+| `NATS_STREAM` | `SENTRIES` | NATS stream name |
+| `CLICKHOUSE_HOST` | `localhost` | ClickHouse HTTP host |
+| `CLICKHOUSE_PORT` | `8123` | ClickHouse HTTP port |
+| `CLICKHOUSE_DATABASE` | `default` | ClickHouse database |
+| `CLICKHOUSE_USER` | `default` | ClickHouse HTTP user |
+| `CLICKHOUSE_PASSWORD` | – | ClickHouse HTTP password |
+| `S3_BUCKET` | – | **Required** — S3 bucket for replay segments |
+| `S3_ENDPOINT` | – | S3-compatible endpoint (RustFS, R2, …; `AWS_ENDPOINT` fallback) |
+| `S3_REGION` | `us-east-1` | S3 region (`AWS_REGION` fallback) |
+| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_SESSION_TOKEN` | – | S3 credentials (`AWS_*` fallbacks honored) |
+| `ALERT_EVALUATION_INTERVAL_MS` | `60000` | Alert rule sweeper interval |
+| `ADMIN_TOKEN` | – | Master admin bearer token — always accepted; fails closed when unset and no provider configured |
+| `OIDC_ISSUER`, `OAUTH_ISSUER` | – | Identity provider issuer (discovery base): enables JWT verification and forces admin guard on `/events/*` + `/storage/*` + `/replays/*` |
+| `OIDC_JWKS_URL` | – | Optional JWKS override (skips OIDC discovery) |
+| `OIDC_AUDIENCE`, `OIDC_CLIENT_ID`, `OAUTH_CLIENT_ID` | – | Expected `aud` claim (checked when set) |
+| `OIDC_EMAIL_CLAIM`, `OIDC_GROUPS_CLAIM`, `OIDC_NAME_CLAIM` | `email`, `groups`, `name` | Claim mapping for verified identity |
 
-- **DB selection logic** lives in `db/index.ts` and is resolved once (singleton `db`):
-  `NODE_ENV=test` → in-memory PGlite; else `DATABASE_URL` present → Postgres (Bun SQL); else file-backed PGlite in `./.pglite`. Committed migrations in `db/migrations` are applied at startup (idempotent, tracked in `drizzle.__drizzle_migrations`).
-- `docker-compose.yml` provides **Postgres 17** (`:5432`), **ClickHouse** (`:8123`, `:9000`) and **RustFS** (`:9100` S3 API, `:9101` console — `rustfsadmin` / `rustfsadmin`; the `sentry-replays` bucket is created by the `rustfs-init` service). NATS must be run separately.
-- **Object storage** (`backend/storage/index.ts`): S3-compatible storage for large envelope items — enabled by `S3_BUCKET` and used by the envelope route to offload replay segments (§8) — with a local-directory fallback (`LOCAL_STORAGE_DIR`, default `./.storage`) so recordings never sit in Postgres even without S3. While the local backend is active the objects are served back at `/storage/*` (§5.12). The environment is read per call, so the backend can switch without restarts.
+**DB Selection Logic** (`db/index.ts`): `NODE_ENV=test` → in-memory PGlite; else `DATABASE_URL` present → Postgres (Bun SQL); else file-backed PGlite in `./.pglite`. Committed migrations in `db/migrations` applied at startup (idempotent, tracked in `drizzle.__drizzle_migrations`).
 
-Package scripts (`package.json`):
+**Docker Compose** provides: Postgres 17 (`:5432`), ClickHouse (`:8123`, `:9000`), RustFS (`:9100` S3 API, `:9101` console — `rustfsadmin`/`rustfsadmin`; `sentry-replays` bucket created by `rustfs-init`), NATS (`:4222` + WS `:4223`).
 
+**Package Scripts:**
 ```bash
 bun run dev        # bun --hot backend/index.ts
 bun run start      # bun backend/index.ts
-bun run test       # bun test e2e/
+bun run test       # bun test --parallel=1 tests/ e2e/
 bun run typecheck  # bun check
 ```
 
 ---
 
-## 3. Directory layout
+## 3. Directory Layout
 
 ```
 backend/
-  index.ts            # App bootstrap: health route, module registration, NATS/ClickHouse, alert sweeper, error handler
-  auth.ts             # validateAuth (DSN) + validateAdminAuth + validateAdminToken + adminAuthEnforced (env-driven)
-  errors.ts           # ApiError + ErrorCode (NOT_FOUND, ...): thrown by routes/DAOs, mapped by the root onError
-  nats.ts             # JetStream publish (NATS-first) + consumer wiring, isNatsConnected
-  events-consumer.ts  # applyEventMessage + persistence/live consumers (shared by broker + fallback paths)
-  events-store.ts     # Stored-events reads: ClickHouse when available, Postgres fallback
-  clickhouse.ts       # Optional events store (@clickhouse/client): best-effort pushes + list/get/clear
-  live-events.ts      # WebSocket client registry + live fan-out (/events/live/feed)
-  events/
-    index.ts          # eventsRoutes (/events/*) + ingestionRoutes (/api/*/*) + alert evaluation hook
-    ingestion.ts      # Shared ingestion helpers: resolveAuthorizedApp + NATS-first dispatch
-    utils.ts          # Envelope parse/transform helpers (pure functions) + issue fingerprinting
+  index.ts                 # App bootstrap: health, module registration, NATS/CH init, alert sweeper, error handler
+  auth.ts                  # validateAuth (DSN) + validateAdminAuth/validateAdminToken + adminAuthEnforced
+  oidc.ts                  # JWT verification: discovery → JWKS → WebCrypto signature → claims
+  permissions.ts           # Read-permission engine: scope resolution → scoped view, guards, request cache
+  errors.ts                # ApiError + ErrorCode: thrown by routes/DAOs, mapped by root onError
+  nats.ts                  # JetStream publish + consumer wiring (durable pull consumers for CH)
+  events-consumer.ts       # Side-effects consumer: issue tracking, alert triggers, clear
+  events-store.ts          # Events/Metrics reads: ClickHouse only (SELECT … FINAL)
+  metrics-store.ts         # Metrics reads: ClickHouse only (quantile, toStartOfInterval)
+  clickhouse.ts            # ClickHouse client + initClickHouse (engine tables + MVs)
+  metrics/
+    samples.ts             # Envelope → metric samples extraction (parseEnvelope + normalizeTransactionPayload)
   storage/
-    index.ts          # Object storage: S3 when S3_BUCKET is set, LOCAL_STORAGE_DIR otherwise + storageRoutes (/storage/*) serving local objects
+    index.ts               # Object storage: S3 (required) + putObject/getObjectText/listObjectKeys
+  replays/
+    index.ts               # replayRoutes (/replays/by-event/:eventId) — assemble segments from object store
   featureFlags/
-    index.ts          # featureFlagRoutes (/api/admin/feature-flags/*) — CRUD
+    index.ts               # featureFlagRoutes (/api/admin/feature-flags/*) — CRUD + lifecycle
   evaluation/
-    index.ts          # evaluationRoutes (/api/sentry/flags/evaluate) — flag evaluation engine
+    index.ts               # evaluationRoutes (/api/sentry/flags/evaluate, /experiment/track, /stream)
+  flags-v1/
+    index.ts               # flagsV1Routes (/v1/flags/:key) — OpenFeature-compatible
   source-maps/
-    resolver.ts       # VLQ symbolication + bounded decoded-mappings cache
-    serialization.ts  # Shared artifact row → response mapping
+    resolver.ts            # VLQ symbolication + bounded decoded-mappings cache
+    serialization.ts       # Artifact row → response mapping
   alerting/
-    index.ts          # alertingRoutes (/api/admin/alerting/*) — channels, rules, incidents, test send
-    notifiers.ts      # Uniform Notifier interface + webhook/slack/rocketchat/email-stub + dispatcher
-    resolver.ts       # Global → per-app config resolution (per-name override)
-    evaluation.ts     # Metric computation, threshold engine, cooldown, sweeper + issue-trigger firing
-    serialize.ts      # JSON column parsing + row → protocol mappers
+    index.ts               # alertingRoutes (/api/admin/alerting/*) — channels, rules, incidents, test
+    notifiers.ts           # Uniform Notifier interface + webhook/slack/rocketchat/email + dispatcher
+    resolver.ts            # Global → per-app config resolution (per-name override)
+    evaluation.ts          # Metric computation, threshold engine, cooldown, sweeper + issue-trigger firing
+    serialize.ts           # JSON column parsing + row → protocol mappers
   issues/
-    tracking.ts       # Ingestion-time issue state transitions (new issue / regression)
+    tracking.ts            # Ingestion-time issue state transitions (new issue / regression)
   admin/
-    index.ts          # adminRoutes (/api/admin) — composes featureFlags + projects + segments + ... + issues + alerting
-    projects/index.ts # projectRoutes, appRoutes (project + app management)
-    segments/index.ts # segmentRoutes (audience segments)
-    environments/index.ts # environmentRoutes (project environments, shared by apps)
-    releases/index.ts # releaseRoutes + computeIssueMetrics (pure)
-    issues/index.ts   # issueRoutes (/api/admin/issues/*) — list/get/resolve
-  protocol/           # Type-only interfaces (source of truth: dsn, envelope-header, item-header, otlp, alerting, issues, source-map)
+    index.ts               # adminRoutes (/api/admin) — access derive + fail-closed guard + scoped read allowlist
+    projects/index.ts      # projectRoutes, appRoutes (project + app management)
+    permissions/index.ts   # permissionRoutes (/api/admin/permissions/*) — group rules + user whitelist
+    segments/index.ts      # segmentRoutes (audience segments)
+    environments/index.ts  # environmentRoutes (project environments, shared by apps)
+    releases/index.ts      # releaseRoutes + computeIssueMetrics (pure)
+    issues/index.ts        # issueRoutes (/api/admin/issues/*) — list/get/resolve
+    settings/index.ts      # settingsRoutes (/api/admin/settings/events-ttl)
+  protocol/                # Type-only interfaces (source of truth)
 ```
 
 ---
 
-## 4. How a request flows
+## 4. Request Flow
 
 1. Bun starts `backend/index.ts`.
-2. `new Elysia()` registers, in order: `/health`, then `.use(...)` of each route module.
-3. A route handler receives Elysia's context (`{ body, query, params, request, set, status }`).
-4. Input is validated by the route's `body` / `query` / `params` schema (ArkType or Elysia `t`).
-5. Handler calls a **DAO** from `db/dao/*` — handlers never touch Drizzle directly.
-6. DAO runs a Drizzle query and returns a row (or throws an `ApiError` from `backend/errors.ts`, e.g. `notFound(...)`).
-7. Handler shapes the HTTP response; errors bubble to the global `onError` handler, which maps `ApiError`s to their HTTP status + `{ error }` and falls back to 500.
+2. `new Elysia()` registers in order: `/health`, then `.use(...)` of each route module.
+3. Route handler receives Elysia context (`{ body, query, params, request, set, status }`).
+4. Input validated by route's `body` / `query` / `params` schema (ArkType).
+5. Handler calls **DAO** from `db/dao/*` — handlers **never** touch Drizzle directly.
+6. DAO runs Drizzle query, returns row (or throws `ApiError` from `backend/errors.ts`).
+7. Handler shapes HTTP response; errors bubble to global `onError` → maps `ApiError` to HTTP status + `{ error }`, falls back to 500.
 
-Module registration in `backend/index.ts`:
-
+**Module Registration** (`backend/index.ts`):
 ```ts
 const app = new Elysia()
-  .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
+  .get("/health", () => ({ status: "ok" }))
   .use(eventsRoutes)        // prefix "events"
   .use(ingestionRoutes)     // prefix "api"
   .use(featureFlagRoutes)   // prefix "feature-flags"
   .use(evaluationRoutes)    // prefix "api/sentry/flags"
+  .use(flagsV1Routes)       // prefix "v1/flags"
   .use(adminRoutes)         // prefix "/api/admin"
   .onError(({ code, error, set }) => {
-    if (error instanceof ApiError) {          // backend/errors.ts
+    if (error instanceof ApiError) {
       set.status = error.httpStatus;
       return { error: error.message };
     }
@@ -164,59 +183,82 @@ const app = new Elysia()
 
 ---
 
-## 5. API reference
-
-Prefixes below are written **without** a leading slash only where the source omits it; Elysia normalizes to `/`.
+## 5. API Reference
 
 ### 5.1 System
 
-| Method | Path      | Description              | Auth |
-| ------ | --------- | ------------------------ | ---- |
-| GET    | `/health` | Liveness + timestamp     | none |
+| Method | Path | Description | Auth |
+|--------|------|-------------|------|
+| `GET` | `/health` | Liveness probe (no data access) | none |
 
-### 5.2 Events (stored events / issue triage)
+### 5.2 Events API (ClickHouse Only)
 
-`backend/events/index.ts` → `eventsRoutes` (prefix `events`)
+Prefix: `/events` — `backend/events/index.ts` → `eventsRoutes`
 
-| Method | Path                | Query                          | Description                              |
-| ------ | ------------------- | ------------------------------ | ---------------------------------------- |
-| GET    | `/events/`          | `page`, `limit`, `projectId`, `environmentId`, `appId` | List stored events (ClickHouse when available), envelope → UI shape. `appId` is the most specific scope and wins over `environmentId`; an unknown id returns 404 |
-| POST   | `/events/clear`     | –                              | Delete all stored events (both stores)   |
-| WS     | `/events/live/feed` | `token`                        | Live event push stream (WebSocket)       |
-| GET    | `/events/:eventId`  | –                              | Fetch one event (parsed envelope item)   |
+| Method | Path | Query | Description |
+|--------|------|-------|-------------|
+| `GET` | `/events/` | `page`, `limit`, `projectId`, `environmentId`, `appId` | List events from ClickHouse (`SELECT … FINAL`), envelope → UI shape |
+| `GET` | `/events/:eventId` | – | Fetch one event (parsed envelope item) |
+| `POST` | `/events/clear` | – | Truncate ClickHouse `sentry_events` + `sentry_metrics` + clear Postgres `issues` |
 
-`/events/*` and `/storage/*` require the admin bearer token once `adminAuthEnforced()` is true (production, `ADMIN_TOKEN` set, or OIDC/OAuth env configured); in dev/test without a configured identity provider they are open.
+**Auth:** Once `adminAuthEnforced()` is true (production, `ADMIN_TOKEN` set, or OIDC/OAuth configured), requires admin bearer token or read-granted provider JWT. Scoped identities only read events of their visible apps.
 
-### 5.3 Ingestion (SDK → server)
+### 5.3 Ingestion (SDK → Server)
 
-`backend/events/index.ts` → `ingestionRoutes` (prefix `api`)
+Prefix: `/api` — `backend/events/index.ts` → `ingestionRoutes`
 
-| Method | Path                     | Description                                                       |
-| ------ | ------------------------ | ----------------------------------------------------------------- |
-| POST   | `/api/:projectId/envelope/` | Sentry **envelope** ingestion. Handles `gzip` (`Content-Encoding`). |
-| POST   | `/api/:projectId/store/`    | Legacy single-JSON event ingestion (`{ event_id, ... }`).         |
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/:projectId/envelope/` | Sentry **envelope** ingestion. Handles `gzip` (`Content-Encoding`). |
+| `POST` | `/api/:projectId/store/` | Legacy single-JSON event ingestion (`{ event_id, ... }`). |
 
-Both routes resolve the target app from the DSN (numeric app number, ingest key or project id in the path, matched against `sentry_key`), validate DSN auth, then persist via `storedEventDAO`. Unknown apps or mismatched keys ⇒ `401`; apps are **never** auto-provisioned during ingestion. Duplicate `event_id`s are ignored (`onConflictDoNothing`) so retries stay idempotent.
+**App Resolution Order** (`resolveApp`):
+1. App number (DSN path, `/api/123/envelope/`)
+2. Ingest key (path)
+3. Project ID (path) + matching public key
+4. Public key alone (fallback for older DSNs)
+
+**Validation:** `sentry_key` query param or `X-Sentry-Auth` header must match resolved app's `publicKey`. Unknown apps or mismatched keys ⇒ `401`. Apps **never** auto-provisioned during ingestion. Duplicate `event_id` ignored via `onConflictDoNothing` (idempotent retries).
+
+**Pipeline:**
+1. Parse envelope → extract metric samples (`backend/metrics/samples.ts`)
+2. Publish `sentry.events` (envelope) + `sentry.metrics` (JSONEachRow samples) to NATS
+3. NATS publish failure → `503` (`serviceUnavailable`) — **no in-process fallback**
 
 ### 5.4 DSNs
 
-DSNs are per app, not per project: `POST /api/admin/projects/:id/apps` creates an app together with its DSN, and every apps response carries it as `dsn`. There is no separate DSN management endpoint.
+- **Per app**, not per project: `POST /api/admin/projects/:id/apps` creates app + DSN; every apps response carries `dsn`.
+- Format: `http://<public-key>@<host>/<app-number>` — **always `http://`** (backend serves plain HTTP; TLS is reverse-proxy concern). Host derived at read time: `X-Forwarded-Host` → `Host` header.
+- No separate DSN management endpoint.
 
-### 5.5 Feature flags — CRUD
+### 5.5 Metrics API (ClickHouse Only)
 
-`backend/featureFlags/index.ts` → `featureFlagRoutes` (prefix `feature-flags`), mounted only inside `adminRoutes` → effective prefix `/api/admin/feature-flags` (always admin-guarded).
+Prefix: `/api/admin/metrics` — `backend/metrics/index.ts` → `metricsRoutes`
 
-| Method | Path                      | Body                                   | Description                     |
-| ------ | ------------------------- | -------------------------------------- | ------------------------------- |
-| POST   | `/feature-flags/`         | flag definition (see schema below)     | Create a flag (status `draft`)  |
-| GET    | `/feature-flags/`         | `page,limit,status,type,search`        | Paginated list                  |
-| GET    | `/feature-flags/:id`      | `id` (uuid)                            | Get one                         |
-| PATCH  | `/feature-flags/:id`      | partial flag                           | Update fields                   |
-| POST   | `/feature-flags/:id/status` | `{ status }` (`draft\|active\|paused\|archived`) | Change lifecycle status |
-| DELETE | `/feature-flags/:id`      | `id` (uuid)                            | Delete — **draft only**         |
+| Method | Path | Query | Response |
+|--------|------|-------|----------|
+| `GET` | `/metrics/series` | `metric`, `projectId\|environmentId\|appId`, `from`, `to`, `stepSeconds?` | `{ metric, unit, points: [{ bucketStart, count, mean, p50, p95, p99 }] }` |
+| `GET` | `/metrics/breakdown` | `metric=duration`, `projectId\|environmentId\|appId`, `from`, `to`, `limit?` | `{ data: [{ dimension, count, mean, p50, p95 }] }` |
 
-Create body (ArkType):
+**Implementation:**
+- `series`: `toStartOfInterval` + `quantile()` in ClickHouse; auto step ≤6h→1m, ≤48h→5m, else 1h.
+- `breakdown`: Top-N dimensions by count for metric/window.
+- **Admin-token only** — scoped identities rejected (not in `SCOPED_READ_PATHS`).
 
+### 5.6 Feature Flags — CRUD (Admin-Token Only)
+
+Prefix: `/api/admin/feature-flags` — `backend/featureFlags/index.ts` → `featureFlagRoutes`
+
+| Method | Path | Body | Description |
+|--------|------|------|-------------|
+| `POST` | `/feature-flags/` | Flag definition (see schema) | Create flag (status `draft`) |
+| `GET` | `/feature-flags/` | `page,limit,status,type,search` | Paginated list |
+| `GET` | `/feature-flags/:id` | `id` (uuid) | Get one |
+| `PATCH` | `/feature-flags/:id` | Partial flag | Update fields |
+| `POST` | `/feature-flags/:id/status` | `{ status }` (`draft\|active\|paused\|archived`) | Change lifecycle status |
+| `DELETE` | `/feature-flags/:id` | `id` (uuid) | Delete — **draft only** |
+
+**Create Body (ArkType):**
 ```ts
 {
   key: string,
@@ -224,406 +266,394 @@ Create body (ArkType):
   description?: string,
   type: "boolean" | "string" | "number" | "json",
   defaultValue: string | number | boolean,
-  variants?: Array,
-  targetingRules?: Array,
-  segments?: Array,
-  experiment?: string | number | boolean | null
+  variants?: Array<{ key, name, value, weight }>,
+  targetingRules?: Array<{ attribute, operator, value, variantKey? }>,
+  segments?: string[],
+  experiment?: ExperimentConfig | null,
+  rolloutPercentage?: number
 }
 ```
+**Defaults:** `boolean` type → `control`/`treatment` 50/50; else single `default` variant at 100%.
 
-If `variants` is omitted, the server generates defaults: `boolean` ⇒ `control`/`treatment` 50/50; otherwise a single `default` variant at 100%.
+### 5.7 Feature Flags — Evaluation Surfaces
 
-### 5.6 Feature flags — evaluation
+| Surface | Prefix | Handler | Wire Format |
+|---------|--------|---------|-------------|
+| Batched (Sentry) | `/api/sentry/flags` | `evaluationRoutes` | `POST /evaluate { user, context?, flags[] }` → `{ evaluations[] }` |
+| Experiment Tracking | `/api/sentry/flags` | `evaluationRoutes` | `POST /experiment/track { flagKey, userId, metric, value? }` |
+| SSE Push Stream | `/api/sentry/flags` | `flagsStreamRoutes` | `GET /stream?flags=key1,key2` → `snapshot`, `configuration_changed` |
+| OpenFeature | `/v1/flags` | `flagsV1Routes` | `POST /:key { targetingKey, context? }` → `{ variant, value, reason, errorCode? }` |
 
-`backend/evaluation/index.ts` → `evaluationRoutes` (prefix `api/sentry/flags`, **top-level only**)
-`backend/flags-stream/index.ts` → `flagsStreamRoutes` (prefix `api/sentry/flags`, SSE push stream)
-`backend/flags-v1/index.ts` → `flagsV1Routes` (prefix `v1/flags`, OpenFeature "OpenFlag"-compatible adapter)
+**Evaluation Priority (strict):**
+1. **Targeting Rules** — first match wins (`user.*` / `context.*` attributes).
+2. **Segments** — all rules must match (AND); weighted bucket by `user.id` hash.
+3. **Rollout Percentage** — outside rollout ⇒ `control` variant.
+4. **Weighted Random** — deterministic FNV-1a(`flagKey:userId`) % 100.
 
-| Method | Path                     | Body                          | Description                       |
-| ------ | ------------------------ | ----------------------------- | --------------------------------- |
-| POST   | `/api/sentry/flags/evaluate` | `{ user: { id, ... }, flags: string[] }` | Evaluate many flags for one user (Sentry wire format) |
-| POST   | `/api/sentry/flags/experiment/track` | `{ flagKey, userId, metric, value? }` | Record an experiment metric |
-| GET    | `/api/sentry/flags/stream`   | `?flags`                       | SSE stream of flag changes (`snapshot`, `configuration_changed`) |
-| POST   | `/v1/flags/:key`         | `{ targetingKey, context? }`   | Evaluate one flag (OpenFlag wire format: `{ variant, value, reason, errorCode? }`) |
+**Non-Active Flags:** `draft`/`paused`/`archived` ⇒ control/first variant. Unknown flag ⇒ `default`/`null`.
 
-Evaluation order (in `evaluateFlag`):
+### 5.8 Admin — Projects & Apps
 
-1. **Targeting rules** — first match wins; attribute paths support `user.*` and `context.*`.
-2. **Segments** — all segment rules must match; then weighted bucket by `user.id`.
-3. **Rollout percentage** — outside rollout ⇒ `control` (or first) variant.
-4. **Default** — weighted assignment by hashed `user.id`. Unknown flag ⇒ `default`/`null`; non-active flag ⇒ control/first variant.
+Prefix: `/api/admin/projects` — `backend/admin/projects/index.ts` → `projectRoutes`
 
-Supported operators: `equals, not_equals, contains, not_contains, starts_with, ends_with, in, not_in, greater_than, less_than, greater_than_or_equal, less_than_or_equal`.
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/admin/projects/` | Create project (slug auto-derived from name) |
+| `GET` | `/api/admin/projects/` | List projects (with `appCount`) |
+| `GET` | `/api/admin/projects/:id` | Project detail + `apps` |
+| `DELETE` | `/api/admin/projects/:id` | Delete project (cascades to apps + environments) |
+| `POST` | `/api/admin/projects/:id/duplicate` | Duplicate project (envs + apps copied with fresh IDs/keys) |
+| `GET` | `/api/admin/projects/:id/apps` | List apps |
+| `POST` | `/api/admin/projects/:id/apps` | Create app (generates keys + DSN) |
 
-### 5.7 Admin — projects & apps
+**App Creation:** `POST /api/admin/projects/:id/apps` accepts optional `environment` name (slug/name); reuses or creates; defaults to project's default environment. Project creation auto-creates "testing" environment, **no app**.
 
-`backend/admin/projects/index.ts` → `projectRoutes` (effective prefix `/api/admin/projects`)
+### 5.9 Admin — Environments
 
-| Method | Path                                    | Description                       |
-| ------ | --------------------------------------- | --------------------------------- |
-| POST   | `/api/admin/projects/`                  | Create project (slug auto-derived)|
-| GET    | `/api/admin/projects/`                  | List projects (with `appCount`)   |
-| GET    | `/api/admin/projects/:id`               | Project detail + `apps`           |
-| DELETE | `/api/admin/projects/:id`               | Delete project                    |
-| POST   | `/api/admin/projects/:id/duplicate`     | Duplicate project (envs + apps)   |
-| GET    | `/api/admin/projects/:id/apps`          | List apps                         |
-| POST   | `/api/admin/projects/:id/apps`          | Create app (generates keys + DSN) |
+Prefix: `/api/admin/environments` — `backend/admin/environments/index.ts` → `environmentRoutes`
 
-- Project creation auto-creates a default "testing" environment and no app.
-- `POST /api/admin/projects/:id/apps` accepts an optional `environment` name: the app is created inside that project environment (reusing it by slug/name when it exists, creating it otherwise); with no preference the project's default environment is used.
-- App DSNs use `http://` — the backend serves plain HTTP, so HTTPS deployments front it with a reverse proxy. The DSN host is derived at read time (never stored): `X-Forwarded-Host` when a proxy sets it, otherwise the request's `Host` header, so every response points back at the hostname the user reached.
-- `POST /api/admin/projects/:id/duplicate` accepts `{ name?, slug?, description? }` (name defaults to `"<source> (copy)"`). It creates a new project and copies every environment (fresh ids, same names/slugs, default flag preserved) and every app (fresh id, number, ingest key and public key, so each duplicated app gets its own DSN; name and platform are kept). Slug collisions are resolved with `-copy`, `-copy-2`, ... suffixes.
-- Apps are removed by deleting their owning project (`appDAO.delete`); environments are project-scoped and shared, so deleting an app leaves them intact and deleting the project removes them (`environmentDAO.deleteByProject`).
+| Method | Path | Body/Query | Description |
+|--------|------|------------|-------------|
+| `POST` | `/api/admin/environments/` | `{ projectId, name, slug?, isDefault? }` | Create; 404 unknown project, 409 duplicate slug |
+| `GET` | `/api/admin/environments/` | `?projectId&page&limit` | Paginated list for project |
+| `GET` | `/api/admin/environments/:id` | `id` (uuid) | Get one |
+| `PATCH` | `/api/admin/environments/:id` | `{ name?, slug?, isDefault? }` | Update; 409 duplicate slug |
+| `DELETE` | `/api/admin/environments/:id` | `id` (uuid) | Delete; cascades to apps created in it, promotes new default if needed |
 
-### 5.8 Admin — segments
+- `slug` defaults to kebab-case of `name`; unique per project.
+- First environment = default; `isDefault: true` promotes + demotes previous.
 
-`backend/admin/segments/index.ts` → `segmentRoutes` (effective prefix `/api/admin/segments`)
+### 5.10 Admin — Segments
 
-| Method | Path                       | Body                          | Description                        |
-| ------ | -------------------------- | ----------------------------- | ---------------------------------- |
-| POST   | `/api/admin/segments/`     | `{ name, description?, rules }` | Create segment                   |
-| GET    | `/api/admin/segments/`     | `?page&limit`                 | Paginated list                     |
-| GET    | `/api/admin/segments/:id`  | –                             | Get segment                        |
+Prefix: `/api/admin/segments` — `backend/admin/segments/index.ts` → `segmentRoutes`
 
-### 5.9 Admin — environments
+| Method | Path | Body | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/admin/segments/` | `{ name, description?, rules }` | Create segment |
+| `GET` | `/api/admin/segments/` | `?page&limit` | Paginated list |
+| `GET` | `/api/admin/segments/:id` | – | Get segment |
 
-`backend/admin/environments/index.ts` → `environmentRoutes` (effective prefix `/api/admin/environments`).
-Implements the **Project 1..* Environment** business rule (see §1.1).
+**Segment Rules:** Same targeting rule schema as flags (no `variantKey`); all rules must match (AND).
 
-| Method | Path                                | Body / Query                                   | Description |
-| ------ | ----------------------------------- | ---------------------------------------------- | ----------- |
-| POST   | `/api/admin/environments/`          | `{ projectId, name, slug?, isDefault? }`       | Create; 404 unknown project, 409 duplicate slug |
-| GET    | `/api/admin/environments/`          | `?projectId&page&limit`                        | Paginated list for a project |
-| GET    | `/api/admin/environments/:id`       | `id` (uuid)                                    | Get one |
-| PATCH  | `/api/admin/environments/:id`       | `{ name?, slug?, isDefault? }`                 | Update; 409 duplicate slug |
-| DELETE | `/api/admin/environments/:id`       | `id` (uuid)                                    | Delete; cascades to the apps created in it, then promotes a new default if needed |
+### 5.11 Admin — Alerting
 
-- `slug` defaults to a kebab-case derivation of `name`.
-- The first environment of a project is always the default; passing `isDefault: true` promotes it and demotes the previous default.
-- Environments are shared by the project's apps: deleting an app leaves them intact; deleting a project removes them; deleting an environment cascades to the apps **created inside it** (other apps and the rest of the project are untouched).
+Prefix: `/api/admin/alerting` — `backend/alerting/index.ts` → `alertingRoutes`
 
-### 5.10 Admin — alerting
+**Channels** (`type` → config): `webhook { url }`, `slack { webhookUrl }` or `{ token, channel }`, `rocketchat { webhookUrl }`, `email { to, from }`.
 
-`backend/alerting/index.ts` → `alertingRoutes` (effective prefix `/api/admin/alerting`).
-Global (default) configuration lives in rows with `appId: null`; an
-app-scoped row with the same `name` replaces the global one (per-name
-override — see `backend/alerting/resolver.ts`).
+**Rules:** `trigger` ∈ `threshold | new_issue | regression` (default `threshold`). Threshold rules require `metric` ∈ `event_count | error_count | fatal_count | new_issue_count | latency_p95 | latency_p99`, `operator` ∈ `gt | lt`, `threshold`, `windowSeconds`, optional `measurement` (default `duration`). Issue triggers carry none of those fields.
 
-| Method | Path                                        | Body / Query                                   | Description |
-| ------ | ------------------------------------------- | ---------------------------------------------- | ----------- |
-| GET    | `/api/admin/alerting/channels`              | `?appId&page&limit`                            | Paginated channels (global scope by default) |
-| POST   | `/api/admin/alerting/channels`              | `{ name, type, config?, appId? }`              | Create channel; 409 duplicate name in scope |
-| GET    | `/api/admin/alerting/channels/:id`          | `id` (uuid)                                    | Get one |
-| PATCH  | `/api/admin/alerting/channels/:id`          | partial `{ name?, type?, config? }`            | Update channel |
-| DELETE | `/api/admin/alerting/channels/:id`          | `id` (uuid)                                    | Delete channel |
-| GET    | `/api/admin/alerting/rules`                 | `?appId&page&limit`                            | Paginated rules (global scope by default) |
-| POST   | `/api/admin/alerting/rules`                 | `{ name, trigger: 'threshold', metric, operator, threshold, windowSeconds, cooldownSeconds?, channelIds?, measurement?, appId? }` or `{ name, trigger: 'new_issue'\|'regression', cooldownSeconds?, channelIds?, appId? }` | Create rule; 409 duplicate name in scope |
-| GET    | `/api/admin/alerting/rules/:id`             | `id` (uuid)                                    | Get one |
-| PATCH  | `/api/admin/alerting/rules/:id`             | partial rule fields (incl. `trigger`)          | Update rule; switching triggers validates the field set |
-| DELETE | `/api/admin/alerting/rules/:id`             | `id` (uuid)                                    | Delete rule |
-| POST   | `/api/admin/alerting/rules/:id/test`        | `id` (uuid)                                    | Send test notification through the rule's channels; reports per-channel results |
-| GET    | `/api/admin/alerting/apps/:appId/effective` | `appId` (uuid)                                 | Resolved config (global + app overrides merged) |
-| GET    | `/api/admin/alerting/incidents`             | `?appId&page&limit`                            | Paginated incident history |
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/channels` | List channels (filter `appId`) |
+| `POST` | `/channels` | Create channel |
+| `GET` | `/channels/:id` | Get one |
+| `PATCH` | `/channels/:id` | Update |
+| `DELETE` | `/channels/:id` | Delete |
+| `GET` | `/rules` | List rules (filter `appId`) |
+| `POST` | `/rules` | Create rule |
+| `GET` | `/rules/:id` | Get one |
+| `PATCH` | `/rules/:id` | Update (switching triggers validates field set) |
+| `DELETE` | `/rules/:id` | Delete |
+| `POST` | `/rules/:id/test` | Test notification (reports per-channel results) |
+| `GET` | `/apps/:appId/effective` | Resolved config (global + app overrides merged) |
+| `GET` | `/incidents` | Incident history |
 
-**Channels** (`type` → config): `webhook` `{ url }`, `slack` `{ webhookUrl }` or `{ token, channel }`, `rocketchat` `{ webhookUrl }`, `email` `{ to, from }` (SMTP via nodemailer is planned; currently a stub that reports a delivery failure).
+**Evaluation:**
+- Threshold rules: fire-and-forget after ingestion + periodic sweeper (`ALERT_EVALUATION_INTERVAL_MS`).
+- Issue triggers (`new_issue`, `regression`): event-driven at ingestion (exactly once).
+- Breaching rules dispatch uniform `AlertNotification` via `Notifier` interface; record `alert_incidents`; respect cooldown.
+- Delivery failures logged, never fail ingestion.
 
-**Rules**: `trigger` ∈ `threshold | new_issue | regression` (default `threshold`, so pre-existing payloads keep working). Threshold rules additionally require `metric` ∈ `event_count | error_count | fatal_count | new_issue_count | latency_p95 | latency_p99`, `operator` ∈ `gt | lt`, `threshold`, `windowSeconds` (evaluation window) and accept `measurement` (latency metrics, default `duration`). Issue triggers carry none of those fields and reject payloads that do; `channelIds` empty ⇒ all effective channels; `cooldownSeconds` is the minimum time between notifications — per rule for `threshold`, per issue for `new_issue`/`regression`.
+### 5.12 Admin — Issues
 
-**Evaluation** (`backend/alerting/evaluation.ts`): threshold rules run fire-and-forget after every ingestion and from a periodic sweeper (`startAlertSweeper`, `ALERT_EVALUATION_INTERVAL_MS`); breaching rules dispatch a uniform `AlertNotification` through every platform via the same `Notifier` interface (`backend/alerting/notifiers.ts`), record an `alert_incidents` row, and respect the cooldown — recovery closes open incidents. Issue triggers (`new_issue`, `regression`) are event-driven instead (see §5.11): ingestion detects the issue-state transition and fires matching rules exactly once; their incidents are recorded already resolved and carry the issue `fingerprint`. Delivery failures are logged and never fail ingestion.
+Prefix: `/api/admin/issues` — `backend/admin/issues/index.ts` → `issueRoutes`
 
-### 5.11 Admin — issues
+| Method | Path | Body/Query | Description |
+|--------|------|------------|-------------|
+| `GET` | `/` | `?appId&projectId&status&q&page&limit` | Paginated issues, newest `lastSeen` first |
+| `GET` | `/:id` | `id` (uuid) | Get one |
+| `PATCH` | `/:id` | `{ status: 'unresolved'\|'resolved' }` | Resolve/reopen |
 
-`backend/admin/issues/index.ts` → `issueRoutes` (effective prefix `/api/admin/issues`).
-Issues live in Postgres (source of truth for alerting; ClickHouse stays the optional events read store) and are created/updated by ingestion, never through this API.
+**Issue Model:** Keyed by `(appId, fingerprint)` (Sentry grouping: explicit fingerprint → newest in-app stack frame → message). Tracks `status`, `eventCount`, `firstSeen`, `lastSeen`, `latestEventId`. Transitions:
+- First-ever fingerprint → **new issue** (fires `new_issue` trigger)
+- Event for `resolved` issue → **regression** (flips to `unresolved`, fires `regression` trigger)
+- Repeats while unresolved → bump `eventCount`/`lastSeen` only
 
-| Method | Path                        | Body / Query                  | Description |
-| ------ | --------------------------- | ----------------------------- | ----------- |
-| GET    | `/api/admin/issues/`        | `?appId&projectId&status&q&page&limit` | Paginated issues, newest `lastSeen` first; `q` matches title/fingerprint (ILIKE) |
-| GET    | `/api/admin/issues/:id`     | `id` (uuid)                   | Get one |
-| PATCH  | `/api/admin/issues/:id`     | `{ status: 'unresolved'\|'resolved' }` | Resolve or reopen an issue |
+**Race-Safe:** `onConflictDoNothing` insert + `UPDATE ... WHERE status = 'resolved' RETURNING`; concurrent deliveries fire exactly one alert. Resolve via `PATCH` arms `regression` trigger.
 
-- An issue is keyed by `(appId, fingerprint)` (`fingerprint` groups events like Sentry: explicit fingerprint → newest in-app stack frame — SDKs send frames oldest-first, so the crash site is the last frame — → message) and tracks `status`, `eventCount`, `firstSeen`, `lastSeen`, and `latestEventId` (stored event id of the latest occurrence, the UI's drill-down target).
-- Ingestion transitions: a first-ever fingerprint → **new issue**; a new event for a `resolved` issue → **regression** (status flips back to `unresolved`, `eventCount` increments). Repeats while unresolved only bump `eventCount`/`lastSeen` and never fire alerts.
-- Transitions are race-safe (`onConflictDoNothing` insert + `UPDATE ... WHERE status = 'resolved' RETURNING`), so concurrent deliveries fire exactly one alert.
-- Resolving is what arms the `regression` trigger for the issue's next event.
-- Issues cascade with the app (`deleteAppCascade`) and are reset by the dev/test event clear (`/events/clear` → `issueDAO.clear()`).
+### 5.13 Admin — Permissions
 
-### 5.12 Storage (local object reads)
+Prefix: `/api/admin/permissions` — `backend/admin/permissions/index.ts` → `permissionRoutes` (admin-token only)
 
-`backend/storage/index.ts` → `storageRoutes` (prefix `storage`)
+| Method | Path | Body | Description |
+|--------|------|------|-------------|
+| `GET` | `/` | – | All group rules + whitelist entries |
+| `POST` | `/rules` | `{ groupName, environments?, appPrefixes?, isEnabled? }` | Create group rule |
+| `PATCH` | `/rules/:id` | Partial | Update rule |
+| `DELETE` | `/rules/:id` | `id` | Delete rule |
+| `POST` | `/users` | `{ email, environments?, appPrefixes?, isEnabled? }` | Create whitelist entry |
+| `PATCH` | `/users/:id` | Partial | Update entry |
+| `DELETE` | `/users/:id` | `id` | Delete entry |
 
-| Method | Path          | Description                                                                                          | Auth |
-| ------ | ------------- | ---------------------------------------------------------------------------------------------------- | ---- |
-| GET    | `/storage/*`  | Serve an offloaded object from `LOCAL_STORAGE_DIR` (the `key` of an offloaded item payload), Range-capable | Open in dev/test; admin bearer token once `adminAuthEnforced()` |
+**Scope Semantics:** Verified identity → enabled whitelist entry for email replaces group assignment; else union of enabled group rules matching `groups`. Scope = environment **names** + app **full-name prefixes** → expanded to visible apps/environments/projects. No matching grant ⇒ `401` (UI prompts for admin token). Scoped identities are **read-only** (allowlisted GETs only).
 
-Only active while the local backend is in use: with `S3_BUCKET` configured the objects live in the bucket and the route answers `404`. Keys are resolved inside the storage root (traversal-safe), so only objects written by the offload are reachable; missing objects are plain `404`s.
+### 5.14 Admin — Settings (Event Retention)
+
+Prefix: `/api/admin/settings` — `backend/admin/settings/index.ts` → `settingsRoutes` (admin-token only)
+
+| Method | Path | Body | Description |
+|--------|------|------|-------------|
+| `GET` | `/events-ttl` | – | Read TTL from ClickHouse table definition: `{ table, expression, interval }` |
+| `PUT` | `/events-ttl` | `{ amount, unit }` | Replace TTL (`ALTER TABLE ... MODIFY TTL`), re-read value |
+
+- Default: `TTL toDateTime(receivedAt) + toIntervalMonth(1)` (1 month).
+- Boot seeds default only when table has no TTL; **never overwrites** admin change.
+
+### 5.15 Source Maps (Admin + CLI-Compatible)
+
+**Admin Surface:** `/api/admin/source-maps` (admin-token only)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/source-maps` | List artifacts (filter `projectId`, `environmentId`, `release`) |
+| `GET` | `/source-maps/:id` | Get artifact; `?include=content` returns raw `mapJson` |
+| `DELETE` | `/source-maps/:id` | Delete artifact |
+
+**Tokens:** `/api/admin/source-map-tokens` (admin-token only)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/source-map-tokens` | Create token (`{ name, projectId, appId, environmentId, expiresAt? }`); returns raw token **once** |
+| `GET` | `/source-map-tokens` | List tokens |
+| `GET` | `/source-map-tokens/:id` | Get token (never returns raw) |
+| `POST` | `/source-map-tokens/:id/rotate` | Rotate token (invalidates previous); returns new raw token once |
+| `DELETE` | `/source-map-tokens/:id` | Revoke token (soft delete) |
+
+**CLI-Compatible Surface:** `/api/0/projects/:org/:project/` (upload token auth)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/releases/` | Create release (`{ version, ref?, url?, owner? }`) |
+| `POST` | `/releases/:version/files/` | Upload source map (multipart: `file` + `name` + `dist?`); validates v3 + `sources` + `mappings`; 10 MB limit |
+| `GET` | `/releases/:version/files/` | List artifacts for release |
+| `DELETE` | `/releases/:version/files/:fileId/` | Delete artifact |
+| `POST` | `/releases/:version/` | Finalize release (`status: "finalized"`) |
+
+**Symbolication:** At event read time, frames matched by filename (exact / basename / `.map` suffix stripped) → VLQ decode mappings → original position + source context. Cached parsed maps + decoded mappings (LRU, 100 entries).
+
+### 5.16 Session Replays
+
+Prefix: `/replays` — `backend/replays/index.ts` → `replayRoutes`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/replays/by-event/:eventId` | Resolve replay from event (`replay_event.replay_id` or `contexts.replay.replay_id`), assemble segments from object store |
+
+**Response:** `{ replayId, available, truncated, bytes, segments[], events[] }` — concatenated rrweb stream ordered by earliest segment timestamp.
+
+**Auth:** Dev/test open; prod requires admin token or read-granted provider identity. Scoped read filters by event's app visibility.
+
+**Object Store Access:** `GET /storage/<key>` — serves local objects when local backend active (404 when S3 configured). Same auth/scoping as replays.
 
 ---
 
 ## 6. Authentication
 
-Both schemes live in `backend/auth.ts` and are applied via Elysia middleware hooks (`onBeforeHandle`), never copy-pasted per route.
-
-### DSN / Sentry auth (ingestion)
+### 6.1 DSN / Sentry Auth (Ingestion)
 `validateAuth(request, target)` in `backend/auth.ts`:
-
-- Reads `sentry_key` **query param** or `X-Sentry-Auth` header.
-- Header form: `sentry_key=XXX, sentry_project=YYY, sentry_client=...`.
-- Valid only when the extracted key matches the resolved app's `publicKey`.
+- Reads `sentry_key` query param or `X-Sentry-Auth` header (`sentry_key=XXX, sentry_project=YYY, ...`).
+- Valid only when extracted key matches resolved app's `publicKey`.
 - Returns `{ valid, publicKey }`; callers throw `unauthorized("Unauthorized - Invalid DSN")` on failure (no DB writes).
 
-### Admin auth (OAuth2/OIDC not implemented yet)
-`validateAdminAuth(request)` in `backend/auth.ts`:
+### 6.2 Admin Auth (ADMIN_TOKEN + OIDC/OAuth2)
+`validateAdminAuth(request)` / `validateAdminToken(token)` in `backend/auth.ts`:
+- Requires `Authorization: Bearer <token>` (constant-time comparison for admin token).
+- **`ADMIN_TOKEN` is master credential** — always accepted, provider configured or not (UI prompts for it when no grant applies). Without `ADMIN_TOKEN` and no provider ⇒ admin API fails closed (401). No built-in dev/test tokens.
+- OIDC/OAuth2: JWT verified via `backend/oidc.ts` — discovery (cached 10 min) → JWKS (cached, re-fetched on unknown `kid`) → WebCrypto signature (`RS256/384/512`, `ES256/384/512`; `alg` allowlisted) → claims (`exp`/`nbf` ±60s skew, `iss` match, `aud` when configured). Failures logged (never token) → unauthenticated.
+- Verified identity: `{ id, email, name, groups }` (claim mapping via `OIDC_*_CLAIM` env).
 
-- Requires `Authorization: Bearer <token>` (constant-time comparison; no prefix/length bypass).
-- With no identity provider configured, `ADMIN_TOKEN` is the only accepted credential (constant-time comparison); when it is unset the admin API fails closed with 401. There are no built-in dev/test tokens.
-- Once `OIDC_*`/`OAUTH_*` is configured, `ADMIN_TOKEN` is ignored and admin auth delegates to the provider (the flow is not implemented yet, so requests fail closed).
-- On direct startup the server logs the effective mode via `logAuthMode()`: with an identity provider configured it states that `ADMIN_TOKEN` is ignored; otherwise with no `ADMIN_TOKEN` it warns that `/api/admin/*` rejects every request (set `ADMIN_TOKEN` to log in), and with one configured it states that the configured token is required. The token value is never printed.
-- Returns `{ valid, user? }` with a user `{ id, email, name, roles }`.
+### 6.3 Read Permissions (Scoped Identities)
+`backend/permissions.ts` resolves access once per request (cached on `Request`):
+- **Whitelist entry for email** replaces group assignment entirely.
+- Else **union of enabled group rules** matching identity's `groups` (case-insensitive).
+- No match ⇒ `401` with `NO_READ_PERMISSION_MESSAGE` (UI shows admin-token prompt).
+- **Scope → Visibility:** apps matching prefix OR living in matching environment name; environments matching name OR holding visible app; projects holding any visible app/env. Empty scope = valid "read nothing" grant.
+- **Scoped = Read-Only:** Allowlisted GETs only (`/api/admin/projects*`, `/api/admin/environments*`, `/api/admin/issues*` + details). All writes ⇒ `403`. Allowlisted reads filtered by `scopedViewFor(...)`; out-of-scope details ⇒ `404` (never leak).
 
-Guard wiring:
-
-- `/api/admin/*` is **always** guarded: `backend/admin/index.ts` derives the auth result and fails closed in `onBeforeHandle` (401 before any handler runs).
-- `/events/*` and `/storage/*` are open in dev/test only while `adminAuthEnforced()` is false — i.e. no `ADMIN_TOKEN`, no `OIDC_*`/`OAUTH_*` env, and not production. As soon as an identity provider is configured they require the same admin bearer token.
+**Guard Wiring:**
+- `/api/admin/*` → always guarded (`adminRoutes` derive + `onBeforeHandle` fail-closed).
+- `/events/*`, `/storage/*`, `/replays/*` → open in dev/test while `!adminAuthEnforced()`; enforced ⇒ require admin token or granted provider identity.
 
 ---
 
-## 7. Data layer (database)
+## 7. Data Layer (PostgreSQL)
 
-### 7.1 Tables (`db/schema/*`, all declared with `pgTable`)
+### 7.1 Tables (`db/schema/*`, all `pgTable`)
 
-**projects**
-| column | type | notes |
-| --- | --- | --- |
-| `id` | text | PK |
-| `name` | text | not null |
-| `slug` | text | not null, **unique**, indexed |
-| `description` | text | default `""` |
-| `created_at` | text | default `CURRENT_TIMESTAMP` |
+**projects** — `id` (PK), `name`, `slug` (unique), `description`, `created_at`
 
-**apps**
-| column | type | notes |
-| --- | --- | --- |
-| `id` | text | PK |
-| `number` | serial | not null, **unique** — numeric DSN project id |
-| `project_id` | text | indexed |
-| `environment_id` | text | not null, indexed (environment the app was created inside) |
-| `name` | text | not null |
-| `platform` | text | default `javascript` |
-| `ingest_key` | text | not null, **unique**, indexed |
-| `public_key` | text | not null |
-| `created_at` | text | default `CURRENT_TIMESTAMP` |
+**apps** — `id` (PK), `number` (serial, unique — DSN path), `project_id`, `environment_id`, `name`, `platform` (default `javascript`), `ingest_key` (unique), `public_key`, `created_at`
 
-**stored_events**
-| column | type | notes |
-| --- | --- | --- |
-| `id` | text | PK (event id) |
-| `project_id` | text | indexed |
-| `app_id` | text | indexed, nullable for legacy rows |
-| `envelope_header` | text | JSON string |
-| `envelope_items` | text | JSON string; offloaded payloads keep a `{ key }` pointer instead of the payload |
-| `received_at` | text | indexed ISO timestamp of ingestion |
+**stored_events** — `id` (PK, event id), `project_id`, `app_id`, `envelope_header` (JSON), `envelope_items` (JSON; offloaded payloads = `{ key }`), `received_at` (ISO)
 
-**feature_flags**
-| column | type | notes |
-| --- | --- | --- |
-| `id` | text | PK |
-| `key` | text | **unique**, indexed |
-| `name` | text | not null |
-| `description` | text | default `""` |
-| `type` | text | `boolean\|string\|number\|json` |
-| `default_value` | text | not null |
-| `variants` | text | JSON string, default `[]` |
-| `targeting_rules` | text | JSON string, default `[]` |
-| `segments` | text | JSON string, default `[]` |
-| `status` | text | default `draft`, indexed |
-| `rollout_percentage` | integer | default `100` |
-| `experiment` | text | JSON string, nullable |
-| `created_at` / `updated_at` | text | default `CURRENT_TIMESTAMP` |
+**feature_flags** — `id` (PK), `key` (unique), `name`, `description`, `type` (`boolean|string|number|json`), `default_value`, `variants` (JSON), `targeting_rules` (JSON), `segments` (JSON), `status` (`draft|active|paused|archived`), `rollout_percentage` (default 100), `experiment` (JSON), `created_at`, `updated_at`
 
-**segments**
-| column | type | notes |
-| --- | --- | --- |
-| `id` | text | PK |
-| `name` | text | not null, indexed |
-| `description` | text | default `""` |
-| `rules` | text | JSON string, default `[]` |
-| `created_at` | text | default `CURRENT_TIMESTAMP` |
+**segments** — `id` (PK), `name`, `description`, `rules` (JSON), `created_at`
 
-**environments**
-| column | type | notes |
-| --- | --- | --- |
-| `id` | text | PK |
-| `project_id` | text | not null, indexed (owner project) |
-| `name` | text | not null |
-| `slug` | text | not null; **unique per project** via `UNIQUE (project_id, slug)` |
-| `is_default` | integer | not null, default `0` (1 = project default); exactly one per project via partial unique index |
-| `created_at` / `updated_at` | text | default `CURRENT_TIMESTAMP` |
+**environments** — `id` (PK), `project_id`, `name`, `slug` (unique per project), `is_default` (exactly one per project via partial unique index), `created_at`, `updated_at`
 
-**alert_channels**
-| column | type | notes |
-| --- | --- | --- |
-| `id` | text | PK |
-| `name` | text | not null; **unique per scope**: `UNIQUE (app_id, name)` for app scopes plus a partial unique index on `name` where `app_id IS NULL` for global rows |
-| `type` | text | `email\|webhook\|slack\|rocketchat` |
-| `config` | text | JSON string, default `{}` |
-| `app_id` | text | nullable; `NULL` = global (default) channel |
-| `created_at` / `updated_at` | text | default `CURRENT_TIMESTAMP` |
+**alert_channels** — `id` (PK), `name`, `type`, `config` (JSON), `app_id` (nullable; NULL = global), unique per scope (`UNIQUE (app_id, name)` + partial unique on `name` where `app_id IS NULL`)
 
-**alert_rules**
-| column | type | notes |
-| --- | --- | --- |
-| `id` | text | PK |
-| `name` | text | not null; unique per scope (as above) |
-| `trigger` | text | `threshold\|new_issue\|regression`, default `threshold` |
-| `metric` | text | nullable; `event_count\|error_count\|fatal_count\|new_issue_count\|latency_p95\|latency_p99` (threshold rules only) |
-| `operator` | text | nullable; `gt\|lt` (threshold rules only) |
-| `threshold` | real | nullable (threshold rules only) |
-| `window_seconds` | integer | nullable (threshold rules only; evaluation window) |
-| `cooldown_seconds` | integer | default `3600` (min time between notifications; per issue for issue triggers) |
-| `channel_ids` | text | JSON string, default `[]`; empty ⇒ all effective channels |
-| `measurement` | text | nullable; measurement name for latency metrics |
-| `app_id` | text | nullable; `NULL` = global (default) rule |
-| `is_enabled` | integer | default `1` |
-| `last_triggered_at` | text | nullable (cooldown bookkeeping) |
-| `created_at` / `updated_at` | text | default `CURRENT_TIMESTAMP` |
+**alert_rules** — `id` (PK), `name`, `trigger`, `metric`, `operator`, `threshold`, `window_seconds`, `cooldown_seconds` (default 3600), `channel_ids` (JSON), `measurement`, `app_id` (NULL = global), `is_enabled`, `last_triggered_at`, `created_at`, `updated_at`; unique per scope
 
-**alert_incidents**
-| column | type | notes |
-| --- | --- | --- |
-| `id` | text | PK |
-| `rule_id` | text | not null, indexed |
-| `app_id` | text | nullable, indexed |
-| `trigger` | text | `threshold\|new_issue\|regression`, default `threshold` |
-| `issue_fingerprint` | text | nullable; set on issue-trigger incidents (per-issue cooldown lookup) |
-| `metric` | text | nullable (threshold incidents only) |
-| `value` | real | nullable (observed metric value) |
-| `threshold` | real | nullable |
-| `status` | text | default `firing`; `resolved` when the metric recovers (issue-trigger incidents are recorded already `resolved` — one-shot) |
-| `triggered_at` | text | not null |
-| `resolved_at` | text | nullable |
+**alert_incidents** — `id` (PK), `rule_id`, `app_id`, `trigger`, `issue_fingerprint`, `metric`, `value`, `threshold`, `status` (`firing|resolved`), `triggered_at`, `resolved_at`
 
-**issues**
-| column | type | notes |
-| --- | --- | --- |
-| `id` | text | PK |
-| `app_id` | text | not null, indexed |
-| `fingerprint` | text | not null; **unique per app** via `UNIQUE (app_id, fingerprint)` |
-| `title` | text | not null (human-readable: top exception or message) |
-| `status` | text | `unresolved\|resolved`, default `unresolved`, indexed |
-| `event_count` | integer | default `1` |
-| `first_seen` / `last_seen` | text | not null (ISO strings) |
-| `latest_event_id` | text | nullable; stored event id of the most recent occurrence (UI drill-down) |
-| `created_at` / `updated_at` | text | default `CURRENT_TIMESTAMP` |
+**issues** — `id` (PK), `app_id`, `fingerprint` (unique per app), `title`, `status` (`unresolved|resolved`), `event_count`, `first_seen`, `last_seen`, `latest_event_id`, `created_at`, `updated_at`
 
-**stored_events** (alerting addition)
-| column | type | notes |
-| --- | --- | --- |
-| `app_id` | text | nullable, indexed; set at ingestion so metrics can be computed per app |
+**permission_rules** — `id` (PK), `group_name` (unique, lowercased), `environments` (JSON array), `app_prefixes` (JSON array), `is_enabled`, `created_at`, `updated_at`
 
-### 7.2 DAO conventions (`db/dao/*`)
+**permission_users** — `id` (PK), `email` (unique, lowercased), `environments` (JSON), `app_prefixes` (JSON), `is_enabled`, `created_at`, `updated_at`
 
-Each DAO is a plain object exported as `<entity>DAO` (e.g. `storedEventDAO`, `featureFlagDAO`, `environmentDAO`). Standard methods:
+**source_maps** — `id` (PK), `project_id`, `app_id`, `environment_id`, `release`, `dist`, `filename`, `map_json`, `created_at`; unique `(project_id, release, filename)`
 
-- `create(data)` → race-safe insert: `onConflictDoNothing`/`onConflictDoUpdate` on the entity's unique index, then `.returning()`
-- `findById(id)` / `findByX(value)` → `select ... where ... limit(1)`, returns `undefined` if absent
-- `findByIdOrThrow(id)` → throws `notFound("<Entity>", id)` from `backend/errors.ts` when missing
-- `list(options)` → returns `{ data, pagination }` (paginated) or `T[]`
-- `updateOrThrow(id, patch)` → update + `.returning()`, 404 when missing
-- `delete(id)` → boolean (`.returning()` + `.length`)
+**source_map_tokens** — `id` (PK), `project_id`, `app_id`, `environment_id`, `token_hash` (SHA-256), `token_prefix`, `name`, `created_by`, `created_at`, `last_used_at`, `expires_at`, `revoked_at`
 
-**Rules encoded here:**
-- Handlers must call DAOs; DAOs own Drizzle queries and throw `backend/errors.ts` `ApiError`s (never `elysia`).
-- "NotFound" is a `404` thrown as `notFound(...)`, mapped by the root `onError`.
-- Conflicts are database-enforced: `create` inserts with `onConflictDoNothing`/`onConflictDoUpdate` and throws `conflict(...)` when it loses the race; updates map `uniqueViolationConstraint(err)` (`db/pg-errors.ts`) to `conflict(...)`. Never read-then-write to pre-check uniqueness.
-- Keys are generated in the handler/DAO with `crypto.randomUUID()`; never rely on a DB default for text PKs.
+**experiment_assignments** — `id` (PK), `flag_id`, `user_id`, `variant_key`, `context` (JSON), `assigned_at`; unique `(flag_id, user_id)`
 
-### 7.3 JSON-in-text columns
+**experiment_metrics** — `id` (PK), `flag_id`, `variant_key`, `user_id`, `metric_name`, `value` (real), `recorded_at`
 
-`variants`, `targetingRules`, `segments`, `rules`, `experiment`, `envelopeHeader`, `envelopeItems` are `text` columns holding JSON strings. Handlers `JSON.stringify` on write; DAOs `JSON.parse` on read through the shared `parseJson` helper in `db/json.ts` (safe fallback when the column is null or malformed).
+### 7.2 DAO Conventions (`db/dao/*`)
+
+Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featureFlagDAO`).
+
+**Standard Methods:**
+- `create(data)` — race-safe: `onConflictDoNothing`/`onConflictDoUpdate` on unique index + `.returning()`
+- `findById(id)` / `findByX(value)` — `select ... where ... limit(1)` → `undefined` if absent
+- `findByIdOrThrow(id)` — throws `notFound("<Entity>", id)`
+- `list(options)` → `{ data, pagination: { page, limit, total, totalPages } }` or `T[]`
+- `updateOrThrow(id, patch)` — update + `.returning()`, 404 when missing
+- `delete(id)` — boolean (`.returning()` + `.length`)
+
+**Rules:**
+- Handlers call DAOs; DAOs own Drizzle queries; throw `backend/errors.ts` `ApiError`s (never `elysia`).
+- NotFound = `404` via `notFound(...)` mapped by root `onError`.
+- Conflicts = DB-enforced: `create` uses `onConflictDoNothing`/`onConflictDoUpdate`, throws `conflict(...)` on race loss; updates map `uniqueViolationConstraint` to `conflict(...)`. **Never read-then-write.**
+- IDs generated in handler/DAO with `crypto.randomUUID()`; never DB default for text PKs.
+
+### 7.3 JSON-in-Text Columns
+
+`variants`, `targetingRules`, `segments`, `rules`, `experiment`, `envelopeHeader`, `envelopeItems` — `text` columns holding JSON strings. Handlers `JSON.stringify` on write; DAOs `JSON.parse` on read via `parseJson` helper (`db/json.ts`, safe fallback).
 
 ### 7.4 Dates & IDs
 
-- Timestamps are `text` ISO strings (`new Date().toISOString()`), generated in the handler/DAO. Don't mix `Date` objects, ISO strings, and SQL `CURRENT_TIMESTAMP` in one table.
-- IDs are UUIDs. Prefer `crypto.randomUUID()` (Bun built-in) and generate them at the **call site or DAO**, never rely on the DB (text PKs have no default).
+- Timestamps = `text` ISO strings (`new Date().toISOString()`), generated in handler/DAO. **Never mix** `Date`, ISO strings, and SQL `CURRENT_TIMESTAMP`.
+- IDs = UUIDs via `crypto.randomUUID()` (Bun built-in) at call site or DAO; never DB default.
 
 ---
 
-## 8. Ingestion pipeline & protocol
+## 8. Ingestion Pipeline & Protocol
 
-- **Envelope format** (`backend/events/utils.ts#parseEnvelope`): line 1 = JSON header, then repeating `{ item header JSON line, payload }`. Payloads are read as `length` bytes (so JSON payloads may contain newlines); when the declared length does not yield valid JSON, or is absent, the newline-terminated line is used for compatibility with hand-written envelopes. Returns `{ header, items }` or `null`.
-- `extractEventId`: header `event_id` → event/transaction payload `event_id` → span `trace_id` → random UUID.
-- `convertSpanToTransaction`: turns Sentry **span** items (`version: 2`) into transaction-shaped payloads (segment span becomes the transaction; child spans collected; `sentry.measurement.*` attributes become `measurements`).
+### Envelope Format (`backend/events/utils.ts`)
+- Line 1 = JSON header, then repeating `{ item header JSON line, payload }`.
+- Payloads read as `length` bytes (JSON may contain newlines); fallback to newline-terminated line for hand-written envelopes.
+- Returns `{ header, items }` or `null`.
+
+### Processing
+- `extractEventId`: header `event_id` → payload `event_id` → span `trace_id` → random UUID.
+- `convertSpanToTransaction`: Sentry **span** items (`version: 2`) → transaction-shaped payloads (segment span = transaction; child spans collected; `sentry.measurement.*` → `measurements`).
 - `normalizeTransactionPayload`: hoists trace metadata from `contexts.trace`.
-- Storage: parsed items are saved to `stored_events` (`envelope_header` + `envelope_items`) via `storedEventDAO.create`, which uses `onConflictDoNothing` so duplicate `event_id` retries are idempotent (no error, no duplicate row, no re-publish).
-- **Replay offload** (`backend/events/offload.ts`): `replay_recording` item payloads are written to the object store before the message is published or stored — S3-compatible storage when `S3_BUCKET` is configured, the local `LOCAL_STORAGE_DIR` directory otherwise — under `replays/<projectId>/<appId>/<replayId|messageId>/<messageId>-<index>.json`, and the stored item keeps just the object key (`{ key }`) instead; readers resolve keys against the active storage configuration, so switching backends means migrating the objects. Best-effort: when the write fails or exceeds the 5s bound, the payload stays inline and ingestion is never affected. The `replay_event` metadata stays inline, so `GET /events/:id` returns it — or the pointer itself for recording-only envelopes — and while the local backend is active the pointer's `key` is fetchable at `/storage/<key>` (§5.12).
-- **NATS/ClickHouse** (`initNats`, `initClickHouse`): NATS-first ingestion — with a broker connected the handler publishes the envelope (`publishEvent`, 2s PubAck timeout) and consumers do the work: `sentry-events-consumer` (durable, sequential) persists to Postgres and pushes to ClickHouse best-effort, an ephemeral per-instance consumer fans out to WebSocket clients at `/events/live/feed`, and `sentry-releases-consumer` handles release events. When NATS is unavailable the handler applies the same `applyEventMessage` path in-process. ClickHouse is optional: `initClickHouse` probes and ensures the `sentry_events` table (`appId` included) at boot; stored events are pushed best-effort while it is available, and `/events` list + get read from it with per-request Postgres fallback (`backend/events-store.ts`). `/events/clear` clears both stores.
+- **Metric Extraction** (`backend/metrics/samples.ts`): `parseEnvelope` + `normalizeTransactionPayload` → every numeric measurement + sentinels → publish `sentry.events` + `sentry.metrics`.
+
+### Replay Offload (`backend/events/offload.ts`)
+- `replay_recording` items → object store **before** NATS publish.
+- Key: `replays/<projectId>/<appId>/<replayId|messageId>/<messageId>-<index>.json`
+- Stored item keeps `{ key }` pointer; readers resolve at read time (backend-agnostic).
+- **Best-effort:** 5s timeout; failure/timeout → payload stays inline, ingestion never affected.
+
+### NATS / ClickHouse Bootstrap
+- **Order:** Postgres → NATS (stream + durable pull consumers `clickhouse-events`, `clickhouse-metrics`) → ClickHouse (engine tables + MVs) → fail fast.
+- **ClickHouse DDL** (engine tables pull via NATS engine):
+  ```sql
+  CREATE TABLE nats_events (...) ENGINE = NATS SETTINGS nats_stream='SENTRIES', nats_consumer_name='clickhouse-events', nats_subjects='sentry.events', nats_format='JSONEachRow', input_format_skip_unknown_fields=1, nats_skip_broken_messages=10;
+  CREATE TABLE sentry_events (...) ENGINE = ReplacingMergeTree() ORDER BY (projectId, receivedAt, id) SETTINGS fsync_after_insert=1, fsync_part_directory=1;
+  CREATE MATERIALIZED VIEW sentry_events_mv TO sentry_events AS SELECT ... FROM nats_events WHERE type != 'clear';
+  ```
+- **Metrics tables** mirror exactly (`clickhouse-metrics` consumer).
+- **TTL:** `TTL toDateTime(receivedAt) + toIntervalMonth(1)` (1 month default); admin-changeable via Settings → Event Retention; boot only seeds when no TTL exists.
+- **Ack:** After MV insert succeeds; failed insert → redelivery.
+- **Idempotency:** `ReplacingMergeTree` + `FINAL` reads; duplicates collapse.
+
+### Side-Effects Consumer (`backend/events-consumer.ts`)
+- Durable `sentry-events-consumer` (sequential, manual ack).
+- Applies: issue tracking (`createIfNew` / `regressIfResolved` / `markSeen`), alert triggers (`new_issue`/`regression`), `clear` (truncates CH + clears PG issues).
+- **Never touches ClickHouse** — CH outage never stalls side effects.
 
 ---
 
-## 9. Known limitations / landmines
+## 9. Error Handling Patterns
 
-1. **One dialect, two drivers**: dev/test run in-process PGlite, production runs real Postgres via `drizzle-orm/bun-sql`; both use `db/schema` + the committed `db/migrations`, so schema drift is impossible. Watch driver-level result parsing (`int8` → `BigInt`/string in Bun SQL; use `count(*)::int` or `db.$count`) and keep `drizzle-kit` pinned to the same RC as `drizzle-orm`.
-2. **Sentry SDK DSN constraint**: SDKs require a numeric DSN project id, so every app carries a DB-generated serial `number` used as the DSN path. `resolveApp` resolves numeric paths via `findByNumber` and keeps the ingest-key / project-id + public-key fallbacks for older DSNs; keep those fallbacks when changing ingestion routing.
-3. **ClickHouse is the optional events read store**: stored events are pushed best-effort at store time; the events API serves list/get from it when `initClickHouse` succeeded and falls back to Postgres on any failure. Postgres remains the source of truth for writes, metrics and alerting.
-4. **Identity providers are stubbed**: `adminAuthEnforced()` is env-driven (`ADMIN_TOKEN`, `OIDC_*`, `OAUTH_*`, `NODE_ENV=production`); there is no real OIDC/OAuth login flow yet.
-5. **Object store is offload-only for writes**: replay recordings move to S3-compatible storage when `S3_BUCKET` is set, or to the local `LOCAL_STORAGE_DIR` directory otherwise, and the stored pointer is the only reference to them. Local objects are fetchable at `/storage/*` (§5.12); there is no S3 read/signing endpoint or replay playback UI yet, and deleting events (`/events/clear`, app/project deletion) does not delete the objects — retention/lifecycle is a storage-side concern for now. A local directory is node-local: containers need a mounted volume and multiple replicas need a shared one (or S3).
+### ApiError Hierarchy (`backend/errors.ts`)
+```ts
+class ApiError extends Error {
+  constructor(public httpStatus: number, public message: string, public code: string) { ... }
+}
+export const notFound = (entity: string, id: string) => new ApiError(404, `${entity} not found: ${id}`, "NOT_FOUND");
+export const badRequest = (msg: string) => new ApiError(400, msg, "BAD_REQUEST");
+export const unauthorized = (msg: string) => new ApiError(401, msg, "UNAUTHORIZED");
+export const forbidden = (msg: string) => new ApiError(403, msg, "FORBIDDEN");
+export const conflict = (msg: string) => new ApiError(409, msg, "CONFLICT");
+export const payloadTooLarge = (msg: string) => new ApiError(413, msg, "PAYLOAD_TOO_LARGE");
+export const internalError = (msg: string) => new ApiError(500, msg, "INTERNAL_ERROR");
+export const serviceUnavailable = (msg: string) => new ApiError(503, msg, "SERVICE_UNAVAILABLE");
+```
 
----
-
-## 10. Rules for the team (aligning junior devs)
-
-### Architecture
-1. **Layers are sacred**: Route handler → DAO → Drizzle. Handlers never import `drizzle-orm` or call `db.*` directly; DAOs never build HTTP `Request`/`Response` objects (throwing `backend/errors.ts` `ApiError`s is the exception).
-2. **One module = one domain**: add a new domain as `backend/<domain>/index.ts` exporting a `new Elysia({ prefix })`. Register it in `backend/index.ts`. Do not add unrelated routes to existing files.
-3. **Compose, don't duplicate prefixes**: if a module belongs under `/api/admin`, mount it inside `adminRoutes`, not at the top level.
-4. **Keep `backend/index.ts` thin**: only bootstrap, cross-cutting concerns (health, error handler, external clients). Domain logic lives in modules.
-
-### Types & validation
-5. **`backend/protocol/` is the single source of truth for protocol/domain types.** Do not add duplicate type files in modules or `models/`.
-6. **Every route with input must declare a schema** (`body`, `query`, and `params` where applicable). Use ArkType (`import { type as arktype } from "arktype"`) consistently. No unvalidated user input.
-7. **Never trust the client**: validate UUIDs (`"string.uuid"`), enums (`"'draft' | 'active'"`), and required fields in the schema, not with ad-hoc `if` checks.
-8. **Type the DAO return values** (`Promise<T | undefined>`), and prefer exported inferred types (`$inferSelect` / `$inferInsert`).
-
-### Database
-9. **IDs**: use `crypto.randomUUID()` (or `string.uuid`) generated in the DAO/handler. Don’t depend on a DB default for text PKs, and don’t add the `uuid` package back.
-10. **Dates**: store ISO strings in `text` columns (`new Date().toISOString()`). Don’t mix `Date` objects and SQL `CURRENT_TIMESTAMP` in the same table.
-11. **JSON columns**: `JSON.stringify` before write, `JSON.parse` after read (with a safe fallback to `[]`/`null`). Never bind a raw object/array to a `text` column.
-12. **Migrations**: schema changes go through Drizzle (`schema: ./db/schema/index.ts`, `out: ./db/migrations` in `drizzle.config.ts`). Generate with `bunx drizzle-kit generate`; `db/index.ts` applies them at startup (idempotent). Do not hand-write DDL or ClickHouse DDL from application code beyond the existing bootstrap.
-13. **`select *` is fine for these small tables, but list endpoints must paginate** and return `{ data, pagination: { page, limit, total, totalPages } }` — mirror `featureFlagDAO.list` and `storedEventDAO.list`.
-14. **NotFound is a 404**: throw `notFound("<Entity>", id)` from the DAO via the `*OrThrow` helper. Don’t return `{ error }` with a 200.
-
-### Errors & responses
-15. **Throw `ApiError`s** from `backend/errors.ts` (`badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, `payloadTooLarge`, `internalError`) for non-2xx responses; the root `onError` maps them to the HTTP status + `{ error }`. Never build error responses by hand or return a body that implies success.
-16. **Fail loudly in logs, quietly to clients**: log details server-side; return stable, generic client errors. Do not leak stack traces.
-17. **Remove debug logging** (`console.log("[DEBUG] ...")`) before committing, or gate it behind an env flag.
-18. **Never ship fabricated/mock data** (e.g. random counts or hardcoded sample arrays). If a field isn’t real yet, return it as `null` and document it — don’t invent numbers.
-
-### Auth
-19. **Centralize auth** in one importable module. Both `validateAuth` and `validateAdminAuth` must live in a shared file and be applied via middleware/`onBeforeHandle`, not copy-pasted per route.
-20. **Authorization is enforced on admin routes**: `/api/admin/*` fails closed in `adminRoutes.onBeforeHandle`; UI surfaces (`/events/*`, `/storage/*`) follow `adminAuthEnforced()`.
-21. **Secret handling**: never log tokens/keys; never hardcode real credentials. The e2e suite configures its own `ADMIN_TOKEN` in `e2e/preload.ts` — the app ships no built-in tokens.
-
-### Testing & quality gates
-22. **Every new endpoint gets a test** — API tests run in-process via `app.handle` under `tests/` (patterns: `tests/12-projects-apps.test.ts`; helpers: `tests/test-helpers.ts`); suites that need a real socket stay in `e2e/`. Rely on tests, not manual curl, for DSN/ingestion/auth.
-23. **Run `bun run typecheck` and `bun run test` before pushing.** Do not commit with type errors.
-24. **No `.tmp`, no commented-out dead code, no duplicate files.** If something is unused, delete it.
-25. **Consistent naming**: routes plural and kebab-case (`feature-flags`, `stored-events`), DAO methods as in §7.2, files `index.ts` per module.
-
-### External services
-26. **NATS/ClickHouse are best-effort**: ingestion publishes NATS-first when the broker is connected and otherwise persists in-process; consumer and ClickHouse failures (push, read, clear) are always logged and never fail the request. Keep it that way — ingestion must not depend on either being up.
-27. **Env-driven config only**: read hosts/ports from env; never hardcode `localhost` for anything that runs outside dev.
+### Usage Rules
+- **Handlers/DAOs throw `ApiError`** — never `throw status(...)` or return `{ error }` with 200.
+- **Root `onError`** maps `ApiError` → HTTP status + `{ error }`; unknown → 500 + generic message.
+- **Log details server-side** (with context); return generic client errors; **never leak stack traces**.
+- **No debug logs in commits** — gate behind env flag if needed.
+- **No fabricated data** — return `null` and document; don't invent numbers.
 
 ---
 
-## 11. Quick checklist for any backend change
+## 10. Testing Strategy
 
-- [ ] Route declared with an input schema (body/query/params).
-- [ ] Logic delegated to a DAO; no Drizzle in the handler.
-- [ ] IDs generated with `crypto.randomUUID()`; dates stored as ISO strings; JSON columns stringified.
-- [ ] Missing record ⇒ `notFound(...)`, validation error ⇒ `badRequest(...)`.
-- [ ] Pagination shape unchanged for list endpoints.
-- [ ] Auth guard applied for admin/ingestion routes as appropriate.
+### Test Organization
+| Directory | Transport | Purpose |
+|-----------|-----------|---------|
+| `tests/` | In-process (`app.handle(Request)`) | Unit/API tests — no network listener; `Host` header set for DSN consistency |
+| `e2e/` | Real socket (docker-compose) | SDK-driven, WebView UI, WebSocket; boots real app vs PGlite |
+
+**Test Command:** `bun run test` = `bun test --parallel=1 tests/ e2e/`
+**Helpers:** `tests/test-helpers.ts` — `startTestApp()`, `handleFetch()`, `waitFor(fn)`.
+
+### Hop Tests (One Stage Per Test)
+| # | Test | Assertion |
+|---|------|-----------|
+| 1 | Ingest → NATS | POST envelope → assert `sentry.events` + `sentry.metrics` in stream |
+| 2 | NATS → ClickHouse | Publish to NATS → `waitFor` row in `sentry_events`/`sentry_metrics` (`FINAL`); dup event id = 1 row |
+| 3 | NATS → Postgres | Publish → assert issue/alert side effects; republished id ≠ 2nd issue/alert |
+| 4 | ClickHouse → API | Seed CH directly → assert events/metrics endpoints |
+| 5 | Live Feed | NATS WS client subscribes → publish → assert receipt |
+| 6 | SDK E2E | Full path via real SDK; CH visibility assertions use `waitFor` |
+
+### Requirements
+- Every new endpoint gets a test.
+- `bun run typecheck` and `bun run test` MUST pass before push.
+- E2E uses `docker compose up -d` (Postgres, ClickHouse, NATS, RustFS).
+
+---
+
+## 11. Quick Checklist for Any Backend Change
+
+- [ ] Route declared with input schema (`body`/`query`/`params`) using ArkType.
+- [ ] Logic delegated to DAO; **no Drizzle in handler**.
+- [ ] IDs = `crypto.randomUUID()`; dates = ISO strings; JSON columns = `JSON.stringify`.
+- [ ] Missing record ⇒ `notFound(...)`; validation error ⇒ `badRequest(...)`.
+- [ ] List endpoints paginate → `{ data, pagination: { page, limit, total, totalPages } }`.
+- [ ] Auth guard applied correctly (admin/ingestion/scoped).
+- [ ] New admin GETs for scoped identities added to `SCOPED_READ_PATHS` + filtered with `scopedViewFor(...)`.
 - [ ] Debug logs removed.
-- [ ] e2e test added/updated in `e2e/`.
+- [ ] Test added/updated (`tests/` or `e2e/`).
 - [ ] `bun run typecheck` and `bun run test` pass.

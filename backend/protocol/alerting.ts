@@ -1,63 +1,48 @@
-import type { IssueSummary } from "./issues";
+export interface AlertChannelType {
+  type: "webhook" | "slack" | "rocketchat" | "email";
+  config: Record<string, unknown>;
+}
 
-export type AlertChannelType = "email" | "webhook" | "slack" | "rocketchat";
+export interface AlertChannelCreate {
+  name: string;
+  type: "webhook" | "slack" | "rocketchat" | "email";
+  config?: Record<string, unknown>;
+  appId?: string;
+}
 
-export type AlertMetric =
-  | "event_count"
-  | "error_count"
-  | "fatal_count"
-  | "new_issue_count"
-  | "latency_p95"
-  | "latency_p99";
-
-export type AlertOperator = "gt" | "lt";
-
-// A rule fires on a windowed metric breach ("threshold") or on an
-// issue-state transition detected at ingestion ("new_issue" first
-// occurrence, "regression" reoccurrence of a resolved issue).
-export type AlertTrigger = "threshold" | "new_issue" | "regression";
-
-export type AlertSeverity = "info" | "warning" | "critical";
-
-export type AlertIncidentStatus = "firing" | "resolved";
-
-// A delivery endpoint. `appId: null` marks a global (default) channel;
-// an app-scoped channel with the same `name` replaces the global one.
-export interface AlertChannel {
+export interface AlertChannelResponse {
   id: string;
   name: string;
-  type: AlertChannelType;
+  type: string;
   config: Record<string, unknown>;
   appId: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface AlertChannelCreateRequest {
+export interface AlertRuleCreate {
   name: string;
-  type: AlertChannelType;
-  config?: Record<string, unknown>;
-  appId?: string | null;
+  trigger: "threshold" | "new_issue" | "regression";
+  metric?: "event_count" | "error_count" | "fatal_count" | "new_issue_count" | "latency_p95" | "latency_p99";
+  operator?: "gt" | "lt";
+  threshold?: number;
+  windowSeconds?: number;
+  cooldownSeconds?: number;
+  channelIds?: string[];
+  measurement?: string;
+  appId?: string;
 }
 
-// Per-platform config shapes (all optional, validated at send time):
-//   webhook:   { url, headers? }
-//   slack:     { webhookUrl } | { token, channel }
-//   rocketchat:{ webhookUrl }
-//   email:     { to, from, ... } (SMTP — planned)
-
-export interface AlertRule {
+export interface AlertRuleResponse {
   id: string;
   name: string;
-  trigger: AlertTrigger;
-  // Set on threshold rules only; null on issue triggers.
-  metric: AlertMetric | null;
-  operator: AlertOperator | null;
+  trigger: "threshold" | "new_issue" | "regression";
+  metric: string | null;
+  operator: string | null;
   threshold: number | null;
   windowSeconds: number | null;
   cooldownSeconds: number;
   channelIds: string[];
-  // Measurement name for latency_* metrics (default "duration").
   measurement: string | null;
   appId: string | null;
   isEnabled: boolean;
@@ -66,45 +51,40 @@ export interface AlertRule {
   updatedAt: string;
 }
 
-export interface AlertIncident {
-  id: string;
-  ruleId: string;
-  appId: string | null;
-  trigger: AlertTrigger;
-  // Set on threshold incidents; issue-trigger incidents carry the
-  // fingerprint instead.
-  metric: AlertMetric | null;
-  value: number | null;
-  threshold: number | null;
-  issueFingerprint: string | null;
-  status: AlertIncidentStatus;
-  triggeredAt: string;
-  resolvedAt: string | null;
-}
-
-// Uniform notification payload — identical for every platform so the
-// caller never has to know platform quirks.
 export interface AlertNotification {
   title: string;
   message: string;
-  severity: AlertSeverity;
+  severity: "info" | "warning" | "critical";
   ruleName: string;
-  trigger: AlertTrigger;
-  metric: AlertMetric | null;
+  trigger: "threshold" | "new_issue" | "regression";
+  metric: string | null;
   value: number | null;
   threshold: number | null;
-  // Present on issue-trigger notifications.
-  issue?: IssueSummary;
-  appId: string | null;
+  issue?: {
+    id: string;
+    title: string;
+    fingerprint: string;
+    level: string;
+    appId: string;
+    projectId: string;
+    environmentId: string;
+  };
+  projectId: string;
+  environmentId: string | null;
   occurredAt: string;
   link?: string;
 }
 
-// Failures are reported, never thrown into the request path.
-export interface DeliveryResult {
-  channelId: string;
-  channelName: string;
-  type: AlertChannelType;
-  ok: boolean;
-  error?: string;
+export interface AlertIncidentResponse {
+  id: string;
+  ruleId: string;
+  appId: string | null;
+  trigger: "threshold" | "new_issue" | "regression";
+  issueFingerprint: string | null;
+  metric: string | null;
+  value: number | null;
+  threshold: number | null;
+  status: "firing" | "resolved";
+  triggeredAt: string;
+  resolvedAt: string | null;
 }

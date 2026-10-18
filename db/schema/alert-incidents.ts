@@ -1,12 +1,5 @@
 import { pgTable, text, real, index } from "drizzle-orm/pg-core";
 
-// An incident is "firing"
-// while its rule's metric breaches the threshold and
-// "resolved" once the metric recovers.
-//
-// Issue triggers (new_issue / regression) are one-shot: their incidents
-// are recorded already resolved (nothing to recover) and carry the
-// issue `fingerprint` so the per-issue cooldown can be enforced.
 export const alertIncidents = pgTable(
   "alert_incidents",
   {
@@ -29,5 +22,5 @@ export const alertIncidents = pgTable(
   }),
 );
 
-export type AlertIncidentRow = typeof alertIncidents.$inferSelect;
+export type AlertIncident = typeof alertIncidents.$inferSelect;
 export type AlertIncidentInsert = typeof alertIncidents.$inferInsert;

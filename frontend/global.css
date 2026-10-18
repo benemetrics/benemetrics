@@ -247,8 +247,7 @@ a.action { text-decoration: none; }
 .project-hero-copy { flex: 1; }
 .project-name { font-size: 16px; font-weight: 700; }
 .project-meta { margin-top: 5px; color: #aeb4d1; font-size: 10px; }
-.project-health { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 20px; color: #cbd2dd; background: rgba(0,0,0,.12); font-size: 9px; }
-.project-health span, .app-state span, .waiting-status span { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgba(37,164,111,.14); }
+.app-state span, .waiting-status span { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgba(37,164,111,.14); }
 .section-label-row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
 .section-label-row > div:first-child { display: flex; flex-direction: column; gap: 3px; }
 .section-label-row strong { font-size: 13px; }.section-label-row span { color: var(--ink-faint); font-size: 9px; }
@@ -406,7 +405,6 @@ a.action { text-decoration: none; }
   .screen-intro .action { flex: 0 0 auto; }
   .apps-grid { grid-template-columns: 1fr; }
   .project-hero { align-items: flex-start; flex-wrap: wrap; }
-  .project-health { order: 4; margin-left: 60px; margin-top: -20px; }
   .setup-layout { grid-template-columns: 1fr; gap: 8px; }
   .setup-steps { display: grid; grid-template-columns: repeat(3, 1fr); }
   .setup-step { min-height: 52px; }
@@ -690,3 +688,25 @@ textarea.field-control { height: auto; min-height: 74px; padding: 9px 11px; resi
   .mini-metrics.four > div:last-child { grid-column: auto; }
 }
 
+
+/* --- Permissions (Settings → Permissions) and the auth prompt --- */
+.permission-note { padding: 14px 17px; }
+.permission-note p { margin: 0; max-width: 880px; color: var(--ink-muted); font-size: 10px; line-height: 1.7; }
+.list-screen.permissions .list-screen-head, .list-screen.permissions .list-screen-row { grid-template-columns: 1.1fr 1.6fr 110px 168px; }
+.permission-form { padding: 16px 17px; border-bottom: 1px solid var(--border); background: var(--surface-subtle); }
+.permission-form .builder-actions { margin-top: 16px; }
+.readonly-chip { margin-left: 7px; padding: 2px 7px; border-radius: 9px; background: rgba(185,198,255,.18); color: #c9d3ff; font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; vertical-align: middle; }
+.session-hint { margin: 0 1px 8px; color: var(--sidebar-muted); font-size: 9px; line-height: 1.5; }
+.auth-prompt { display: flex; align-items: center; gap: 12px; width: calc(100% - 60px); max-width: 1440px; margin: 18px auto 0; padding: 12px 15px; border: 1px solid #bfc1f5; border-radius: var(--radius-md); background: var(--brand-soft); }
+.auth-prompt-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.auth-prompt-copy strong { color: var(--ink); font-size: 11px; }
+.auth-prompt-copy span { color: var(--ink-muted); font-size: 9.5px; line-height: 1.5; }
+.auth-prompt .token-input { width: 210px; flex: 0 0 auto; border-color: #bfc1f5; background: var(--surface); color: var(--ink); }
+.auth-prompt .token-save { width: 74px; margin-top: 0; }
+.auth-prompt-dismiss { color: var(--ink-faint); font-size: 9.5px; font-weight: 600; cursor: pointer; }
+.auth-prompt-dismiss:hover { color: var(--ink); }
+
+@media (max-width: 760px) {
+  .auth-prompt { width: calc(100% - 32px); flex-wrap: wrap; }
+  .auth-prompt .token-input { width: 100%; }
+}

@@ -1,5 +1,5 @@
 import { edenTreaty } from '@elysiajs/eden';
-import type { App } from '../../../backend/index';
+import type { App } from '../../../backend-backup/index';
 
 // Admin auth token, configured in the sidebar and persisted in localStorage.
 // There is no built-in fallback: without a token the admin API answers 401
@@ -46,7 +46,19 @@ const authedFetch = ((input: string | URL | Request, init?: RequestInit) => {
   const headers = new Headers(init?.headers);
   const token = getAdminToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  return fetch(input, { ...init, headers });
+  return fetch(input, { ...init, headers }).then((response) => {
+    if (response.status === 401) {
+      // The credential was rejected (missing/invalid token, or an
+      // identity-provider user without a read grant): the shell listens
+      // for this to show the admin-token prompt.
+      try {
+        window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
+      } catch {
+        // non-browser context — nothing to notify
+      }
+    }
+    return response;
+  });
 }) as typeof fetch;
 
 export const api = edenTreaty<App>(window.location.origin, { fetcher: authedFetch }) as any;
@@ -76,11 +88,128 @@ export async function listEvents(params: {
   return response;
 }
 
-export interface AdminProfileDto {
+/** Dispatched on any 401 so the shell can prompt for the admin token. */
+export const AUTH_REQUIRED_EVENT = 'benedebug:auth-required';
+
+// The signed-in identity is derived locally from the stored credential —
+// there is no profile endpoint. A JWT issued by the identity provider
+// carries the name/email/groups claims; the admin token has no identity,
+// so it shows as "Admin by token". Identity-provider identities are
+// always read-only: every write and management surface stays behind the
+// admin token server-side.
+export interface ViewerProfile {
+  kind: 'admin' | 'user';
+  readOnly: boolean;
+  name: string;
+  email: string;
+  groups: string[];
+}
+
+function decodeBase64UrlJson(value: string): Record<string, unknown> | null {
+  try {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function claimString(claims: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const value = claims[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
+
+function claimGroups(claims: Record<string, unknown>): string[] {
+  const value = claims.groups;
+  if (Array.isArray(value)) {
+    return value.filter((entry): entry is string => typeof entry === 'string');
+  }
+  if (typeof value === 'string') return value.split(/[,\s]+/).filter(Boolean);
+  return [];
+}
+
+/** The identity for the stored credential, or null when none is set. */
+export function viewerProfile(): ViewerProfile | null {
+  const token = getAdminToken().trim();
+  if (!token) return null;
+
+  // A JWT (three parts with a JSON header + claims) is an
+  // identity-provider token; anything else is the admin token.
+  const parts = token.split('.');
+  if (parts.length === 3) {
+    const header = decodeBase64UrlJson(parts[0]!);
+    const claims = decodeBase64UrlJson(parts[1]!);
+    if (header && typeof header.alg === 'string' && claims) {
+      const email = claimString(claims, 'email', 'preferred_username', 'upn', 'sub');
+      const name =
+        claimString(claims, 'name') || email.split('@')[0] || 'Signed in';
+      return {
+        kind: 'user',
+        readOnly: true,
+        name,
+        email,
+        groups: claimGroups(claims),
+      };
+    }
+  }
+
+  return {
+    kind: 'admin',
+    readOnly: false,
+    name: 'Admin by token',
+    email: '',
+    groups: [],
+  };
+}
+
+// Read permissions for OIDC users (admin-token-only management surface).
+
+export interface PermissionRuleDto {
+  id: string;
+  groupName: string;
+  environments: string[];
+  appPrefixes: string[];
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PermissionUserDto {
   id: string;
   email: string;
-  name: string;
-  roles: string[];
+  environments: string[];
+  appPrefixes: string[];
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Settings (admin) — the ClickHouse events table declares its own retention
+// TTL; the API reads it back from the table definition and rewrites it with
+// ALTER ... MODIFY TTL. Admin-token-only, like the rest of Settings.
+
+export type EventsTtlUnit =
+  | 'SECOND'
+  | 'MINUTE'
+  | 'HOUR'
+  | 'DAY'
+  | 'WEEK'
+  | 'MONTH'
+  | 'YEAR';
+
+export interface EventsTtlDto {
+  table: string;
+  expression: string | null;
+  interval: { amount: number; unit: EventsTtlUnit } | null;
 }
 
 // Projects & Apps (admin)

@@ -1,15 +1,9 @@
-import { serviceUnavailable, unauthorized } from "backend/errors";
+import { serviceUnavailable, unauthorized, badRequest } from "../errors.ts";
 import { appDAO } from "db/dao/project";
-import type { AppRecord } from "db/schema/project";
-import { validateAuth } from "../auth";
-import { publishEvent, publishMetricSamples, type SentryEventMessage } from "../nats";
-import type { MetricSample } from "../protocol/metrics";
+import type { AppRecord } from "../../db/schema/project.ts";
+import { publishEvent, publishMetricSamples, type SentryEventMessage } from "../nats.ts";
+import { extractMetricSamples } from "../metrics/samples.ts";
 
-// DSNs generated for apps route ingestion through the app's numeric
-// `number` (path segment) with the public key as the `sentry_key`
-// credential; older DSNs use the ingest key or project id as the path
-// segment. Unknown projects or keys are rejected: apps are only created
-// through the admin API, never auto-provisioned by ingestion.
 async function resolveApp(
   request: Request,
   projectId: string,
@@ -37,6 +31,22 @@ async function resolveApp(
   if (byProject) return byProject;
 
   return await appDAO.findByPublicKey(requestKey);
+}
+
+export async function validateAuth(request: Request, target: "envelope" | "store"): Promise<{ valid: boolean; publicKey: string; appId?: string }> {
+  const url = new URL(request.url);
+  const sentryKey = url.searchParams.get("sentry_key") || request.headers.get("X-Sentry-Auth")?.split(",")[0]?.split("=")[1]?.trim();
+
+  if (!sentryKey) {
+    throw unauthorized("Missing sentry_key");
+  }
+
+  const app = await appDAO.findByPublicKey(sentryKey) || await appDAO.findByIngestKey(sentryKey);
+  if (!app) {
+    throw unauthorized("Unauthorized - Invalid DSN");
+  }
+
+  return { valid: true, publicKey: app.publicKey, appId: app.id };
 }
 
 // Unknown projects/keys and a `sentry_key` that does not match the

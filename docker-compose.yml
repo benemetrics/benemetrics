@@ -1,88 +1,74 @@
+version: "3.8"
+
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: sentry
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   clickhouse:
-    image: clickhouse/clickhouse-server:latest
-    # The image restricts the passwordless `default` user to localhost when no
-    # credentials are configured; skip that so the backend's defaults
-    # (CLICKHOUSE_USER/PASSWORD unset) keep working in dev. Production
-    # deployments terminate with real credentials.
+    image: clickhouse/clickhouse-server:24.3
     environment:
-      CLICKHOUSE_SKIP_USER_SETUP: "1"
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+      CLICKHOUSE_SKIP_USER_SETUP: 1
     ports:
       - "8123:8123"
       - "9000:9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
-      - clickhouse_logs:/var/log/clickhouse-server
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
 
   nats:
-    image: nats:latest
-    command: ["-c", "/etc/nats/nats-server.conf"]
+    image: nats:2.10-alpine
+    command: ["-js", "-m", "8222"]
     ports:
-      - "4222:4222" # clients
-      - "8222:8222" # monitoring
-      - "9222:9222" # WebSocket (UI live feed)
+      - "4222:4222"
+      - "8222:8222"
+      - "4223:4223"
     volumes:
-      - ./infra/nats-server.conf:/etc/nats/nats-server.conf:ro
       - nats_data:/data
+    healthcheck:
+      test: ["CMD", "nats", "server", "check", "jetstream"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   rustfs:
     image: rustfs/rustfs:latest
-    depends_on:
-      rustfs-perms:
-        condition: service_completed_successfully
+    command: server /data --console-address :9101
     environment:
-      RUSTFS_VOLUMES: /data
       RUSTFS_ACCESS_KEY: rustfsadmin
       RUSTFS_SECRET_KEY: rustfsadmin
-      RUSTFS_CONSOLE_ENABLE: "true"
-      RUSTFS_OBS_LOG_DIRECTORY: /app/logs
+      RUSTFS_BROWSER: "on"
     ports:
-      - "9100:9000" # S3 API (9100 because ClickHouse publishes 9000)
-      - "9101:9001" # web console (rustfsadmin / rustfsadmin)
+      - "9100:9000"
+      - "9101:9101"
     volumes:
       - rustfs_data:/data
-      - rustfs_logs:/app/logs
-
-  # RustFS runs as UID 10001; the named volumes need matching ownership.
-  rustfs-perms:
-    image: alpine
-    command: chown -R 10001:10001 /data /app/logs
-    volumes:
-      - rustfs_data:/data
-      - rustfs_logs:/app/logs
-
-  # Creates the bucket the backend offloads replay segments to; safe to
-  # re-run (an existing bucket is kept).
-  rustfs-init:
-    image: rustfs/rc:latest
-    depends_on:
-      - rustfs
-    entrypoint: >
-      /bin/sh -c "
-      until rc alias set local http://rustfs:9000 rustfsadmin rustfsadmin; do sleep 1; done;
-      until rc ls local/ >/dev/null 2>&1; do sleep 1; done;
-      rc ls local/sentry-replays >/dev/null 2>&1 || rc mb local/sentry-replays;
-      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   postgres_data:
   clickhouse_data:
-  clickhouse_logs:
   nats_data:
   rustfs_data:
-  rustfs_logs:

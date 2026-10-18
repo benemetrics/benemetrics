@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
-import { Action } from "../Action";
-import { Icon } from "../Icon";
-import { ScreenIntro } from "../ScreenIntro";
-import { useWorkspace } from "../WorkspaceContext";
+import { Action } from "../Action.tsx";
+import { Icon } from "../Icon.tsx";
+import { ScreenIntro } from "../ScreenIntro.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
 import {
   api,
   type SourceMapArtifactDto,
   type SourceMapResolveResultDto,
   type SourceMapTokenDto,
   type SourceMapTokenSecretDto,
-} from "../../lib/api";
-import { notify } from "../../lib/toast";
-import { relativeTime } from "../../lib/utils";
+} from "../../lib/api.ts";
+import { notify } from "../../lib/toast.ts";
+import { relativeTime } from "../../lib/utils.ts";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

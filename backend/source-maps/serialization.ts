@@ -1,22 +1,7 @@
-// Shared source map artifact row -> response mapping. The admin
-// surface names the timestamp `createdAt` while the Sentry-compatible
-// CLI surface uses `dateCreated`, so only the common fields are
-// mapped here; each surface adds its own timestamp key.
+import type { SourceMap } from "../../db/schema/source-maps.ts";
+import type { SourceMapArtifactResponse } from "../protocol/source-map.ts";
 
-import type { SourceMap } from "db/schema/source-maps";
-import type { SourceMapArtifactResponse } from "../protocol/source-map";
-
-type ArtifactFields = Pick<
-  SourceMap,
-  | "id"
-  | "projectId"
-  | "appId"
-  | "environmentId"
-  | "release"
-  | "dist"
-  | "filename"
-  | "mapJson"
->;
+type ArtifactFields = Pick<SourceMap, "id" | "projectId" | "appId" | "environmentId" | "release" | "dist" | "filename" | "mapJson">;
 
 export function toArtifactBase(map: ArtifactFields) {
   return {
@@ -27,8 +12,6 @@ export function toArtifactBase(map: ArtifactFields) {
     release: map.release,
     dist: map.dist,
     name: map.filename,
-    // Byte size of the uploaded map document, computed from the stored
-    // text instead of being persisted as a second copy of the same fact.
     size: Buffer.byteLength(map.mapJson, "utf8"),
   };
 }

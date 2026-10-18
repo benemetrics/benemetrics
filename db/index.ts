@@ -1,65 +1,45 @@
+import { drizzle } from "drizzle-orm/postgres-js";
+import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { PGlite } from "@electric-sql/pglite";
-import { drizzle as pgliteDrizzle } from "drizzle-orm/pglite";
-import { migrate as pgliteMigrate } from "drizzle-orm/pglite/migrator";
-import { drizzle as pgDrizzle } from "drizzle-orm/bun-sql";
-import { migrate as pgMigrate } from "drizzle-orm/bun-sql/migrator";
-import { projects, apps, featureFlags, segments, environments, releases, experimentAssignments, experimentMetrics, alertChannels, alertRules, alertIncidents, sourceMapTokens, sourceMaps } from "./schema/index";
+import postgres from "postgres";
+import * as schema from "./schema/index.ts";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
-type Database = ReturnType<typeof pgliteDrizzle>;
+let dbInstance: ReturnType<typeof drizzle> | ReturnType<typeof drizzlePglite> | null = null;
 
-const MIGRATIONS_FOLDER = `${import.meta.dir}/migrations`;
-const DEV_DATA_DIR = "./.pglite";
-const PGLITE_CLIENT_KEY = Symbol.for("sentry.db.pgliteClient");
+async function getDb() {
+  if (dbInstance) return dbInstance;
 
-let pgliteClient: PGlite | null = null;
+  if (process.env.DATABASE_URL) {
+    const client = postgres(process.env.DATABASE_URL, { prepare: false });
+    dbInstance = drizzle(client, { schema });
+    await migrate(dbInstance, { migrationsFolder: join(dirname(fileURLToPath(import.meta.url)), "migrations") });
+  } else if (process.env.NODE_ENV === "test") {
+    const client = new PGlite(":memory:");
+    dbInstance = drizzlePglite(client, { schema });
+    await migratePglite(dbInstance, { migrationsFolder: join(dirname(fileURLToPath(import.meta.url)), "migrations") });
+  } else {
+    const client = new PGlite("./.pglite");
+    dbInstance = drizzlePglite(client, { schema });
+    await migratePglite(dbInstance, { migrationsFolder: join(dirname(fileURLToPath(import.meta.url)), "migrations") });
+  }
 
-function getDevPgliteClient(): PGlite {
-  const slot = globalThis as unknown as Record<PropertyKey, unknown>;
-  const cached = slot[PGLITE_CLIENT_KEY] as PGlite | undefined;
-  if (cached && !cached.closed) return cached;
-
-  const client = new PGlite({ dataDir: DEV_DATA_DIR });
-  slot[PGLITE_CLIENT_KEY] = client;
-  return client;
+  return dbInstance;
 }
 
-async function createTestDatabase(): Promise<Database> {
-  const client = new PGlite();
-  pgliteClient = client;
+// Create a proper proxy that forwards all properties
+const db = new Proxy({} as any, {
+  get(target, prop) {
+    if (!dbInstance) {
+      throw new Error("Database not initialized. Call getDb() first.");
+    }
+    return (dbInstance as any)[prop];
+  },
+}) as any;
 
-  const db = pgliteDrizzle({ client });
-  await pgliteMigrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
-  return db;
-}
-
-async function createDevDatabase(): Promise<Database> {
-  const client = getDevPgliteClient();
-  pgliteClient = client;
-
-  const db = pgliteDrizzle({ client });
-  await pgliteMigrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
-  return db;
-}
-
-async function createPostgresDatabase(url: string): Promise<Database> {
-  const db = pgDrizzle(url);
-  await pgMigrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
-  return db as unknown as Database;
-}
-
-async function getDbInstance(): Promise<Database> {
-  if (process.env.NODE_ENV === "test") return createTestDatabase();
-  if (process.env.DATABASE_URL) return createPostgresDatabase(process.env.DATABASE_URL);
-  return createDevDatabase();
-}
-
-export const db: Database = await getDbInstance();
-
-export async function closeDb(): Promise<void> {
-  if (!pgliteClient) return;
-  const client = pgliteClient;
-  pgliteClient = null;
-  await client.close();
-}
-
-export { projects, apps, featureFlags, segments, environments, releases, experimentAssignments, experimentMetrics, alertChannels, alertRules, alertIncidents, sourceMapTokens, sourceMaps };
+export { db };
+export { schema } from "./schema/index.ts";
+export { getDb };

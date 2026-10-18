@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ScreenIntro } from "../ScreenIntro";
-import { useWorkspace } from "../WorkspaceContext";
-import { AGGREGATE_EVENT_LIMIT, api, listEvents } from "../../lib/api";
+import { ScreenIntro } from "../ScreenIntro.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
+import { AGGREGATE_EVENT_LIMIT, api, listEvents } from "../../lib/api.ts";
 import {
   payloadFingerprint,
   type ExceptionFrame,
   type StoredEvent,
-} from "../../lib/issues";
-import { relativeTime } from "../../lib/utils";
+} from "../../lib/issues.ts";
+import { relativeTime } from "../../lib/utils.ts";
 import "rrweb-player/dist/style.css";
 
 interface ExceptionValue {

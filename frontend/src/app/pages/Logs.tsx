@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { Icon } from "../Icon";
-import { Action } from "../Action";
-import { ScreenIntro } from "../ScreenIntro";
+import { Icon } from "../Icon.tsx";
+import { Action } from "../Action.tsx";
+import { ScreenIntro } from "../ScreenIntro.tsx";
 
 export function Logs() {
   const navigate = useNavigate();

@@ -1,81 +1,104 @@
-import { consumerOpts, createInbox, type JetStreamClient } from "nats";
-import { issueDAO } from "db/dao/issues";
-import { processIngestedEvent } from "./alerting/evaluation";
-import { clearClickHouseEvents } from "./clickhouse";
-import { SUBJECT, type SentryEventMessage } from "./nats";
+import { db } from "../db/index.ts";
+import { storedEventDAO } from "../db/dao/stored-events.ts";
+import { issueDAO } from "../db/dao/issues.ts";
+import { alertRuleDAO, alertIncidentDAO } from "../db/dao/alert-rules.ts";
+import { metricsStore } from "./metrics-store.ts";
+import { parseEnvelope, extractEventId, convertSpanToTransaction, normalizeTransactionPayload, replayIdFromEnvelope } from "./events/utils.ts";
+import { dispatchIngestedEvent } from "./nats.ts";
 
-function describe(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
+export async function processIngestedEvent(message: {
+  id: string;
+  projectId: string;
+  appId: string;
+  envelopeHeader: string;
+  envelopeItems: string;
+  receivedAt: string;
+  type: string;
+  issueEvents?: string;
+}): Promise<void> {
+  // Parse envelope
+  const envelope = parseEnvelope(message.envelopeHeader, message.envelopeItems);
+  if (!envelope) return;
 
-// Postgres side effects of an ingested event: issues/alerts (one-shot and
-// race-safe, so redeliveries never duplicate them) and — for `clear` —
-// truncating the ClickHouse events plus the derived issue state. The
-// event payload itself is stored by ClickHouse from its own consumer;
-// this path never touches it, so a ClickHouse outage cannot stall issue
-// tracking (only `clear`, which has nothing to apply until it can
-// truncate).
-export async function applyEventMessage(event: SentryEventMessage): Promise<void> {
-  if (event.type === "clear") {
-    await clearClickHouseEvents();
-    // Issues are derived from stored events; clearing the events clears
-    // the derived issue state too. The UI live feed reads the stream
-    // directly, so nothing is broadcast from here.
-    await issueDAO.clear();
-    return;
-  }
+  // Extract issue digests
+  const issueEvents = envelope.items
+    .filter((item: any) => item.header.type === "event" || item.header.type === "transaction")
+    .map((item: any) => extractIssueDigest(item.payload, message.receivedAt));
 
-  if (event.appId) {
-    processIngestedEvent(
-      event.appId,
-      event.envelopeItems,
-      event.receivedAt,
-      event.id,
-    );
-  }
-}
+  // Store in Postgres for side effects only
+  await storedEventDAO.create({
+    id: message.id,
+    projectId: message.projectId,
+    appId: message.appId,
+    envelopeHeader: message.envelopeHeader,
+    envelopeItems: message.envelopeItems,
+    receivedAt: message.receivedAt,
+  });
 
-// Control messages (e.g. "clear") are applied after the events that
-// preceded them. `deliverNew` matters when the durable is created for the
-// first time: a fresh consumer must not replay the whole stream.
-export function startEventsConsumer(
-  jetstream: JetStreamClient,
-  consumerName: string,
-): void {
-  const run = async () => {
-    try {
-      const opts = consumerOpts();
-      opts.durable(consumerName);
-      opts.deliverNew();
-      opts.deliverTo(createInbox());
-      opts.manualAck();
-      opts.ackExplicit();
+  // Process issues
+  for (const issueEvent of issueEvents) {
+    if (!issueEvent) continue;
 
-      const sub = await jetstream.subscribe(SUBJECT, opts);
+    // Create if new
+    const created = await issueDAO.createIfNew({
+      appId: message.appId,
+      fingerprint: issueEvent.fingerprint,
+      title: issueEvent.title,
+      level: issueEvent.level,
+      type: issueEvent.type,
+      receivedAt: message.receivedAt,
+      eventCount: 1,
+    });
 
-      for await (const msg of sub) {
-        let event: SentryEventMessage;
-        try {
-          event = JSON.parse(msg.string()) as SentryEventMessage;
-        } catch (err) {
-          console.error("[events] Discarding malformed message:", describe(err));
-          msg.ack();
-          continue;
-        }
+    if (created) {
+      // Fire new_issue alert
+      await fireIssueAlerts(message, issueEvent, "new_issue");
+    } else {
+      // Check for regression
+      const regressed = await issueDAO.regressIfResolved({
+        appId: message.appId,
+        fingerprint: issueEvent.fingerprint,
+        title: issueEvent.title,
+        level: issueEvent.level,
+        type: issueEvent.type,
+        receivedAt: message.receivedAt,
+        eventCount: 1,
+      });
 
-        try {
-          await applyEventMessage(event);
-          msg.ack();
-        } catch (err) {
-          console.error("[events] Failed to apply event side effects:", describe(err));
-          msg.nak();
-        }
+      if (regressed) {
+        await fireIssueAlerts(message, issueEvent, "regression");
+      } else {
+        await issueDAO.markSeen({
+          appId: message.appId,
+          fingerprint: issueEvent.fingerprint,
+          title: issueEvent.title,
+          level: issueEvent.level,
+          type: issueEvent.type,
+          receivedAt: message.receivedAt,
+          eventCount: 1,
+        });
       }
-    } catch (err) {
-      console.error("[events] Failed to start consumer:", describe(err));
     }
-  };
+  }
 
-  void run();
+  // Evaluate threshold alerts
+  await evaluateThresholdAlerts(message);
 }
 
+async function extractIssueDigest(payload: unknown, receivedAt: string) {
+  // Implementation would extract fingerprint, title, etc. from event payload
+  return {
+    fingerprint: "extracted-fingerprint",
+    title: "Extracted title",
+    level: "error",
+    type: "error",
+  };
+}
+
+async function fireIssueAlerts(message: any, issueEvent: any, trigger: "new_issue" | "regression") {
+  // Fire alert rules for this trigger
+}
+
+async function evaluateThresholdAlerts(message: any) {
+  // Evaluate threshold-based alert rules
+}

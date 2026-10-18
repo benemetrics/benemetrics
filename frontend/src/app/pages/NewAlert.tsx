@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Action } from "../Action";
-import { Icon } from "../Icon";
-import { ScreenIntro } from "../ScreenIntro";
-import { useWorkspace } from "../WorkspaceContext";
-import { api, type AlertChannelDto } from "../../lib/api";
-import { notify } from "../../lib/toast";
+import { Action } from "../Action.tsx";
+import { Icon } from "../Icon.tsx";
+import { ScreenIntro } from "../ScreenIntro.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
+import { api, type AlertChannelDto } from "../../lib/api.ts";
+import { notify } from "../../lib/toast.ts";
 
 function unwrapList<T>(response: unknown): T[] {
   if (!response || typeof response !== "object") return [];

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Action } from "../Action";
-import { ScreenIntro } from "../ScreenIntro";
-import { api, type SegmentDto } from "../../lib/api";
-import { notify } from "../../lib/toast";
-import { relativeTime } from "../../lib/utils";
+import { Action } from "../Action.tsx";
+import { ScreenIntro } from "../ScreenIntro.tsx";
+import { api, type SegmentDto } from "../../lib/api.ts";
+import { notify } from "../../lib/toast.ts";
+import { relativeTime } from "../../lib/utils.ts";
 
 const RULES_PLACEHOLDER = `[
   {

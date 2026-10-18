@@ -1,52 +1,30 @@
 {
-  "name": "sentry",
-  "module": "index.ts",
-  "type": "module",
+  "name": "sentry-backend",
+  "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "typecheck": "bun check",
-    "test": "bun test --parallel=1 tests/ e2e/",
     "dev": "bun --hot backend/index.ts",
     "start": "bun backend/index.ts",
-    "test:error-tracking": "bun test e2e/01-error-tracking.test.ts",
-    "test:error-tracking-ui": "bun test e2e/01-error-tracking-ui.test.ts",
-    "test:release-tracking": "bun test e2e/02-release-tracking.test.ts",
-    "test:performance": "bun test e2e/03-performance-monitoring.test.ts",
-    "test:session-replay": "bun test e2e/04-session-replay.test.ts",
-    "test:breadcrumbs": "bun test e2e/05-breadcrumbs.test.ts",
-    "test:alerting": "bun test e2e/06-alerting.test.ts",
-    "test:alerting-rules": "bun test tests/16-alerting-rules.test.ts",
-    "test:authentication": "bun test e2e/08-authentication.test.ts",
-    "test:feature-flags": "bun test e2e/09-feature-flags.test.ts",
-    "test:projects": "bun test tests/12-projects-apps.test.ts"
+    "test": "bun test --parallel=1 tests/ e2e/",
+    "typecheck": "bun check",
+    "db:generate": "bunx drizzle-kit generate",
+    "db:migrate": "bunx drizzle-kit migrate",
+    "db:studio": "bunx drizzle-kit studio"
   },
   "dependencies": {
-    "@clickhouse/client": "^1.24.1",
-    "@electric-sql/pglite": "^0.5.10",
-    "@elysiajs/eden": "^1.4.9",
-    "@sentry/bun": "^8.0.0",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "arktype": "2.2.8",
-    "clsx": "^2.1.1",
-    "drizzle-orm": "1.0.0-rc.4",
-    "elysia": "^1.4.30",
-    "lucide-react": "^1.56.0",
-    "nats": "^2.29.3",
-    "nats.ws": "^1.30.3",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.4",
-    "rrweb-player": "^2.1.7",
-    "tailwindcss": "4"
+    "@clickhouse/client": "^0.4.0",
+    "arktype": "^2.0.0",
+    "bun": "^1.1.0",
+    "drizzle-orm": "rc",
+    "elysia": "^1.1.0",
+    "jose": "^6.2.12",
+    "nats.ws": "^1.2.0",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.3.3",
-    "@types/bun": "latest",
-    "bun-plugin-tailwind": "^0.1.2",
-    "drizzle-kit": "1.0.0-rc.4"
+    "drizzle-kit": "^0.24.0",
+    "@types/bun": "latest"
   },
-  "peerDependencies": {
-    "typescript": "^7"
-  }
+  "trustedDependencies": ["@clickhouse/client", "nats.ws"]
 }

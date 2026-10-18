@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Action } from "../Action";
-import { ScreenIntro } from "../ScreenIntro";
-import { api, type ReleaseDto } from "../../lib/api";
-import { relativeTime } from "../../lib/utils";
+import { Action } from "../Action.tsx";
+import { ScreenIntro } from "../ScreenIntro.tsx";
+import { api, type ReleaseDto } from "../../lib/api.ts";
+import { relativeTime } from "../../lib/utils.ts";
 
 export function Releases() {
   const navigate = useNavigate();

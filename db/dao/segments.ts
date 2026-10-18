@@ -1,70 +1,60 @@
-import { db } from "db";
-import { segments, type Segment } from "db/schema/segments";
-import { eq, desc } from "drizzle-orm";
-import { internalError, notFound } from "backend/errors";
-
-type SegmentInsert = typeof segments.$inferInsert;
-
-// `rules` is a JSON column stored as text; expose it parsed to callers.
-function toSegment(row: Segment) {
-  let rules: unknown[] = [];
-  try {
-    rules = row.rules ? JSON.parse(row.rules) : [];
-  } catch {
-    rules = [];
-  }
-  return { ...row, rules };
-}
+import { db } from "../index.ts";
+import { segments } from "../schema/segments.ts";
+import { eq, desc, ilike, or } from "drizzle-orm";
+import { notFound, conflict } from "../../backend/errors.ts";
+import { crypto } from "../../backend/utils/crypto.ts";
 
 export const segmentDAO = {
-  create: async (data: Omit<SegmentInsert, "id"> & { id?: string }) => {
-    const [row] = await db
+  async create(data: { name: string; description?: string; rules?: unknown[] }) {
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const result = await db
       .insert(segments)
       .values({
-        ...data,
-        id: data.id ?? crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
+        id,
+        name: data.name,
+        description: data.description ?? "",
+        rules: JSON.stringify(data.rules ?? []),
+        createdAt: now,
       })
+      .onConflictDoNothing()
       .returning();
-    if (!row) {
-      throw internalError("Failed to create segment");
+
+    if (result.length === 0) {
+      throw conflict(`Segment with name "${data.name}" already exists`);
     }
-    return toSegment(row);
+    return result[0];
   },
 
-  findById: async (id: string) => {
-    const [row] = await db.select().from(segments).where(eq(segments.id, id)).limit(1);
-    return row ? toSegment(row) : undefined;
+  async findById(id: string) {
+    const result = await db.select().from(segments).where(eq(segments.id, id)).limit(1);
+    return result[0];
   },
 
-  findByIdOrThrow: async (id: string) => {
-    const segment = await segmentDAO.findById(id);
+  async findByIdOrThrow(id: string) {
+    const segment = await this.findById(id);
     if (!segment) throw notFound("Segment", id);
     return segment;
   },
 
-  list: async (options?: { page?: number; limit?: number }) => {
-    const page = Math.max(1, options?.page ?? 1);
-    const limit = Math.min(Math.max(options?.limit ?? 100, 1), 500);
+  async list(options: { page?: number; limit?: number } = {}) {
+    const page = options.page ?? 1;
+    const limit = Math.min(options.limit ?? 20, 100);
     const offset = (page - 1) * limit;
 
-    const [rows, total] = await Promise.all([
-      db
-        .select()
-        .from(segments)
-        .orderBy(desc(segments.createdAt))
-        .limit(limit)
-        .offset(offset),
+    const [data, totalResult] = await Promise.all([
+      db.select().from(segments).limit(limit).offset(offset).orderBy(desc(segments.createdAt)),
       db.$count(segments),
     ]);
 
     return {
-      data: rows.map(toSegment),
+      data,
       pagination: {
         page,
         limit,
-        total: Number(total),
-        totalPages: Math.ceil(Number(total) / limit),
+        total: totalResult,
+        totalPages: Math.ceil(totalResult / limit),
       },
     };
   },

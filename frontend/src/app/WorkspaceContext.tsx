@@ -3,18 +3,21 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import {
+  AUTH_REQUIRED_EVENT,
   api,
   listEnvironments,
-  type AdminProfileDto,
+  viewerProfile,
   type AppDto,
   type EnvironmentDto,
   type ProjectDto,
-} from "../lib/api";
-import { notify } from "../lib/toast";
+  type ViewerProfile,
+} from "../lib/api.ts";
+import { notify } from "../lib/toast.ts";
 
 interface WorkspaceValue {
   projects: ProjectDto[];
@@ -36,8 +39,11 @@ interface WorkspaceValue {
   refreshApplications: () => Promise<void>;
   /** Re-read the project list; returns null when the request fails. */
   refreshProjects: () => Promise<ProjectDto[] | null>;
-  /** Authenticated admin (from GET /api/admin/me), or null when unauthenticated. */
-  adminUser: AdminProfileDto | null;
+  /** The signed-in identity (decoded locally from the stored token), or null when none is set. */
+  adminUser: ViewerProfile | null;
+  /** True when the admin API rejected the caller (401) — show the sign-in prompt. */
+  authPrompt: boolean;
+  dismissAuthPrompt: () => void;
   query: string;
   setQuery: (value: string) => void;
 }
@@ -58,25 +64,23 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [environment, setEnvironment] = useState<EnvironmentDto | null>(null);
   const [applications, setApplications] = useState<AppDto[]>([]);
   const [application, setApplication] = useState<AppDto | null>(null);
-  const [adminUser, setAdminUser] = useState<AdminProfileDto | null>(null);
+  // The credential is only replaced through a full reload (the sidebar
+  // and the auth prompt both call `window.location.reload()`).
+  const [adminUser] = useState<ViewerProfile | null>(() => viewerProfile());
+  const [authPrompt, setAuthPrompt] = useState(false);
+  const authPromptDismissed = useRef(false);
   const [query, setQuery] = useState("");
 
+  // There is no profile endpoint: the identity shown in the shell comes
+  // from the stored credential, and the sign-in prompt from a real 401
+  // (any rejected request: no token, an invalid token, or a provider
+  // identity without a read grant).
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const result = await api.api.admin.me.get();
-        const profile = (result?.data as AdminProfileDto | null) ?? null;
-        if (!cancelled && profile && typeof profile.email === "string") {
-          setAdminUser(profile);
-        }
-      } catch {
-        // unauthenticated / offline — the UI shows the sign-in prompt
-      }
-    })();
-    return () => {
-      cancelled = true;
+    const onAuthRequired = () => {
+      if (!authPromptDismissed.current) setAuthPrompt(true);
     };
+    window.addEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
+    return () => window.removeEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
   }, []);
 
   useEffect(() => {
@@ -266,6 +270,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         refreshApplications,
         refreshProjects,
         adminUser,
+        authPrompt,
+        dismissAuthPrompt: () => {
+          authPromptDismissed.current = true;
+          setAuthPrompt(false);
+        },
         query,
         setQuery,
       }}

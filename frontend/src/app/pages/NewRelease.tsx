@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Action } from "../Action";
-import { ScreenIntro } from "../ScreenIntro";
-import { useWorkspace } from "../WorkspaceContext";
-import { api } from "../../lib/api";
-import { notify } from "../../lib/toast";
+import { Action } from "../Action.tsx";
+import { ScreenIntro } from "../ScreenIntro.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
+import { api } from "../../lib/api.ts";
+import { notify } from "../../lib/toast.ts";
 
 function unwrapOne<T>(response: unknown): T | null {
   if (!response || typeof response !== "object") return null;

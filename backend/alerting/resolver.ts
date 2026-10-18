@@ -1,45 +1,27 @@
-// Resolves the effective alerting configuration for an app by merging
-// the global (app_id IS NULL) rows with the app-scoped rows.
-//
-// Override semantics: per-name. An app-scoped row whose `name` matches
-// a global row replaces it; every other global row still applies.
+import { alertChannelDAO } from "../../db/dao/alert-channels.ts";
+import { alertRuleDAO } from "../../db/dao/alert-rules.ts";
+import type { AlertChannelResponse, AlertRuleResponse } from "../protocol/alerting.ts";
 
-import { alertChannelDAO } from "db/dao/alert-channels";
-import { alertRuleDAO } from "db/dao/alert-rules";
-import type { AlertChannel, AlertRule } from "../protocol/alerting";
-import { toChannel, toRule } from "./serialize";
+export async function resolveEffectiveChannels(appId: string): Promise<AlertChannelResponse[]> {
+  const [global, appSpecific] = await Promise.all([
+    alertChannelDAO.list({ appId: undefined }),
+    alertChannelDAO.list({ appId }),
+  ]);
 
-export interface EffectiveAlertConfig {
-  channels: AlertChannel[];
-  rules: AlertRule[];
+  const byName = new Map<string, AlertChannelResponse>();
+  for (const ch of global.data) byName.set(ch.name, ch);
+  for (const ch of appSpecific.data) byName.set(ch.name, ch);
+  return Array.from(byName.values());
 }
 
-export async function resolveEffectiveAlertConfig(
-  appId: string,
-): Promise<EffectiveAlertConfig> {
-  const [globalChannels, appChannels, globalRules, appRules] =
-    await Promise.all([
-      alertChannelDAO.list(null),
-      alertChannelDAO.list(appId),
-      alertRuleDAO.list(null),
-      alertRuleDAO.list(appId),
-    ]);
+export async function resolveEffectiveRules(appId: string): Promise<AlertRuleResponse[]> {
+  const [global, appSpecific] = await Promise.all([
+    alertRuleDAO.list({ appId: undefined }),
+    alertRuleDAO.list({ appId }),
+  ]);
 
-  return {
-    channels: mergeByName(
-      globalChannels.map(toChannel),
-      appChannels.map(toChannel),
-    ),
-    rules: mergeByName(globalRules.map(toRule), appRules.map(toRule)),
-  };
-}
-
-function mergeByName<T extends { name: string }>(
-  globals: T[],
-  overrides: T[],
-): T[] {
-  const merged = new Map<string, T>();
-  for (const item of globals) merged.set(item.name, item);
-  for (const item of overrides) merged.set(item.name, item);
-  return [...merged.values()];
+  const byName = new Map<string, AlertRuleResponse>();
+  for (const rule of global.data) byName.set(rule.name, rule);
+  for (const rule of appSpecific.data) byName.set(rule.name, rule);
+  return Array.from(byName.values());
 }

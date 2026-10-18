@@ -1,12 +1,21 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Icon } from "./Icon";
-import { MOBILE_MORE_NAV, MOBILE_NAV } from "./workspace";
+import { Icon } from "./Icon.tsx";
+import { MOBILE_MORE_NAV, MOBILE_NAV, READ_ONLY_NAV_PATHS } from "./workspace.ts";
+import { useWorkspace } from "./WorkspaceContext.tsx";
 
 export function MobileNavBar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { adminUser } = useWorkspace();
   const [moreOpen, setMoreOpen] = useState(false);
+
+  // Scoped (read-only OIDC) identities only see the error-triage pages.
+  const readOnly = adminUser?.readOnly === true;
+  const mainNav = readOnly
+    ? MOBILE_NAV.filter((item) => READ_ONLY_NAV_PATHS.has(item.path))
+    : MOBILE_NAV;
+  const moreNav = readOnly ? [] : MOBILE_MORE_NAV;
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -22,11 +31,11 @@ export function MobileNavBar() {
     navigate(path);
   };
 
-  const moreActive = MOBILE_MORE_NAV.some((item) => item.path === location.pathname);
+  const moreActive = moreNav.some((item) => item.path === location.pathname);
 
   return (
     <nav className="mobile-nav" aria-label="Mobile navigation">
-      {MOBILE_NAV.map((item) => (
+      {mainNav.map((item) => (
         <div
           key={item.path}
           className={location.pathname === item.path ? "active" : ""}
@@ -39,20 +48,22 @@ export function MobileNavBar() {
           <span>{item.label}</span>
         </div>
       ))}
-      <div
-        className={moreActive || moreOpen ? "active" : ""}
-        role="button"
-        tabIndex={0}
-        aria-expanded={moreOpen}
-        onClick={() => setMoreOpen(!moreOpen)}
-        onKeyDown={(event) => event.key === "Enter" && setMoreOpen(!moreOpen)}
-      >
-        <Icon name="more" size={19} />
-        <span>More</span>
-      </div>
-      {moreOpen && (
+      {moreNav.length > 0 && (
+        <div
+          className={moreActive || moreOpen ? "active" : ""}
+          role="button"
+          tabIndex={0}
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen(!moreOpen)}
+          onKeyDown={(event) => event.key === "Enter" && setMoreOpen(!moreOpen)}
+        >
+          <Icon name="more" size={19} />
+          <span>More</span>
+        </div>
+      )}
+      {moreOpen && moreNav.length > 0 && (
         <div className="mobile-more-menu">
-          {MOBILE_MORE_NAV.map((item) => (
+          {moreNav.map((item) => (
             <div
               key={item.path}
               className={location.pathname === item.path ? "active" : ""}

@@ -1,4 +1,4 @@
-interface SourceMapArtifactResponse {
+export interface SourceMapArtifactResponse {
   id: string;
   projectId: string;
   appId: string;
@@ -10,12 +10,17 @@ interface SourceMapArtifactResponse {
   createdAt: string;
 }
 
-interface SourceMapArtifactListResponse {
+export interface SourceMapArtifactListResponse {
   data: SourceMapArtifactResponse[];
-  pagination: { page: number; limit: number; total: number; totalPages: number };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
-interface SourceMapTokenResponse {
+export interface SourceMapTokenResponse {
   id: string;
   name: string;
   projectId: string;
@@ -29,13 +34,11 @@ interface SourceMapTokenResponse {
   revokedAt: string | null;
 }
 
-// The raw token is returned exactly once: at creation and at
-// rotation. It is never stored or listed afterwards.
-interface SourceMapTokenWithSecret extends SourceMapTokenResponse {
+export interface SourceMapTokenWithSecret extends SourceMapTokenResponse {
   token: string;
 }
 
-interface OriginalPosition {
+export interface OriginalPosition {
   source: string;
   line: number;
   column: number;
@@ -44,7 +47,7 @@ interface OriginalPosition {
   postContext: string[];
 }
 
-interface SourceMapResolveResponse {
+export interface SourceMapResolveResponse {
   filename: string;
   release: string;
   line: number;
@@ -52,11 +55,19 @@ interface SourceMapResolveResponse {
   original: OriginalPosition | null;
 }
 
-export type {
-  SourceMapArtifactResponse,
-  SourceMapArtifactListResponse,
-  SourceMapTokenResponse,
-  SourceMapTokenWithSecret,
-  OriginalPosition,
-  SourceMapResolveResponse,
-};
+export interface SourceMapUploadCreate {
+  version: string;
+  ref?: string;
+  url?: string;
+  owner?: string;
+}
+
+export interface SourceMapUploadResponse {
+  version: string;
+  ref: string | null;
+  url: string | null;
+  owner: string | null;
+  status: string;
+  dateCreated: string;
+  projectId: string;
+}

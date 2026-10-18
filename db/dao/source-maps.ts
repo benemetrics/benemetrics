@@ -1,116 +1,101 @@
-import { db } from "db";
-import {
-  sourceMaps,
-  type SourceMap,
-  type SourceMapInsert,
-} from "db/schema/source-maps";
-import { and, desc, eq } from "drizzle-orm";
-import { internalError, notFound } from "backend/errors";
-
-type SourceMapCreateInput = Omit<SourceMapInsert, "id" | "createdAt">;
+import { db } from "../index.ts";
+import { sourceMaps } from "../schema/source-maps.ts";
+import { eq, desc, and, ilike } from "drizzle-orm";
+import { notFound } from "../../backend/errors.ts";
+import { crypto } from "../../backend/utils/crypto.ts";
 
 export const sourceMapDAO = {
-  create: async (data: SourceMapCreateInput) => {
+  async create(data: {
+    projectId: string;
+    appId: string;
+    environmentId: string;
+    release: string;
+    dist?: string;
+    filename: string;
+    mapJson: string;
+  }) {
+    const id = crypto.randomUUID();
     const now = new Date().toISOString();
-    const [created] = await db
+
+    const result = await db
       .insert(sourceMaps)
       .values({
-        ...data,
-        id: crypto.randomUUID(),
+        id,
+        projectId: data.projectId,
+        appId: data.appId,
+        environmentId: data.environmentId,
+        release: data.release,
+        dist: data.dist ?? null,
+        filename: data.filename,
+        mapJson: data.mapJson,
         createdAt: now,
       })
-      // Re-uploading the same artifact updates it in place.
-      .onConflictDoUpdate({
-        target: [sourceMaps.projectId, sourceMaps.release, sourceMaps.filename],
-        set: {
-          appId: data.appId,
-          environmentId: data.environmentId,
-          dist: data.dist ?? null,
-          mapJson: data.mapJson,
-          createdAt: now,
-        },
-      })
+      .onConflictDoNothing()
       .returning();
-    if (!created) {
-      throw internalError("Failed to create source map");
-    }
-    return created;
+
+    return result[0] ?? null;
   },
 
-  findById: async (id: string): Promise<SourceMap | undefined> =>
-    (
-      await db
-        .select()
-        .from(sourceMaps)
-        .where(eq(sourceMaps.id, id))
-        .limit(1)
-    )[0],
+  async findById(id: string) {
+    const result = await db.select().from(sourceMaps).where(eq(sourceMaps.id, id)).limit(1);
+    return result[0];
+  },
 
-  findByIdOrThrow: async (id: string) => {
-    const map = await sourceMapDAO.findById(id);
-    if (!map) throw notFound("Source map", id);
+  async findByIdOrThrow(id: string) {
+    const map = await this.findById(id);
+    if (!map) throw new Error("Source map not found");
     return map;
   },
 
-  findByRelease: async (
-    projectId: string,
-    release: string,
-  ): Promise<SourceMap[]> =>
-    db
+  async findByRelease(projectId: string, release: string) {
+    const result = await db
       .select()
       .from(sourceMaps)
-      .where(
-        and(eq(sourceMaps.projectId, projectId), eq(sourceMaps.release, release)),
-      )
-      .orderBy(desc(sourceMaps.createdAt)),
+      .where(and(eq(sourceMaps.projectId, projectId), eq(sourceMaps.release, release)))
+      .orderBy(desc(sourceMaps.createdAt));
+    return result;
+  },
 
-  list: async (options: {
+  async list(options: {
     projectId?: string;
     environmentId?: string;
     release?: string;
     page?: number;
     limit?: number;
-  }) => {
+  } = {}) {
     const page = options.page ?? 1;
-    const limit = options.limit ?? 20;
+    const limit = Math.min(options.limit ?? 20, 100);
     const offset = (page - 1) * limit;
-    const conditions = [
-      ...(options.projectId
-        ? [eq(sourceMaps.projectId, options.projectId)]
-        : []),
-      ...(options.environmentId
-        ? [eq(sourceMaps.environmentId, options.environmentId)]
-        : []),
-      ...(options.release ? [eq(sourceMaps.release, options.release)] : []),
-    ];
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [rows, total] = await Promise.all([
-      db
-        .select()
-        .from(sourceMaps)
-        .where(where)
-        .orderBy(desc(sourceMaps.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.$count(sourceMaps, where),
+    let query = db.select().from(sourceMaps);
+
+    const conditions = [];
+    if (options.projectId) conditions.push(eq(sourceMaps.projectId, options.projectId));
+    if (options.environmentId) conditions.push(eq(sourceMaps.environmentId, options.environmentId));
+    if (options.release) conditions.push(eq(sourceMaps.release, options.release));
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    const [data, totalResult] = await Promise.all([
+      query.limit(limit).offset(offset).orderBy(desc(sourceMaps.createdAt)),
+      db.$count(sourceMaps),
     ]);
 
     return {
-      data: rows,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      data,
+      pagination: {
+        page,
+        limit,
+        total: totalResult,
+        totalPages: Math.ceil(totalResult / limit),
+      },
     };
   },
 
-  delete: async (id: string) => {
-    const deleted = await db
-      .delete(sourceMaps)
-      .where(eq(sourceMaps.id, id))
-      .returning({ id: sourceMaps.id });
-    return deleted.length > 0;
-  },
-
-  deleteByApp: async (appId: string) => {
-    await db.delete(sourceMaps).where(eq(sourceMaps.appId, appId));
+  async delete(id: string) {
+    const result = await db.delete(sourceMaps).where(eq(sourceMaps.id, id)).returning();
+    return result.length > 0;
   },
 };

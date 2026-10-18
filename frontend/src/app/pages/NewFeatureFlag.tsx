@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Action } from "../Action";
-import { Icon } from "../Icon";
-import { ScreenIntro } from "../ScreenIntro";
-import { api, type SegmentDto } from "../../lib/api";
-import { notify } from "../../lib/toast";
+import { Action } from "../Action.tsx";
+import { Icon } from "../Icon.tsx";
+import { ScreenIntro } from "../ScreenIntro.tsx";
+import { api, type SegmentDto } from "../../lib/api.ts";
+import { notify } from "../../lib/toast.ts";
 
 type FlagType = "boolean" | "string" | "number" | "json";
 

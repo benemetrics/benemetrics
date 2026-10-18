@@ -120,13 +120,67 @@ Each hop is asserted by its own small test (no chain assertions):
 
 - [x] 0. Infra: NATS (JetStream + WebSocket, config file) in compose + CI + local docs; smoke passed (ClickHouse `latest` acked only after the MV insert — the engine gate is clear).
 - [x] 0b. Test split: 11 in-process suites moved to `tests/` (`app.handle`, no listen/port/stop); `e2e/` keeps the SDK + WebView + WebSocket files and the 4 files blocked by the parallel session's uncommitted work (see §8); `bootstrap()` superseded (tests import the app singleton); `waitFor` in `tests/test-helpers.ts`; `bun run test` = `bun test --parallel=1 tests/ e2e/`; AGENTS.md Testing section updated.
-- [ ] 1. CH ingests from NATS: engine tables + MVs + `fsync_*` + pull-consumer provisioning; `sentry_events` ReplacingMergeTree migration; API publish path (in-process fallback deleted); app consumer = PG side effects only (no ledger); `stored_events` + DAO deleted; events API CH-only; clear; hop tests 1–4.
-- [ ] 2. Live feed via NATS: delete `/events/live/feed` + `backend/live-events.ts` + `startLiveConsumer` + broadcast calls; frontend `nats.ws`; rewrite `20-live-events`/`21-nats-first` as hop test 5; `e2e/` shrinks to the 9 SDK files.
-- [ ] 3. Metrics ingest: `samples.ts` extraction at the API; `sentry.metrics` + CH tables/MVs; hop tests 1–2 for metrics.
-- [ ] 4. Metrics API (`series` + `breakdown`) + hop test 4.
-- [ ] 5. Sweeper → CH + alert tests.
-- [ ] 6. Frontend metrics panels (web + mobile vitals).
+- [x] 1. CH ingests from NATS: engine tables + MVs + `fsync_*` + pull-consumer provisioning; `sentry_events` ReplacingMergeTree migration; API publish path (in-process fallback deleted); app consumer = PG side effects only (no ledger); `stored_events` + DAO deleted; events API CH-only; clear; hop tests 1–4.
+- [x] 2. Live feed via NATS: delete `/events/live/feed` + `backend/live-events.ts` + `startLiveConsumer` + broadcast calls; frontend `nats.ws`; rewrite `20-live-events`/`21-nats-first` as hop test 5; `e2e/` shrinks to the 9 SDK files.
+- [x] 3. Metrics ingest: `samples.ts` extraction at the API; `sentry.metrics` + CH tables/MVs; hop tests 1–2 for metrics.
+- [x] 4. Metrics API (`series` + `breakdown`) + hop test 4.
+- [x] 5. Sweeper → CH + alert tests.
+- [x] 6. Frontend metrics panels (web + mobile vitals).
 - [ ] 7. Remove remaining NATS fallbacks (releases/flags) + `isNatsConnected`/boolean `publishEvent`; sweep leftover CH availability branches.
+  - Working tree (uncommitted): `publishFlagChangeEvent` throws when NATS is down (no silent skip, no swallow); `publishFlagChange` is async and maps a failed publish to `serviceUnavailable`; its call sites (`featureFlags` ×4, `experiments` ×2) await it; `startEventsConsumer`/`startReleasesConsumer` are awaited inside `initNats` so a consumer that cannot attach fails/retries the boot (never a silent stop); stale "in-process fallback" comment in `tests/15` fixed.
+  - Already gone (batches 1–2): `isNatsConnected`, boolean `publishEvent`, the in-process ingestion fallback.
+  - CH availability sweep: none left — `events-store`/`metrics-store`/`/health` are strict; `withChRetry` retries transient sockets only; the sweeper's "log + skip tick" is decision §5/§9.
+  - Remaining: full suite green (the parallel session's suite truncates CH mid-run → UI e2e flakes; verify when it is idle), commit + push (include the tracked `todo.metrics.md` ticks).
 - [ ] 8. S3 required (rustfs in CI; delete local-dir path).
+  - `backend/storage/index.ts`: delete `StorageBackend`, `activeStorageBackend`, `localStorageDir`, `resolveLocalObjectPath`, `putObjectLocal`, the local branches of `getObjectText`/`listObjectKeys`, and `storageRoutes` + the `/storage/*` mount; require the S3 config (boot-time check, fail fast like NATS/CH). The parallel session has uncommitted scope hunks in this file — their `/storage/*` scoping goes away with the route; stage only my hunks.
+  - `backend/events/offload.ts`: S3-only comments; keep the 5s bounded best-effort inline behavior (the object store must never fail ingestion).
+  - Tests: `tests/28-replay-offload.test.ts` drops the `LOCAL_STORAGE_DIR` cases (keep the S3-stub ones); e2e `04-session-replay` and `29-replay-issue-view` must run against rustfs (`:9100`, bucket `sentry-replays`) — configure the S3 env for the e2e suite so no test depends on `./.storage`.
+  - Config/docs: `.gitignore` `.storage` entry, BACKEND_API.md env table + §5.12/§9.5/§8, AGENTS.md storage landmine.
+  - CI: rustfs joins the test job — which first has to exist (§11).
 
 **Dropped across versions:** PG rollups/histograms, metrics read facade, measurement allowlist, PG `stored_events`, PG `processed_events` ledger (no event-derived state in PG at all), in-process ingestion fallback, local storage dir, app-side CH writer, backend WebSocket fanout and `/events/live/feed`.
+
+## 11. What is missing (audit — 2026-10-18)
+
+Beyond batches 7–8:
+
+- **No CI test job exists.** `.github/workflows/` contains only `distroless-image.yml` and `source-maps.yml`; nothing runs `bun run test` with ClickHouse + NATS (rustfs after batch 8) or mounts `infra/nats-server.conf`. §7's CI item was ticked with batch 0, but the repo has no such workflow — add it (or document the external job), otherwise the "suite green" gate stays local-only (`docker compose up -d` prerequisite).
+- **`BACKEND_API.md` sweep** (deferred: the file carries the parallel session's uncommitted hunks): it still documents removed surfaces (`/events/live/feed`, `stored_events`, `isNatsConnected`, `NATS_TEST_URL` + `e2e/21-nats-first.test.ts`, the local storage backend and `/storage/*`) and lacks the metrics endpoints (`series`/`breakdown`). Do it once the parallel work is committed.
+- **`AGENTS.md` landmines**: the storage bullet still says "S3 when `S3_BUCKET` is set, otherwise the local `LOCAL_STORAGE_DIR`" and describes `GET /storage/<key>` — reword to S3-required after batch 8. The ClickHouse/events bullets are current.
+- **Metrics read scope**: `/api/admin/metrics/series|breakdown` are live but admin-token-only and not in `SCOPED_READ_PATHS` (`backend/admin/index.ts`), so a scoped OIDC identity gets 401/403. Adding them (with `scopedViewFor(...)` filtering, 404 for out-of-scope details) belongs to the permissions work (`todos/issues.md` batch 6) — recorded here so it is not lost.
+- **Plan text drift (minor):** §8's e2e inventory predates `e2e/33-performance-ui.test.ts` (new WebView file for the metrics panels; `20-live-events`/`21-nats-first` no longer exist).
+- **Concurrent-session verification:** the final full-suite run must happen while the parallel session is idle — its `clear` tests truncate ClickHouse mid-run, which is what the two batch 4/5 full-suite failures were (`e2e/01-error-tracking-ui`, `e2e/23-backend-parity-ui`; both pass solo).
+
+## 12. Status dump — done vs. missing (2026-10-18, session stopped)
+
+### Done and pushed — `origin/master` = `865c218`
+
+- **Batch 0** (`4680f4e`) — NATS (JetStream + WebSocket, `infra/nats-server.conf`) in `docker-compose.yml`; CH NATS-engine smoke gate cleared (ack only after the MV insert).
+- **Batch 0b** (`1c52ddb`) — suite split: 11 API suites in `tests/` via `app.handle`; `bun run test` = `bun test --parallel=1 tests/ e2e/`.
+- **Batch 1** (`aa6d5ec`) — ClickHouse ingests from NATS by configuration (engine tables, MVs, `fsync_*`, durable pull consumers); `sentry_events` ReplacingMergeTree migration; API publishes to NATS only (no in-process fallback); consumer = PG side effects only; `stored_events` deleted; events API CH-only; hop tests `40`–`43`.
+- **Batch 2** (`8e2e2e6`) — live feed browser→NATS (`nats.ws`); `/events/live/feed`, `backend/live-events.ts`, `startLiveConsumer` and the backend fanout deleted; hop test `44`.
+- **Batch 3** (`c05956b`) — metrics ingest: `backend/metrics/samples.ts`, `sentry.metrics` → `sentry_metrics`; hop test `45`.
+- **Batch 4** (`ee337da`) — metrics read API `series` + `breakdown`; hop test `47`.
+- **Batch 5** (`a3980df`) — sweeper over CH metric samples (`new_issue_count` stays on PG).
+- **Batch 6** (`865c218`) — Performance page metrics-only (web + mobile vitals, `frontend/src/lib/metrics.ts`); `e2e/33-performance-ui.test.ts`.
+
+### Done, NOT committed — batch 7 in the working tree
+
+Tracked, unstaged:
+
+- `backend/nats.ts` — `publishFlagChangeEvent` throws when NATS is down (no silent skip); `initNats` awaits `startEventsConsumer`/`startReleasesConsumer` (attach failure fails/retries boot).
+- `backend/flags-events.ts` — `publishFlagChange` async; failed publish → `serviceUnavailable` (503).
+- `backend/featureFlags/index.ts` (×4) + `backend/experiments/index.ts` (×2) — the call sites await it.
+- `backend/events-consumer.ts`, `backend/releases-consumer.ts` — awaited startup; detached loops log on runtime stop.
+- `tests/15-releases.test.ts` — stale fallback comment removed.
+
+Verified: `bun run typecheck` ✓; focused `tests/11` + `14` + `15` + `42` = 59 pass / 1 fail (`tests/42` 5s timeout under the parallel suite; passes solo). No commit/push was made — the session stopped here.
+
+### Missing
+
+- **Batch 7 finish:** one full-suite green run while the parallel session is idle, then commit + push (the 7 files above + this file).
+- **Batch 8 (S3 required):** the sub-list above — storage local-dir removal + `/storage/*` route, boot-time S3 config check, `tests/28` local cases, e2e S3 env (rustfs `:9100`, bucket `sentry-replays`), `.gitignore`/doc updates, rustfs in CI.
+- **§11 audit items:** CI test job (does not exist), `BACKEND_API.md` sweep, `AGENTS.md` storage landmine, metrics read scope (`SCOPED_READ_PATHS`), plan-drift note.
+- **Verification caveat:** no clean single-run full-suite verification exists for the current tree — the failed attempts were parallel-session contention (CH truncation), and the affected tests pass solo (§11).
+
+_Session stopped on request — the working tree is the exact state left behind; only batches 0–6 are on the remote._

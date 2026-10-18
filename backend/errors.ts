@@ -1,75 +1,36 @@
-// Shared API error vocabulary. Routes and DAOs throw these instead of
-// building HTTP responses; the root Elysia onError (backend/index.ts) is
-// the single place that maps them to an HTTP status and `{ error }` body.
-export const ErrorCode = {
-  BAD_REQUEST: "BAD_REQUEST",
-  UNAUTHORIZED: "UNAUTHORIZED",
-  FORBIDDEN: "FORBIDDEN",
-  NOT_FOUND: "NOT_FOUND",
-  CONFLICT: "CONFLICT",
-  PAYLOAD_TOO_LARGE: "PAYLOAD_TOO_LARGE",
-  SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
-  INTERNAL: "INTERNAL",
-} as const;
-
-export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
-
-const HTTP_STATUS: Record<ErrorCode, number> = {
-  BAD_REQUEST: 400,
-  UNAUTHORIZED: 401,
-  FORBIDDEN: 403,
-  NOT_FOUND: 404,
-  CONFLICT: 409,
-  PAYLOAD_TOO_LARGE: 413,
-  SERVICE_UNAVAILABLE: 503,
-  INTERNAL: 500,
-};
-
 export class ApiError extends Error {
-  readonly code: ErrorCode;
-
-  constructor(code: ErrorCode, message: string) {
+  constructor(
+    public httpStatus: number,
+    public message: string,
+    public code: string,
+  ) {
     super(message);
     this.name = "ApiError";
-    this.code = code;
-  }
-
-  get httpStatus(): number {
-    return HTTP_STATUS[this.code];
   }
 }
 
-export function badRequest(message: string): ApiError {
-  return new ApiError(ErrorCode.BAD_REQUEST, message);
-}
+export const notFound = (entity: string, id: string) =>
+  new ApiError(404, `${entity} not found: ${id}`, "NOT_FOUND");
 
-export function unauthorized(
-  message = "Unauthorized - Admin authentication required",
-): ApiError {
-  return new ApiError(ErrorCode.UNAUTHORIZED, message);
-}
+export const badRequest = (msg: string) =>
+  new ApiError(400, msg, "BAD_REQUEST");
 
-export function forbidden(message: string): ApiError {
-  return new ApiError(ErrorCode.FORBIDDEN, message);
-}
+export const unauthorized = (msg: string) =>
+  new ApiError(401, msg, "UNAUTHORIZED");
 
-export function notFound(entity: string, value?: string): ApiError {
-  const suffix = value === undefined ? "" : `: ${value}`;
-  return new ApiError(ErrorCode.NOT_FOUND, `${entity} not found${suffix}`);
-}
+export const forbidden = (msg: string) =>
+  new ApiError(403, msg, "FORBIDDEN");
 
-export function conflict(message: string): ApiError {
-  return new ApiError(ErrorCode.CONFLICT, message);
-}
+export const conflict = (msg: string) =>
+  new ApiError(409, msg, "CONFLICT");
 
-export function payloadTooLarge(message: string): ApiError {
-  return new ApiError(ErrorCode.PAYLOAD_TOO_LARGE, message);
-}
+export const payloadTooLarge = (msg: string) =>
+  new ApiError(413, msg, "PAYLOAD_TOO_LARGE");
 
-export function serviceUnavailable(message: string): ApiError {
-  return new ApiError(ErrorCode.SERVICE_UNAVAILABLE, message);
-}
+export const internalError = (msg: string) =>
+  new ApiError(500, msg, "INTERNAL_ERROR");
 
-export function internalError(message: string): ApiError {
-  return new ApiError(ErrorCode.INTERNAL, message);
-}
+export const serviceUnavailable = (msg: string) =>
+  new ApiError(503, msg, "SERVICE_UNAVAILABLE");
+
+export const NO_READ_PERMISSION_MESSAGE = "No read permission. Provide admin token or valid OIDC identity.";

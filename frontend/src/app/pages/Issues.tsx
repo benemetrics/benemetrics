@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Icon } from "../Icon";
-import { ScreenIntro } from "../ScreenIntro";
-import { useWorkspace } from "../WorkspaceContext";
-import { api, listIssues, type IssueDto } from "../../lib/api";
-import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils";
+import { Icon } from "../Icon.tsx";
+import { ScreenIntro } from "../ScreenIntro.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
+import { api, listIssues, type IssueDto } from "../../lib/api.ts";
+import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils.ts";
 
 const PAGE_SIZE = 20;
 
@@ -24,7 +24,6 @@ export function Issues() {
   const [issues, setIssues] = useState<IssueDto[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [health, setHealth] = useState<{ status: string; eventsStored: number } | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("unresolved");
   const [page, setPage] = useState(1);
@@ -66,12 +65,6 @@ export function Issues() {
       } catch {
         // keep the last rows on fetch failure, but stop the loading state
         if (!cancelled) setStatus((current) => (current === "ready" ? current : "error"));
-      }
-      try {
-        const healthResult = await api.health.get();
-        if (!cancelled && healthResult?.data) setHealth(healthResult.data);
-      } catch {
-        // keep the last health on fetch failure
       }
     };
     load();
@@ -157,7 +150,6 @@ export function Issues() {
               ? `Project: ${project.name}`
               : "All projects"}
         </div>
-        {health && <div className="filter-chip">{health.eventsStored} stored</div>}
       </div>
       <article className="panel data-panel">
         <div className="data-head">

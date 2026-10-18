@@ -1,13 +1,5 @@
-import {
-  pgTable,
-  text,
-  index,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, index } from "drizzle-orm/pg-core";
 
-// CI upload token for source maps (sentry-cli / SENTRY_AUTH_TOKEN).
-// Scoped to one project + environment; only the SHA-256 hash of the
-// raw token is ever stored. The raw token is returned once at creation
-// (and once per rotation).
 export const sourceMapTokens = pgTable(
   "source_map_tokens",
   {
@@ -27,9 +19,7 @@ export const sourceMapTokens = pgTable(
   (table) => ({
     projectIdIdx: index("source_map_tokens_project_id_idx").on(table.projectId),
     appIdIdx: index("source_map_tokens_app_id_idx").on(table.appId),
-    environmentIdIdx: index("source_map_tokens_environment_id_idx").on(
-      table.environmentId,
-    ),
+    environmentIdIdx: index("source_map_tokens_environment_id_idx").on(table.environmentId),
     tokenHashIdx: index("source_map_tokens_hash_idx").on(table.tokenHash),
   }),
 );

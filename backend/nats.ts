@@ -1,176 +1,94 @@
-import { AckPolicy, connect, type JetStreamClient, type JetStreamManager } from "nats";
-import { startEventsConsumer } from "./events-consumer";
-import { startReleasesConsumer } from "./releases-consumer";
-import { retryInit } from "./retry";
-import type { MetricSample } from "./protocol/metrics";
+import { connect, JetStreamClient, ConsumerConfig, JSONCodec } from "nats.ws";
+import { dispatchIngestedEvent } from "./events-consumer.ts";
 
-const NATS_SERVERS = process.env.NATS_SERVERS || "nats://localhost:4222";
+let nc: any = null;
+let js: JetStreamClient | null = null;
+const jsonCodec = JSONCodec();
 
-const STREAM_NAME = "SENTRIES";
-export const SUBJECT = "sentry.events";
-export const METRICS_SUBJECT = "sentry.metrics";
-const FLAG_CHANGE_SUBJECT = "sentry.flags.changed";
+export async function initNats(): Promise<void> {
+  const servers = process.env.NATS_SERVERS || "nats://localhost:4222";
+  const stream = process.env.NATS_STREAM || "SENTRIES";
 
-// ClickHouse consumes the stream through its own durable pull consumers
-// (the NATS table engine references them by name); they are provisioned
-// here before ClickHouse attaches its engine tables at boot.
-const PULL_CONSUMERS: Array<{ name: string; subject: string }> = [
-  { name: "clickhouse-events", subject: SUBJECT },
-  { name: "clickhouse-metrics", subject: METRICS_SUBJECT },
-];
+  nc = await connect({ servers });
+  js = nc.jetstream();
 
-// Side-effect consumers: production keeps one durable per consumer so an
-// instance restart resumes where it stopped. Tests must never share them:
-// each test process applies every event to its own database, so a shared
-// durable would let one process steal another's messages (and a second
-// binder would fail on a bound push consumer). Test consumers are named
-// per process and deleted on shutdown.
-const IS_TEST = process.env.NODE_ENV === "test";
-const TEST_CONSUMER_ID = crypto.randomUUID().slice(0, 8);
+  // Create stream
+  await js.streams.add({ name: stream, subjects: ["sentry.events", "sentry.metrics", "sentry.flags.changed"] });
 
-export const EVENTS_CONSUMER = IS_TEST
-  ? `sentry-events-consumer-test-${TEST_CONSUMER_ID}`
-  : "sentry-events-consumer";
-export const RELEASES_CONSUMER = IS_TEST
-  ? `sentry-releases-consumer-test-${TEST_CONSUMER_ID}`
-  : "sentry-releases-consumer";
+  // Create durable pull consumers for ClickHouse
+  await createConsumer("clickhouse-events", "sentry.events");
+  await createConsumer("clickhouse-metrics", "sentry.metrics");
 
-export interface SentryEventMessage {
+  // Start side-effects consumer
+  await startEventsConsumer();
+
+  console.log("NATS initialized");
+}
+
+async function createConsumer(consumerName: string, subject: string): Promise<void> {
+  if (!js) return;
+  try {
+    await js.consumers.add(process.env.NATS_STREAM || "SENTRIES", {
+      durable_name: consumerName,
+      filter_subject: subject,
+      ack_policy: "explicit",
+      deliver_policy: "all",
+      ack_wait: 30000,
+      max_deliver: 10,
+    } as any);
+    console.log(`Created consumer ${consumerName} for ${subject}`);
+  } catch (err) {
+    console.error(`Failed to create consumer ${consumerName}:`, err);
+  }
+}
+
+export async function dispatchIngestedEvent(message: {
   id: string;
   projectId: string;
-  // Resolved app the event was ingested through.
-  appId?: string;
+  appId: string;
   envelopeHeader: string;
   envelopeItems: string;
   receivedAt: string;
-  type: "envelope" | "store" | "clear";
-}
+  type: string;
+}): Promise<void> {
+  if (!js) {
+    throw new Error("NATS not initialized");
+  }
 
-export interface FlagChangeMessage {
-  type: "create" | "update" | "status" | "delete";
-  flagKey: string;
-  flag?: unknown;
-}
+  const subject = "sentry.events";
+  const payload = jsonCodec.encode(message);
 
-let natsClient: Awaited<ReturnType<typeof connect>> | null = null;
-let client: JetStreamClient | null = null;
-
-// Publishes one ingested event. The broker is required — there is no
-// in-process fallback — so a failure throws and the caller answers 503;
-// at-least-once delivery comes from JetStream.
-export async function publishEvent(event: SentryEventMessage): Promise<void> {
-  if (!client) throw new Error("NATS is not connected");
-  await client.publish(SUBJECT, new TextEncoder().encode(JSON.stringify(event)), {
-    timeout: 2000,
-  });
-}
-
-// Publishes the samples extracted from one envelope as JSONEachRow — the
-// ClickHouse NATS engine inserts one row per line. Empty sample lists are
-// a no-op; like the event publish, a failure throws and the caller
-// answers 503.
-export async function publishMetricSamples(samples: MetricSample[]): Promise<void> {
-  if (samples.length === 0) return;
-  if (!client) throw new Error("NATS is not connected");
-  const payload = samples.map((sample) => JSON.stringify(sample)).join("\n");
-  await client.publish(METRICS_SUBJECT, new TextEncoder().encode(payload), {
-    timeout: 2000,
-  });
-}
-
-export async function publishFlagChangeEvent(event: FlagChangeMessage): Promise<void> {
-  if (!natsClient) return;
   try {
-    await natsClient.publish(
-      FLAG_CHANGE_SUBJECT,
-      new TextEncoder().encode(JSON.stringify(event)),
-    );
+    await js.publish(subject, payload);
   } catch (err) {
-    console.error("[NATS] Failed to publish flag change:", describe(err));
+    console.error("Failed to publish to NATS:", err);
+    throw new Error("NATS publish failed");
   }
 }
 
-function describe(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+export async function publishFlagChange(flagKey: string): Promise<void> {
+  if (!js) throw new Error("NATS not initialized");
+  await js.publish("sentry.flags.changed", jsonCodec.encode({ flagKey, timestamp: new Date().toISOString() }));
 }
 
-async function ensureStream(manager: JetStreamManager): Promise<void> {
-  const subjects = [SUBJECT, METRICS_SUBJECT];
-  try {
-    const info = await manager.streams.info(STREAM_NAME);
-    const current = info.config.subjects ?? [];
-    const missing = subjects.filter((subject) => !current.includes(subject));
-    if (missing.length > 0) {
-      await manager.streams.update(STREAM_NAME, {
-        ...info.config,
-        subjects: [...current, ...missing],
-      });
-    }
-  } catch {
-    await manager.streams.add({ name: STREAM_NAME, subjects });
-    console.log(`[NATS] Created ${STREAM_NAME} stream`);
-  }
-}
+export async function startEventsConsumer(): Promise<void> {
+  if (!js) return;
 
-async function ensurePullConsumers(manager: JetStreamManager): Promise<void> {
-  for (const { name, subject } of PULL_CONSUMERS) {
+  const consumer = await js.consumers.get("SENTRIES", "clickhouse-events");
+  if (!consumer) return;
+
+  for await (const msg of consumer) {
     try {
-      await manager.consumers.info(STREAM_NAME, name);
-      continue;
-    } catch {
-      // Not provisioned yet.
-    }
-    await manager.consumers.add(STREAM_NAME, {
-      durable_name: name,
-      ack_policy: AckPolicy.Explicit,
-      filter_subject: subject,
-    });
-    console.log(`[NATS] Created durable pull consumer ${name}`);
-  }
-}
-
-// Boot order: NATS first (stream + durable pull consumers), then
-// ClickHouse. Retries, then fails fast — the backend never runs without
-// its services.
-export async function initNats(): Promise<void> {
-  if (client) return;
-  await retryInit("NATS", async () => {
-    const nc = await connect({ servers: NATS_SERVERS });
-    try {
-      const jetstream = nc.jetstream();
-      const manager = await nc.jetstreamManager();
-      await ensureStream(manager);
-      await ensurePullConsumers(manager);
-      natsClient = nc;
-      client = jetstream;
+      const data = jsonCodec.decode(msg.data);
+      await dispatchIngestedEvent(data);
+      msg.ack();
     } catch (err) {
-      await nc.close().catch(() => {});
-      throw err;
-    }
-  });
-  if (!client) throw new Error("NATS is not connected");
-
-  startEventsConsumer(client, EVENTS_CONSUMER);
-  startReleasesConsumer(client, RELEASES_CONSUMER);
-  console.log("[NATS] Connected to JetStream");
-}
-
-export async function closeNats(): Promise<void> {
-  const nc = natsClient;
-  natsClient = null;
-  client = null;
-  if (!nc) return;
-
-  // Test consumers are per-process and must not outlive the process.
-  if (IS_TEST) {
-    try {
-      const manager = await nc.jetstreamManager();
-      await manager.consumers.delete(STREAM_NAME, EVENTS_CONSUMER).catch(() => {});
-      await manager.consumers.delete(STREAM_NAME, RELEASES_CONSUMER).catch(() => {});
-    } catch {
-      // Best-effort cleanup; the connection is going away regardless.
+      console.error("Error processing message:", err);
+      msg.nak();
     }
   }
+}
 
-  await nc.close();
+export function isNatsConnected(): boolean {
+  return nc !== null && !nc.closed;
 }

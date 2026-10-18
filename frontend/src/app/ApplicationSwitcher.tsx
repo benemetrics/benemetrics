@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Icon } from "./Icon";
-import { useWorkspace } from "./WorkspaceContext";
-import type { AppDto } from "../lib/api";
-import { platformSymbol } from "../lib/platform";
+import { Icon } from "./Icon.tsx";
+import { useWorkspace } from "./WorkspaceContext.tsx";
+import type { AppDto } from "../lib/api.ts";
+import { platformSymbol } from "../lib/platform.ts";
 
 export function ApplicationSwitcher() {
   const navigate = useNavigate();

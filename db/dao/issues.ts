@@ -1,172 +1,169 @@
-import { db } from "db";
-import { issues, type IssueRow, type IssueInsert } from "db/schema/issues";
-import { apps } from "db/schema/project";
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
-import { notFound } from "backend/errors";
+import { db } from "../index.ts";
+import { issues } from "../schema/issues.ts";
+import { eq, desc, and, ilike, or, sql } from "drizzle-orm";
+import { notFound, conflict } from "../../backend/errors.ts";
+import { crypto } from "../../backend/utils/crypto.ts";
 
 export const issueDAO = {
-  // Returns the row only when this call created it — the race-safe way to
-  // detect a first-ever occurrence (concurrent events lose the unique
-  // (app_id, fingerprint) insert and fall through to the other paths).
-  createIfNew: async (
-    data: Omit<IssueInsert, "id"> & { id?: string },
-  ): Promise<IssueRow | undefined> => {
+  async createIfNew(data: {
+    appId: string;
+    fingerprint: string;
+    title: string;
+    level: string;
+    type: string;
+    receivedAt: string;
+    eventCount: number;
+  }) {
     const now = new Date().toISOString();
-    const [created] = await db
+    const id = crypto.randomUUID();
+
+    const result = await db
       .insert(issues)
       .values({
-        ...data,
-        id: data.id ?? crypto.randomUUID(),
+        id,
+        appId: data.appId,
+        fingerprint: data.fingerprint,
+        title: data.title,
+        status: "unresolved",
+        eventCount: data.eventCount,
+        firstSeen: data.receivedAt,
+        lastSeen: data.receivedAt,
+        latestEventId: data.eventCount > 0 ? data.fingerprint : null,
         createdAt: now,
         updatedAt: now,
       })
       .onConflictDoNothing()
       .returning();
-    return created;
+
+    return result[0] ?? null;
   },
 
-  // Returns the row only when this call performed the resolved →
-  // unresolved transition, so concurrent events produce exactly one
-  // regression.
-  regressIfResolved: async (
-    appId: string,
-    fingerprint: string,
-    receivedAt: string,
-    latestEventId: string,
-  ): Promise<IssueRow | undefined> => {
-    const [updated] = await db
+  async regressIfResolved(data: {
+    appId: string;
+    fingerprint: string;
+    title: string;
+    level: string;
+    type: string;
+    receivedAt: string;
+    eventCount: number;
+  }) {
+    const now = new Date().toISOString();
+
+    const result = await db
       .update(issues)
       .set({
         status: "unresolved",
-        eventCount: sql`${issues.eventCount} + 1`,
-        lastSeen: receivedAt,
-        latestEventId,
-        updatedAt: new Date().toISOString(),
+        eventCount: sql`${issues.eventCount} + ${data.eventCount}`,
+        lastSeen: data.receivedAt,
+        title: data.title,
+        level: data.level,
+        type: data.type,
+        updatedAt: now,
       })
-      .where(
-        and(
-          eq(issues.appId, appId),
-          eq(issues.fingerprint, fingerprint),
-          eq(issues.status, "resolved"),
-        ),
-      )
+      .where(and(eq(issues.appId, data.appId), eq(issues.fingerprint, data.fingerprint), eq(issues.status, "resolved")))
       .returning();
-    return updated;
+
+    return result[0] ?? null;
   },
 
-  markSeen: async (
-    appId: string,
-    fingerprint: string,
-    receivedAt: string,
-    latestEventId: string,
-  ): Promise<void> => {
-    await db
+  async markSeen(data: {
+    appId: string;
+    fingerprint: string;
+    title: string;
+    level: string;
+    type: string;
+    receivedAt: string;
+    eventCount: number;
+  }) {
+    const now = new Date().toISOString();
+
+    const result = await db
       .update(issues)
       .set({
-        eventCount: sql`${issues.eventCount} + 1`,
-        lastSeen: receivedAt,
-        latestEventId,
-        updatedAt: new Date().toISOString(),
+        eventCount: sql`${issues.eventCount} + ${data.eventCount}`,
+        lastSeen: data.receivedAt,
+        title: data.title,
+        level: data.level,
+        type: data.type,
+        updatedAt: now,
       })
-      .where(and(eq(issues.appId, appId), eq(issues.fingerprint, fingerprint)));
+      .where(and(eq(issues.appId, data.appId), eq(issues.fingerprint, data.fingerprint)))
+      .returning();
+
+    return result[0] ?? null;
   },
 
-  findById: async (id: string): Promise<IssueRow | undefined> =>
-    (await db.select().from(issues).where(eq(issues.id, id)).limit(1))[0],
+  async findById(id: string) {
+    const result = await db.select().from(issues).where(eq(issues.id, id)).limit(1);
+    return result[0];
+  },
 
-  findByIdOrThrow: async (id: string) => {
-    const issue = await issueDAO.findById(id);
+  async findByIdOrThrow(id: string) {
+    const issue = await this.findById(id);
     if (!issue) throw notFound("Issue", id);
     return issue;
   },
 
-  listPaged: async (options: {
+  async list(options: {
     appId?: string;
     projectId?: string;
     status?: string;
-    q?: string;
+    search?: string;
     page?: number;
     limit?: number;
-  }): Promise<{
-    data: IssueRow[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
-  }> => {
+  } = {}) {
     const page = options.page ?? 1;
-    const limit = options.limit ?? 20;
+    const limit = Math.min(options.limit ?? 20, 100);
     const offset = (page - 1) * limit;
+
+    let query = db.select().from(issues);
+
     const conditions = [];
     if (options.appId) conditions.push(eq(issues.appId, options.appId));
     if (options.status) conditions.push(eq(issues.status, options.status));
-    if (options.projectId) {
-      // Issues carry no project; scope through the project's apps.
-      conditions.push(
-        inArray(
-          issues.appId,
-          db
-            .select({ id: apps.id })
-            .from(apps)
-            .where(eq(apps.projectId, options.projectId)),
-        ),
-      );
+    if (options.search) {
+      conditions.push(or(ilike(issues.title, `%${options.search}%`), ilike(issues.fingerprint, `%${options.search}%`)));
     }
-    if (options.q) {
-      const pattern = `%${options.q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
-      conditions.push(
-        sql`(${issues.title} ILIKE ${pattern} OR ${issues.fingerprint} ILIKE ${pattern})`,
-      );
-    }
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [rows, total] = await Promise.all([
-      db
-        .select()
-        .from(issues)
-        .where(where)
-        .orderBy(desc(issues.lastSeen))
-        .limit(limit)
-        .offset(offset),
-      db.$count(issues, where),
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    const [data, totalResult] = await Promise.all([
+      query.limit(limit).offset(offset).orderBy(desc(issues.lastSeen)),
+      db.$count(issues),
     ]);
 
     return {
-      data: rows,
+      data,
       pagination: {
         page,
         limit,
-        total: Number(total),
-        totalPages: Math.ceil(Number(total) / limit),
+        total: totalResult,
+        totalPages: Math.ceil(totalResult / limit),
       },
     };
   },
 
-  updateOrThrow: async (id: string, data: Partial<IssueInsert>) => {
-    const [updated] = await db
+  async updateOrThrow(id: string, patch: { status: "unresolved" | "resolved" }) {
+    const now = new Date().toISOString();
+    const result = await db
       .update(issues)
-      .set({ ...data, updatedAt: new Date().toISOString() })
+      .set({ status: patch.status, updatedAt: now })
       .where(eq(issues.id, id))
       .returning();
-    if (!updated) {
-      throw notFound("Issue", id);
-    }
-    return updated;
+
+    if (result.length === 0) throw notFound("Issue", id);
+    return result[0];
   },
 
-  // Issues whose first-ever occurrence falls inside the window — the
-  // `new_issue_count` alert metric, which stays on the control plane.
-  countNewSince: async (appId: string, since: string): Promise<number> => {
-    const total = await db.$count(
-      issues,
-      and(eq(issues.appId, appId), gte(issues.firstSeen, since)),
-    );
-    return Number(total);
+  async clear() {
+    const result = await db.delete(issues).returning();
+    return result.length;
   },
 
-  // Issues are derived from stored events, so they die with the app.
-  deleteByApp: async (appId: string): Promise<void> => {
-    await db.delete(issues).where(eq(issues.appId, appId));
-  },
-
-  clear: async (): Promise<void> => {
-    await db.delete(issues);
+  async deleteByApp(appId: string) {
+    const result = await db.delete(issues).where(eq(issues.appId, appId)).returning();
+    return result.length;
   },
 };

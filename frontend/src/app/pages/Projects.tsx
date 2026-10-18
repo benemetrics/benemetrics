@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Action } from "../Action";
-import { Icon } from "../Icon";
-import { ScreenIntro } from "../ScreenIntro";
-import { useWorkspace } from "../WorkspaceContext";
-import { api, type AppDto, type EnvironmentDto } from "../../lib/api";
-import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils";
-import { notify } from "../../lib/toast";
-import { platformSymbol } from "../../lib/platform";
+import { Action } from "../Action.tsx";
+import { Icon } from "../Icon.tsx";
+import { ScreenIntro } from "../ScreenIntro.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
+import { api, type AppDto, type EnvironmentDto } from "../../lib/api.ts";
+import { relativeTime } from "../../lib/utils.ts";
+import { notify } from "../../lib/toast.ts";
+import { platformSymbol } from "../../lib/platform.ts";
 
 const PLATFORMS = ["node", "python", "go", "react-native", "nextjs", "web"];
 
@@ -37,7 +37,6 @@ export function Projects() {
   } = useWorkspace();
   const [apps, setApps] = useState<AppDto[]>([]);
   const [appsStatus, setAppsStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [health, setHealth] = useState<{ status: string; eventsStored: number } | null>(null);
   const [creating, setCreating] = useState(false);
   const [appName, setAppName] = useState("");
   const [appPlatform, setAppPlatform] = useState(PLATFORMS[0]!);
@@ -96,24 +95,6 @@ export function Projects() {
       cancelled = true;
     };
   }, [projectId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const result = await api.health.get();
-        if (!cancelled && result?.data) setHealth(result.data);
-      } catch {
-        // keep the last health on failure
-      }
-    };
-    load();
-    const interval = setInterval(load, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
 
   const create = async () => {
     const name = appName.trim();
@@ -324,10 +305,6 @@ export function Projects() {
                     environments.length === 1 ? "" : "s"
                   }`}
           </div>
-        </div>
-        <div className="project-health">
-          <span></span>
-          {health?.eventsStored ?? 0} events stored
         </div>
       </section>
       <div className="section-label-row">

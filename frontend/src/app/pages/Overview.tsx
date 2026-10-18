@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Icon } from "../Icon";
-import { Action } from "../Action";
-import { useWorkspace } from "../WorkspaceContext";
+import { Icon } from "../Icon.tsx";
+import { Action } from "../Action.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
 import {
   AGGREGATE_EVENT_LIMIT,
   api,
@@ -10,15 +10,10 @@ import {
   type AlertChannelDto,
   type AlertRuleDto,
   type ReleaseDto,
-} from "../../lib/api";
-import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils";
-import { eventTitle, groupIssues, type StoredEvent } from "../../lib/issues";
-import { subscribeLiveFeed } from "../../lib/live-events";
-
-interface Health {
-  status: string;
-  eventsStored: number;
-}
+} from "../../lib/api.ts";
+import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils.ts";
+import { eventTitle, groupIssues, type StoredEvent } from "../../lib/issues.ts";
+import { subscribeLiveFeed } from "../../lib/live-events.ts";
 
 function bucketize(events: StoredEvent[], spanMs: number, buckets = 6): number[] {
   const start = Date.now() - spanMs;
@@ -91,8 +86,8 @@ export function Overview() {
   const applicationId = application?.id;
   const [range, setRange] = useState("24 hours");
   const [rangeMenuOpen, setRangeMenuOpen] = useState(false);
-  const [health, setHealth] = useState<Health | null>(null);
   const [events, setEvents] = useState<StoredEvent[]>([]);
+  const [eventsStored, setEventsStored] = useState(0);
   const [eventsStatus, setEventsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [rules, setRules] = useState<AlertRuleDto[]>([]);
   const [channels, setChannels] = useState<AlertChannelDto[]>([]);
@@ -108,20 +103,19 @@ export function Overview() {
           appId: applicationId,
           limit: AGGREGATE_EVENT_LIMIT,
         });
-        const list = ((result?.data as { data?: StoredEvent[] })?.data ?? []) as StoredEvent[];
+        const body = (result?.data as {
+          data?: StoredEvent[];
+          pagination?: { total?: number };
+        } | null) ?? null;
+        const list = (body?.data ?? []) as StoredEvent[];
         if (!cancelled) {
           setEvents(list);
+          setEventsStored(body?.pagination?.total ?? list.length);
           setEventsStatus("ready");
         }
       } catch {
         // keep the last events on failure, but stop the loading state
         if (!cancelled) setEventsStatus((current) => (current === "ready" ? current : "error"));
-      }
-      try {
-        const healthResult = await api.health.get();
-        if (!cancelled && healthResult?.data) setHealth(healthResult.data);
-      } catch {
-        // keep the last health on failure
       }
     };
     load();
@@ -341,9 +335,9 @@ export function Overview() {
               <Icon name="logs" />
             </div>
           </div>
-          <div className="metric-value">{health?.eventsStored ?? 0}</div>
+          <div className="metric-value">{eventsStored}</div>
           <div className="metric-foot">
-            <span>polling every {POLL_INTERVAL_MS / 1000}s</span>
+            <span>total envelopes stored in the selected scope</span>
           </div>
           <div className="sparkline blue-line">
             <svg viewBox="0 0 240 48" preserveAspectRatio="none">

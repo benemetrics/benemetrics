@@ -1,24 +1,25 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { AppChrome } from "./app/AppChrome";
-import { Overview } from "./app/pages/Overview";
-import { Issues } from "./app/pages/Issues";
-import { EventDetail } from "./app/pages/EventDetail";
-import { Performance } from "./app/pages/Performance";
-import { Logs } from "./app/pages/Logs";
-import { Alerts } from "./app/pages/Alerts";
-import { NewAlert } from "./app/pages/NewAlert";
-import { AlertChannels } from "./app/pages/AlertChannels";
-import { ChannelConfig } from "./app/pages/ChannelConfig";
-import { Releases } from "./app/pages/Releases";
-import { NewRelease } from "./app/pages/NewRelease";
-import { ReleaseDetail } from "./app/pages/ReleaseDetail";
-import { FeatureFlags } from "./app/pages/FeatureFlags";
-import { NewFeatureFlag } from "./app/pages/NewFeatureFlag";
-import { Segments } from "./app/pages/Segments";
-import { SourceMaps } from "./app/pages/SourceMaps";
-import { Projects } from "./app/pages/Projects";
-import { Setup } from "./app/pages/Setup";
-import { ErrorBoundary } from "./app/ErrorBoundary";
+import { AppChrome } from "./app/AppChrome.tsx";
+import { Overview } from "./app/pages/Overview.tsx";
+import { Issues } from "./app/pages/Issues.tsx";
+import { EventDetail } from "./app/pages/EventDetail.tsx";
+import { Performance } from "./app/pages/Performance.tsx";
+import { Logs } from "./app/pages/Logs.tsx";
+import { Alerts } from "./app/pages/Alerts.tsx";
+import { NewAlert } from "./app/pages/NewAlert.tsx";
+import { AlertChannels } from "./app/pages/AlertChannels.tsx";
+import { ChannelConfig } from "./app/pages/ChannelConfig.tsx";
+import { Releases } from "./app/pages/Releases.tsx";
+import { NewRelease } from "./app/pages/NewRelease.tsx";
+import { ReleaseDetail } from "./app/pages/ReleaseDetail.tsx";
+import { FeatureFlags } from "./app/pages/FeatureFlags.tsx";
+import { NewFeatureFlag } from "./app/pages/NewFeatureFlag.tsx";
+import { Segments } from "./app/pages/Segments.tsx";
+import { SourceMaps } from "./app/pages/SourceMaps.tsx";
+import { Projects } from "./app/pages/Projects.tsx";
+import { Setup } from "./app/pages/Setup.tsx";
+import { Settings } from "./app/pages/Settings.tsx";
+import { ErrorBoundary } from "./app/ErrorBoundary.tsx";
 
 export function App() {
   return (
@@ -44,6 +45,7 @@ export function App() {
             <Route path="/segments" element={<Segments />} />
             <Route path="/source-maps" element={<SourceMaps />} />
             <Route path="/projects" element={<Projects />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/setup" element={<Setup />} />
           </Route>
           <Route path="*" element={<Navigate to="/overview" replace />} />

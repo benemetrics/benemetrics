@@ -1,128 +1,82 @@
-import { db } from "db";
-import { experimentAssignments } from "db/schema/experiment-assignments";
-import { countDistinct, desc, eq, and, sql } from "drizzle-orm";
-import { internalError } from "backend/errors";
-
-type AssignmentRow = typeof experimentAssignments.$inferSelect;
-
-export interface AssignmentRecord {
-  id: string;
-  flagId: string;
-  userId: string;
-  variantKey: string;
-  context: unknown;
-  assignedAt: string;
-}
-
-export interface VariantCount {
-  variantKey: string;
-  count: number;
-}
-
-function toAssignment(row: AssignmentRow): AssignmentRecord {
-  let context: unknown = {};
-  try {
-    context = row.context ? JSON.parse(row.context) : {};
-  } catch {
-    context = {};
-  }
-  return { ...row, context };
-}
+import { db } from "../index.ts";
+import { experimentAssignments } from "../schema/experiment-assignments.ts";
+import { eq, and, desc, count } from "drizzle-orm";
+import { crypto } from "../../backend/utils/crypto.ts";
 
 export const experimentAssignmentDAO = {
-  create: async (data: {
+  async create(data: {
     flagId: string;
     userId: string;
     variantKey: string;
-    context: string;
-    id?: string;
-    assignedAt?: string;
-  }) => {
-    const [row] = await db
+    context?: Record<string, unknown>;
+  }) {
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const result = await db
       .insert(experimentAssignments)
       .values({
-        ...data,
-        id: data.id ?? crypto.randomUUID(),
-        assignedAt: data.assignedAt ?? new Date().toISOString(),
+        id,
+        flagId: data.flagId,
+        userId: data.userId,
+        variantKey: data.variantKey,
+        context: JSON.stringify(data.context ?? {}),
+        assignedAt: now,
       })
-      // (flagId, userId) is unique: concurrent evaluations of the
-      // same user must not create a second assignment (or 500).
-      .onConflictDoNothing({
-        target: [experimentAssignments.flagId, experimentAssignments.userId],
-      })
+      .onConflictDoNothing()
       .returning();
-    if (row) return toAssignment(row);
 
-    const existing = await experimentAssignmentDAO.findByFlagAndUser(
-      data.flagId,
-      data.userId,
-    );
-    if (!existing) {
-      throw internalError("Failed to create experiment assignment");
-    }
-    return existing;
+    return result[0] ?? null;
   },
 
-  findByFlagAndUser: async (flagId: string, userId: string) => {
-    const [row] = await db
+  async findByFlagAndUser(flagId: string, userId: string) {
+    const result = await db
       .select()
       .from(experimentAssignments)
-      .where(
-        and(
-          eq(experimentAssignments.flagId, flagId),
-          eq(experimentAssignments.userId, userId),
-        ),
-      )
+      .where(and(eq(experimentAssignments.flagId, flagId), eq(experimentAssignments.userId, userId)))
       .limit(1);
-    return row ? toAssignment(row) : undefined;
+    return result[0];
   },
 
-  listByFlag: async (
-    flagId: string,
-    options: {
-      page: number;
-      limit: number;
-      variantKey?: string;
-      search?: string;
-    },
-  ): Promise<{ total: number; data: AssignmentRecord[] }> => {
-    const offset = (options.page - 1) * options.limit;
+  async listByFlag(flagId: string, options: {
+    page?: number;
+    limit?: number;
+    variantKey?: string;
+    search?: string;
+  } = {}) {
+    const page = options.page ?? 1;
+    const limit = Math.min(options.limit ?? 20, 100);
+    const offset = (page - 1) * limit;
 
-    const conditions = [eq(experimentAssignments.flagId, flagId)];
+    let query = db.select().from(experimentAssignments).where(eq(experimentAssignments.flagId, flagId));
+
     if (options.variantKey) {
-      conditions.push(eq(experimentAssignments.variantKey, options.variantKey));
-    }
-    if (options.search) {
-      conditions.push(
-        sql`lower(${experimentAssignments.userId}) like ${`%${options.search.toLowerCase()}%`}`,
-      );
+      query = query.where(eq(experimentAssignments.variantKey, options.variantKey));
     }
 
-    const [rows, total] = await Promise.all([
-      db
-        .select()
-        .from(experimentAssignments)
-        .where(and(...conditions))
-        .orderBy(desc(experimentAssignments.assignedAt))
-        .limit(options.limit)
-        .offset(offset),
-      db.$count(experimentAssignments, and(...conditions)),
+    const [data, totalResult] = await Promise.all([
+      query.limit(limit).offset(offset).orderBy(desc(experimentAssignments.assignedAt)),
+      db.$count(experimentAssignments, eq(experimentAssignments.flagId, flagId)),
     ]);
 
-    return { total, data: rows.map(toAssignment) };
+    return {
+      total: totalResult,
+      data,
+      pagination: {
+        page: options.page ?? 1,
+        limit: Math.min(options.limit ?? 20, 100),
+        total: totalResult,
+        totalPages: Math.ceil(totalResult / Math.min(options.limit ?? 20, 100)),
+      },
+    };
   },
 
-  countByVariant: async (
-    flagId: string,
-  ): Promise<VariantCount[]> => {
-    const rows = await db
-      .select({
-        variantKey: experimentAssignments.variantKey,
-        count: countDistinct(experimentAssignments.userId),
-      })
+  async countByVariant(flagId: string) {
+    const result = await db
+      .select({ variantKey: experimentAssignments.variantKey, count: count() })
       .from(experimentAssignments)
       .where(eq(experimentAssignments.flagId, flagId))
       .groupBy(experimentAssignments.variantKey);
-    return rows;
+    return result;
   },
 };

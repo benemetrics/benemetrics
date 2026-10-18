@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Icon } from "./Icon";
-import { ProjectSwitcher } from "./ProjectSwitcher";
-import { useWorkspace } from "./WorkspaceContext";
-import { NAV } from "./workspace";
+import { Icon } from "./Icon.tsx";
+import { ProjectSwitcher } from "./ProjectSwitcher.tsx";
+import { useWorkspace } from "./WorkspaceContext.tsx";
+import { navForReadOnly } from "./workspace.ts";
 import {
   api,
   getAdminToken,
   listIssues,
   setAdminToken,
-} from "../lib/api";
-import { POLL_INTERVAL_MS } from "../lib/utils";
+} from "../lib/api.ts";
+import { POLL_INTERVAL_MS } from "../lib/utils.ts";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -27,8 +27,6 @@ export function AppSidebar() {
   const [issueCount, setIssueCount] = useState(0);
   const [issueCountCapped, setIssueCountCapped] = useState(false);
   const [alertCount, setAlertCount] = useState(0);
-  const [health, setHealth] = useState<{ status: string; eventsStored: number } | null>(null);
-  const [healthState, setHealthState] = useState<"loading" | "ok" | "down">("loading");
   const [sessionOpen, setSessionOpen] = useState(false);
   const [tokenDraft, setTokenDraft] = useState(() => getAdminToken());
 
@@ -65,18 +63,6 @@ export function AppSidebar() {
       } catch {
         // keep last counts on failure
       }
-      try {
-        const healthResult = await api.health.get();
-        if (cancelled) return;
-        if (healthResult?.data) {
-          setHealth(healthResult.data);
-          setHealthState("ok");
-        } else {
-          setHealthState("down");
-        }
-      } catch {
-        if (!cancelled) setHealthState("down");
-      }
     };
     load();
     const interval = setInterval(load, POLL_INTERVAL_MS);
@@ -98,7 +84,7 @@ export function AppSidebar() {
       <ProjectSwitcher />
 
       <nav className="nav-list" aria-label="Main navigation">
-        {NAV.map((item) => (
+        {navForReadOnly(adminUser?.readOnly).map((item) => (
           <div
             key={item.path}
             className={`nav-item ${location.pathname === item.path ? "active" : ""}`}
@@ -137,14 +123,25 @@ export function AppSidebar() {
         >
           <div className="avatar">{initials(adminUser?.name ?? "?")}</div>
           <div className="workspace-copy">
-            <div className="workspace-name">{adminUser?.name ?? "Not signed in"}</div>
-            <div className="workspace-plan">{adminUser?.email ?? "Set an admin token"}</div>
+            <div className="workspace-name">
+              {adminUser?.name ?? "Not signed in"}
+              {adminUser?.readOnly && <span className="readonly-chip">Read-only</span>}
+            </div>
+            <div className="workspace-plan">
+              {adminUser ? adminUser.email || "Full access" : "Set an admin token"}
+            </div>
           </div>
           <Icon name="more" />
         </div>
         {sessionOpen && (
           <div className="session-panel">
             <div className="menu-label">Admin token</div>
+            {adminUser?.readOnly && (
+              <div className="session-hint">
+                You are signed in with scoped read access. Saving the admin token
+                replaces it.
+              </div>
+            )}
             <input
               className="token-input"
               type="password"
@@ -162,15 +159,6 @@ export function AppSidebar() {
             >
               Save &amp; reconnect
             </div>
-          </div>
-        )}
-        {project && (
-          <div className="workspace-plan" style={{ padding: "8px 11px 0" }}>
-            {healthState === "down"
-              ? "Backend unreachable — retrying"
-              : healthState === "loading"
-                ? "Checking backend…"
-                : `${health?.eventsStored ?? 0} events stored`}
           </div>
         )}
       </div>

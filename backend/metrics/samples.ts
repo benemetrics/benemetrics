@@ -1,94 +1,143 @@
-import type { ParsedEnvelope } from "../events/utils";
-import { normalizeTransactionPayload } from "../events/utils";
-import type { MetricSample } from "../protocol/metrics";
+import { parseEnvelope, normalizeTransactionPayload } from "../events/utils.ts";
 
-// Ingestion-time sample extraction: the API already parses the envelope,
-// so it lifts every metric out of it and publishes them next to the event
-// — no consumer ever re-parses a payload to build series (SQL-side
-// extraction was rejected: it would duplicate this taxonomy in
-// ClickHouse SQL).
-//
-// Every numeric measurement is kept — no allowlist — including custom
-// measurements on error events and the rate samples React Native sends;
-// `dimension` is the transaction name (route/screen), "" when the event
-// has none. Sentinels are added on top: `event_count` per stored event,
-// `error_count`/`fatal_count` for error events and `duration` (ms) for
-// transactions.
-
-type ParsedItem = ParsedEnvelope["items"][number];
-
-function toRecord(payload: unknown): Record<string, unknown> {
-  return payload && typeof payload === "object"
-    ? (payload as Record<string, unknown>)
-    : {};
-}
-
-/** Transaction name used as the sample dimension. */
-function dimensionOf(record: Record<string, unknown>): string {
-  return typeof record.transaction === "string" ? record.transaction : "";
-}
-
-/** Sentry timestamps are seconds since epoch, number or string. */
-function toSeconds(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return null;
-}
-
-export function extractMetricSamples(input: {
+export interface MetricSample {
+  eventId: string;
   projectId: string;
   appId: string;
-  eventId: string;
-  /** Converted envelope items (spans already folded into transactions). */
-  items: ParsedItem[];
-  receivedAt: string;
-}): MetricSample[] {
-  const { projectId, appId, eventId, items, receivedAt } = input;
+  metric: string;
+  value: number;
+  dimension: string;
+  timestamp: string;
+}
+
+export function extractMetrics(envelope: { header: Record<string, unknown>; items: Array<{ header: Record<string, unknown>; payload: unknown }> }): MetricSample[] {
   const samples: MetricSample[] = [];
-  const add = (metric: string, value: number, dimension: string) => {
-    if (!Number.isFinite(value)) return;
-    samples.push({ projectId, appId, eventId, metric, value, dimension, receivedAt });
-  };
+  const timestamp = new Date().toISOString();
 
-  for (const item of items) {
-    if (item.header.type !== "event" && item.header.type !== "transaction") {
-      continue;
+  for (const item of envelope.items) {
+    if (!item.payload || typeof item.payload !== "object") continue;
+    const payload = item.payload as Record<string, unknown>;
+
+    // Skip non-event/transaction items
+    if (item.header.type !== "event" && item.header.type !== "transaction") continue;
+
+    const normalized = normalizeTransactionPayload(payload);
+    const eventId = (normalized as Record<string, unknown>).event_id as string || "unknown";
+    const projectId = (envelope.header as Record<string, unknown>).project_id as string || "unknown";
+    const appId = "unknown";
+
+    // Sentinels
+    samples.push({
+      eventId,
+      projectId,
+      appId,
+      metric: "event_count",
+      value: 1,
+      dimension: "",
+      timestamp,
+    });
+
+    const level = payload.level as string;
+    if (level === "error") {
+      samples.push({ eventId, projectId, appId, metric: "error_count", value: 1, dimension: "", timestamp });
     }
-    const record = toRecord(normalizeTransactionPayload(item.payload));
-    const dimension = dimensionOf(record);
+    if (level === "fatal") {
+      samples.push({ eventId, projectId, appId, metric: "fatal_count", value: 1, dimension: "", timestamp });
+    }
 
-    add("event_count", 1, dimension);
-    // A transaction's duration is canonical: when it is derived from the
-    // timestamps, a `duration` measurement would only duplicate it.
-    let hasDurationSentinel = false;
-    if (item.header.type === "event") {
-      add("error_count", 1, dimension);
-      if (record.level === "fatal") add("fatal_count", 1, dimension);
-    } else {
-      const start = toSeconds(record.start_timestamp);
-      const end = toSeconds(record.timestamp);
-      if (start !== null && end !== null && end >= start) {
-        add("duration", (end - start) * 1000, dimension);
-        hasDurationSentinel = true;
+    // Extract measurements from payload for all item types
+    const payloadMeasurements = (payload.measurements && typeof payload.measurements === "object")
+      ? payload.measurements as Record<string, unknown>
+      : null;
+
+    const normalizedMeasurements = (normalized as Record<string, unknown>).measurements as Record<string, unknown> | undefined;
+
+    // Transaction measurements
+    if (item.header.type === "transaction" && normalizedMeasurements) {
+      for (const [key, value] of Object.entries(normalizedMeasurements)) {
+        if (typeof value === "object" && value !== null && "value" in value) {
+          const numValue = (value as Record<string, unknown>).value as number;
+          if (typeof numValue === "number") {
+            const dimension = (normalized as Record<string, unknown>).transaction as string || "";
+            samples.push({
+              eventId,
+              projectId,
+              appId,
+              metric: key,
+              value: numValue,
+              dimension,
+              timestamp,
+            });
+          }
+        }
       }
-    }
 
-    const measurements = record.measurements;
-    if (!measurements || typeof measurements !== "object") continue;
-    for (const [name, entry] of Object.entries(measurements as Record<string, unknown>)) {
-      if (name === "duration" && hasDurationSentinel) continue;
-      const value =
-        entry && typeof entry === "object"
-          ? (entry as { value?: unknown }).value
-          : entry;
-      if (typeof value === "number" && Number.isFinite(value)) {
-        add(name, value, dimension);
+      // Duration
+      const duration = payload.duration as number;
+      if (typeof duration === "number") {
+        const dimension = (normalized as Record<string, unknown>).transaction as string || "";
+        samples.push({
+          eventId,
+          projectId,
+          appId,
+          metric: "duration",
+          value: duration,
+          dimension,
+          timestamp,
+        });
+      }
+
+      // Web vitals from payload measurements
+      const webVitals = ["lcp", "inp", "cls", "fcp", "ttfb", "fp", "fid", "ttfb.requesttime"];
+      const allMeasurements = payloadMeasurements || normalizedMeasurements;
+      if (allMeasurements) {
+        for (const vital of ["lcp", "inp", "cls", "fcp", "ttfb", "fp", "fid", "ttfb.requesttime"]) {
+          if (vital in allMeasurements) {
+            const m = allMeasurements[vital] as Record<string, unknown>;
+            if (m && typeof m.value === "number") {
+              samples.push({
+                eventId,
+                projectId,
+                appId,
+                metric: vital,
+                value: m.value,
+                dimension: "",
+                timestamp,
+              });
+            }
+          }
+        }
+
+        // Mobile vitals from measurements
+        const mobileVitals = [
+          "app_start_cold", "app_start_warm", "time_to_initial_display", "time_to_full_display",
+          "frames_total", "frames_slow", "frames_frozen", "stall_count",
+          "stall_total_time", "stall_longest_time",
+          "frames_slow_rate", "frames_frozen_rate", "stall_percentage",
+        ];
+        for (const vital of mobileVitals) {
+          if (vital in allMeasurements) {
+            const m = allMeasurements[vital] as Record<string, unknown>;
+            if (m && typeof m.value === "number") {
+              samples.push({
+                eventId,
+                projectId,
+                appId,
+                metric: vital,
+                value: m.value,
+                dimension: "",
+                timestamp,
+              });
+            }
+          }
+        }
       }
     }
   }
 
   return samples;
+}
+
+export function metricsToJSONEachRow(samples: MetricSample[]): string {
+  return samples.map(s => JSON.stringify(s)).join("\n");
 }

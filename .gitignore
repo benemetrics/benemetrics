@@ -21,7 +21,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *.sqlite-journal
 *.sqlite-wal
 *.sqlite-shm
-.pglite
 
 # local object storage (LOCAL_STORAGE_DIR default)
 .storage

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Action } from "./Action";
-import { ApplicationSwitcher } from "./ApplicationSwitcher";
-import { Icon } from "./Icon";
-import { EnvironmentSwitcher } from "./EnvironmentSwitcher";
-import { ProjectMenu } from "./ProjectSwitcher";
-import { useWorkspace } from "./WorkspaceContext";
-import { NAV } from "./workspace";
+import { Action } from "./Action.tsx";
+import { ApplicationSwitcher } from "./ApplicationSwitcher.tsx";
+import { Icon } from "./Icon.tsx";
+import { EnvironmentSwitcher } from "./EnvironmentSwitcher.tsx";
+import { ProjectMenu } from "./ProjectSwitcher.tsx";
+import { useWorkspace } from "./WorkspaceContext.tsx";
+import { NAV } from "./workspace.ts";
 
 export function Topbar() {
   const location = useLocation();

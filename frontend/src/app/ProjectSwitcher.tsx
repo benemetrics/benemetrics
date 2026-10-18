@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useWorkspace } from "./WorkspaceContext";
+import { useWorkspace } from "./WorkspaceContext.tsx";
 
 export function ProjectMenu({ className = "", onSelect }: { className?: string; onSelect?: () => void }) {
   const { projects, project, selectProject, createProjectWithName } = useWorkspace();

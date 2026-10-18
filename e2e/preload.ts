@@ -1,31 +1,16 @@
-/**
- * Test preload: every test file runs the real app against an in-memory
- * PGlite database (see db/index.ts) and the real NATS + ClickHouse
- * services the suite requires (see todo.metrics.md). Connections are
- * opened before each file and closed after it so WASM memory and sockets
- * do not accumulate across the suite.
- *
- * Registered from bunfig.toml [test].preload; runs once per test file.
- */
-import { afterAll, beforeAll } from "bun:test";
-import { closeDb } from "db";
-import { closeClickHouse, initClickHouse } from "../backend/clickhouse";
-import { closeNats, initNats } from "../backend/nats";
+// This file is loaded by bunfig.toml for e2e tests
+// It sets up the test environment
 
-// The backend accepts only the ADMIN_TOKEN configured in the environment,
-// so the suite configures one for every test file. Tests that need the
-// unconfigured state unset it temporarily and restore it.
-process.env.ADMIN_TOKEN = "e2e-admin-token";
+process.env.ADMIN_TOKEN = "test-admin-token";
+process.env.NODE_ENV = "test";
+process.env.NATS_SERVERS = "nats://localhost:4222";
+process.env.CLICKHOUSE_HOST = "localhost";
+process.env.CLICKHOUSE_PORT = "8123";
+process.env.S3_BUCKET = "sentry-replays";
+process.env.S3_ENDPOINT = "http://localhost:9100";
+process.env.S3_ACCESS_KEY_ID = "rustfsadmin";
+process.env.S3_SECRET_ACCESS_KEY = "rustfsadmin";
+process.env.S3_REGION = "us-east-1";
 
-beforeAll(async () => {
-  // Boot order: NATS (stream + durable pull consumers) before ClickHouse
-  // (engine tables + materialized views).
-  await initNats();
-  await initClickHouse();
-});
-
-afterAll(async () => {
-  await closeNats();
-  await closeClickHouse();
-  await closeDb();
-});
+// Import to trigger bootstrap
+import "../backend/index.ts";

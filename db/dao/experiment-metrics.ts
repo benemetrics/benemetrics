@@ -1,64 +1,41 @@
-import { db } from "db";
-import { experimentMetrics } from "db/schema/experiment-metrics";
-import { countDistinct, eq, and } from "drizzle-orm";
-import type { PgInsertValue } from "drizzle-orm/pg-core";
-import { internalError } from "backend/errors";
-
-type MetricRow = typeof experimentMetrics.$inferSelect;
-
-export interface MetricRecord {
-  id: string;
-  flagId: string;
-  variantKey: string;
-  userId: string;
-  metricName: string;
-  value: number;
-  recordedAt: string;
-}
-
-export interface VariantCount {
-  variantKey: string;
-  count: number;
-}
+import { db } from "../index.ts";
+import { experimentMetrics } from "../schema/experiment-metrics.ts";
+import { eq, and, desc, count } from "drizzle-orm";
+import { crypto } from "../../backend/utils/crypto.ts";
 
 export const experimentMetricDAO = {
-  record: async (
-    data: Omit<PgInsertValue<typeof experimentMetrics>, "id" | "recordedAt"> & {
-      id?: string;
-      recordedAt?: string;
-    },
-  ): Promise<MetricRecord> => {
-    const [row] = await db
+  async record(data: {
+    flagId: string;
+    variantKey: string;
+    userId: string;
+    metricName: string;
+    value?: number;
+  }) {
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const result = await db
       .insert(experimentMetrics)
       .values({
-        ...data,
-        id: data.id ?? crypto.randomUUID(),
-        recordedAt: data.recordedAt ?? new Date().toISOString(),
+        id,
+        flagId: data.flagId,
+        variantKey: data.variantKey,
+        userId: data.userId,
+        metricName: data.metricName,
+        value: data.value ?? 1,
+        recordedAt: now,
       })
       .returning();
-    if (!row) {
-      throw internalError("Failed to record experiment metric");
-    }
-    return row;
+
+    return result[0];
   },
 
-  countByVariant: async (
-    flagId: string,
-    metricName: string,
-  ): Promise<VariantCount[]> => {
-    const rows = await db
-      .select({
-        variantKey: experimentMetrics.variantKey,
-        count: countDistinct(experimentMetrics.userId),
-      })
+  async countByVariant(flagId: string, metricName: string) {
+    const result = await db
+      .select({ variantKey: experimentMetrics.variantKey, count: count() })
       .from(experimentMetrics)
-      .where(
-        and(
-          eq(experimentMetrics.flagId, flagId),
-          eq(experimentMetrics.metricName, metricName),
-        ),
-      )
+      .where(and(eq(experimentMetrics.flagId, flagId), eq(experimentMetrics.metricName, metricName)))
       .groupBy(experimentMetrics.variantKey);
-    return rows;
+    return result;
   },
 };

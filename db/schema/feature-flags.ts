@@ -1,10 +1,4 @@
-import {
-  pgTable,
-  text,
-  integer,
-  index,
-} from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm/sql";
+import { pgTable, text, integer, index, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const featureFlags = pgTable(
   "feature_flags",
@@ -21,8 +15,8 @@ export const featureFlags = pgTable(
     status: text("status").notNull().default("draft"),
     rolloutPercentage: integer("rollout_percentage").notNull().default(100),
     experiment: text("experiment"),
-    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
   },
   (table) => ({
     keyIdx: index("feature_flags_key_idx").on(table.key),
@@ -31,3 +25,4 @@ export const featureFlags = pgTable(
 );
 
 export type FeatureFlag = typeof featureFlags.$inferSelect;
+export type FeatureFlagInsert = typeof featureFlags.$inferInsert;

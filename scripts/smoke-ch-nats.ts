@@ -15,8 +15,8 @@
  */
 
 import { createClient, type ClickHouseClient } from "@clickhouse/client";
-import { AckPolicy, StorageType, connect } from "nats";
-import type { JetStreamManager, NatsConnection } from "nats";
+import { AckPolicy, StorageType, connect } from "../backend/nats.ts";
+import type { JetStreamManager, NatsConnection } from "../backend/nats.ts";
 
 const NATS_SERVERS = process.env.NATS_SERVERS || "nats://localhost:4222";
 const CH_NATS_URL = process.env.CLICKHOUSE_NATS_URL || "nats:4222";

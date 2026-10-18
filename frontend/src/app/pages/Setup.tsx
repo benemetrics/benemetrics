@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Icon } from "../Icon";
-import { Action } from "../Action";
+import { Icon } from "../Icon.tsx";
+import { Action } from "../Action.tsx";
 import {
   api,
   ingestEnvelope,
+  listEvents,
   type AppDto,
   type ProjectDto,
-} from "../../lib/api";
-import { platformSymbol } from "../../lib/platform";
-import { notify } from "../../lib/toast";
-import { POLL_INTERVAL_MS } from "../../lib/utils";
+} from "../../lib/api.ts";
+import { platformSymbol } from "../../lib/platform.ts";
+import { notify } from "../../lib/toast.ts";
+import { POLL_INTERVAL_MS } from "../../lib/utils.ts";
 
 const SDKS = [
   ["node", "Node.js / TS"],
@@ -87,16 +88,17 @@ export function Setup() {
     if (match) setApp(match);
   }, [requestedAppId, apps]);
 
+  // After a test event is sent, watch the app's stored-event count until it
+  // grows. The events API is the source — the health endpoint is Docker-only.
   useEffect(() => {
+    if (baseline == null) return;
     let cancelled = false;
     const load = async () => {
       try {
-        const result = await api.health.get();
-        const stored = result?.data?.eventsStored;
-        if (cancelled || stored == null) return;
-        if (baseline != null && stored > baseline) {
-          setReceived(true);
-        }
+        const result = await listEvents({ appId: app?.id, limit: 1 });
+        const stored = (result?.data as { pagination?: { total?: number } } | null)
+          ?.pagination?.total;
+        if (!cancelled && stored != null && stored > baseline) setReceived(true);
       } catch {
         // keep waiting on failure
       }
@@ -107,7 +109,7 @@ export function Setup() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [baseline]);
+  }, [baseline, app?.id]);
 
   const dsn = app?.dsn ?? null;
   const appProject = projects.find((item) => item.id === app?.projectId) ?? null;
@@ -199,8 +201,10 @@ export function Setup() {
       });
       if (result?.id) {
         setOutput(`Accepted — stored as ${String(result.id).slice(0, 8)}…`);
-        const healthResult = await api.health.get();
-        setBaseline(healthResult?.data?.eventsStored ?? null);
+        const listResult = await listEvents({ appId: app.id, limit: 1 });
+        const stored = (listResult?.data as { pagination?: { total?: number } } | null)
+          ?.pagination?.total;
+        setBaseline(stored ?? null);
       } else {
         setOutput(`Rejected — ${JSON.stringify(result)}`);
         notify("The test event was rejected. Check the application's ingest key.");

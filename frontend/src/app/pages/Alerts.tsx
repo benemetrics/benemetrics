@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Action } from "../Action";
-import { ScreenIntro } from "../ScreenIntro";
-import { useWorkspace } from "../WorkspaceContext";
+import { Action } from "../Action.tsx";
+import { ScreenIntro } from "../ScreenIntro.tsx";
+import { useWorkspace } from "../WorkspaceContext.tsx";
 import {
   api,
   type AlertChannelDto,
   type AlertIncidentDto,
   type AlertRuleDto,
-} from "../../lib/api";
-import { notify } from "../../lib/toast";
-import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils";
+} from "../../lib/api.ts";
+import { notify } from "../../lib/toast.ts";
+import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils.ts";
 
 function unwrapList<T>(response: unknown): T[] {
   if (!response || typeof response !== "object") return [];

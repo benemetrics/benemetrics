@@ -1,51 +1,38 @@
 import { Elysia } from "elysia";
-import { type as arktype } from "arktype";
-import { issueDAO } from "db/dao/issues";
-import { appDAO, projectDAO } from "db/dao/project";
-import { toIssue } from "./serialize";
+import { type } from "arktype";
+import { issueDAO } from "../../../db/dao/issues.ts";
 
-// Issues are created and kept up to date by ingestion; this surface only
-// lists them and toggles their status (resolving an issue arms the
-// "regression" alert trigger for its next occurrence).
 export const issueRoutes = new Elysia({ prefix: "issues" })
   .get(
     "/",
-    async ({ query: { appId, projectId, status, q, page, limit } }) => {
-      if (appId) await appDAO.findByIdOrThrow(appId);
-      if (projectId) await projectDAO.findByIdOrThrow(projectId);
-      const { data, pagination } = await issueDAO.listPaged({
-        appId,
-        projectId,
-        status,
-        q,
-        page,
-        limit,
+    async ({ query }) => {
+      return await issueDAO.list({
+        appId: query.appId,
+        projectId: query.projectId,
+        status: query.status,
+        search: query.search,
+        page: query.page,
+        limit: query.limit,
       });
-      return { data: data.map(toIssue), pagination };
     },
     {
-      query: arktype({
+      query: type({
         appId: "string.uuid?",
         projectId: "string.uuid?",
         status: "'unresolved' | 'resolved'?",
-        q: "string?",
+        search: "string?",
         page: "string.integer.parse?",
         limit: "string.integer.parse?",
       }),
-    },
+    }
   )
   .get(
     "/:id",
-    async ({ params: { id } }) =>
-      toIssue(await issueDAO.findByIdOrThrow(id)),
-    { params: arktype({ id: "string.uuid" }) },
+    async ({ params: { id } }) => await issueDAO.findByIdOrThrow(id),
+    { params: type({ id: "string.uuid" }) }
   )
   .patch(
     "/:id",
-    async ({ params: { id }, body }) =>
-      toIssue(await issueDAO.updateOrThrow(id, { status: body.status })),
-    {
-      params: arktype({ id: "string.uuid" }),
-      body: arktype({ status: "'unresolved' | 'resolved'" }),
-    },
+    async ({ params: { id }, body }) => await issueDAO.updateOrThrow(id, body),
+    { params: type({ id: "string.uuid" }), body: type({ status: "'unresolved' | 'resolved'" }) }
   );

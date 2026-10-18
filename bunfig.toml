@@ -1,5 +1,11 @@
-[serve.static]
-plugins = ["bun-plugin-tailwind"]
+[run]
+# Preload for test environment (closes PGlite after each test file)
+preload = ["./e2e/preload.ts"]
 
 [test]
-preload = ["./e2e/preload.ts"]
+# Test timeout
+timeout = 30000
+
+[install]
+# Use Bun's built-in registry
+registry = "https://registry.npmjs.org"

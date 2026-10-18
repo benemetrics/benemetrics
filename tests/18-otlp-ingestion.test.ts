@@ -4,14 +4,13 @@
  * Posts OpenTelemetry export payloads to the OTLP traces
  * endpoint and verifies they are stored as Sentry
  * transactions, visible through the existing events API.
- * Starts a real server on an ephemeral port for testing.
+ * Runs in-process through app.handle (no listener, no port).
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
+import { describe, it, expect } from "bun:test";
+import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
 
-let baseUrl = "";
-let server: any;
+const baseUrl = TEST_ORIGIN;
 
 const ADMIN_TOKEN = "Bearer e2e-admin-token";
 const uniq = () =>
@@ -106,16 +105,6 @@ function otlpBatch(...spans: Record<string, unknown>[]): Record<string, unknown>
 }
 
 describe("OTLP/JSON ingestion", () => {
-  beforeAll(async () => {
-    app.listen(0);
-    server = (app as any).server;
-    baseUrl = `http://localhost:${server.port}`;
-  });
-
-  afterAll(() => {
-    server.stop();
-  });
-
   it("ingests a trace batch and exposes it as a transaction", async () => {
     const appRecord = await makeApp();
     const traceId = hex(32);

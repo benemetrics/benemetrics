@@ -62,7 +62,7 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_SESSION_TOKEN` | –              | S3 credentials (`AWS_*` fallbacks are honored) |
 | `LOCAL_STORAGE_DIR`   | `./.storage`                                       | Local object-store directory used when `S3_BUCKET` is unset (served at `/storage/*`) |
 | `NATS_TEST_URL`       | –                                                  | e2e only: enables the NATS broker test (`e2e/21-nats-first.test.ts`) |
-| `CLICKHOUSE_TEST_URL` | –                                                  | e2e only: enables the ClickHouse store test (`e2e/22-clickhouse-store.test.ts`) |
+| `CLICKHOUSE_TEST_URL` | –                                                  | e2e only: enables the ClickHouse store test (`tests/22-clickhouse-store.test.ts`) |
 | `ALERT_EVALUATION_INTERVAL_MS` | `60000`                                | Alert rule sweeper interval    |
 | `ADMIN_TOKEN`         | –                                                  | Admin bearer token; accepted only while no OIDC/OAuth2 env is configured (fails closed when unset) |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID` | –                                       | Presence forces the admin guard on `/events/*` + `/storage/*` |
@@ -605,7 +605,7 @@ Each DAO is a plain object exported as `<entity>DAO` (e.g. `storedEventDAO`, `fe
 21. **Secret handling**: never log tokens/keys; never hardcode real credentials. The e2e suite configures its own `ADMIN_TOKEN` in `e2e/preload.ts` — the app ships no built-in tokens.
 
 ### Testing & quality gates
-22. **Every new endpoint gets an e2e test** under `e2e/` (see `e2e/12-projects-apps.test.ts` for the "start real app on port 0" pattern). Rely on tests, not manual curl, for DSN/ingestion/auth.
+22. **Every new endpoint gets a test** — API tests run in-process via `app.handle` under `tests/` (patterns: `tests/12-projects-apps.test.ts`; helpers: `tests/test-helpers.ts`); suites that need a real socket stay in `e2e/`. Rely on tests, not manual curl, for DSN/ingestion/auth.
 23. **Run `bun run typecheck` and `bun run test` before pushing.** Do not commit with type errors.
 24. **No `.tmp`, no commented-out dead code, no duplicate files.** If something is unused, delete it.
 25. **Consistent naming**: routes plural and kebab-case (`feature-flags`, `stored-events`), DAO methods as in §7.2, files `index.ts` per module.

@@ -18,7 +18,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { startTestServer, type TestServer } from "./test-helpers";
+import { handleFetch as fetch, startTestApp, type TestApp } from "./test-helpers";
 import { storedEventDAO } from "db/dao/stored-event";
 
 const BUCKET = "sentry-replays";
@@ -31,7 +31,7 @@ interface UploadedObject {
   contentType: string | null;
 }
 
-let testServer: TestServer;
+let testServer: TestApp;
 let s3Server: ReturnType<typeof Bun.serve> | null = null;
 let s3Endpoint = "";
 let uploads: UploadedObject[] = [];
@@ -151,13 +151,12 @@ beforeAll(async () => {
   });
   s3Endpoint = `http://127.0.0.1:${s3Server.port}`;
 
-  testServer = await startTestServer();
+  testServer = await startTestApp();
 });
 
 afterAll(() => {
   restoreStorageEnv();
   s3Server?.stop(true);
-  testServer?.stop();
 });
 
 beforeEach(() => {

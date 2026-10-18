@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "typecheck": "bun check",
-    "test": "bun test --parallel=1 e2e/",
+    "test": "bun test --parallel=1 tests/ e2e/",
     "dev": "bun --hot backend/index.ts",
     "start": "bun backend/index.ts",
     "test:error-tracking": "bun test e2e/01-error-tracking.test.ts",
@@ -15,10 +15,10 @@
     "test:session-replay": "bun test e2e/04-session-replay.test.ts",
     "test:breadcrumbs": "bun test e2e/05-breadcrumbs.test.ts",
     "test:alerting": "bun test e2e/06-alerting.test.ts",
-    "test:alerting-rules": "bun test e2e/16-alerting-rules.test.ts",
+    "test:alerting-rules": "bun test tests/16-alerting-rules.test.ts",
     "test:authentication": "bun test e2e/08-authentication.test.ts",
     "test:feature-flags": "bun test e2e/09-feature-flags.test.ts",
-    "test:projects": "bun test e2e/12-projects-apps.test.ts"
+    "test:projects": "bun test tests/12-projects-apps.test.ts"
   },
   "dependencies": {
     "@clickhouse/client": "^1.24.1",

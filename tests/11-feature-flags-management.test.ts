@@ -2,16 +2,13 @@
  * E2E Test: Feature Flags Management API (11-admin.md)
  * 
  * Tests the feature flags management API endpoints.
- * Starts a real server on an ephemeral port for testing.
+ * Runs in-process through app.handle (no listener, no port).
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
-import app from "../backend/index";
+import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
 
-let baseUrl = "";
-let server: any;
-
-const SERVER_URL = "http://localhost:31337"; // kept for reference but not used
+const baseUrl = TEST_ORIGIN;
 const ADMIN_TOKEN = "Bearer e2e-admin-token";
 
 interface FeatureFlag {
@@ -75,16 +72,11 @@ async function sentryRequest(
 
 describe("Feature Flags Management API", () => {
   beforeAll(async () => {
-    app.listen(0);
-    server = (app as any).server;
-    baseUrl = `http://localhost:${server.port}`;
-    
     await apiRequest("POST", "/events/clear");
   });
 
   afterAll(async () => {
     await apiRequest("POST", "/events/clear");
-    server.stop();
   });
 
   beforeEach(async () => {

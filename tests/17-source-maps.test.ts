@@ -7,11 +7,10 @@
  * and best-effort symbolication of ingested events.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
+import { describe, it, expect, beforeAll } from "bun:test";
+import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
 
-let baseUrl = "";
-let server: any;
+const baseUrl = TEST_ORIGIN;
 
 const ADMIN_HEADERS = {
   Authorization: "Bearer e2e-admin-token",
@@ -134,10 +133,6 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
   let uploadToken = "";
 
   beforeAll(async () => {
-    app.listen(0);
-    server = (app as any).server;
-    baseUrl = `http://localhost:${server.port}`;
-
     // Project -> Environment (shared) -> App
     const projectRes = await adminRequest("POST", "/api/admin/projects", {
       name: "Source Map E2E",
@@ -176,10 +171,6 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
     const token = (await tokenRes.json()) as any;
     uploadToken = token.token;
     expect(uploadToken).toMatch(/^smt_/);
-  });
-
-  afterAll(async () => {
-    server.stop();
   });
 
   it("lists token metadata without leaking the raw token", async () => {

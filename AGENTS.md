@@ -92,7 +92,7 @@ Route handler (backend/<domain>/index.ts)  ->  DAO (db/dao/*)  ->  Drizzle
 
 ## Testing
 
-- MUST add or update an e2e test in `e2e/` for any new endpoint. Follow the "start real app on port 0" pattern in `e2e/10-dsn-endpoints.test.ts`.
+- MUST add or update a test for any new endpoint. API tests run in-process via `app.handle` under `tests/` (pattern: `tests/12-projects-apps.test.ts`; helpers in `tests/test-helpers.ts`); suites that need a real socket — SDK-driven, WebView UI, WebSocket — stay in `e2e/` (OIDC + permissions pattern: `e2e/31-permissions.test.ts`).
 - E2E tests boot the real app against in-memory PGlite; `e2e/preload.ts` (registered in `bunfig.toml`) closes the embedded client after each file, and new test files inherit this automatically.
 - NEVER rely on manual curl for DSN/ingestion/auth verification.
 

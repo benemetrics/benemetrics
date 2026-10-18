@@ -7,15 +7,13 @@
  *   - Slug uniqueness scoped to the owning project
  *   - List / get / update / delete
  *   - Environments survive app deletion; project deletion cascades to them
- * Starts a real server on an ephemeral port for testing.
+ * Runs in-process through app.handle (no listener, no port).
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
+import { describe, it, expect } from "bun:test";
+import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
 
-let baseUrl = "";
-let server: any;
-
+const baseUrl = TEST_ORIGIN;
 const ADMIN_TOKEN = "Bearer e2e-admin-token";
 const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
@@ -105,16 +103,6 @@ async function sendEnvelope(
 }
 
 describe("Environments (project 1..* environment, shared by apps)", () => {
-  beforeAll(async () => {
-    app.listen(0);
-    server = (app as any).server;
-    baseUrl = `http://localhost:${server.port}`;
-  });
-
-  afterAll(() => {
-    server.stop();
-  });
-
   describe("POST /api/admin/environments", () => {
     it("creates the project with a default testing environment", async () => {
       const { projectId } = await makeProject();

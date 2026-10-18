@@ -13,15 +13,13 @@
  *   - Duplicate version rejection, finalize, CRUD, pagination
  *   - Per-release issue summary (new / regressed issues)
  *   - Cascade delete when the owning app is deleted
- * Starts a real server on an ephemeral port for testing.
+ * Runs in-process through app.handle (no listener, no port).
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
+import { describe, it, expect } from "bun:test";
+import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
 
-let baseUrl = "";
-let server: any;
-
+const baseUrl = TEST_ORIGIN;
 const ADMIN_TOKEN = "Bearer e2e-admin-token";
 const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -184,16 +182,6 @@ async function waitForRelease(
 }
 
 describe("Releases (auto-created from ingestion)", () => {
-  beforeAll(async () => {
-    app.listen(0);
-    server = (app as any).server;
-    baseUrl = `http://localhost:${server.port}`;
-  });
-
-  afterAll(() => {
-    server.stop();
-  });
-
   it("auto-creates a release when an event with a new version is ingested", async () => {
     const { projectId, appId, publicKey } = await makeApp();
     const eventId = crypto.randomUUID();

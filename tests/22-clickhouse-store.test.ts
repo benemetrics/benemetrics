@@ -4,7 +4,7 @@
  * Runs only when CLICKHOUSE_TEST_URL points at a ClickHouse HTTP endpoint:
  *
  *   docker run -d -p 8123:8123 clickhouse/clickhouse-server:24-alpine
- *   CLICKHOUSE_TEST_URL=http://localhost:8123 bun test e2e/22-clickhouse-store.test.ts
+ *   CLICKHOUSE_TEST_URL=http://localhost:8123 bun test tests/22-clickhouse-store.test.ts
  *
  * Verifies the store end to end against the real server: ingested events
  * are pushed to ClickHouse, the events API serves list/get reads from it
@@ -50,7 +50,7 @@ describe("ClickHouse events store", () => {
 
     const { initClickHouse, closeClickHouse, isClickHouseAvailable, findClickHouseEvent, clearClickHouseEvents } =
       await import("../backend/clickhouse");
-    const { startTestServer } = await import("./test-helpers");
+    const { startTestApp, handleFetch: fetch } = await import("./test-helpers");
     const { storedEventDAO } = await import("db/dao/stored-event");
 
     await initClickHouse();
@@ -59,7 +59,7 @@ describe("ClickHouse events store", () => {
     // Deterministic content for the count assertions below.
     await clearClickHouseEvents();
 
-    const server = await startTestServer();
+    const server = await startTestApp();
     try {
       const publicKey = new URL(server.dsn).username;
       const number = new URL(server.dsn).pathname;
@@ -148,7 +148,6 @@ describe("ClickHouse events store", () => {
       };
       expect(listAfterClear.pagination.total).toBe(0);
     } finally {
-      server.stop();
       // Reset the shared module state so later test files fall back to
       // Postgres (test files share one process).
       await closeClickHouse();

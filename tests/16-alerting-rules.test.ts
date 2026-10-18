@@ -9,14 +9,13 @@
  *     new_issue_count, latency_p95/p99) with cooldown and incident history
  *   - Uniform delivery: webhook/slack/rocketchat all POST to the configured URL,
  *     which the test observes through a local fake receiver
- * Starts a real server on an ephemeral port for testing.
+ * Runs in-process through app.handle (no listener, no port).
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
+import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
 
-let baseUrl = "";
-let server: any;
+const baseUrl = TEST_ORIGIN;
 
 // Fake receiver for every outbound channel (webhook/slack/rocketchat all POST here).
 let webhookServer: any;
@@ -113,10 +112,6 @@ function waitForWebhook(predicate: (body: Record<string, unknown>) => boolean) {
 
 describe("Alerting (channels, rules, threshold evaluation)", () => {
   beforeAll(async () => {
-    app.listen(0);
-    server = (app as any).server;
-    baseUrl = `http://localhost:${server.port}`;
-
     webhookServer = Bun.serve({
       port: 0,
       fetch: async (request) => {
@@ -132,7 +127,6 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
   });
 
   afterAll(() => {
-    server.stop();
     webhookServer.stop();
   });
 

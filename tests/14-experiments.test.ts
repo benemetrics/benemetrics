@@ -4,15 +4,13 @@
  * Tests A/B testing on top of feature flags: sticky assignment,
  * eligibility targeting, metric tracking, statistical results,
  * guardrails, lifecycle, and the SSE push stream.
- * Starts a real server on an ephemeral port.
+ * Runs in-process through app.handle (no listener, no port).
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
+import { describe, it, expect } from "bun:test";
+import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
 
-let baseUrl = "";
-let server: any;
-
+const baseUrl = TEST_ORIGIN;
 const ADMIN_TOKEN = "Bearer e2e-admin-token";
 
 interface FeatureFlag {
@@ -133,16 +131,6 @@ async function createExperimentFlag(
 }
 
 describe("Experiments / A/B Testing", () => {
-  beforeAll(async () => {
-    app.listen(0);
-    server = (app as any).server;
-    baseUrl = `http://localhost:${server.port}`;
-  });
-
-  afterAll(async () => {
-    server.stop();
-  });
-
   it("creates an experiment-enabled flag and activates it", async () => {
     const flag = await createExperimentFlag(`create-${Date.now()}`);
 

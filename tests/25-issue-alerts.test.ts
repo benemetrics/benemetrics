@@ -9,14 +9,13 @@
  *   - app-scoped issue rules only affect their app
  *   - /api/admin/issues list/get/patch endpoints
  *   - rule CRUD validation for triggers (issue triggers reject threshold fields)
- * Starts a real server on an ephemeral port for testing.
+ * Runs in-process through app.handle (no listener, no port).
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
+import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
 
-let baseUrl = "";
-let server: any;
+const baseUrl = TEST_ORIGIN;
 
 let webhookServer: any;
 let webhookUrl = "";
@@ -159,10 +158,6 @@ function waitForWebhook(predicate: (body: Record<string, unknown>) => boolean) {
 
 describe("Issue alerting (new issue / regression)", () => {
   beforeAll(async () => {
-    app.listen(0);
-    server = (app as any).server;
-    baseUrl = `http://localhost:${server.port}`;
-
     webhookServer = Bun.serve({
       port: 0,
       fetch: async (request) => {
@@ -178,7 +173,6 @@ describe("Issue alerting (new issue / regression)", () => {
   });
 
   afterAll(() => {
-    server.stop();
     webhookServer.stop();
   });
 
@@ -493,7 +487,13 @@ describe("Issue alerting (new issue / regression)", () => {
 
       // ...but issue B regressing in the same window still fires.
       await ingestEvent(t, errorEvent(messageB));
-      const issueB = (await listIssues(t.id)).find((issue) => issue.fingerprint === `msg:${messageB}`)!;
+      // Ingest side effects are chained per app and applied after the
+      // response; wait for the new issue before resolving it.
+      const issuesB = await waitFor(
+        () => listIssues(t.id),
+        (issues) => issues.some((issue) => issue.fingerprint === `msg:${messageB}`),
+      );
+      const issueB = issuesB.find((issue) => issue.fingerprint === `msg:${messageB}`)!;
       await apiRequest("PATCH", `/api/admin/issues/${issueB.id}`, { status: "resolved" });
       await ingestEvent(t, errorEvent(messageB));
 

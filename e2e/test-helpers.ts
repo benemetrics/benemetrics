@@ -1,5 +1,7 @@
 /**
- * Shared e2e helpers.
+ * Shared helpers for socket-needing e2e suites (SDK-driven tests, WebView UI
+ * tests, WebSocket feeds); in-process API tests live in `tests/` and use
+ * `tests/test-helpers.ts` instead.
  *
  * Starts the real backend on an ephemeral port and provisions a project +
  * app through the admin API. Ingestion never auto-creates apps anymore, so

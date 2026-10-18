@@ -5,16 +5,13 @@
  *   - Create / list / get / delete projects
  *   - Create apps inside a project, each app getting its own DSN
  *   - Ingest an event through a generated app DSN (full circle)
- * Starts a real server on an ephemeral port for testing.
+ * Runs in-process through app.handle (no listener, no port).
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
+import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
 
-let baseUrl = "";
-let server: any;
-
-const SERVER_URL = "http://localhost:31337"; // kept for reference but not used
+const baseUrl = TEST_ORIGIN;
 const ADMIN_TOKEN = "Bearer e2e-admin-token";
 
 interface ProjectResponse {
@@ -116,16 +113,11 @@ async function waitFor<T>(
 
 describe("Projects & Apps Management", () => {
   beforeAll(async () => {
-    app.listen(0);
-    server = (app as any).server;
-    baseUrl = `http://localhost:${server.port}`;
-    
     await sentryRequest("POST", "/events/clear");
   });
 
   afterAll(async () => {
     await sentryRequest("POST", "/events/clear");
-    server.stop();
   });
 
   describe("POST /api/admin/projects", () => {

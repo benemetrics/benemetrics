@@ -1,7 +1,9 @@
 import type { MetricBreakdownRow, MetricSeriesPoint } from "./protocol/metrics";
 import {
+  countClickHouseMetricSamples,
   listMetricBreakdown,
   listMetricSeries,
+  quantileClickHouseMetricSamples,
   type MetricReadFilter,
 } from "./clickhouse";
 
@@ -22,4 +24,23 @@ export async function queryMetricBreakdown(
   limit: number,
 ): Promise<MetricBreakdownRow[]> {
   return listMetricBreakdown({ ...filters, limit });
+}
+
+// Alert-sweeper reads: sentinel counts and measurement quantiles over the
+// app's samples in the window.
+export async function countMetricSamples(
+  appId: string,
+  metric: string,
+  since: string,
+): Promise<number> {
+  return countClickHouseMetricSamples({ appId, metric, since });
+}
+
+export async function metricSampleQuantile(
+  appId: string,
+  metric: string,
+  quantile: number,
+  since: string,
+): Promise<number> {
+  return quantileClickHouseMetricSamples({ appId, metric, quantile, since });
 }

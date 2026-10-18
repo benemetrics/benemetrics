@@ -14,6 +14,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { evaluateRulesForApp } from "../backend/alerting/evaluation";
+import { listClickHouseMetricSamplesForEvent } from "../backend/clickhouse";
 import { handleFetch as fetch, TEST_ORIGIN, waitForStoredEvent } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
@@ -67,9 +68,11 @@ async function makeApp(): Promise<AlertApp> {
 // DSN public key is sent as the sentry_key query param.
 //
 // Ingestion is asynchronous (NATS -> ClickHouse): after the stored event
-// is visible, the app's threshold rules are evaluated once explicitly —
-// the per-app work queue keeps that evaluation ordered after any
-// ingestion-triggered issue tracking (cooldowns keep it one-shot).
+// *and its metric samples* are visible, the app's threshold rules are
+// evaluated once explicitly — the per-app work queue keeps that
+// evaluation ordered after any ingestion-triggered issue tracking
+// (cooldowns keep it one-shot). The sweeper reads the samples, so waiting
+// for them is what makes the evaluation deterministic.
 async function ingestEvent(app: AlertApp, event: Record<string, unknown>): Promise<Response> {
   const response = await fetch(
     `${baseUrl}/api/${app.ingestKey}/store/?sentry_key=${encodeURIComponent(app.publicKey)}`,
@@ -82,6 +85,10 @@ async function ingestEvent(app: AlertApp, event: Record<string, unknown>): Promi
   const eventId = event.event_id;
   if (response.ok && typeof eventId === "string") {
     await waitForStoredEvent(eventId);
+    await waitFor(
+      () => listClickHouseMetricSamplesForEvent(eventId),
+      (samples) => samples.length > 0,
+    );
     evaluateRulesForApp(app.id);
   }
   return response;
@@ -594,7 +601,8 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         appId: appRecord.id,
       });
 
-      // p95 of [100, 200, 300, 400, 500] (nearest-rank) is 500.
+      // p95 of [100, 200, 300, 400, 500] (ClickHouse quantile with linear
+      // interpolation) is 480.
       for (const duration of [100, 200, 300, 400, 500]) {
         await ingestEvent(appRecord, transactionEvent(crypto.randomUUID(), duration));
       }
@@ -608,7 +616,7 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       );
 
       expect(incidents.data[0]!.metric).toBe("latency_p95");
-      expect(incidents.data[0]!.value).toBe(500);
+      expect(incidents.data[0]!.value).toBe(480);
       expect(incidents.data[0]!.threshold).toBe(400);
     });
 

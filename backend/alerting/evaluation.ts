@@ -1,14 +1,15 @@
-// Metrics are computed from the app's stored events in ClickHouse; a
-// rule breaches when the metric crosses its threshold. Breaching
-// rules dispatch a uniform notification to their channels
-// (or every effective channel when none are selected), record
+// Threshold metrics are computed from the metric samples in ClickHouse —
+// sentinel counts and measurement quantiles; issue-driven metrics stay on
+// the Postgres control plane. A rule breaches when the metric crosses its
+// threshold. Breaching rules dispatch a uniform notification to their
+// channels (or every effective channel when none are selected), record
 // an incident and respect the cooldown between notifications.
 
 import { alertRuleDAO } from "db/dao/alert-rules";
 import { alertIncidentDAO } from "db/dao/alert-incidents";
 import { appDAO } from "db/dao/project";
-import { listClickHouseEventsForApp } from "../clickhouse";
-import { issueFingerprint } from "../events/utils";
+import { issueDAO } from "db/dao/issues";
+import { countMetricSamples, metricSampleQuantile } from "../metrics-store";
 import { trackIssuesForEvent, type TrackedIssue } from "../issues/tracking";
 import { resolveEffectiveAlertConfig } from "./resolver";
 import { toIncident } from "./serialize";
@@ -21,137 +22,38 @@ import type { AlertIncident, AlertMetric } from "../protocol/alerting";
 
 const DEFAULT_MEASUREMENT = "duration";
 
-interface ParsedAppEvent {
-  receivedAt: string;
-  // Event-type payloads (level/issue metrics).
-  eventPayloads: Array<Record<string, unknown>>;
-  // All item payloads (latency metrics read transaction measurements).
-  allPayloads: Array<Record<string, unknown>>;
-}
-
-function parseAppEvents(
-  events: Array<{ receivedAt: string; envelopeItems: string }>,
-): ParsedAppEvent[] {
-  return events.map((event) => {
-    const parsed: ParsedAppEvent = {
-      receivedAt: event.receivedAt,
-      eventPayloads: [],
-      allPayloads: [],
-    };
-    try {
-      const items = JSON.parse(event.envelopeItems);
-      if (Array.isArray(items)) {
-        for (const item of items) {
-          if (!item?.payload || typeof item.payload !== "object") continue;
-          const payload = item.payload as Record<string, unknown>;
-          parsed.allPayloads.push(payload);
-          if (item?.header?.type === "event") parsed.eventPayloads.push(payload);
-        }
-      }
-    } catch {
-      // Malformed rows contribute nothing to metrics.
-    }
-    return parsed;
-  });
-}
-
-export function computeMetric(
-  events: ParsedAppEvent[],
+// The metric value of one threshold rule over its window. Counts come
+// from the sentinel samples (one row per event/error/fatal event, see
+// backend/metrics/samples.ts), latency from the quantile over the rule's
+// measurement samples; new issues are counted in Postgres (`issues`). A
+// ClickHouse failure rejects — the work queue logs it and the tick is
+// skipped, so a CH outage pauses alerting instead of firing on zeros.
+async function computeRuleValue(
+  appId: string,
   metric: AlertMetric,
   windowSeconds: number,
   measurement: string | null,
-): number {
+): Promise<number> {
   const since = new Date(Date.now() - windowSeconds * 1000).toISOString();
 
   switch (metric) {
     case "event_count":
-      return events.filter((event) => event.receivedAt >= since).length;
     case "error_count":
-      return countByLevel(events, since, ["error", "fatal"]);
     case "fatal_count":
-      return countByLevel(events, since, ["fatal"]);
+      return countMetricSamples(appId, metric, since);
     case "new_issue_count":
-      return countNewIssues(events, since);
+      return issueDAO.countNewSince(appId, since);
     case "latency_p95":
-      return percentile(collectDurations(events, since, measurement), 95);
     case "latency_p99":
-      return percentile(collectDurations(events, since, measurement), 99);
+      return metricSampleQuantile(
+        appId,
+        measurement ?? DEFAULT_MEASUREMENT,
+        metric === "latency_p95" ? 95 : 99,
+        since,
+      );
     default:
       return 0;
   }
-}
-
-function countByLevel(
-  events: ParsedAppEvent[],
-  since: string,
-  levels: string[],
-): number {
-  let count = 0;
-  for (const event of events) {
-    if (event.receivedAt < since) continue;
-    for (const payload of event.eventPayloads) {
-      if (typeof payload.level === "string" && levels.includes(payload.level)) {
-        count += 1;
-        break;
-      }
-    }
-  }
-  return count;
-}
-
-// An issue is "new" when its first-ever appearance falls inside
-// the window.
-function countNewIssues(
-  events: ParsedAppEvent[],
-  since: string,
-): number {
-  const firstSeen = new Map<string, string>();
-  for (const event of events) {
-    for (const payload of event.eventPayloads) {
-      const fingerprint = issueFingerprint(payload);
-      if (!firstSeen.has(fingerprint)) {
-        firstSeen.set(fingerprint, event.receivedAt);
-      }
-    }
-  }
-  let count = 0;
-  for (const seen of firstSeen.values()) {
-    if (seen >= since) count += 1;
-  }
-  return count;
-}
-
-// Durations come from the `measurements` map of transaction
-// payloads (Sentry: sentry.measurement.* attributes).
-function collectDurations(
-  events: ParsedAppEvent[],
-  since: string,
-  measurement: string | null,
-): number[] {
-  const name = measurement ?? DEFAULT_MEASUREMENT;
-  const values: number[] = [];
-  for (const event of events) {
-    if (event.receivedAt < since) continue;
-    for (const payload of event.allPayloads) {
-      const measurements = payload.measurements;
-      if (!measurements || typeof measurements !== "object") continue;
-      const entry = (measurements as Record<string, unknown>)[name];
-      const value =
-        typeof entry === "object" && entry !== null
-          ? (entry as { value?: unknown }).value
-          : entry;
-      if (typeof value === "number") values.push(value);
-    }
-  }
-  return values;
-}
-
-// Nearest-rank percentile: p95 of [100, 200, 300, 400, 500] is 500.
-function percentile(values: number[], percent: number): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const index = Math.max(0, Math.ceil((percent / 100) * sorted.length) - 1);
-  return sorted[index] ?? 0;
 }
 
 async function evaluateRules(appId: string): Promise<AlertIncident[]> {
@@ -164,7 +66,6 @@ async function evaluateRules(appId: string): Promise<AlertIncident[]> {
   if (enabled.length === 0) return [];
 
   const incidents: AlertIncident[] = [];
-  const events = parseAppEvents(await listClickHouseEventsForApp(appId));
   for (const rule of enabled) {
     const { metric, operator, threshold, windowSeconds } = rule;
     if (
@@ -175,7 +76,12 @@ async function evaluateRules(appId: string): Promise<AlertIncident[]> {
     ) {
       continue;
     }
-    const value = computeMetric(events, metric, windowSeconds, rule.measurement);
+    const value = await computeRuleValue(
+      appId,
+      metric,
+      windowSeconds,
+      rule.measurement,
+    );
     const breached = operator === "gt" ? value > threshold : value < threshold;
 
     if (!breached) {

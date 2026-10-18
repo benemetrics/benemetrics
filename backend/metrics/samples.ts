@@ -9,9 +9,9 @@ import type { MetricSample } from "../protocol/metrics";
 // ClickHouse SQL).
 //
 // Every numeric measurement is kept — no allowlist — including custom
-// measurements and the rate samples React Native sends; `dimension` is
-// the transaction name (route/screen), "" when the event has none.
-// Sentinels are added on top: `event_count` per stored event,
+// measurements on error events and the rate samples React Native sends;
+// `dimension` is the transaction name (route/screen), "" when the event
+// has none. Sentinels are added on top: `event_count` per stored event,
 // `error_count`/`fatal_count` for error events and `duration` (ms) for
 // transactions.
 
@@ -61,21 +61,25 @@ export function extractMetricSamples(input: {
     const dimension = dimensionOf(record);
 
     add("event_count", 1, dimension);
+    // A transaction's duration is canonical: when it is derived from the
+    // timestamps, a `duration` measurement would only duplicate it.
+    let hasDurationSentinel = false;
     if (item.header.type === "event") {
       add("error_count", 1, dimension);
       if (record.level === "fatal") add("fatal_count", 1, dimension);
-      continue;
-    }
-
-    const start = toSeconds(record.start_timestamp);
-    const end = toSeconds(record.timestamp);
-    if (start !== null && end !== null && end >= start) {
-      add("duration", (end - start) * 1000, dimension);
+    } else {
+      const start = toSeconds(record.start_timestamp);
+      const end = toSeconds(record.timestamp);
+      if (start !== null && end !== null && end >= start) {
+        add("duration", (end - start) * 1000, dimension);
+        hasDurationSentinel = true;
+      }
     }
 
     const measurements = record.measurements;
     if (!measurements || typeof measurements !== "object") continue;
     for (const [name, entry] of Object.entries(measurements as Record<string, unknown>)) {
+      if (name === "duration" && hasDurationSentinel) continue;
       const value =
         entry && typeof entry === "object"
           ? (entry as { value?: unknown }).value

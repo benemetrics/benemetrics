@@ -1,7 +1,7 @@
 import { db } from "db";
 import { issues, type IssueRow, type IssueInsert } from "db/schema/issues";
 import { apps } from "db/schema/project";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { notFound } from "backend/errors";
 
 export const issueDAO = {
@@ -149,6 +149,16 @@ export const issueDAO = {
       throw notFound("Issue", id);
     }
     return updated;
+  },
+
+  // Issues whose first-ever occurrence falls inside the window — the
+  // `new_issue_count` alert metric, which stays on the control plane.
+  countNewSince: async (appId: string, since: string): Promise<number> => {
+    const total = await db.$count(
+      issues,
+      and(eq(issues.appId, appId), gte(issues.firstSeen, since)),
+    );
+    return Number(total);
   },
 
   // Issues are derived from stored events, so they die with the app.

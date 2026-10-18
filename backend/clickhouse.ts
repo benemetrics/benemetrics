@@ -531,13 +531,46 @@ export async function listMetricBreakdown(
   }));
 }
 
-// Every event of one app, oldest first — used by the alert sweeper.
-export async function listClickHouseEventsForApp(appId: string): Promise<StoredEvent[]> {
-  const rows = await queryRows<ClickHouseEventRow>(
-    `SELECT ${COLUMNS} FROM ${TABLE} FINAL WHERE appId = {appId:String} ORDER BY receivedAt ASC`,
-    { appId },
+// Alerting reads: how many sentinel samples of one metric an app produced
+// inside the window (one row per event/error/fatal event).
+export async function countClickHouseMetricSamples(options: {
+  appId: string;
+  metric: string;
+  since: string;
+}): Promise<number> {
+  const rows = await queryRows<{ total: string | number }>(
+    `SELECT count() AS total FROM ${METRICS_TABLE} FINAL
+     WHERE appId = {appId:String}
+       AND metric = {metric:String}
+       AND receivedAt >= parseDateTime64BestEffort({since:String}, 3)`,
+    { appId: options.appId, metric: options.metric, since: options.since },
   );
-  return rows.map(toStoredEvent);
+  return Number(rows[0]?.total ?? 0);
+}
+
+// The latency metrics: a quantile over the samples of one metric (the
+// rule's measurement, `duration` by default). An empty window has no
+// quantile — reported as 0, never NaN.
+export async function quantileClickHouseMetricSamples(options: {
+  appId: string;
+  metric: string;
+  quantile: number;
+  since: string;
+}): Promise<number> {
+  const rows = await queryRows<{ value: number }>(
+    `SELECT quantile({level:Float64})(value) AS value FROM ${METRICS_TABLE} FINAL
+     WHERE appId = {appId:String}
+       AND metric = {metric:String}
+       AND receivedAt >= parseDateTime64BestEffort({since:String}, 3)`,
+    {
+      appId: options.appId,
+      metric: options.metric,
+      level: options.quantile / 100,
+      since: options.since,
+    },
+  );
+  const value = Number(rows[0]?.value ?? 0);
+  return Number.isFinite(value) ? value : 0;
 }
 
 // Every event of one project, oldest first — used by the release summary.

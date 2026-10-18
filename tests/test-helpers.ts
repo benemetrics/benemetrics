@@ -2,8 +2,10 @@
  * Shared helpers for in-process API tests.
  *
  * Requests go straight through `app.handle(new Request(...))`: no listener,
- * no port, no teardown. Suites that need a real socket — SDK-driven tests,
- * WebView UI tests, WebSocket feeds — keep using `e2e/test-helpers.ts`.
+ * no port, no teardown. Suites that need a real HTTP listener or a browser
+ * — SDK-driven tests, WebView UI tests — keep using `e2e/test-helpers.ts`.
+ * (The live-feed hop drives a real WebSocket client from here; it needs no
+ * listener, only the NATS broker.)
  */
 
 import app from "../backend/index";

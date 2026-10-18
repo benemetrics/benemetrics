@@ -4,10 +4,9 @@ import { type as arktype } from "arktype";
 import { appDAO } from "db/dao/project";
 import { environmentDAO } from "db/dao/environments";
 import type { StoredEvent } from "../protocol/events";
-import { adminAuthEnforced, validateAdminAuth, validateAdminToken } from "../auth";
+import { adminAuthEnforced, validateAdminAuth } from "../auth";
 import { type SentryEventMessage } from "../nats";
 import { listStoredEvents, findStoredEventByIdOrThrow } from "../events-store";
-import { addLiveClient, removeLiveClient } from "../live-events";
 import { parseEnvelope, parseStoredEnvelope, extractEventId, normalizeTransactionPayload, convertSpanToTransaction } from "./utils";
 import { dispatchIngestedEvent, readBody, resolveAuthorizedApp } from "./ingestion";
 import { offloadReplayItems } from "./offload";
@@ -78,7 +77,6 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
   // ADMIN_TOKEN / OIDC / OAuth is configured.
   .onBeforeHandle(({ request }) => {
     if (!adminAuthEnforced()) return;
-    if (request.headers.get("upgrade")?.toLowerCase() === "websocket") return;
     const auth = validateAdminAuth(request);
     if (!auth.valid) {
       throw unauthorized(auth.error);
@@ -164,31 +162,7 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
       return transaction;
     },
     { params: arktype({ eventId: "string" }) },
-  )
-  // Live event feed for UI clients. Events are pushed here as soon as
-  // they are stored — by the NATS live consumer when the broker is up,
-  // or directly by the ingestion fallback otherwise.
-  .ws("/live/feed", {
-    beforeHandle({ request }) {
-      if (!adminAuthEnforced()) return;
-      // Browsers cannot set Authorization headers on WebSocket
-      // upgrades, so the admin token may also arrive as `?token=`.
-      const token =
-        new URL(request.url).searchParams.get("token") ??
-        request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-      const auth = validateAdminToken(token);
-      if (!auth.valid) {
-        throw unauthorized(auth.error);
-      }
-    },
-    open(ws) {
-      addLiveClient(ws);
-    },
-    close(ws) {
-      removeLiveClient(ws);
-    },
-  });
-
+  );
 export const ingestionRoutes = new Elysia({ prefix: "api" })
   .post(
     "/:projectId/envelope/",

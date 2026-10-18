@@ -1,6 +1,6 @@
 /**
- * Shared helpers for socket-needing e2e suites (SDK-driven tests, WebView UI
- * tests, WebSocket feeds); in-process API tests live in `tests/` and use
+ * Shared helpers for listener-needing e2e suites (SDK-driven tests, WebView
+ * UI tests); in-process API tests live in `tests/` and use
  * `tests/test-helpers.ts` instead.
  *
  * Starts the real backend on an ephemeral port and provisions a project +

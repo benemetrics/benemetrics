@@ -1,5 +1,5 @@
 import { AckPolicy, connect, type JetStreamClient, type JetStreamManager } from "nats";
-import { startEventsConsumer, startLiveConsumer } from "./events-consumer";
+import { startEventsConsumer } from "./events-consumer";
 import { startReleasesConsumer } from "./releases-consumer";
 import { retryInit } from "./retry";
 
@@ -137,7 +137,6 @@ export async function initNats(): Promise<void> {
   if (!client) throw new Error("NATS is not connected");
 
   startEventsConsumer(client, EVENTS_CONSUMER);
-  startLiveConsumer(client);
   startReleasesConsumer(client, RELEASES_CONSUMER);
   console.log("[NATS] Connected to JetStream");
 }

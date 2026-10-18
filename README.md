@@ -28,9 +28,10 @@ Postgres, ClickHouse, NATS (JetStream), and RustFS run through docker compose:
 docker compose up -d
 ```
 
-The NATS service also exposes a WebSocket listener (port 9222) for the UI
-live feed. Smoke-test the NATS → ClickHouse ingestion path (ClickHouse
-consumes JetStream by configuration):
+The NATS service also exposes a WebSocket listener (port 9222): the UI live
+feed subscribes to `sentry.events` directly (override the URL with a
+`__NATS_WS_URL__` global). Smoke-test the NATS → ClickHouse ingestion path
+(ClickHouse consumes JetStream by configuration):
 
 ```bash
 docker compose up -d nats clickhouse

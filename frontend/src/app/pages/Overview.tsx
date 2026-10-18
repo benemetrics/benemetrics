@@ -13,6 +13,7 @@ import {
 } from "../../lib/api";
 import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils";
 import { eventTitle, groupIssues, type StoredEvent } from "../../lib/issues";
+import { subscribeLiveFeed } from "../../lib/live-events";
 
 interface Health {
   status: string;
@@ -84,7 +85,7 @@ function eventTime(receivedAt: string): string {
 
 export function Overview() {
   const navigate = useNavigate();
-  const { project, environment, application, adminUser } = useWorkspace();
+  const { project, environment, application, applications, adminUser } = useWorkspace();
   const projectId = project?.id;
   const environmentId = environment?.id;
   const applicationId = application?.id;
@@ -130,6 +131,38 @@ export function Overview() {
       clearInterval(interval);
     };
   }, [projectId, environmentId, applicationId]);
+
+  // Live feed: the page subscribes to NATS directly (there is no backend
+  // fan-out) and prepends events as they are ingested. A `clear` — the
+  // events store was truncated — empties the list until the next poll
+  // refills it.
+  useEffect(() => {
+    const close = subscribeLiveFeed({
+      onItem: (item) => {
+        if (projectId && item.projectId !== projectId) return;
+        if (applicationId && item.appId !== applicationId) return;
+        if (!applicationId && environmentId) {
+          const visible = applications.some(
+            (app) => app.id === item.appId && app.environmentId === environmentId,
+          );
+          if (!visible) return;
+        }
+        setEvents((current) =>
+          [
+            {
+              id: item.id,
+              itemTypes: item.itemTypes,
+              event: item.event,
+              receivedAt: item.receivedAt,
+            },
+            ...current.filter((event) => event.id !== item.id),
+          ].slice(0, AGGREGATE_EVENT_LIMIT),
+        );
+      },
+      onClear: () => setEvents([]),
+    });
+    return close;
+  }, [projectId, environmentId, applicationId, applications]);
 
   useEffect(() => {
     let cancelled = false;

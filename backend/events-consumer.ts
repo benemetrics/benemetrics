@@ -2,7 +2,6 @@ import { consumerOpts, createInbox, type JetStreamClient } from "nats";
 import { issueDAO } from "db/dao/issues";
 import { processIngestedEvent } from "./alerting/evaluation";
 import { clearClickHouseEvents } from "./clickhouse";
-import { broadcastLive, buildLiveEvent } from "./live-events";
 import { SUBJECT, type SentryEventMessage } from "./nats";
 
 function describe(err: unknown): string {
@@ -20,8 +19,8 @@ export async function applyEventMessage(event: SentryEventMessage): Promise<void
   if (event.type === "clear") {
     await clearClickHouseEvents();
     // Issues are derived from stored events; clearing the events clears
-    // the derived issue state too. The live feed is fanned out by its own
-    // consumer, not from here.
+    // the derived issue state too. The UI live feed reads the stream
+    // directly, so nothing is broadcast from here.
     await issueDAO.clear();
     return;
   }
@@ -80,34 +79,3 @@ export function startEventsConsumer(
   void run();
 }
 
-// Live consumer: ephemeral (not durable) — every backend instance
-// receives every new event. No replay, no persistence.
-export function startLiveConsumer(jetstream: JetStreamClient): void {
-  const run = async () => {
-    try {
-      const opts = consumerOpts();
-      opts.deliverNew();
-      opts.deliverTo(createInbox());
-      opts.manualAck();
-      opts.ackExplicit();
-
-      const sub = await jetstream.subscribe(SUBJECT, opts);
-
-      for await (const msg of sub) {
-        try {
-          const event = JSON.parse(msg.string()) as SentryEventMessage;
-          broadcastLive(
-            event.type === "clear" ? { type: "clear" } : buildLiveEvent(event),
-          );
-        } catch (err) {
-          console.error("[live] Discarding malformed message:", describe(err));
-        }
-        msg.ack();
-      }
-    } catch (err) {
-      console.error("[live] Failed to start consumer:", describe(err));
-    }
-  };
-
-  void run();
-}

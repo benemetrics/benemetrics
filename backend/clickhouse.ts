@@ -1,6 +1,10 @@
 import { createClient, type ClickHouseClient } from "@clickhouse/client";
 import type { StoredEvent } from "./protocol/events";
-import type { MetricSample } from "./protocol/metrics";
+import type {
+  MetricBreakdownRow,
+  MetricSample,
+  MetricSeriesPoint,
+} from "./protocol/metrics";
 import { retryInit } from "./retry";
 
 // ClickHouse is the events store. The API publishes every envelope to
@@ -413,6 +417,117 @@ export async function listClickHouseMetricSamplesForEvent(
     value: Number(row.value),
     dimension: row.dimension,
     receivedAt: toIsoTimestamp(row.receivedAt),
+  }));
+}
+
+// Shared filter for metric reads: the metric and the time range are
+// required; scope narrows by project or by the ids of an environment's
+// apps (the routes resolve environment/app filters to app ids first).
+export interface MetricReadFilter {
+  metric: string;
+  projectId?: string;
+  appIds?: string[];
+  from: string;
+  to: string;
+}
+
+function buildMetricFilter(options: MetricReadFilter): {
+  where: string;
+  params: Record<string, unknown>;
+} {
+  const params: Record<string, unknown> = {
+    metric: options.metric,
+    from: options.from,
+    to: options.to,
+  };
+  const conditions = [
+    "metric = {metric:String}",
+    "receivedAt >= parseDateTime64BestEffort({from:String}, 3)",
+    "receivedAt <= parseDateTime64BestEffort({to:String}, 3)",
+  ];
+  if (options.projectId) {
+    params.projectId = options.projectId;
+    conditions.push("projectId = {projectId:String}");
+  }
+  if (options.appIds) {
+    const placeholders = options.appIds.map((appId, index) => {
+      params[`appId${index}`] = appId;
+      return `{appId${index}:String}`;
+    });
+    conditions.push(`appId IN (${placeholders.join(", ")})`);
+  }
+  return { where: conditions.join(" AND "), params };
+}
+
+// Quantiles come out of the raw samples at read time — exact per bucket,
+// no rollups and no histogram approximation.
+export async function listMetricSeries(
+  options: MetricReadFilter & { stepSeconds: number },
+): Promise<MetricSeriesPoint[]> {
+  // An environment without apps has no samples (an empty `IN ()` is not
+  // valid SQL).
+  if (options.appIds && options.appIds.length === 0) return [];
+  const { where, params } = buildMetricFilter(options);
+  const rows = await queryRows<{
+    bucketStart: string;
+    count: string | number;
+    mean: number;
+    p50: number;
+    p95: number;
+    p99: number;
+  }>(
+    `SELECT toStartOfInterval(receivedAt, INTERVAL {stepSeconds:UInt32} SECOND) AS bucketStart,
+            count() AS count,
+            avg(value) AS mean,
+            quantile(0.5)(value) AS p50,
+            quantile(0.95)(value) AS p95,
+            quantile(0.99)(value) AS p99
+     FROM ${METRICS_TABLE} FINAL
+     WHERE ${where}
+     GROUP BY bucketStart
+     ORDER BY bucketStart ASC`,
+    { ...params, stepSeconds: options.stepSeconds },
+  );
+  return rows.map((row) => ({
+    bucketStart: toIsoTimestamp(row.bucketStart),
+    count: Number(row.count),
+    mean: Number(row.mean),
+    p50: Number(row.p50),
+    p95: Number(row.p95),
+    p99: Number(row.p99),
+  }));
+}
+
+export async function listMetricBreakdown(
+  options: MetricReadFilter & { limit: number },
+): Promise<MetricBreakdownRow[]> {
+  if (options.appIds && options.appIds.length === 0) return [];
+  const { where, params } = buildMetricFilter(options);
+  const rows = await queryRows<{
+    dimension: string;
+    count: string | number;
+    mean: number;
+    p50: number;
+    p95: number;
+  }>(
+    `SELECT dimension,
+            count() AS count,
+            avg(value) AS mean,
+            quantile(0.5)(value) AS p50,
+            quantile(0.95)(value) AS p95
+     FROM ${METRICS_TABLE} FINAL
+     WHERE ${where}
+     GROUP BY dimension
+     ORDER BY count DESC, dimension ASC
+     LIMIT {limit:UInt32}`,
+    { ...params, limit: options.limit },
+  );
+  return rows.map((row) => ({
+    dimension: row.dimension,
+    count: Number(row.count),
+    mean: Number(row.mean),
+    p50: Number(row.p50),
+    p95: Number(row.p95),
   }));
 }
 

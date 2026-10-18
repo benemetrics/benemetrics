@@ -11,6 +11,7 @@ import { sourceMapTokenRoutes } from "./source-map-tokens";
 import { sourceMapRoutes } from "./source-maps";
 import { issueRoutes } from "./issues";
 import { alertingRoutes } from "../alerting";
+import { metricsRoutes } from "../metrics";
 import { validateAdminAuth } from "../auth";
 
 export const adminRoutes = new Elysia({ prefix: "/api/admin" })
@@ -35,4 +36,5 @@ export const adminRoutes = new Elysia({ prefix: "/api/admin" })
   .use(sourceMapTokenRoutes)
   .use(sourceMapRoutes)
   .use(issueRoutes)
+  .use(metricsRoutes)
   .use(alertingRoutes);

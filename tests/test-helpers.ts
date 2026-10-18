@@ -149,6 +149,7 @@ export async function clearEvents(): Promise<void> {
 /** The JetStream stream/consumers the suite relies on (backend/nats.ts). */
 export const TEST_STREAM = "SENTRIES";
 export const TEST_EVENTS_SUBJECT = "sentry.events";
+export const TEST_METRICS_SUBJECT = "sentry.metrics";
 
 /** Connects to the broker the backend uses (the suite requires NATS). */
 export async function connectTestNats(): Promise<NatsConnection> {

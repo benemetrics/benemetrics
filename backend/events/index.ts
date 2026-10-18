@@ -8,6 +8,7 @@ import { adminAuthEnforced, validateAdminAuth } from "../auth";
 import { type SentryEventMessage } from "../nats";
 import { listStoredEvents, findStoredEventByIdOrThrow } from "../events-store";
 import { parseEnvelope, parseStoredEnvelope, extractEventId, normalizeTransactionPayload, convertSpanToTransaction } from "./utils";
+import { extractMetricSamples } from "../metrics/samples";
 import { dispatchIngestedEvent, readBody, resolveAuthorizedApp } from "./ingestion";
 import { offloadReplayItems } from "./offload";
 import { symbolicateEventPayload } from "../source-maps/resolver";
@@ -187,6 +188,13 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
       const envelopeHeader = JSON.stringify(convertedParsed.header);
       const envelopeItems = JSON.stringify(storedItems);
       const receivedAt = new Date().toISOString();
+      const samples = extractMetricSamples({
+        projectId: app.projectId,
+        appId: app.id,
+        eventId,
+        items: convertedItems,
+        receivedAt,
+      });
       const message: SentryEventMessage = {
         id: eventId,
         projectId: app.projectId,
@@ -199,7 +207,7 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
 
       // Publishes to NATS; a broker failure answers 503 — no in-process
       // fallback (ClickHouse ingests from the stream).
-      await dispatchIngestedEvent(message);
+      await dispatchIngestedEvent(message, samples);
       return { id: eventId };
     },
     { params: arktype({ projectId: "string" }) },
@@ -219,10 +227,18 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
 
       const eventId = event.event_id || crypto.randomUUID();
       const envelopeHeader = JSON.stringify({ event_id: eventId, sent_at: new Date().toISOString() });
-      const envelopeItems = JSON.stringify([
-        { header: { type: "event", content_type: "application/json", length: rawBody.length }, payload: event },
-      ]);
+      const items = [
+        { header: { type: "event" as const, content_type: "application/json", length: rawBody.length }, payload: event },
+      ];
+      const envelopeItems = JSON.stringify(items);
       const receivedAt = new Date().toISOString();
+      const samples = extractMetricSamples({
+        projectId: app.projectId,
+        appId: app.id,
+        eventId,
+        items,
+        receivedAt,
+      });
       const message: SentryEventMessage = {
         id: eventId,
         projectId: app.projectId,
@@ -235,7 +251,7 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
 
       // Publishes to NATS; a broker failure answers 503 — no in-process
       // fallback (ClickHouse ingests from the stream).
-      await dispatchIngestedEvent(message);
+      await dispatchIngestedEvent(message, samples);
       return { id: eventId };
     },
     { params: arktype({ projectId: "string" }) },

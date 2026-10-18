@@ -2,8 +2,9 @@
  * Hop 1 — HTTP ingest -> NATS JetStream.
  *
  * A DSN-ingested envelope must land as a message on the `sentry.events`
- * subject before the request answers 200. ClickHouse and Postgres are
- * covered by the other hops (tests/41, tests/42, tests/43).
+ * subject before the request answers 200, with its metric samples on
+ * `sentry.metrics`. ClickHouse and Postgres are covered by the other hops
+ * (tests/41, tests/42, tests/43, tests/45).
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
@@ -13,8 +14,10 @@ import {
   handleFetch as fetch,
   startTestApp,
   TEST_EVENTS_SUBJECT,
+  TEST_METRICS_SUBJECT,
   TEST_ORIGIN,
   TEST_STREAM,
+  waitFor,
 } from "./test-helpers";
 
 let nats: NatsConnection;
@@ -82,5 +85,87 @@ describe("Hop 1: ingest -> NATS", () => {
       body: JSON.stringify({ event_id: crypto.randomUUID(), message: "unknown app" }),
     });
     expect(response.status).toBe(401);
+  });
+
+  it("publishes the extracted metric samples to sentry.metrics", async () => {
+    const app = await startTestApp();
+    const eventId = crypto.randomUUID();
+
+    // Subscribe before ingesting: the publish happens before the response
+    // returns, and a live subscription observes this envelope's batch (a
+    // concurrently published batch is filtered by event id).
+    const received: string[] = [];
+    const subscription = nats.subscribe(TEST_METRICS_SUBJECT);
+    // The pump stays live across the assertion below: unsubscribing while a
+    // delivered message still sits in the subscription's buffer drops it.
+    const pump = (async () => {
+      for await (const message of subscription) {
+        received.push(new TextDecoder().decode(message.data));
+      }
+    })();
+    await nats.flush();
+
+    const url = new URL(`${TEST_ORIGIN}/api/${app.ingestKey}/envelope/`);
+    url.searchParams.set("sentry_key", app.publicKey);
+    const envelope = [
+      JSON.stringify({ event_id: eventId, sent_at: new Date().toISOString() }),
+      JSON.stringify({ type: "transaction", length: 0 }),
+      JSON.stringify({
+        event_id: eventId,
+        type: "transaction",
+        transaction: "GET /checkout",
+        start_timestamp: 1_700_000_000,
+        timestamp: 1_700_000_001.5,
+        measurements: {
+          lcp: { value: 2400, unit: "millisecond" },
+          frames_total: { value: 120 },
+          custom_metric: { value: 7 },
+        },
+      }),
+    ].join("\n");
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-sentry-envelope" },
+      body: envelope,
+    });
+    expect(response.status).toBe(200);
+
+    interface SampleRow {
+      projectId: string;
+      appId: string;
+      eventId: string;
+      metric: string;
+      value: number;
+      dimension: string;
+    }
+    const rows = await waitFor(
+      async () =>
+        received
+          .flatMap((payload) => payload.trim().split("\n"))
+          .map((line) => JSON.parse(line) as SampleRow)
+          .filter((row) => row.eventId === eventId),
+      (mine) => mine.length > 0,
+    );
+    subscription.unsubscribe();
+    await pump;
+    expect(
+      rows.every(
+        (row) =>
+          row.projectId === app.projectId &&
+          row.appId === app.appId &&
+          row.eventId === eventId,
+      ),
+    ).toBe(true);
+
+    const byMetric = new Map(rows.map((row) => [row.metric, row]));
+    expect(byMetric.get("event_count")?.value).toBe(1);
+    expect(byMetric.get("event_count")?.dimension).toBe("GET /checkout");
+    expect(byMetric.get("duration")?.value).toBeCloseTo(1500, 3);
+    expect(byMetric.get("lcp")?.value).toBe(2400);
+    expect(byMetric.get("frames_total")?.value).toBe(120);
+    expect(byMetric.get("custom_metric")?.value).toBe(7);
+    // Transactions carry no error sentinels.
+    expect(byMetric.has("error_count")).toBe(false);
   });
 });

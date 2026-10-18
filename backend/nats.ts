@@ -2,6 +2,7 @@ import { AckPolicy, connect, type JetStreamClient, type JetStreamManager } from 
 import { startEventsConsumer } from "./events-consumer";
 import { startReleasesConsumer } from "./releases-consumer";
 import { retryInit } from "./retry";
+import type { MetricSample } from "./protocol/metrics";
 
 const NATS_SERVERS = process.env.NATS_SERVERS || "nats://localhost:4222";
 
@@ -60,6 +61,19 @@ let client: JetStreamClient | null = null;
 export async function publishEvent(event: SentryEventMessage): Promise<void> {
   if (!client) throw new Error("NATS is not connected");
   await client.publish(SUBJECT, new TextEncoder().encode(JSON.stringify(event)), {
+    timeout: 2000,
+  });
+}
+
+// Publishes the samples extracted from one envelope as JSONEachRow — the
+// ClickHouse NATS engine inserts one row per line. Empty sample lists are
+// a no-op; like the event publish, a failure throws and the caller
+// answers 503.
+export async function publishMetricSamples(samples: MetricSample[]): Promise<void> {
+  if (samples.length === 0) return;
+  if (!client) throw new Error("NATS is not connected");
+  const payload = samples.map((sample) => JSON.stringify(sample)).join("\n");
+  await client.publish(METRICS_SUBJECT, new TextEncoder().encode(payload), {
     timeout: 2000,
   });
 }

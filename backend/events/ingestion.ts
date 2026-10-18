@@ -2,7 +2,8 @@ import { serviceUnavailable, unauthorized } from "backend/errors";
 import { appDAO } from "db/dao/project";
 import type { AppRecord } from "db/schema/project";
 import { validateAuth } from "../auth";
-import { publishEvent, type SentryEventMessage } from "../nats";
+import { publishEvent, publishMetricSamples, type SentryEventMessage } from "../nats";
+import type { MetricSample } from "../protocol/metrics";
 
 // DSNs generated for apps route ingestion through the app's numeric
 // `number` (path segment) with the public key as the `sentry_key`
@@ -61,14 +62,18 @@ export async function readBody(request: Request): Promise<string> {
 }
 
 // Ingestion is a publish: the side-effects consumer (Postgres) and the
-// ClickHouse engine consumer each pull the message from JetStream with
-// their own durable consumer. A publish failure is a 503 — at-least-once
-// delivery is JetStream's job, never a second in-process write path.
+// ClickHouse engine consumer each pull the event message from JetStream
+// with their own durable consumer, and the extracted metric samples go to
+// `sentry.metrics` (the ClickHouse metrics engine inserts them). A publish
+// failure is a 503 — at-least-once delivery is JetStream's job, never a
+// second in-process write path.
 export async function dispatchIngestedEvent(
   message: SentryEventMessage,
+  samples: MetricSample[] = [],
 ): Promise<void> {
   try {
     await publishEvent(message);
+    await publishMetricSamples(samples);
   } catch (err) {
     console.error(
       "[ingestion] Failed to publish event to NATS:",

@@ -16,7 +16,7 @@ import {
   subscribeLiveFeed,
   type LiveEventItem,
 } from "../frontend/src/lib/live-events";
-import { listStoredEvents } from "../backend/events-store";
+import { findStoredEventById } from "../backend/events-store";
 import {
   connectTestNats,
   startTestApp,
@@ -95,6 +95,30 @@ describe("Hop 5: live feed over the NATS WebSocket", () => {
   });
 
   it("resets the feed on a clear message", async () => {
+    // A marker event proves the truncate reached ClickHouse; the drain wait
+    // is scoped to it because concurrent ingests keep the global total
+    // non-zero.
+    const app = await startTestApp();
+    const eventId = crypto.randomUUID();
+    await publish(TEST_EVENTS_SUBJECT, {
+      id: eventId,
+      projectId: app.projectId,
+      appId: app.appId,
+      envelopeHeader: JSON.stringify({ event_id: eventId }),
+      envelopeItems: JSON.stringify([
+        {
+          header: { type: "event", length: 0 },
+          payload: { event_id: eventId, message: "before clear", level: "error" },
+        },
+      ]),
+      receivedAt: new Date().toISOString(),
+      type: "store",
+    });
+    await waitFor(
+      async () => findStoredEventById(eventId),
+      (value) => value !== undefined,
+    );
+
     let cleared = false;
     const close = await startFeed({ onItem: () => {}, onClear: () => (cleared = true) });
     try {
@@ -113,12 +137,14 @@ describe("Hop 5: live feed over the NATS WebSocket", () => {
     }
 
     // The clear also truncates ClickHouse through the app consumer; wait
-    // for the drain so a later suite cannot race the truncate.
-    await waitFor(
-      async () => (await listStoredEvents({ page: 1, limit: 1 })).pagination.total,
-      (total) => total === 0,
+    // for the marker to disappear so a later suite cannot race the
+    // truncate.
+    const remaining = await waitFor(
+      async () => findStoredEventById(eventId),
+      (value) => value === undefined,
     );
-  });
+    expect(remaining).toBeUndefined();
+  }, 20000);
 
   it("ignores messages that are not envelopes", () => {
     expect(parseLiveMessage("not json")).toBeNull();

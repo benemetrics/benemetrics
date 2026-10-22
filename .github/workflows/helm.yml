@@ -4,11 +4,11 @@ on:
   push:
     branches: [main, master]
     paths:
-      - "charts/**"
+      - "helm/**"
       - ".github/workflows/helm.yml"
   pull_request:
     paths:
-      - "charts/**"
+      - "helm/**"
       - ".github/workflows/helm.yml"
   workflow_dispatch:
 
@@ -25,12 +25,12 @@ jobs:
           version: v3.16.3
 
       - name: Lint the chart
-        run: helm lint charts/benemetrics
+        run: helm lint helm/benemetrics
 
       - name: Render the chart
         run: |
-          helm template benemetrics charts/benemetrics > /tmp/rendered.yaml
-          helm template benemetrics charts/benemetrics \
+          helm template benemetrics helm/benemetrics > /tmp/rendered.yaml
+          helm template benemetrics helm/benemetrics \
             --set dependencies.postgres.enabled=false \
             --set dependencies.clickhouse.enabled=false \
             --set dependencies.nats.enabled=false \

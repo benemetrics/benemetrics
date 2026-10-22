@@ -89,9 +89,9 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 
 **Docker Compose** provides the whole stack — Postgres 17 (`:5432`), ClickHouse (`:8123`, `:9000`), RustFS (`:9100` S3 API, `:9101` console — `rustfsadmin`/`rustfsadmin`; `sentry-replays` bucket created by `rustfs-init`), NATS (`:4222` + WS `:9222`), Keycloak (`:8080`) and the API + the consumer (`:31337`). The environment of the API and the consumer is the `x-app-environment` block of `docker-compose.yml`; the NATS configuration is an inline compose config whose values come from the environment of the service.
 
-**Container image** (`Dockerfile`): the API (`bun index.js`) and the side-effects consumer (`bun consumer.js`) are two entry points of the same image; the production bundle is built by `scripts/build.ts` (the bunfig plugins are not applied by `bun build`, so the virtual OIDC module is registered there).
+**Container image** (`Dockerfile`): the API (`bun index.js`) and the side-effects consumer (`bun consumer.js`) are two entry points of the same image; the production bundle is inlined in the Dockerfile (`bun -e`, registering the virtual OIDC module that `bun build` cannot apply from bunfig).
 
-**Helm chart** (`charts/benemetrics`): the API and the consumer as Deployments, the bundled Postgres/ClickHouse/NATS/object store as StatefulSets, the Ingress, the Secret and the bucket-init hook. Every dependency can be turned off (`dependencies.*.enabled`) in favour of a managed service; `clickhouse.natsUrl` is resolved from ClickHouse's point of view.
+**Helm chart** (`helm/benemetrics`): the API and the consumer as Deployments, the bundled Postgres/ClickHouse/NATS/object store as StatefulSets, the Ingress, the Secret and the bucket-init hook. Every dependency can be turned off (`dependencies.*.enabled`) in favour of a managed service; `clickhouse.natsUrl` is resolved from ClickHouse's point of view.
 
 **Package Scripts:**
 ```bash
@@ -150,9 +150,7 @@ backend/
     issues/index.ts        # issueRoutes (/api/admin/issues/*) — list/get/resolve
     settings/index.ts      # settingsRoutes (/api/admin/settings/events-ttl)
   protocol/                # Type-only interfaces (source of truth)
-scripts/
-  build.ts                 # The production bundle (the bunfig plugins are not applied by `bun build`)
-charts/benemetrics/          # The Helm chart: the API, the consumer and the bundled services
+helm/benemetrics/            # The Helm chart: the API, the consumer and the bundled services
 ```
 
 ---

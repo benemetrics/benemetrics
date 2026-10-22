@@ -5,7 +5,7 @@ them at managed services — PostgreSQL, ClickHouse, NATS JetStream and an
 S3-compatible object store.
 
 ```bash
-helm install benemetrics charts/benemetrics \
+helm install benemetrics helm/benemetrics \
   --namespace benemetrics --create-namespace \
   --set image.repository=ghcr.io/benemetrics/benemetrics \
   --set image.tag=0.1.0 \

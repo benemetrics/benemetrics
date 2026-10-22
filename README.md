@@ -286,7 +286,7 @@ Sentry.init({
 
 ## Deploy on Kubernetes
 
-The chart in [`charts/benemetrics`](charts/benemetrics) installs the API, the
+The chart in [`helm/benemetrics`](helm/benemetrics) installs the API, the
 side-effects consumer and — unless you point them at managed services —
 Postgres, ClickHouse, NATS JetStream and an S3-compatible object store.
 
@@ -296,7 +296,7 @@ docker build -t ghcr.io/benemetrics/benemetrics:0.1.0 .
 docker push ghcr.io/benemetrics/benemetrics:0.1.0
 
 # 2. Install
-helm install benemetrics charts/benemetrics \
+helm install benemetrics helm/benemetrics \
   --namespace benemetrics --create-namespace \
   --set image.repository=ghcr.io/benemetrics/benemetrics \
   --set image.tag=0.1.0 \
@@ -390,7 +390,7 @@ Every setting is an environment variable. The chart wires them for you.
 
 ## The API
 
-The full reference lives in [`BACKEND_API.md`](BACKEND_API.md). The shape:
+The full reference lives in [`docs/BACKEND_API.md`](docs/BACKEND_API.md). The shape:
 
 | Surface | Prefix | Credential |
 |---|---|---|
@@ -455,9 +455,8 @@ backend/          the API — one directory per domain, one Elysia router each
 db/              the Drizzle schema, the migrations and the DAOs
 frontend/        the React SPA, served by the backend
 docs/            the architectural reference (the source of truth)
-charts/benemetrics/ the Helm chart
+helm/benemetrics/ the Helm chart
 e2e/             the end-to-end suites
-scripts/         the production bundle and the dev helpers
 ```
 
 ---
@@ -478,7 +477,7 @@ truth for every decision in the codebase.
 | [`docs/source-maps.md`](docs/source-maps.md) | The artifact storage and the symbolication |
 | [`docs/permission.md`](docs/permission.md) | The admin model and the scoped reads |
 | [`docs/rate-limiting.md`](docs/rate-limiting.md) | The request hygiene and the caps |
-| [`BACKEND_API.md`](BACKEND_API.md) | The full endpoint and schema reference |
+| [`docs/BACKEND_API.md`](docs/BACKEND_API.md) | The full endpoint and schema reference |
 
 ---
 

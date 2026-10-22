@@ -10,7 +10,6 @@ RUN bun install --frozen-lockfile
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 COPY db/ ./db/
-COPY scripts/ ./scripts/
 COPY tsconfig.json bunfig.toml ./
 
 # Compile Tailwind CSS
@@ -19,9 +18,13 @@ COPY tsconfig.json bunfig.toml ./
 RUN bunx @tailwindcss/cli -i frontend/global.css -o frontend/global.compiled.css --minify
 RUN sed -i 's|href="./global.css"|href="./global.compiled.css"|' frontend/index.html
 
-# Bundle the application (backend + frontend HTML import)
+# Bundle the application (backend + frontend HTML import) — inline because
+# `bun build` does not apply the bunfig plugins, so the virtual OIDC module
+# is registered here (the crypto builtin stays external)
 # https://bun.com/docs/bundler/fullstack#ahead-of-time-bundling
-RUN bun scripts/build.ts
+RUN bun -e "import authEnvPlugin from './frontend/auth-env-plugin'; \
+  const result = await Bun.build({ entrypoints: ['./backend/index.ts'], outdir: 'dist', target: 'bun', minify: true, plugins: [authEnvPlugin], external: ['crypto'] }); \
+  if (!result.success) { for (const log of result.logs) console.error(log); process.exit(1); }"
 
 # The side-effects consumer is the second entry point of the same image:
 # it applies the Postgres side effects (issues, alerts, releases) from the

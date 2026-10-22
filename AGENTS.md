@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Agent operating rules for this repository. `BACKEND_API.md` is the long-form reference; this file is the contract you MUST follow when writing or changing backend code.
+Agent operating rules for this repository. `docs/BACKEND_API.md` is the long-form reference; this file is the contract you MUST follow when writing or changing backend code.
 
 **Architecture Reference Documents** (in `docs/`) — **GROUND TRUTH**
 - [`models.md`](docs/models.md) — Project → Environment → App hierarchy, invariants, scoped reads
@@ -13,9 +13,9 @@ Agent operating rules for this repository. `BACKEND_API.md` is the long-form ref
 - [`permission.md`](docs/permission.md) — Admin auth model, scoped reads, group rules + whitelist
 
 **Enforcement:** The `docs/` documents are the **single source of architectural truth**. 
-- `AGENTS.md` and `BACKEND_API.md` MUST be consistent with `docs/`.
+- `AGENTS.md` and `docs/BACKEND_API.md` MUST be consistent with `docs/`.
 - Any architectural decision not reflected in `docs/` is not binding.
-- When changing architecture: update `docs/` FIRST, then `AGENTS.md`/`BACKEND_API.md`.
+- When changing architecture: update `docs/` FIRST, then `AGENTS.md`/`docs/BACKEND_API.md`.
 - Code reviews MUST verify implementation matches `docs/` (not just `AGENTS.md`).
 
 ## Project
@@ -176,4 +176,4 @@ Ingest Handler → NATS (sentry.events, sentry.metrics)
 - **Redelivery after a crash can double-increment `issues.event_count`** (no ledger); alerts never double-fire.
 - **Test suite requires docker services** (CI + local): Postgres, ClickHouse, NATS, RustFS.
 
-For full endpoint tables, schema columns, and rationale, see `BACKEND_API.md`.
+For full endpoint tables, schema columns, and rationale, see `docs/BACKEND_API.md`.

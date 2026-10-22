@@ -41,7 +41,7 @@ clients, notify on exceedance, and keep a recovery path (rotate / block).
 `backend/events/index.ts` (envelope / store routes), `backend/otlp/index.ts`, `backend/auth.ts`
 (`sentry_key` extraction), `backend/errors.ts` + `backend/index.ts` (root `onError`),
 `backend/apps/index.ts` (`deleteAppCascade`), `db/schema/project.ts`. `AGENTS.md`
-(§Ingestion) and `BACKEND_API.md` carry the ingestion rules.
+(§Ingestion) and `docs/BACKEND_API.md` carry the ingestion rules.
 
 **Directives:** the limiter is **local and dependency-free** — it must work with NATS/ClickHouse down,
 and it must **never live inside the NATS consumer** (redeliveries must not be throttled). Durable

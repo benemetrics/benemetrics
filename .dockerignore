@@ -7,5 +7,5 @@ dist
 e2e
 backend/tests
 .agents
-charts
+helm
 docs

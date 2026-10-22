@@ -260,7 +260,9 @@ text       := quoted | unquoted                (bare term = free text)
 | `app:` | App id or exact name (ci) | PG `apps` | Resolves to app ids; multiple name matches union. Unknown ⇒ `404`. Intersected with caller's scope. |
 | `project:` | Project id or slug (ci) | PG `projects` | Resolves to the project's apps. |
 | `environment:` | Environment id or name (ci) | PG `environments` → `apps` | Resolves to apps created in matching environments. |
-| `level:` | `fatal`, `error`, `warning`, `info`, `debug` | PG `level` | Equality against the **latest occurrence's** level (Postgres `level` is latest-writer-wins). Any-occurrence semantics are a ClickHouse follow-up. |
+| `level:` | `fatal`, `error`, `warning`, `info`, `debug` | CH `level` | Equality against **any occurrence's** level (the ClickHouse issue index; the projection keeps the latest occurrence's level). |
+| `user:` | the user id | CH `user` | Equality against **any occurrence's** user. |
+| `tag:` | `<key>:<value>` | CH `tags` | Equality against **any occurrence's** tag. |
 | `event.type:` | `error`, `message` | PG `type` | Equality. |
 | `release:` | Version string (ci) | CH issue index | Issues with ≥1 occurrence carrying that release **in any visible app** (fingerprint set from CH is the union across visible apps; `IN` filter). |
 | `firstSeen:` | Time | PG `first_seen` | See **Time Operators** below. |
@@ -279,7 +281,7 @@ text       := quoted | unquoted                (bare term = free text)
 | `<=` | At or before day end | At or before now−24h | At or before |
 | `=` | Exactly that UTC day | Exactly now−24h | Exactly |
 
-Reserved for later (parsed keys that answer `400 Unsupported term`): `user:`, `tag:`, `assigned:`, `bookmarked:`, `has:`, `url:`.
+Reserved for later (parsed keys that answer `400 Unsupported term`): `assigned:`, `bookmarked:`, `has:`, `url:`.
 
 ### 9.4 Sort & Pagination
 
@@ -422,10 +424,10 @@ Issue reads inherit the admin guard and the scoped-read allowlist:
 - The NATS message grows by the digest array (small, flat rows).
 - `sentry_issue_events` duplicates event dimensions in ClickHouse (one small row per event item); it is derived, replaceable and truncate-able — not the source of truth.
 - `release:` list filters, occurrence lists and stats depend on ClickHouse (5xx when down); the plain list does not.
-- `level:` reads the projection (latest occurrence); `release:` is any-occurrence but ClickHouse-backed.
+- `level:`, `user:` and `tag:` are any-occurrence and ClickHouse-backed (the issue index); `release:` is any-occurrence too.
 - Drill-down of a batched envelope (`/events/:messageId`) shows the envelope's first event item — the existing `/events/:id` semantics.
 - `event_count` is exact per message id; an SDK retry with the same `event_id` never double-counts.
-- Strict parsing rejects terms Sentry would silently ignore; the error names the term and the frontend shows it. **Reserved terms (`user:`, `tag:`, `assigned:`, `bookmarked:`, `has:`, `url:`) return `400 Unsupported term` to allow future growth without ambiguity.**
+- Strict parsing rejects terms Sentry would silently ignore; the error names the term and the frontend shows it. **Reserved terms (`assigned:`, `bookmarked:`, `has:`, `url:`) return `400 Unsupported term` to allow future growth without ambiguity.**
 
 ---
 

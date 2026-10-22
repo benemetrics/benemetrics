@@ -2,8 +2,9 @@ import { notFound } from "backend/errors";
 import { appDAO, projectDAO } from "db/dao/project";
 import { environmentDAO } from "db/dao/environments";
 import {
-  clickHouseIssueFingerprints,
+  clickHouseIssueFingerprintsByLevel,
   clickHouseIssueFingerprintsByTag,
+  clickHouseIssueFingerprintsByUser,
   clickHouseReleaseFingerprints,
 } from "../clickhouse";
 import type {
@@ -230,9 +231,8 @@ export async function resolveIssueFilter(
         // Any occurrence: the level of the latest occurrence is not the
         // level of the issue.
         const appIds = await visibleAppIds();
-        const fingerprints = await clickHouseIssueFingerprints({
-          column: "level",
-          value: term.value,
+        const fingerprints = await clickHouseIssueFingerprintsByLevel({
+          level: term.value,
           appIds,
         });
         if (term.negated) {
@@ -247,9 +247,8 @@ export async function resolveIssueFilter(
       }
       case "user": {
         const appIds = await visibleAppIds();
-        const fingerprints = await clickHouseIssueFingerprints({
-          column: "user",
-          value: term.value,
+        const fingerprints = await clickHouseIssueFingerprintsByUser({
+          user: term.value,
           appIds,
         });
         if (term.negated) {

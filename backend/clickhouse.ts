@@ -991,18 +991,30 @@ export async function clickHouseReleaseFingerprints(options: {
   return rows.map((row) => row.fingerprint);
 }
 
-// The fingerprints whose occurrences carry a level, a user or a tag, across
-// the given apps. The semantics are "any occurrence" — the level of the
-// latest occurrence is not the level of the issue.
-export async function clickHouseIssueFingerprints(options: {
-  column: "level" | "user";
-  value: string;
+// The fingerprints whose occurrences carry a level, across the given apps.
+// The semantics are "any occurrence" — the level of the latest occurrence
+// is not the level of the issue.
+export async function clickHouseIssueFingerprintsByLevel(options: {
+  level: string;
   appIds: string[];
 }): Promise<string[]> {
   if (options.appIds.length === 0) return [];
   const rows = await queryRows<{ fingerprint: string }>(sql`
     SELECT DISTINCT fingerprint FROM ${ISSUE_EVENTS_TABLE} FINAL
-    WHERE ${options.column} = ${options.value} AND appId IN ${options.appIds}
+    WHERE level = ${options.level} AND appId IN ${options.appIds}
+  `);
+  return rows.map((row) => row.fingerprint);
+}
+
+// The fingerprints whose occurrences carry a user, across the given apps.
+export async function clickHouseIssueFingerprintsByUser(options: {
+  user: string;
+  appIds: string[];
+}): Promise<string[]> {
+  if (options.appIds.length === 0) return [];
+  const rows = await queryRows<{ fingerprint: string }>(sql`
+    SELECT DISTINCT fingerprint FROM ${ISSUE_EVENTS_TABLE} FINAL
+    WHERE user = ${options.user} AND appId IN ${options.appIds}
   `);
   return rows.map((row) => row.fingerprint);
 }

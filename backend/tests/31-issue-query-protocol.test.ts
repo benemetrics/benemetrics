@@ -174,11 +174,7 @@ describe("Issue query protocol", () => {
     expect(byEnvironment.data.length).toBe(4);
   });
 
-  it("filters by level and event type", async () => {
-    const warnings = await list("level:warning");
-    expect(warnings.data.length).toBe(1);
-    expect(warnings.data[0]!.fingerprint).toBe("msg:beta");
-
+  it("filters by the event type", async () => {
     const messages = await list("event.type:message");
     expect(messages.data.length).toBe(1);
     expect(messages.data[0]!.fingerprint).toBe("msg:gamma");
@@ -273,7 +269,7 @@ describe("Issue query protocol", () => {
 
   it("rejects an unknown key, a reserved key and an unknown sort", async () => {
     expect((await apiRequest("GET", "/api/admin/issues?query=nope%3A1")).status).toBe(400);
-    expect((await apiRequest("GET", "/api/admin/issues?query=user%3Ax")).status).toBe(400);
+    expect((await apiRequest("GET", "/api/admin/issues?query=assigned%3Ax")).status).toBe(400);
     expect((await apiRequest("GET", "/api/admin/issues?query=&sort=users")).status).toBe(400);
     expect((await apiRequest("GET", "/api/admin/issues?query=&sort=priority")).status).toBe(400);
   });

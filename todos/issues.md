@@ -18,8 +18,8 @@ ships with `bun run typecheck` + `bun run test` green.
 
 ## Open questions
 
-- [ ] Any-occurrence `level:`/`release:` semantics served by the CH index.
-- [ ] `sort=users` and `user:`/`tag:` filters (need CH aggregation).
+- [x] Any-occurrence `level:`/`release:` semantics served by the CH index — `level:`, `user:` and `tag:` match any occurrence (the ClickHouse issue index carries the level, the user and the tags).
+- [ ] `sort=users` (the distinct-user count needs a CH aggregation).
 - [x] OR groups in the grammar — `a | b` (the groups are ORed, the terms inside one are ANDed; the AND binds tighter).
 - [ ] Server-side dimension aggregation for the issue metrics panel (browser/OS/release breakdowns over the CH index).
 - [ ] Release summary from the CH index (replaces the event scan in `backend/releases/metrics.ts`).

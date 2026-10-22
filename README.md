@@ -214,7 +214,7 @@ cd benemetrics
 
 # The whole stack: Postgres, ClickHouse, NATS (JetStream), RustFS,
 # the API and the side-effects consumer
-docker compose up -d
+docker compose --profile app up -d
 ```
 
 Open <http://localhost:31337/ui> and paste the admin token
@@ -250,14 +250,25 @@ For the hot-reload workflow, run the services in compose and the API on the
 host:
 
 ```bash
-docker compose up -d postgres clickhouse nats rustfs
-
+docker compose up -d          # the services only — no app profile
 bun run dev                   # the API, hot reload
 bun run consumer              # the side-effects consumer, in a second terminal
 ```
 
 The environment of the host processes is the `x-app-environment` block of
-`docker-compose.yml`, with the service names pointed at `localhost`.
+`docker-compose.yml`, with the service names pointed at `localhost`:
+
+```bash
+export ADMIN_TOKEN=dev-admin-token
+export DATABASE_URL=postgres://postgres:mysecretpassword@localhost:5432/sentry
+export NATS_SERVERS=nats://localhost:4222
+export CLICKHOUSE_HOST=localhost
+export CLICKHOUSE_NATS_URL=localhost:4222
+export S3_ENDPOINT=http://localhost:9100
+export S3_BUCKET=sentry-replays
+export S3_ACCESS_KEY_ID=rustfsadmin
+export S3_SECRET_ACCESS_KEY=rustfsadmin
+```
 
 ### With the Sentry SDK
 
@@ -409,6 +420,10 @@ bun run consumer              # the side-effects consumer
 bun run typecheck             # bun check
 bun run test                  # the whole suite (needs the docker services)
 ```
+
+> The suite and a running app pull from the same JetStream durable, so the
+> two compete for the events. Run the suite against the services alone
+> (`docker compose up -d`, without the `app` profile).
 
 ### The local identity provider
 

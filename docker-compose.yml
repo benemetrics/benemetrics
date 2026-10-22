@@ -160,9 +160,13 @@ services:
     volumes:
       - keycloak_tls:/tls
 
-  # The API and the UI. `docker compose up -d` serves them on
+  # The API and the UI. `docker compose --profile app up -d` serves them on
   # http://localhost:31337/ui.
+  #
+  # The app lives behind the `app` profile: the test suite pulls from the
+  # same JetStream durable, so the services it needs are enough to run it.
   backend:
+    profiles: ["app"]
     build: .
     depends_on:
       postgres:
@@ -181,15 +185,16 @@ services:
 
   # The side-effects consumer: it applies the Postgres transitions (issues,
   # alerts, releases) from the durable JetStream pull consumer.
+  #
+  # It waits for the API to be healthy: both apply the Postgres migrations at
+  # boot, and two concurrent migrators collide.
   consumer:
+    profiles: ["app"]
     build: .
     depends_on:
       backend:
-        condition: service_started
-      postgres:
-        condition: service_started
-      nats:
-        condition: service_started
+        condition: service_healthy
+    restart: unless-stopped
     environment:
       <<: *app-environment
     command: ["bun", "consumer.js"]

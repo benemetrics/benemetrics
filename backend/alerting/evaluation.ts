@@ -2,6 +2,7 @@
 import { alertRuleDAO } from "db/dao/alert-rules";
 import { alertIncidentDAO } from "db/dao/alert-incidents";
 import { alertDeadLetterDAO } from "db/dao/alert-dead-letters";
+import { alertSilenceDAO } from "db/dao/alert-silences";
 import { appDAO } from "db/dao/project";
 import { db } from "db";
 import { issueDAO } from "db/dao/issues";
@@ -36,6 +37,19 @@ import type {
 } from "../protocol/alerting";
 
 const DEFAULT_MEASUREMENT = "duration";
+
+// The silence that covers the scope right now, if any.
+async function activeSilence(scope: {
+  appId?: string | null;
+  projectId?: string | null;
+}): Promise<{ id: string; name: string } | null> {
+  const silences = await alertSilenceDAO.findActiveForScope(
+    scope,
+    new Date().toISOString(),
+  );
+  const silence = silences[0];
+  return silence ? { id: silence.id, name: silence.name } : null;
+}
 
 // A failed delivery goes to the dead letter queue: the queue retries it
 // with a backoff.
@@ -164,6 +178,21 @@ async function evaluateRules(scope: {
         return null;
       }
 
+      const silence = await activeSilence(scope);
+      if (silence) {
+        logDecision({
+          event: "evaluated",
+          rule: rule.name,
+          scope: scope.projectId ? { projectId: scope.projectId } : { appId },
+          metric,
+          value,
+          threshold,
+          outcome: "silenced",
+          silence: silence.name,
+        });
+        return null;
+      }
+
       const now = new Date().toISOString();
       if (rule.lastTriggeredAt !== null) {
         const elapsed = Date.now() - new Date(rule.lastTriggeredAt).getTime();
@@ -264,6 +293,16 @@ async function fireIssueTriggerRules(
   const matching = rules.filter(
     (rule) => rule.isEnabled && rule.trigger === trigger,
   );
+  const silence = await activeSilence(scope);
+  if (silence) {
+    logDecision({
+      event: "issue_trigger",
+      trigger,
+      outcome: "silenced",
+      silence: silence.name,
+    });
+    return;
+  }
 
   await Promise.all(
     matching.map(async (rule) => {

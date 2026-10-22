@@ -5,6 +5,7 @@ import { alertChannelDAO } from "db/dao/alert-channels";
 import { alertRuleDAO } from "db/dao/alert-rules";
 import { alertIncidentDAO } from "db/dao/alert-incidents";
 import { alertDeadLetterDAO } from "db/dao/alert-dead-letters";
+import { alertSilenceDAO } from "db/dao/alert-silences";
 import { badRequest } from "../errors";
 import { resolveEffectiveAlertConfig } from "./resolver";
 import { buildTestNotification, deliverAlertToChannels } from "./notifiers";
@@ -280,6 +281,69 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
     "/dead-letters/:id",
     async ({ params: { id } }) => {
       await alertDeadLetterDAO.delete(id);
+      return { success: true };
+    },
+    { params: arktype({ id: "string.uuid" }) },
+  )
+  .get(
+    "/silences",
+    async ({ query: { cursor, limit } }) =>
+      alertSilenceDAO.list({ cursor, limit }),
+    {
+      query: arktype({
+        cursor: "string?",
+        limit: "string.integer.parse?",
+      }),
+    },
+  )
+  .post(
+    "/silences",
+    async ({ body, adminId }) => {
+      const scopeType = body.scopeType ?? "global";
+      if (scopeType === "app" && !body.scopeId) {
+        throw badRequest("An app silence needs the app id");
+      }
+      if (scopeType === "project" && !body.scopeId) {
+        throw badRequest("A project silence needs the project id");
+      }
+      if (scopeType === "app" && body.scopeId) {
+        await appDAO.findByIdOrThrow(body.scopeId);
+      }
+      if (scopeType === "project" && body.scopeId) {
+        await projectDAO.findByIdOrThrow(body.scopeId);
+      }
+      const startsAt = body.startsAt ?? new Date().toISOString();
+      if (body.endsAt && body.endsAt <= startsAt) {
+        throw badRequest("The silence must end after it starts");
+      }
+      const now = new Date().toISOString();
+      return alertSilenceDAO.create({
+        name: body.name,
+        scopeType,
+        scopeId: scopeType === "global" ? null : body.scopeId!,
+        startsAt,
+        endsAt: body.endsAt ?? null,
+        reason: body.reason ?? null,
+        createdBy: adminId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    },
+    {
+      body: arktype({
+        name: "string",
+        scopeType: "'global' | 'project' | 'app'?",
+        scopeId: "string.uuid?",
+        startsAt: "string?",
+        endsAt: "string?",
+        reason: "string?",
+      }),
+    },
+  )
+  .delete(
+    "/silences/:id",
+    async ({ params: { id } }) => {
+      await alertSilenceDAO.delete(id);
       return { success: true };
     },
     { params: arktype({ id: "string.uuid" }) },

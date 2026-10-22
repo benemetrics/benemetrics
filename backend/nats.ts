@@ -15,8 +15,11 @@ export const METRICS_SUBJECT = "sentry.metrics";
 export const FLAG_CHANGE_SUBJECT = "sentry.flags.changed";
 
 export const STREAM_NAME = "SENTRIES";
-export const SIDE_EFFECTS_CONSUMER = "side-effects";
-export const FLAGS_CONSUMER = "flags-consumer";
+// The side-effects and the flags consumers have their own durable, so a
+// test run does not compete with a running deployment for the messages.
+export const SIDE_EFFECTS_CONSUMER =
+  env.NATS_SIDE_EFFECTS_CONSUMER || "side-effects";
+export const FLAGS_CONSUMER = env.NATS_FLAGS_CONSUMER || "flags-consumer";
 
 // The stream's durable pull consumers: ClickHouse attaches its engine
 // tables to them by name.

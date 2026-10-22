@@ -76,6 +76,23 @@ export interface AlertRule {
   updatedAt: string;
 }
 
+// The scope of a silence: global, a project or an app.
+export type AlertSilenceScope = "global" | "project" | "app";
+
+// A silence: while it is active the rules in its scope do not fire.
+export interface AlertSilence {
+  id: string;
+  name: string;
+  scopeType: AlertSilenceScope;
+  scopeId: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  reason: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // A delivery that failed: it is retried with a backoff and stays in the
 // queue while it keeps failing.
 export interface AlertDeadLetter {

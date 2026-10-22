@@ -481,6 +481,8 @@ Enforced at database level via unique indexes on `(project_id, name)` and `(proj
 16. **Backpressure**: the deliveries go through a bounded queue (`ALERT_DELIVERY_QUEUE_SIZE`, 1000 pending) with a bounded number of workers (`ALERT_DELIVERY_CONCURRENCY`, 8). A delivery that cannot be queued is refused rather than fanned out.
 17. **Dead letter queue**: a delivery that fails is recorded (`alert_dead_letters`) and retried with an exponential backoff (`ALERT_DEAD_LETTER_BASE_MS`, `ALERT_DEAD_LETTER_MAX_MS`); the worker runs every `ALERT_DEAD_LETTER_INTERVAL_MS`. `GET /api/admin/alerting/dead-letters` lists the queue, `POST /api/admin/alerting/dead-letters/:id/retry` tries again now, `DELETE /api/admin/alerting/dead-letters/:id` discards it.
 
+18. **Silences**: a silence (`alert_silences`) covers a scope — global, a project or an app (the alerting model has no environment scope) — between `startsAt` and `endsAt` (a silence without an end is open-ended). While a silence covers the scope, the rules in it do not fire and the decision is logged with the outcome `silenced`. `GET /api/admin/alerting/silences` lists them, `POST /api/admin/alerting/silences` creates one and `DELETE /api/admin/alerting/silences/:id` removes it.
+
 **Not built:** the environment scope (dropped from the model).
 
 ---

@@ -718,6 +718,58 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(incidents.data[0]!.value).toBe(2);
     });
 
+    it("does not fire while the scope is silenced", async () => {
+      const appRecord = await makeApp();
+
+      await apiRequest("POST", "/api/admin/alerting/rules", {
+        name: `silenced ${uniq()}`,
+        metric: "error_count",
+        operator: "gt",
+        threshold: 0,
+        windowSeconds: 3600,
+        cooldownSeconds: 60,
+        appId: appRecord.id,
+      });
+
+      const silence = await json<{ id: string }>(
+        await apiRequest("POST", "/api/admin/alerting/silences", {
+          name: "maintenance",
+          scopeType: "app",
+          scopeId: appRecord.id,
+          reason: "the deploy is running",
+        }),
+      );
+      expect(silence.id).toBeTruthy();
+
+      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "silenced"));
+
+      // The rule is silenced, so no incident is fired.
+      await Bun.sleep(300);
+      const incidents = await json<{ data: unknown[] }>(
+        await apiRequest(
+          "GET",
+          `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+        ),
+      );
+      expect(incidents.data.length).toBe(0);
+
+      // The silence is listed and can be removed; the delete is idempotent.
+      const silences = await json<{ data: Array<{ id: string }> }>(
+        await apiRequest("GET", "/api/admin/alerting/silences"),
+      );
+      expect(silences.data.some((row) => row.id === silence.id)).toBe(true);
+      const deleted = await apiRequest(
+        "DELETE",
+        `/api/admin/alerting/silences/${silence.id}`,
+      );
+      expect(deleted.status).toBe(200);
+      const again = await apiRequest(
+        "DELETE",
+        `/api/admin/alerting/silences/${silence.id}`,
+      );
+      expect(again.status).toBe(200);
+    });
+
     it("records a failed delivery in the dead letter queue", async () => {
       const appRecord = await makeApp();
 

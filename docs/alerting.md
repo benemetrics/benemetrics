@@ -486,7 +486,8 @@ Enforced at database level via unique indexes on `(project_id, name)` and `(proj
 19. **Rule history**: every rule change is recorded (`alert_rule_history`) with the actor, the action (`created` / `updated` / `deleted`) and the rule's state. `GET /api/admin/alerting/rules/:id/history` reads it.
 20. **Correlation and deduplication**: an incident carries a `correlationKey` (the scope and the metric — the root cause) and the `parentId` of the group's first incident. A rule does not report a root cause that was reported in the last `ALERT_DEDUP_WINDOW_MS` (5 minutes): the decision is logged with the outcome `deduplicated` and no incident is created. The rules of a scope are evaluated one after the other, so the deduplication compares them with each other.
 
-21. **Rule import / export**: `GET /api/admin/alerting/export` writes the rules as a JSON document (the channels travel by name — the ids are local to an installation); `POST /api/admin/alerting/import` reads such a document back, creates the rules that do not exist yet and reports the ones it skipped.
+21. **Channel test**: `POST /api/admin/alerting/channels/:id/test` sends one test notification to that channel and answers the delivery result (`ok`, `error`) — the channel page has the button.
+22. **Rule import / export**: `GET /api/admin/alerting/export` writes the rules as a JSON document (the channels travel by name — the ids are local to an installation); `POST /api/admin/alerting/import` reads such a document back, creates the rules that do not exist yet and reports the ones it skipped.
 
 **Not built:** the environment scope (dropped from the model).
 

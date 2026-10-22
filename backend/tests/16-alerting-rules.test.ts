@@ -736,6 +736,30 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(incidents.data[0]!.value).toBe(2);
     });
 
+    it("tests a channel connection", async () => {
+      const channel = await json<{ id: string }>(
+        await apiRequest("POST", "/api/admin/alerting/channels", {
+          name: `test-conn-${uniq()}`,
+          type: "webhook",
+          config: { url: webhookUrl },
+        }),
+      );
+
+      const before = webhookCalls.length;
+      const response = await apiRequest(
+        "POST",
+        `/api/admin/alerting/channels/${channel.id}/test`,
+      );
+      expect(response.status).toBe(200);
+
+      const { result } = await json<{
+        result: { ok: boolean; channelId: string; error?: string };
+      }>(response);
+      expect(result.ok).toBe(true);
+      expect(result.channelId).toBe(channel.id);
+      expect(webhookCalls.length).toBe(before + 1);
+    });
+
     it("exports the rules and imports them back", async () => {
       const appRecord = await makeApp();
 

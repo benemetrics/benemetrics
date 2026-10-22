@@ -9,7 +9,12 @@ import { alertSilenceDAO } from "db/dao/alert-silences";
 import { alertRuleHistoryDAO } from "db/dao/alert-rule-history";
 import { badRequest } from "../errors";
 import { resolveEffectiveAlertConfig } from "./resolver";
-import { buildTestNotification, deliverAlertToChannels } from "./notifiers";
+import {
+  buildChannelTestNotification,
+  buildTestNotification,
+  deliverAlertToChannels,
+  deliverNotificationToChannel,
+} from "./notifiers";
 import { resolveAdminId } from "../auth";
 import { readAlertingStats } from "./stats";
 import { retryDeadLetters } from "./dead-letters";
@@ -274,6 +279,18 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       await alertRuleDAO.delete(id);
       if (current) await recordRuleChange(current, "deleted", adminId);
       return { success: true };
+    },
+    { params: arktype({ id: "string.uuid" }) },
+  )
+  .post(
+    "/channels/:id/test",
+    async ({ params: { id } }) => {
+      const channel = await alertChannelDAO.findByIdOrThrow(id);
+      const result = await deliverNotificationToChannel(
+        channel,
+        buildChannelTestNotification(channel.name, channel.appId),
+      );
+      return { result };
     },
     { params: arktype({ id: "string.uuid" }) },
   )

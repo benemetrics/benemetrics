@@ -536,6 +536,26 @@ export function buildTestNotification(
   };
 }
 
+// The notification a channel test sends: it carries the channel's own
+// name, so the receiver can tell a test from a real alert.
+export function buildChannelTestNotification(
+  channelName: string,
+  appId: string | null = null,
+): AlertNotification {
+  return {
+    title: `Test alert: ${channelName}`,
+    message: "This is a test notification for the alert channel.",
+    severity: "info",
+    ruleName: channelName,
+    trigger: "threshold",
+    metric: null,
+    value: null,
+    threshold: null,
+    appId,
+    occurredAt: new Date().toISOString(),
+  };
+}
+
 // The delivery queue: the notification volume is bounded, so a spike
 // cannot fan out without limit. The pending deliveries are capped and the
 // workers are bounded; a delivery that cannot be queued is refused and the

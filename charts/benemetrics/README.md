@@ -7,7 +7,7 @@ S3-compatible object store.
 ```bash
 helm install benemetrics charts/benemetrics \
   --namespace benemetrics --create-namespace \
-  --set image.repository=git.valerio.pw/benemetrics/app \
+  --set image.repository=ghcr.io/benemetrics/benemetrics \
   --set image.tag=0.1.0 \
   --set adminToken="$(openssl rand -hex 24)"
 ```
@@ -38,7 +38,7 @@ walkthrough.
 
 | Key | Default | Description |
 |---|---|---|
-| `image.repository` | `git.valerio.pw/benemetrics/app` | The image built from the Dockerfile |
+| `image.repository` | `ghcr.io/benemetrics/benemetrics` | The image built from the Dockerfile |
 | `image.tag` | `""` | Defaults to the chart `appVersion` |
 | `image.pullPolicy` | `IfNotPresent` | |
 | `imagePullSecrets` | `[]` | |

@@ -6,11 +6,11 @@ fullnameOverride: ""
 
 # The image built from the repository Dockerfile.
 # The CI workflow (.github/workflows/distroless-image.yml) publishes it as
-# `git.valerio.pw/<repository>`:
-#   docker build -t git.valerio.pw/benemetrics/app:0.1.0 .
-#   docker push git.valerio.pw/benemetrics/app:0.1.0
+# `ghcr.io/<owner>/<name>`:
+#   docker build -t ghcr.io/benemetrics/benemetrics:0.1.0 .
+#   docker push ghcr.io/benemetrics/benemetrics:0.1.0
 image:
-  repository: git.valerio.pw/benemetrics/app
+  repository: ghcr.io/benemetrics/benemetrics
   # Defaults to the chart appVersion when empty.
   tag: ""
   pullPolicy: IfNotPresent

@@ -292,13 +292,13 @@ Postgres, ClickHouse, NATS JetStream and an S3-compatible object store.
 
 ```bash
 # 1. Build and push the image
-docker build -t git.valerio.pw/benemetrics/app:0.1.0 .
-docker push git.valerio.pw/benemetrics/app:0.1.0
+docker build -t ghcr.io/benemetrics/benemetrics:0.1.0 .
+docker push ghcr.io/benemetrics/benemetrics:0.1.0
 
 # 2. Install
 helm install benemetrics charts/benemetrics \
   --namespace benemetrics --create-namespace \
-  --set image.repository=git.valerio.pw/benemetrics/app \
+  --set image.repository=ghcr.io/benemetrics/benemetrics \
   --set image.tag=0.1.0 \
   --set ingress.hosts[0].host=benemetrics.example.com \
   --set ingress.hosts[0].paths[0].path=/ \
@@ -352,7 +352,7 @@ that port (`dependencies.nats.websocket.service.type`) or inject your own
 
 | Key | Default | Description |
 |---|---|---|
-| `image.repository` | `git.valerio.pw/benemetrics/app` | The image built from the Dockerfile |
+| `image.repository` | `ghcr.io/benemetrics/benemetrics` | The image built from the Dockerfile |
 | `adminToken` | generated | The master credential (`API-Key`) |
 | `backend.replicaCount` | `2` | API replicas |
 | `backend.autoscaling.enabled` | `false` | HPA on the API |

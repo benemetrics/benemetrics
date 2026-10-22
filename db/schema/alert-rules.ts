@@ -37,6 +37,8 @@ export const alertRules = pgTable(
     projectId: text("project_id"),
     // The dimensions the rule matches on (the tags); a JSON object.
     filters: text("filters").notNull().default("{}"),
+    // The message template; null keeps the default message.
+    message: text("message"),
     isEnabled: integer("is_enabled").notNull().default(1),
     lastTriggeredAt: isoTimestamp("last_triggered_at"),
     createdAt: isoTimestamp("created_at").notNull().default(sql`now()`),

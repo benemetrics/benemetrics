@@ -56,6 +56,7 @@ const ruleFields = {
   appId: alertRules.appId,
   projectId: alertRules.projectId,
   filters: sql<AlertRuleFilters>`${alertRules.filters}::jsonb`,
+  message: alertRules.message,
   isEnabled: sql<boolean>`${alertRules.isEnabled} = 1`,
   lastTriggeredAt: alertRules.lastTriggeredAt,
   createdAt: alertRules.createdAt,

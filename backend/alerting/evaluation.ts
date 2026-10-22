@@ -152,7 +152,14 @@ async function evaluateRules(scope: {
         targets.includes(channel.id),
       );
       const notification = buildAlertNotification(
-        { name: rule.name, metric, operator, threshold, windowSeconds },
+        {
+          name: rule.name,
+          metric,
+          operator,
+          threshold,
+          windowSeconds,
+          message: rule.message,
+        },
         value,
         appId,
         now,

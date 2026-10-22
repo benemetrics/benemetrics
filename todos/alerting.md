@@ -15,9 +15,9 @@
 
 ## Rule Expressiveness
 
-- [ ] Alert rule templating (variables in notification message)
+- [x] Alert rule templating (variables in notification message) — a rule's `message` template renders `{{rule.name}}`, `{{metric}}`, `{{value}}`, `{{threshold}}`, `{{operator}}`, `{{windowSeconds}}` and `{{appId}}`
 - [x] Per-environment rules — the alerting model has **no environment scope**: it is global → project → app. The project scope landed with the project-scoped channels and rules.
-- [ ] Metric alert on `event_count` with `lt` operator for "traffic drop" detection
+- [x] Metric alert on `event_count` with `lt` operator for "traffic drop" detection — the metric and the operator are available in the builder and covered by a test
 - [ ] Dynamic threshold (e.g., "3x baseline") instead of static threshold
 
 ## Incident Management

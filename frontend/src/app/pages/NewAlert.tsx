@@ -77,6 +77,8 @@ export function NewAlert() {
   const [cooldown, setCooldown] = useState(3600);
   // The tag dimensions the rule matches on; an empty list matches everything.
   const [tagFilters, setTagFilters] = useState<Array<{ key: string; value: string }>>([]);
+  // The message template; empty keeps the default message.
+  const [message, setMessage] = useState("");
   const [channelIds, setChannelIds] = useState<string[]>([]);
   const [channels, setChannels] = useState<AlertChannelDto[]>([]);
   const [creating, setCreating] = useState(false);
@@ -153,6 +155,7 @@ export function NewAlert() {
         name: ruleName,
         cooldownSeconds: cooldown,
         channelIds,
+        ...(message.trim() ? { message: message.trim() } : {}),
         ...(scopeAppId ? { appId: scopeAppId } : {}),
         ...(Object.keys(tags).length > 0 ? { filters: { tags } } : {}),
       };
@@ -341,6 +344,19 @@ export function NewAlert() {
                   ))}
                 </select>
                 <small>App-scoped rules override a global rule with the same name.</small>
+              </div>
+              <div className="form-field full">
+                <span>Message template</span>
+                <input
+                  className="field-control code-value"
+                  placeholder="{{rule.name}}: {{metric}} is {{value}}"
+                  value={message}
+                  onChange={(event) => setMessage(event.target.value)}
+                />
+                <small>
+                  Optional. The variables are rule.name, metric, value,
+                  threshold, operator, windowSeconds and appId.
+                </small>
               </div>
               <div className="form-field full">
                 <span>Tag filters</span>

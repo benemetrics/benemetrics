@@ -140,7 +140,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       const projectId = body.projectId ?? null;
       if (appId) await appDAO.findByIdOrThrow(appId);
       if (projectId) await projectDAO.findByIdOrThrow(projectId);
-      const base = { name: body.name, trigger: body.trigger ?? "threshold", cooldownSeconds: body.cooldownSeconds ?? 3600, channelIds: JSON.stringify(body.channelIds ?? []), appId, projectId, filters: JSON.stringify(body.filters ?? {}) };
+      const base = { name: body.name, trigger: body.trigger ?? "threshold", cooldownSeconds: body.cooldownSeconds ?? 3600, channelIds: JSON.stringify(body.channelIds ?? []), appId, projectId, filters: JSON.stringify(body.filters ?? {}), message: body.message ?? null };
       return alertRuleDAO.create("metric" in body ? { ...base, metric: body.metric, operator: body.operator, threshold: body.threshold, windowSeconds: body.windowSeconds, measurement: body.measurement ?? null } : base);
     },
     {
@@ -157,6 +157,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
         appId: "string.uuid?",
         projectId: "string.uuid?",
         filters: ruleFiltersSchema.optional(),
+        message: "string?",
       }).onUndeclaredKey("reject").or(
         arktype({
           name: "string",
@@ -166,6 +167,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
           appId: "string.uuid?",
           projectId: "string.uuid?",
           filters: ruleFiltersSchema.optional(),
+          message: "string?",
         }).onUndeclaredKey("reject"),
       ),
     },
@@ -198,6 +200,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
         channelIds: "string.uuid[]?",
         measurement: "string?",
         isEnabled: "boolean?",
+        message: "string?",
       }),
     },
   )

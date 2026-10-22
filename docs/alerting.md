@@ -472,6 +472,8 @@ Enforced at database level via unique indexes on `(project_id, name)` and `(proj
 
 11. **Observability**: every evaluation decision is one JSON log line (`component: "alerting"`, the rule, the scope, the metric, the value, the threshold, the outcome: `no_breach` / `cooldown` / `fired`); the counters (the rules evaluated, the incidents fired and resolved, the deliveries succeeded and failed, the cooldowns skipped) are read through `GET /api/admin/alerting/stats`.
 
+12. **Message templates**: a rule can carry a `message` template — plain text with `{{variable}}` placeholders (`rule.name`, `metric`, `value`, `threshold`, `operator`, `windowSeconds`, `appId`). Without a template the default message is used; an unknown placeholder is left as it is.
+
 **Not built:** the environment scope (dropped from the model).
 
 ---

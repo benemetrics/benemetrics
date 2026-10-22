@@ -68,6 +68,8 @@ export interface AlertRule {
   projectId: string | null;
   /** The dimensions the rule matches on. */
   filters: AlertRuleFilters;
+  /** The message template; null keeps the default message. */
+  message: string | null;
   isEnabled: boolean;
   lastTriggeredAt: string | null;
   createdAt: string;

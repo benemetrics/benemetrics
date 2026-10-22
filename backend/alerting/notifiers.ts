@@ -16,6 +16,7 @@ import {
   signWebhook,
 } from "./webhook-signature";
 import { countDelivery } from "./stats";
+import { renderTemplate } from "./template";
 
 export interface Notifier {
   readonly type: AlertChannelType;
@@ -447,6 +448,8 @@ export interface ThresholdRuleLike {
   operator: AlertOperator;
   threshold: number;
   windowSeconds: number;
+  /** The message template; null keeps the default message. */
+  message?: string | null;
 }
 
 export interface AlertRuleLike {
@@ -464,9 +467,19 @@ export function buildAlertNotification(
   appId: string | null,
   occurredAt: string,
 ): AlertNotification {
+  const defaultMessage = `${rule.metric} is ${value} (threshold ${rule.operator} ${rule.threshold}) over the last ${rule.windowSeconds}s for app ${appId ?? "global"}.`;
+  const templated = renderTemplate(rule.message, {
+    rule: { name: rule.name },
+    metric: rule.metric,
+    value,
+    threshold: rule.threshold,
+    operator: rule.operator,
+    windowSeconds: rule.windowSeconds,
+    appId,
+  });
   return {
     title: `Alert: ${rule.name}`,
-    message: `${rule.metric} is ${value} (threshold ${rule.operator} ${rule.threshold}) over the last ${rule.windowSeconds}s for app ${appId ?? "global"}.`,
+    message: templated || defaultMessage,
     severity: severityForMetric(rule.metric),
     ruleName: rule.name,
     trigger: "threshold",

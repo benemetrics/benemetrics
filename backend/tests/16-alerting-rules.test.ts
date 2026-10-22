@@ -718,6 +718,82 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(incidents.data[0]!.value).toBe(2);
     });
 
+    it("renders the rule's message template", async () => {
+      const appRecord = await makeApp();
+
+      const channel = await json<{ id: string }>(
+        await apiRequest("POST", "/api/admin/alerting/channels", {
+          name: `templated-${uniq()}`,
+          type: "webhook",
+          config: { url: webhookUrl },
+          appId: appRecord.id,
+        }),
+      );
+
+      await apiRequest("POST", "/api/admin/alerting/rules", {
+        name: `templated ${uniq()}`,
+        metric: "error_count",
+        operator: "gt",
+        threshold: 0,
+        windowSeconds: 3600,
+        cooldownSeconds: 60,
+        channelIds: [channel.id],
+        appId: appRecord.id,
+        message: "{{rule.name}} saw {{value}} {{metric}} above {{threshold}}",
+      });
+
+      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "templated"));
+
+      const bodies = await waitForWebhook(
+        (body) => typeof body.message === "string" && body.message.includes("above"),
+      );
+      const notification = bodies.find((body) =>
+        String(body.message ?? "").includes("above"),
+      );
+      expect(notification).toBeDefined();
+      expect(String(notification!.message)).toContain("saw 1 error_count above 0");
+    });
+
+    it("fires a traffic-drop rule (event_count below the threshold)", async () => {
+      const appRecord = await makeApp();
+
+      const channel = await json<{ id: string }>(
+        await apiRequest("POST", "/api/admin/alerting/channels", {
+          name: `traffic-${uniq()}`,
+          type: "webhook",
+          config: { url: webhookUrl },
+          appId: appRecord.id,
+        }),
+      );
+
+      await apiRequest("POST", "/api/admin/alerting/rules", {
+        name: `traffic drop ${uniq()}`,
+        metric: "event_count",
+        operator: "lt",
+        threshold: 5,
+        windowSeconds: 3600,
+        cooldownSeconds: 60,
+        channelIds: [channel.id],
+        appId: appRecord.id,
+      });
+
+      // Two events in the window — below the threshold, so the rule fires.
+      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "drop one"));
+      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "drop two"));
+
+      const incidents = await waitFor(
+        async () =>
+          json<{ data: Array<Record<string, unknown>> }>(
+            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+          ),
+        (body) => body.data.length > 0,
+      );
+
+      expect(incidents.data[0]!.metric).toBe("event_count");
+      // The window's event count is below the threshold, so the rule fired.
+      expect(Number(incidents.data[0]!.value)).toBeLessThan(5);
+    });
+
     it("reports the alerting counters", async () => {
       const before = await json<{ rulesEvaluated: number }>(
         await apiRequest("GET", "/api/admin/alerting/stats"),

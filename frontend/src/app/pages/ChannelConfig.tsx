@@ -56,6 +56,7 @@ export function ChannelConfig() {
   const [channel, setChannel] = useState<AlertChannelDto | null>(null);
   const [rules, setRules] = useState<AlertRuleDto[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [type, setType] = useState<ChannelType>("webhook");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
@@ -66,6 +67,7 @@ export function ChannelConfig() {
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +82,7 @@ export function ChannelConfig() {
           return;
         }
         setChannel(loaded);
+        setType(loaded.type as ChannelType);
         setName(loaded.name);
         setUrl(configString(loaded.config, "url"));
         setWebhookUrl(configString(loaded.config, "webhookUrl"));
@@ -119,7 +122,6 @@ export function ChannelConfig() {
     };
   }, [channelId]);
 
-  const type = (channel?.type ?? "webhook") as ChannelType;
   const usedBy = rules.filter((rule) => rule.channelIds.includes(channelId));
 
   const save = async () => {
@@ -148,6 +150,7 @@ export function ChannelConfig() {
       const updated = unwrapOne<AlertChannelDto>(
         await api.api.admin.alerting.channels[channelId].patch({
           name: name.trim() || channel.name,
+          type,
           config,
         }),
       );
@@ -160,6 +163,25 @@ export function ChannelConfig() {
       notify("Could not reach the backend while saving the channel.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const testConnection = async () => {
+    if (!channel || testing) return;
+    setTesting(true);
+    try {
+      const response = await api.api.admin.alerting.channels[channelId].test.post();
+      const result = (response?.data as { result?: { ok: boolean; error?: string } } | null)
+        ?.result;
+      if (result?.ok) {
+        notify(`Test notification sent to "${channel.name}"`);
+      } else {
+        notify(result?.error ?? "The channel did not accept the test notification.");
+      }
+    } catch {
+      notify("Could not reach the backend while testing the channel.");
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -213,6 +235,21 @@ export function ChannelConfig() {
                 <div className="connection-status connected">Connected</div>
               </div>
               <div className="form-grid">
+                <div className="form-field">
+                  <span>Channel type</span>
+                  <select
+                    className="field-control"
+                    value={type}
+                    onChange={(event) => setType(event.target.value as ChannelType)}
+                  >
+                    {Object.entries(TYPE_NAMES).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <small>Changing the type resets the fields below to that type's own.</small>
+                </div>
                 <div className="form-field">
                   <span>Channel name</span>
                   <input
@@ -348,8 +385,8 @@ export function ChannelConfig() {
                     <span>Delivery</span>
                     <div className="channel-pick">
                       <span>
-                        The email notifier is a stub — alerts routed here report a delivery
-                        failure until SMTP support lands.
+                        The email notifier talks SMTP to the configured host; the
+                        delivery is reported per notification.
                       </span>
                     </div>
                   </div>
@@ -367,6 +404,9 @@ export function ChannelConfig() {
                         .join(", ")}`}
                 </span>
               </div>
+              <Action variant="soft" onClick={testConnection}>
+                {testing ? "Sending…" : "Test connection"}
+              </Action>
               <Action variant="soft" onClick={() => navigate("/alerts")}>
                 Send a test from a rule
               </Action>

@@ -53,6 +53,7 @@ export function Projects() {
   // Environment management (rename / promote default / delete)
   const [renamingEnv, setRenamingEnv] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  const [slugDraft, setSlugDraft] = useState("");
   const [busyEnv, setBusyEnv] = useState<string | null>(null);
   const [confirmEnvDelete, setConfirmEnvDelete] = useState<string | null>(null);
 
@@ -217,14 +218,19 @@ export function Projects() {
   const startRenameEnv = (environment: EnvironmentDto) => {
     setRenamingEnv(environment.id);
     setRenameDraft(environment.name);
+    setSlugDraft(environment.slug);
   };
 
   const saveEnvName = async (environment: EnvironmentDto) => {
     const name = renameDraft.trim();
-    if (!name || busyEnv) return;
+    const slug = slugDraft.trim();
+    if (!name || !slug || busyEnv) return;
     setBusyEnv(environment.id);
     try {
-      const result = await api.api.admin.environments[environment.id].patch({ name });
+      const result = await api.api.admin.environments[environment.id].patch({
+        name,
+        slug,
+      });
       if ((result as { error?: unknown } | null)?.error) {
         notify(readErrorMessage(result) ?? `Could not rename "${environment.name}"`);
         return;
@@ -518,6 +524,13 @@ export function Projects() {
                   value={renameDraft}
                   autoFocus
                   onChange={(event) => setRenameDraft(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && saveEnvName(environment)}
+                />
+                <input
+                  className="field-control code-value"
+                  value={slugDraft}
+                  placeholder="slug"
+                  onChange={(event) => setSlugDraft(event.target.value)}
                   onKeyDown={(event) => event.key === "Enter" && saveEnvName(environment)}
                 />
                 <span

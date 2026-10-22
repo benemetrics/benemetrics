@@ -5,9 +5,11 @@ import { ScreenIntro } from "../ScreenIntro";
 import { api, type ReleaseDto } from "../../lib/api";
 import { loadAllPages } from "../../lib/cursor";
 import { relativeTime } from "../../lib/utils";
+import { useWorkspace } from "../WorkspaceContext";
 
 export function Releases() {
   const navigate = useNavigate();
+  const { application } = useWorkspace();
   const [releases, setReleases] = useState<ReleaseDto[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
@@ -17,7 +19,11 @@ export function Releases() {
       try {
         const rows = await loadAllPages<ReleaseDto>(async (cursor, limit) => {
           const result = await api.api.admin.releases.get({
-            $query: { limit, ...(cursor ? { cursor } : {}) },
+            $query: {
+              limit,
+              ...(cursor ? { cursor } : {}),
+              ...(application ? { appId: application.id } : {}),
+            },
           });
           return (result?.data as { data?: ReleaseDto[] } | null)?.data ?? [];
         });
@@ -31,7 +37,7 @@ export function Releases() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [application?.id]);
 
   const finalized = releases.filter((release) => release.status === "finalized");
   const draft = releases.filter((release) => release.status !== "finalized");
@@ -41,7 +47,11 @@ export function Releases() {
       <ScreenIntro
         eyebrow="DEPLOYMENTS"
         title="Releases"
-        subtitle="Releases appear here when reported by your SDK or CLI."
+        subtitle={
+          application
+            ? `Releases of ${application.name}, reported by your SDK or CLI.`
+            : "Releases appear here when reported by your SDK or CLI."
+        }
         action={
           <Action variant="primary" onClick={() => navigate("/releases/new")}>
             <span className="plus">+</span>Create release

@@ -32,6 +32,8 @@ export function SourceMaps() {
 
   const [tokens, setTokens] = useState<SourceMapTokenDto[]>([]);
   const [maps, setMaps] = useState<SourceMapArtifactDto[]>([]);
+  const [content, setContent] = useState<{ name: string; json: string } | null>(null);
+  const [contentBusy, setContentBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmRotate, setConfirmRotate] = useState<string | null>(null);
@@ -189,6 +191,26 @@ export function SourceMaps() {
       notify("Could not reach the backend while revoking the token.");
     } finally {
       setBusy(null);
+    }
+  };
+
+  const viewContent = async (map: SourceMapArtifactDto) => {
+    if (contentBusy) return;
+    setContentBusy(map.id);
+    try {
+      const result = await api.api.admin["source-maps"][map.id].get({
+        $query: { include: "content" },
+      });
+      const body = (result?.data as { mapJson?: string } | null) ?? null;
+      if (!body?.mapJson) {
+        notify("The map has no content to show.");
+        return;
+      }
+      setContent({ name: map.name, json: body.mapJson });
+    } catch {
+      notify("Could not reach the backend while reading the source map.");
+    } finally {
+      setContentBusy(null);
     }
   };
 
@@ -547,6 +569,15 @@ export function SourceMaps() {
               ) : (
                 <span className="row-actions">
                   <span
+                    className={`row-action ${contentBusy === map.id ? "is-busy" : ""}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => viewContent(map)}
+                    onKeyDown={(event) => event.key === "Enter" && viewContent(map)}
+                  >
+                    {contentBusy === map.id ? "Loading…" : "View content"}
+                  </span>
+                  <span
                     className="row-action danger"
                     role="button"
                     tabIndex={0}
@@ -588,6 +619,21 @@ export function SourceMaps() {
           </div>
         )}
       </article>
+      {content && (
+        <>
+          <div className="section-label-row">
+            <div>
+              <strong>Map content</strong>
+              <span>The uploaded source map, exactly as it was stored</span>
+            </div>
+          </div>
+          <article className="panel builder-card">
+            <pre className="payload-json" style={{ marginTop: 0 }}>
+              {content.json}
+            </pre>
+          </article>
+        </>
+      )}
       <div className="section-label-row">
         <div>
           <strong>Resolve a position</strong>

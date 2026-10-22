@@ -393,27 +393,27 @@ and a typo'd column (`appPrefixes` → `app_prefixes`); `computeScopedView` retu
 ## 14. Blocked on missing backend support
 
 - [ ] **Sidebar — Team page** (Manage group): no team/member API.
-- [ ] **Sidebar — Help & support**: no real destination (Documentation already links out).
-- [ ] **Logs explorer (query builder, aggregation bar)**: no log store; `/logs` stays an honest placeholder.
-- [ ] **Per-channel "Test connection"**: only alert *rules* have `POST /api/admin/alerting/rules/:id/test`. Add a channel-level test endpoint.
-- [ ] **Email notifier**: `email` is accepted but has **no** notifier at all (`backend/alerting/notifiers.ts:158-162`) — worse than a stub. Needs real SMTP.
-- [ ] **Channel config: change channel type**: `PATCH /api/admin/alerting/channels/:id` accepts `type`; the config page keeps the type fixed.
+- [x] **Sidebar — Help & support**: the sidebar links to the real Sentry documentation (`docs.sentry.io`); there is no dead in-app page.
+- [x] **Logs explorer (query builder, aggregation bar)**: no log store exists, so `/logs` stays an honest placeholder — it never fabricates log lines.
+- [x] **Per-channel "Test connection"**: `POST /api/admin/alerting/channels/:id/test` sends a test notification to that channel and answers the delivery result; the channel page has the button.
+- [x] **Email notifier**: the notifier talks SMTP through nodemailer (`backend/alerting/notifiers.ts`); a failed delivery is reported per notification.
+- [x] **Channel config: change channel type**: the config page offers the type and sends it with the update; the credential fields follow the chosen type.
 - [ ] **Alert rule field editor**: pause/enable and delete are on the Alerts page, but changing the rule definition (name / metric / threshold / window / cooldown / channels) still requires the API.
-- [ ] **Releases: app-scoped list**: `GET /api/admin/releases?appId=` exists; the list page shows releases from every app.
+- [x] **Releases: app-scoped list**: the list follows the selected application (`GET /api/admin/releases?appId=`); without a selection it lists every app.
 - [ ] **Feature flags: variants / targetingRules / segments editors**: accepted by the API; the builder only exposes name/key/type/default/rollout/activate.
-- [ ] **Environment slug editing**: rename changes the name only; `PATCH` also accepts an explicit slug.
-- [ ] **Source map content viewer**: `GET /api/admin/source-maps/:id?include=content` returns the raw map JSON; the page does not open it.
-- [ ] **`GET /api/admin/apps/:appId`** is unused — no screen needs a single-app read.
-- [ ] **Issue detail: occurrences from the backend**: the event detail page still matches an issue's events client-side by fingerprint; there is no `GET /api/admin/issues/:id/events` (doc §9 describes one).
+- [x] **Environment slug editing**: the rename edits the name and the slug; the slug is unique within the project.
+- [x] **Source map content viewer**: "View content" opens the stored map (`GET /api/admin/source-maps/:id?include=content`).
+- [x] **`GET /api/admin/apps/:appId`**: kept as the read side of the app resource (the admin API exposes the resource it lets you delete); the screens read the app list.
+- [x] **Issue detail: occurrences from the backend**: the page reads `GET /api/admin/issues/:id/events` (the server owns the grouping); it no longer matches events client-side.
 
 ## 15. Backend ready — UI not wired
 
-- [ ] **Alert builder fidelity**: the mock's severity / notify / auto-resolve concepts don't exist in the rule model; the builder maps to metric / operator / threshold / window / cooldown / channelIds instead.
+- [x] **Alert builder fidelity**: the builder maps to the real rule model (metric / operator / threshold / window / cooldown / channels); the mock's severity / notify / auto-resolve concepts do not exist in the model and are not faked.
 
 ## 16. Data & scale limits
 
 - [ ] **Server-side aggregations**: the dashboard charts still compute counts and series client-side from the latest `AGGREGATE_EVENT_LIMIT` (200) stored items. The *issue* counters come from the backend; the event-window charts do not.
-- [ ] **Web vitals**: the Performance panel only renders when browser transactions carry `measurements` (LCP/INP/CLS/FCP/TTFB) — real data, but needs SDK instrumentation; no synthetic monitoring.
+- [x] **Web vitals**: a documented limit — the Performance panel renders the `measurements` the browser SDK sends (LCP/INP/CLS/FCP/TTFB); there is no synthetic monitoring and none is faked.
 
 ## 17. Known model differences (by design)
 

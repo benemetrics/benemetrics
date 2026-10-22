@@ -60,7 +60,7 @@ A channel is a delivery endpoint. Scoped to project or environment.
 
 | Type | Config Keys |
 |------|-------------|
-| `webhook` | `url` (required), `headers?` (Record<string, string>) |
+| `webhook` | `url` (required), `headers?` (Record<string, string>), `secret?` (HMAC signing key) |
 | `slack` | `webhookUrl` **OR** `token` + `channel` |
 | `rocketchat` | `webhookUrl` |
 | `email` | `host`, `port`, `secure`, `auth: { user, pass }`, `from`, `to` |
@@ -191,7 +191,7 @@ Each notifier implements `Notifier { type, send(notification, config) }`:
 
 | Notifier | Delivery |
 |----------|----------|
-| `webhookNotifier` | `POST {url}` with JSON body = `AlertNotification` |
+| `webhookNotifier` | `POST {url}` with JSON body = `AlertNotification`; with `secret`, the body is signed — `X-Sentry-Hook-Signature: t=<unix>,v1=<hmac-sha256 of `<unix>.<body>`>` and `X-Sentry-Hook-Timestamp` |
 | `slackNotifier` | Prefers `webhookUrl` (simple `POST {text}`), falls back to `chat.postMessage` with `token` + `channel` |
 | `rocketChatNotifier` | `POST {webhookUrl}` with Rocket.Chat attachment format (color, fields for metric/issue) |
 | `emailNotifier` | SMTP — configurable via `host`, `port`, `secure`, `auth: { user, pass }`, `from`, `to` |
@@ -467,6 +467,8 @@ Enforced at database level via unique indexes on `(project_id, name)` and `(proj
 8. **Rule filters**: `alert_rules.filters` is a JSON object — `{ "tags": { "<key>": "<value>" } }`. The metric samples carry the event's tags (`sentry_metrics.tags`, a JSON string), and a threshold rule only counts the samples whose event carries the filtered tag with that value. The samples are published with their tags (`sentry.metrics`) and the ClickHouse store gained the column.
 
 9. **Rule filters**: `alert_rules.filters` holds the tag dimensions (`{ "tags": { "<key>": "<value>" } }`). The metric samples carry the event's tags (`sentry_metrics.tags`) and the issue digests carry them too (`IssueDigest.tags`), so a threshold rule counts only the matching samples, a `new_issue`/`regression` rule fires only for the matching issues, and `new_issue_count` counts only the issues whose latest occurrence carries the tag. The rule builder and the rules list show the filters.
+
+10. **Webhook signing**: a webhook channel with a `secret` signs the body (HMAC-SHA256 over `<timestamp>.<body>`, the Sentry scheme) and sends `X-Sentry-Hook-Signature` + `X-Sentry-Hook-Timestamp`; `backend/alerting/webhook-signature.ts` also exposes the verification side for receivers.
 
 **Not built:** the environment scope (dropped from the model).
 

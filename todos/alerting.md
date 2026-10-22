@@ -11,7 +11,7 @@
 - [x] Opsgenie notifier
 - [x] Microsoft Teams notifier
 - [x] VictorOps notifier
-- [ ] Webhook signature / secret validation (HMAC)
+- [x] Webhook signature / secret validation (HMAC) — a webhook channel with a `secret` signs the body (HMAC-SHA256, the Sentry scheme); `backend/alerting/webhook-signature.ts` signs and verifies.
 
 ## Rule Expressiveness
 

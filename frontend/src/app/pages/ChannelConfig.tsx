@@ -59,6 +59,7 @@ export function ChannelConfig() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [secret, setSecret] = useState("");
   const [token, setToken] = useState("");
   const [slackChannel, setSlackChannel] = useState("");
   const [routingKey, setRoutingKey] = useState("");
@@ -82,6 +83,7 @@ export function ChannelConfig() {
         setName(loaded.name);
         setUrl(configString(loaded.config, "url"));
         setWebhookUrl(configString(loaded.config, "webhookUrl"));
+        setSecret(configString(loaded.config, "secret"));
         setToken(configString(loaded.config, "token"));
         setSlackChannel(configString(loaded.config, "channel"));
         setStatus("ready");
@@ -123,7 +125,12 @@ export function ChannelConfig() {
   const save = async () => {
     if (!channel || saving) return;
     let config: Record<string, unknown> = {};
-    if (type === "webhook") config = { url: url.trim() };
+    if (type === "webhook") {
+      config = {
+        url: url.trim(),
+        ...(secret.trim() ? { secret: secret.trim() } : {}),
+      };
+    }
     if (type === "rocketchat") config = { webhookUrl: webhookUrl.trim() };
     if (type === "slack") {
       config = webhookUrl.trim()
@@ -216,14 +223,29 @@ export function ChannelConfig() {
                   <small>An app-scoped channel with this name replaces the global one.</small>
                 </div>
                 {type === "webhook" && (
-                  <div className="form-field">
-                    <span>Endpoint URL</span>
-                    <input
-                      className="field-control code-value"
-                      value={url}
-                      onChange={(event) => setUrl(event.target.value)}
-                    />
-                  </div>
+                  <>
+                    <div className="form-field">
+                      <span>Endpoint URL</span>
+                      <input
+                        className="field-control code-value"
+                        value={url}
+                        onChange={(event) => setUrl(event.target.value)}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <span>Signing secret</span>
+                      <input
+                        className="field-control code-value"
+                        type="password"
+                        value={secret}
+                        onChange={(event) => setSecret(event.target.value)}
+                      />
+                      <small>
+                        The payload is signed with HMAC-SHA256; the receiver
+                        verifies the X-Sentry-Hook-Signature header.
+                      </small>
+                    </div>
+                  </>
                 )}
                 {type === "rocketchat" && (
                   <div className="form-field">

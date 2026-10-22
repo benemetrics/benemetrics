@@ -10,6 +10,11 @@ import type {
   DeliveryResult,
 } from "../protocol/alerting";
 import type { IssueSummary } from "../protocol/issues";
+import {
+  SIGNATURE_HEADER,
+  TIMESTAMP_HEADER,
+  signWebhook,
+} from "./webhook-signature";
 
 export interface Notifier {
   readonly type: AlertChannelType;
@@ -93,10 +98,18 @@ export const webhookNotifier: Notifier = {
         if (typeof value === "string") headers[name] = value;
       }
     }
+    const body = JSON.stringify(notification);
+    // A shared secret signs the body; the receiver verifies the signature.
+    const secret = config.secret;
+    if (typeof secret === "string" && secret.length > 0) {
+      const { signature, timestamp } = signWebhook(body, secret);
+      headers[SIGNATURE_HEADER] = signature;
+      headers[TIMESTAMP_HEADER] = timestamp;
+    }
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify(notification),
+      body,
     });
     if (!response.ok) {
       throw new Error(`webhook ${url} responded with status ${response.status}`);

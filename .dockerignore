@@ -7,3 +7,5 @@ dist
 e2e
 backend/tests
 .agents
+charts
+docs

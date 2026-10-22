@@ -10,6 +10,7 @@ RUN bun install --frozen-lockfile
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 COPY db/ ./db/
+COPY scripts/ ./scripts/
 COPY tsconfig.json bunfig.toml ./
 
 # Compile Tailwind CSS
@@ -20,7 +21,7 @@ RUN sed -i 's|href="./global.css"|href="./global.compiled.css"|' frontend/index.
 
 # Bundle the application (backend + frontend HTML import)
 # https://bun.com/docs/bundler/fullstack#ahead-of-time-bundling
-RUN bun build --target=bun --production --outdir=dist ./backend/index.ts
+RUN bun scripts/build.ts
 
 # The side-effects consumer is the second entry point of the same image:
 # it applies the Postgres side effects (issues, alerts, releases) from the

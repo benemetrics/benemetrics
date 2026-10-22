@@ -1,0 +1,94 @@
+{
+  "realm": "benedebug",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "clients": [
+    {
+      "clientId": "benedebug",
+      "name": "Benedebug SPA",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:*/*", "http://127.0.0.1:*/*"],
+      "webOrigins": ["*"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:*/*"
+      },
+      "defaultClientScopes": ["profile", "email", "roles", "web-origins"],
+      "optionalClientScopes": ["groups"]
+    },
+    {
+      "clientId": "benedebug-backend",
+      "name": "Benedebug backend",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "defaultClientScopes": ["groups"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "backend-team" },
+      { "name": "frontend-team" }
+    ]
+  },
+  "groups": [
+    {
+      "name": "backend-team",
+      "attributes": { "group": ["backend-team"] },
+      "realmRoles": ["backend-team"]
+    },
+    {
+      "name": "frontend-team",
+      "attributes": { "group": ["frontend-team"] },
+      "realmRoles": ["frontend-team"]
+    }
+  ],
+  "users": [
+    {
+      "username": "sso@example.com",
+      "email": "sso@example.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "SSO",
+      "lastName": "User",
+      "credentials": [{ "type": "password", "value": "sentry", "temporary": false }],
+      "groups": ["/backend-team"]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "groups",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

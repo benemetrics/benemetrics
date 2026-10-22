@@ -1,0 +1,57 @@
+name: Helm chart
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "charts/**"
+      - ".github/workflows/helm.yml"
+  pull_request:
+    paths:
+      - "charts/**"
+      - ".github/workflows/helm.yml"
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+
+      - name: Lint the chart
+        run: helm lint charts/benedebug
+
+      - name: Render the chart
+        run: |
+          helm template benedebug charts/benedebug > /tmp/rendered.yaml
+          helm template benedebug charts/benedebug \
+            --set dependencies.postgres.enabled=false \
+            --set dependencies.clickhouse.enabled=false \
+            --set dependencies.nats.enabled=false \
+            --set dependencies.objectStorage.enabled=false \
+            --set database.url=postgres://user:pass@postgres:5432/benedebug \
+            --set clickhouse.host=clickhouse \
+            --set clickhouse.natsUrl=nats:4222 \
+            --set nats.servers=nats://nats:4222 \
+            --set objectStorage.endpoint=http://s3:9000 \
+            > /tmp/rendered-external.yaml
+
+      - name: Validate the manifests
+        uses: yannh/kubeconform-action@v1.6.0
+        with:
+          files: /tmp/rendered.yaml
+          kubernetes-version: 1.29.0
+          strict: true
+
+      - name: Validate the manifests (managed services)
+        uses: yannh/kubeconform-action@v1.6.0
+        with:
+          files: /tmp/rendered-external.yaml
+          kubernetes-version: 1.29.0
+          strict: true

@@ -7,7 +7,7 @@ S3-compatible object store.
 ```bash
 helm install benedebug charts/benedebug \
   --namespace benedebug --create-namespace \
-  --set image.repository=ghcr.io/your-org/benedebug \
+  --set image.repository=git.valerio.pw/benedebug/app \
   --set image.tag=0.1.0 \
   --set adminToken="$(openssl rand -hex 24)"
 ```
@@ -38,7 +38,7 @@ walkthrough.
 
 | Key | Default | Description |
 |---|---|---|
-| `image.repository` | `ghcr.io/your-org/benedebug` | The image built from the Dockerfile |
+| `image.repository` | `git.valerio.pw/benedebug/app` | The image built from the Dockerfile |
 | `image.tag` | `""` | Defaults to the chart `appVersion` |
 | `image.pullPolicy` | `IfNotPresent` | |
 | `imagePullSecrets` | `[]` | |

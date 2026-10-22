@@ -5,11 +5,12 @@ nameOverride: ""
 fullnameOverride: ""
 
 # The image built from the repository Dockerfile.
-# Build and push it first:
-#   docker build -t ghcr.io/your-org/benedebug:0.1.0 .
-#   docker push ghcr.io/your-org/benedebug:0.1.0
+# The CI workflow (.github/workflows/distroless-image.yml) publishes it as
+# `git.valerio.pw/<repository>`:
+#   docker build -t git.valerio.pw/benedebug/app:0.1.0 .
+#   docker push git.valerio.pw/benedebug/app:0.1.0
 image:
-  repository: ghcr.io/your-org/benedebug
+  repository: git.valerio.pw/benedebug/app
   # Defaults to the chart appVersion when empty.
   tag: ""
   pullPolicy: IfNotPresent

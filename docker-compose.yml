@@ -81,6 +81,48 @@ services:
       printf '%s' '{\"rules\":[{\"allowedOrigins\":[\"*\"],\"allowedMethods\":[\"GET\",\"HEAD\"],\"allowedHeaders\":[\"*\"],\"exposeHeaders\":[\"ETag\",\"Content-Length\",\"Content-Type\"],\"maxAgeSeconds\":3000}]}' | rc bucket cors set local/sentry-replays -;
       "
 
+  # Keycloak: the local identity provider. The realm (the clients, the
+  # groups and the test user) is imported from infra/keycloak/realm.json.
+  #
+  # openid-client refuses plain-HTTP issuers, so Keycloak serves TLS with a
+  # self-signed certificate the backend trusts through NODE_EXTRA_CA_CERTS
+  # (infra/keycloak/tls/tls.crt). The issuer is https://localhost:8443.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    depends_on:
+      keycloak-cert:
+        condition: service_completed_successfully
+    command: ["start", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "false"
+      KC_HTTPS_PORT: "8443"
+      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/tls/tls.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/tls/tls.key
+      KC_HOSTNAME_STRICT: "false"
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./infra/keycloak/tls:/opt/keycloak/conf/tls:ro
+      - ./infra/keycloak/realm.json:/opt/keycloak/data/import/realm.json:ro
+
+  # Generates the self-signed certificate Keycloak serves (the backend
+  # trusts it through NODE_EXTRA_CA_CERTS).
+  keycloak-cert:
+    image: alpine:3
+    command:
+      - sh
+      - -c
+      - >
+        apk add --no-cache openssl &&
+        openssl req -x509 -newkey rsa:2048 -nodes
+        -keyout /tls/tls.key -out /tls/tls.crt
+        -days 3650 -subj "/CN=localhost"
+        -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+    volumes:
+      - ./infra/keycloak/tls:/tls
+
 volumes:
   postgres_data:
   clickhouse_data:

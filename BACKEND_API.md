@@ -88,6 +88,10 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 
 **Docker Compose** provides: Postgres 17 (`:5432`), ClickHouse (`:8123`, `:9000`), RustFS (`:9100` S3 API, `:9101` console — `rustfsadmin`/`rustfsadmin`; `sentry-replays` bucket created by `rustfs-init`), NATS (`:4222` + WS `:4223`).
 
+**Container image** (`Dockerfile`): the API (`bun index.js`) and the side-effects consumer (`bun consumer.js`) are two entry points of the same image; the production bundle is built by `scripts/build.ts` (the bunfig plugins are not applied by `bun build`, so the virtual OIDC module is registered there).
+
+**Helm chart** (`charts/benedebug`): the API and the consumer as Deployments, the bundled Postgres/ClickHouse/NATS/object store as StatefulSets, the Ingress, the Secret and the bucket-init hook. Every dependency can be turned off (`dependencies.*.enabled`) in favour of a managed service; `clickhouse.natsUrl` is resolved from ClickHouse's point of view.
+
 **Package Scripts:**
 ```bash
 bun run dev        # bun --hot backend/index.ts
@@ -145,6 +149,9 @@ backend/
     issues/index.ts        # issueRoutes (/api/admin/issues/*) — list/get/resolve
     settings/index.ts      # settingsRoutes (/api/admin/settings/events-ttl)
   protocol/                # Type-only interfaces (source of truth)
+scripts/
+  build.ts                 # The production bundle (the bunfig plugins are not applied by `bun build`)
+charts/benedebug/          # The Helm chart: the API, the consumer and the bundled services
 ```
 
 ---

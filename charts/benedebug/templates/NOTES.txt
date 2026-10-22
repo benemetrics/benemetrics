@@ -5,9 +5,10 @@ Benedebug is installed as release "{{ .Release.Name }}" in namespace "{{ .Releas
 1. Open the UI:
 
 {{- range .Values.ingress.hosts }}
+{{- $host := .host }}
 {{- $scheme := "http" }}
 {{- range $.Values.ingress.tls }}
-{{- if has (printf "%s" $.host) .hosts }}{{ $scheme = "https" }}{{ end }}
+{{- if has $host .hosts }}{{ $scheme = "https" }}{{ end }}
 {{- end }}
    {{ $scheme }}://{{ .host }}/ui
 {{- end }}
@@ -21,11 +22,10 @@ Benedebug is installed as release "{{ .Release.Name }}" in namespace "{{ .Releas
    kubectl --namespace {{ .Release.Namespace }} get secret {{ include "benedebug.secretName" . }} \
      -o jsonpath='{.data.admin-token}' | base64 -d; echo
 {{- end }}
-
 {{- if .Values.oidc.issuer }}
 
-   An OIDC provider is configured ({{ .Values.issuer | default .Values.oidc.issuer }}): the browser
-   login is the authorization-code + PKCE flow, and the admin token stays valid.
+   An OIDC provider is configured ({{ .Values.oidc.issuer }}): the browser login
+   is the authorization-code + PKCE flow, and the admin token stays valid.
 {{- end }}
 {{- else }}
 
@@ -39,9 +39,8 @@ Benedebug is installed as release "{{ .Release.Name }}" in namespace "{{ .Releas
 
 The live feed (the browser subscribes to NATS over WebSocket) needs the
 WebSocket listener to be reachable from the browser. The UI falls back to
-ws://<ui-host>:{{ .Values.nats.websocketPort }}, so publish that
-port (dependencies.nats.websocket.service.type) or point the deployment at
-your own ws:// endpoint.
+ws://<ui-host>:{{ .Values.nats.websocketPort }}, so publish that port
+(dependencies.nats.websocket.service.type) or inject your own ws:// endpoint.
 {{- end }}
 
 {{- if .Values.consumer.enabled }}

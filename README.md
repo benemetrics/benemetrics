@@ -8,7 +8,7 @@
 
 [![Bun](https://img.shields.io/badge/runtime-Bun%201.x-f5a3ff?style=flat-square&logo=bun&logoColor=white)](https://bun.com)
 [![Elysia](https://img.shields.io/badge/http-Elysia-ff6b6b?style=flat-square)](https://elysiajs.com)
-[![License](https://img.shields.io/badge/license-MIT-8b5cf6?style=flat-square)](#license)
+[![Self-hosted](https://img.shields.io/badge/deployment-self--hosted-8b5cf6?style=flat-square)](#deploy-on-kubernetes)
 
 </div>
 
@@ -164,13 +164,22 @@ change lands in the audit trail.
 Benedebug is **NATS-first**: ingestion is a publish, never a write path.
 
 ```
-   SDK ──envelope──▶  API (Bun/Elysia)  ──publish──▶  NATS JetStream
-                              │                              │
-              replay segments │                              ├─▶ ClickHouse engine tables
-              → S3 / RustFS   │                              │      (events + metric samples)
-                              │                              │
-                              ▼                              └─▶ side-effects consumer
-                     ClickHouse (events)                          (Postgres: issues, alerts, releases)
+        SDK
+         │  envelope
+         ▼
+  ┌────────────────┐   publish    ┌──────────────────┐
+  │   API + UI     │ ──────────▶ │  NATS JetStream  │
+  │  (Bun/Elysia)  │              │     SENTRIES     │
+  └───────┬────────┘              └────────┬─────────┘
+          │ offload                         │
+          ▼                         ┌────────┴─────────┐
+  ┌────────────────┐                │                  │
+  │  S3 / RustFS   │                ▼                  ▼
+  │ replay segments │       ClickHouse           side-effects
+  └────────────────┘       engine tables          consumer
+                           (events, metrics)      (Postgres:
+                                                  issues, alerts,
+                                                   releases)
 ```
 
 - **The API** resolves the app from the DSN, parses the envelope, extracts
@@ -218,17 +227,24 @@ Open <http://localhost:31337/ui> and paste the admin token from `.env` when
 the prompt appears. The API serves the UI and the ingestion endpoints from
 the same origin.
 
-Create a project, an app and point an SDK at it:
+Create a project, then an app inside it:
 
 ```bash
+# The project
 curl -H "Authorization: API-Key dev-admin-token" \
   -H "Content-Type: application/json" \
   -d '{"name":"Acme Storefront"}' \
   http://localhost:31337/api/admin/projects
+
+# The app (the response carries its publicKey and number)
+curl -H "Authorization: API-Key dev-admin-token" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"web"}' \
+  http://localhost:31337/api/admin/projects/<project-id>/apps
 ```
 
-The app's response carries its `publicKey` and `number`; the DSN is
-`http://<publicKey>@<host>/<number>`.
+The DSN is `http://<publicKey>@<host>/<number>` — the API returns the
+ingredients, the caller composes the DSN for the origin it reached.
 
 ### With the Sentry SDK
 
@@ -252,13 +268,13 @@ Postgres, ClickHouse, NATS JetStream and an S3-compatible object store.
 
 ```bash
 # 1. Build and push the image
-docker build -t ghcr.io/your-org/benedebug:0.1.0 .
-docker push ghcr.io/your-org/benedebug:0.1.0
+docker build -t git.valerio.pw/benedebug/app:0.1.0 .
+docker push git.valerio.pw/benedebug/app:0.1.0
 
 # 2. Install
 helm install benedebug charts/benedebug \
   --namespace benedebug --create-namespace \
-  --set image.repository=ghcr.io/your-org/benedebug \
+  --set image.repository=git.valerio.pw/benedebug/app \
   --set image.tag=0.1.0 \
   --set ingress.hosts[0].host=benedebug.example.com \
   --set ingress.hosts[0].paths[0].path=/ \
@@ -312,7 +328,7 @@ that port (`dependencies.nats.websocket.service.type`) or inject your own
 
 | Key | Default | Description |
 |---|---|---|
-| `image.repository` | `ghcr.io/your-org/benedebug` | The image built from the Dockerfile |
+| `image.repository` | `git.valerio.pw/benedebug/app` | The image built from the Dockerfile |
 | `adminToken` | generated | The master credential (`API-Key`) |
 | `backend.replicaCount` | `2` | API replicas |
 | `backend.autoscaling.enabled` | `false` | HPA on the API |
@@ -381,6 +397,24 @@ bun run typecheck             # bun check
 bun run test                  # the whole suite (needs the docker services)
 ```
 
+### The local identity provider
+
+`docker compose up -d keycloak` starts Keycloak on <https://localhost:8443>
+(the admin console: `admin` / `admin`). The realm `benedebug` is imported from
+`infra/keycloak/realm.json`: the public SPA client `benedebug`, the bearer
+client `benedebug-backend`, the groups `backend-team` / `frontend-team` and the
+user `sso@example.com` (password `sentry`).
+
+The provider serves TLS with a self-signed certificate the compose generates
+into `infra/keycloak/tls/`. The backend trusts it through `NODE_EXTRA_CA_CERTS`:
+
+```bash
+export NODE_EXTRA_CA_CERTS="$PWD/infra/keycloak/tls/tls.crt"
+export OIDC_ISSUER="https://localhost:8443"
+export OIDC_CLIENT_ID="benedebug-backend"
+bun run dev
+```
+
 The layout:
 
 ```
@@ -415,6 +449,7 @@ truth for every decision in the codebase.
 
 ---
 
-## License
-
-MIT.
+Built with [Bun](https://bun.com), [Elysia](https://elysiajs.com),
+[ArkType](https://arktype.io), [Drizzle](https://orm.drizzle.team),
+[NATS](https://nats.io), [ClickHouse](https://clickhouse.com) and
+[React](https://react.dev).

@@ -1035,6 +1035,51 @@ export async function clickHouseIssueFingerprintsByTag(options: {
   return rows.map((row) => row.fingerprint);
 }
 
+// The issue metrics of a release, read from the issue index: the
+// occurrences of the release, plus the first appearance of the issue (the
+// release it was first seen in decides whether it is new).
+export async function clickHouseReleaseIssueMetrics(options: {
+  release: string;
+  appIds: string[];
+}): Promise<
+  Array<{
+    fingerprint: string;
+    count: number;
+    firstSeen: string;
+    lastSeen: string;
+    isNew: boolean;
+  }>
+> {
+  if (options.appIds.length === 0) return [];
+  const rows = await queryRows<{
+    fingerprint: string;
+    firstRelease: string;
+    firstSeen: string;
+    lastSeen: string;
+    count: string;
+  }>(sql`
+    SELECT
+      fingerprint,
+      argMin(release, receivedAt) AS firstRelease,
+      min(receivedAt) AS firstSeen,
+      max(receivedAt) AS lastSeen,
+      countIf(release = ${options.release}) AS count
+    FROM ${ISSUE_EVENTS_TABLE} FINAL
+    WHERE appId IN ${options.appIds}
+    GROUP BY fingerprint
+    HAVING count > 0
+  `);
+  return rows
+    .map((row) => ({
+      fingerprint: row.fingerprint,
+      count: Number(row.count),
+      firstSeen: toIsoTimestamp(row.firstSeen),
+      lastSeen: toIsoTimestamp(row.lastSeen),
+      isNew: row.firstRelease === options.release,
+    }))
+    .sort((a, b) => (a.lastSeen < b.lastSeen ? 1 : -1));
+}
+
 export async function findClickHouseEvent(id: string): Promise<StoredEvent | undefined> {
   const rows = await queryRows<ClickHouseEventRow>(sql`
     SELECT ${columnList(EVENTS_COLUMNS)}
@@ -1266,18 +1311,6 @@ export async function quantileClickHouseMetricSamplesByProject(options: {
 }
 
 // Every event of one project, oldest first — used by the release summary.
-export async function listClickHouseEventsForProject(
-  projectId: string,
-): Promise<StoredEvent[]> {
-  const rows = await queryRows<ClickHouseEventRow>(sql`
-    SELECT ${columnList(EVENTS_COLUMNS)}
-    FROM ${EVENTS_TABLE} FINAL
-    WHERE projectId = ${projectId}
-    ORDER BY receivedAt ASC
-  `);
-  return rows.map(toStoredEvent);
-}
-
 // Row order follows `EVENTS_COLUMNS`; `receivedAt` is bound as a String
 // and cast by the target column so callers pass ISO timestamps.
 function eventRow(event: StoredEvent): string[] {

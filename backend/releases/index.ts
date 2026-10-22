@@ -2,8 +2,8 @@ import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { appDAO } from "db/dao/project";
 import { releaseDAO } from "db/dao/releases";
-import { listClickHouseEventsForProject } from "../clickhouse";
-import { computeIssueMetrics } from "./metrics";
+import { clickHouseReleaseIssueMetrics } from "../clickhouse";
+import { buildReleaseIssueMetrics } from "./metrics";
 import { resolveAdminId } from "../auth";
 
 // ── oidc surface: the admin reads and writes ─────────────
@@ -95,8 +95,14 @@ export const releaseRoutes = new Elysia({ prefix: "/api/admin/releases" })
       const release = await releaseDAO.findByIdOrThrow(id);
       const app = await appDAO.findByIdOrThrow(release.appId);
 
-      const events = await listClickHouseEventsForProject(app.projectId);
-      const issueMetrics = computeIssueMetrics(events, release.version);
+      // The summary reads the ClickHouse issue index; the release is a
+      // project-level concept, so every app of the project counts.
+      const apps = await appDAO.listRawByProject(app.projectId);
+      const rows = await clickHouseReleaseIssueMetrics({
+        release: release.version,
+        appIds: apps.map((entry) => entry.id),
+      });
+      const issueMetrics = buildReleaseIssueMetrics(rows);
 
       return { ...release, ...issueMetrics };
     },

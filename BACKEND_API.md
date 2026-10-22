@@ -146,7 +146,7 @@ backend/
     projects/index.ts      # projectRoutes, appRoutes (project + app management)
     segments/index.ts      # segmentRoutes (audience segments)
     environments/index.ts  # environmentRoutes (project environments, shared by apps)
-    releases/index.ts      # releaseRoutes + computeIssueMetrics (pure)
+    releases/index.ts      # releaseRoutes + buildReleaseIssueMetrics (pure)
     issues/index.ts        # issueRoutes (/api/admin/issues/*) — list/get/resolve
     settings/index.ts      # settingsRoutes (/api/admin/settings/events-ttl)
   protocol/                # Type-only interfaces (source of truth)
@@ -476,6 +476,7 @@ Prefix: `/api/admin/settings` — `backend/settings/index.ts` → `settingsRoute
 | `GET` | `/releases/:version/files/` | List artifacts for release |
 | `DELETE` | `/releases/:version/files/:fileId/` | Delete artifact |
 | `POST` | `/releases/:version/` | Finalize release (`status: "finalized"`) |
+| `GET` | `/releases/:id/summary` | Release health from the ClickHouse issue index: the issues it touched, the new and the regressed ones |
 
 **Symbolication:** At event read time, frames matched by filename (exact / basename / `.map` suffix stripped) → VLQ decode mappings → original position + source context. Cached parsed maps + decoded mappings (LRU, 100 entries), versioned by the artifact's `createdAt` so a re-uploaded artifact is never served from a stale cache. Re-uploading an artifact replaces it in place (last wins).
 

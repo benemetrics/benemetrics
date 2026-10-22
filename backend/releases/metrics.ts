@@ -1,12 +1,4 @@
-import { extractEventItems } from "../events/utils";
-import { issueFingerprint } from "../issues/grouping";
-
-interface StoredEventLike {
-  receivedAt: string;
-  envelopeItems: string;
-}
-
-interface ReleaseIssueMetric {
+export interface ReleaseIssueMetric {
   fingerprint: string;
   count: number;
   firstSeen: string;
@@ -15,63 +7,29 @@ interface ReleaseIssueMetric {
   isRegressed: boolean;
 }
 
-interface ReleaseIssueMetrics {
+export interface ReleaseIssueMetrics {
   issueCount: number;
   newIssueCount: number;
   regressedIssueCount: number;
   issues: ReleaseIssueMetric[];
 }
 
-export function computeIssueMetrics(
-  events: StoredEventLike[],
-  version: string,
+// The summary of a release, from the issue index: the issues that the
+// release touched, the ones it introduced (the release they were first
+// seen in) and the ones it regressed.
+export function buildReleaseIssueMetrics(
+  rows: Array<{
+    fingerprint: string;
+    count: number;
+    firstSeen: string;
+    lastSeen: string;
+    isNew: boolean;
+  }>,
 ): ReleaseIssueMetrics {
-  const sorted = [...events].sort((a, b) =>
-    a.receivedAt < b.receivedAt ? -1 : a.receivedAt > b.receivedAt ? 1 : 0,
-  );
-
-  const firstAppearance = new Map<
-    string,
-    { firstSeen: string; firstRelease: string }
-  >();
-  const inRelease = new Map<string, { count: number; lastSeen: string }>();
-
-  for (const event of sorted) {
-    for (const payload of extractEventItems(event.envelopeItems)) {
-      const release = payload.release;
-      if (typeof release !== "string" || !release) continue;
-
-      const fingerprint = issueFingerprint(payload);
-      if (!firstAppearance.has(fingerprint)) {
-        firstAppearance.set(fingerprint, {
-          firstSeen: event.receivedAt,
-          firstRelease: release,
-        });
-      }
-
-      if (release === version) {
-        const stat = inRelease.get(fingerprint) ?? { count: 0, lastSeen: event.receivedAt };
-        stat.count += 1;
-        stat.lastSeen = event.receivedAt;
-        inRelease.set(fingerprint, stat);
-      }
-    }
-  }
-
-  const issues: ReleaseIssueMetric[] = [];
-  for (const [fingerprint, stat] of inRelease) {
-    const first = firstAppearance.get(fingerprint)!;
-    const isNew = first.firstRelease === version;
-    issues.push({
-      fingerprint,
-      count: stat.count,
-      firstSeen: first.firstSeen,
-      lastSeen: stat.lastSeen,
-      isNew,
-      isRegressed: !isNew,
-    });
-  }
-  issues.sort((a, b) => (a.lastSeen < b.lastSeen ? 1 : -1));
+  const issues: ReleaseIssueMetric[] = rows.map((row) => ({
+    ...row,
+    isRegressed: !row.isNew,
+  }));
 
   return {
     issueCount: issues.length,

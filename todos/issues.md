@@ -22,8 +22,8 @@ ships with `bun run typecheck` + `bun run test` green.
 - [ ] `sort=users` (the distinct-user count needs a CH aggregation).
 - [x] OR groups in the grammar — `a | b` (the groups are ORed, the terms inside one are ANDed; the AND binds tighter).
 - [ ] Server-side dimension aggregation for the issue metrics panel (browser/OS/release breakdowns over the CH index).
-- [ ] Release summary from the CH index (replaces the event scan in `backend/releases/metrics.ts`).
-- [ ] Whether `clear` should keep or drop the message-id guard semantics for `event_count` reconciliation.
+- [x] Release summary from the CH index (replaces the event scan in `backend/releases/metrics.ts`) — the summary reads the issue index (the occurrences, the first appearance and the first release of every issue).
+- [x] Whether `clear` should keep or drop the message-id guard semantics for `event_count` reconciliation — there is no `clear` surface to reconcile: the guard stays (the `event_count` increments once per message).
 
 ## Implementation batches
 

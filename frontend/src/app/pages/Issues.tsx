@@ -9,7 +9,7 @@ import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils";
 const PAGE_SIZE = 20;
 
 type StatusFilter = "unresolved" | "resolved" | "all";
-type SortFilter = "new" | "frequent" | "first-seen";
+type SortFilter = "new" | "frequent" | "first-seen" | "users";
 
 const STATUS_FILTERS: Array<{ id: StatusFilter; label: string }> = [
   { id: "unresolved", label: "Status: Unresolved" },
@@ -21,6 +21,7 @@ const SORT_FILTERS: Array<{ id: SortFilter; label: string }> = [
   { id: "new", label: "Newest" },
   { id: "frequent", label: "Most frequent" },
   { id: "first-seen", label: "First seen" },
+  { id: "users", label: "Most users" },
 ];
 
 // The search grammar: the toolbar text is the free-text part, the chips

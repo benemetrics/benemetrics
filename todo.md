@@ -392,15 +392,16 @@ and a typo'd column (`appPrefixes` → `app_prefixes`); `computeScopedView` retu
 
 ## 14. Blocked on missing backend support
 
-- [ ] **Sidebar — Team page** (Manage group): no team/member API.
+- [x] **Sidebar — Team page** (Manage group): **closed as by-design** — the admin model has no teams or members. Membership is the permission system: group names and identity grants live in `permission_groups`/`permission_grants` and are managed under Settings → Permissions (which lists both); there is nothing else a Team page could show without fabricating it.
+- [ ] **Alert rule field editor**: **done** — `/alerts/:ruleId/edit` reuses the create builder (the shared `AlertBuilder`); the rule definition (name / type / metric / operator / threshold or dynamic factor / window / cooldown / channels / tag filters / message template / folder) is editable through `PATCH /api/admin/alerting/rules/:id` (covered by the CRUD test).
 - [x] **Sidebar — Help & support**: the sidebar links to the real Sentry documentation (`docs.sentry.io`); there is no dead in-app page.
 - [x] **Logs explorer (query builder, aggregation bar)**: no log store exists, so `/logs` stays an honest placeholder — it never fabricates log lines.
 - [x] **Per-channel "Test connection"**: `POST /api/admin/alerting/channels/:id/test` sends a test notification to that channel and answers the delivery result; the channel page has the button.
 - [x] **Email notifier**: the notifier talks SMTP through nodemailer (`backend/alerting/notifiers.ts`); a failed delivery is reported per notification.
 - [x] **Channel config: change channel type**: the config page offers the type and sends it with the update; the credential fields follow the chosen type.
-- [ ] **Alert rule field editor**: pause/enable and delete are on the Alerts page, but changing the rule definition (name / metric / threshold / window / cooldown / channels) still requires the API.
+- [x] **Alert rule field editor (402)**: `/alerts/:ruleId/edit` reuses the create builder (shared `AlertBuilder` component); the whole definition (name / type / metric / operator / static or dynamic threshold / window / cooldown / channels / tag filters / message / folder) is editable via `PATCH /api/admin/alerting/rules/:id` (extended schema + test).
 - [x] **Releases: app-scoped list**: the list follows the selected application (`GET /api/admin/releases?appId=`); without a selection it lists every app.
-- [ ] **Feature flags: variants / targetingRules / segments editors**: accepted by the API; the builder only exposes name/key/type/default/rollout/activate.
+- [x] **Feature flags: variants / targetingRules / segments editors**: `/feature-flags/:flagId` (FlagConfig) edits the variants (key/name/value/weight with a live 100% sum check), the targeting rules (attribute/operator/value/variant) and the segment selection; saved via `PATCH /api/admin/feature-flags/:id`. Creation stays the simple builder (it seeds sensible default variants); Segment rules are managed on the Segments page.
 - [x] **Environment slug editing**: the rename edits the name and the slug; the slug is unique within the project.
 - [x] **Source map content viewer**: "View content" opens the stored map (`GET /api/admin/source-maps/:id?include=content`).
 - [x] **`GET /api/admin/apps/:appId`**: kept as the read side of the app resource (the admin API exposes the resource it lets you delete); the screens read the app list.
@@ -412,7 +413,7 @@ and a typo'd column (`appPrefixes` → `app_prefixes`); `computeScopedView` retu
 
 ## 16. Data & scale limits
 
-- [ ] **Server-side aggregations**: the dashboard charts still compute counts and series client-side from the latest `AGGREGATE_EVENT_LIMIT` (200) stored items. The *issue* counters come from the backend; the event-window charts do not.
+- [ ] **Server-side aggregations**: the dashboard charts still compute counts and series client-side from the latest `AGGREGATE_EVENT_LIMIT` (200) stored items. The *issue* counters come from the backend and the issues reads are aggregated server-side (ClickHouse index); moving the Overview's event-window charts to the metrics series API is the remaining (deliberately deferred) work.
 - [x] **Web vitals**: a documented limit — the Performance panel renders the `measurements` the browser SDK sends (LCP/INP/CLS/FCP/TTFB); there is no synthetic monitoring and none is faked.
 
 ## 17. Known model differences (by design)
@@ -429,8 +430,9 @@ z-test p-value / recommendation) on the flags list, effective alert config per a
 detail/finalize/delete, project duplicate/delete, app delete, environment rename/promote/delete,
 rule pause/delete.
 
-Still missing: §12 (permissions + event retention), §14 (source-map content viewer, per-channel
-test, channel type switch, rule field editor, flag variant/targeting editors, environment slug).
+Still missing: nothing in §14 (the rule field editor and the flag variant/targeting/segment
+editors landed this cycle; the Team page is closed by design).
+Deferred: §16 server-side chart aggregations on the Overview (documented scale limit).
 
 Machine-facing by design (no UI required): envelope/store/OTLP ingestion, `flags-v1` evaluation,
 `flags-stream` SSE, `evaluation` API.

@@ -7,6 +7,7 @@ import { Performance } from "./app/pages/Performance";
 import { Logs } from "./app/pages/Logs";
 import { Alerts } from "./app/pages/Alerts";
 import { NewAlert } from "./app/pages/NewAlert";
+import { EditAlert } from "./app/pages/EditAlert";
 import { AlertChannels } from "./app/pages/AlertChannels";
 import { ChannelConfig } from "./app/pages/ChannelConfig";
 import { Releases } from "./app/pages/Releases";
@@ -14,6 +15,7 @@ import { NewRelease } from "./app/pages/NewRelease";
 import { ReleaseDetail } from "./app/pages/ReleaseDetail";
 import { FeatureFlags } from "./app/pages/FeatureFlags";
 import { NewFeatureFlag } from "./app/pages/NewFeatureFlag";
+import { FlagConfig } from "./app/pages/FlagConfig";
 import { Segments } from "./app/pages/Segments";
 import { SourceMaps } from "./app/pages/SourceMaps";
 import { Permissions } from "./app/pages/Permissions";
@@ -35,6 +37,7 @@ export function App() {
             <Route path="/logs" element={<Logs />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/alerts/new" element={<NewAlert />} />
+            <Route path="/alerts/:ruleId/edit" element={<EditAlert />} />
             <Route path="/alerts/channels" element={<AlertChannels />} />
             <Route path="/alerts/channels/:channelId" element={<ChannelConfig />} />
             <Route path="/releases" element={<Releases />} />
@@ -42,6 +45,7 @@ export function App() {
             <Route path="/releases/:releaseId" element={<ReleaseDetail />} />
             <Route path="/feature-flags" element={<FeatureFlags />} />
             <Route path="/feature-flags/new" element={<NewFeatureFlag />} />
+            <Route path="/feature-flags/:flagId" element={<FlagConfig />} />
             <Route path="/segments" element={<Segments />} />
             <Route path="/source-maps" element={<SourceMaps />} />
           <Route path="/permissions" element={<Permissions />} />

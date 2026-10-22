@@ -344,6 +344,17 @@ export function FeatureFlags() {
                   {flag.status.charAt(0).toUpperCase() + flag.status.slice(1)}
                 </span>
                 <span className="row-actions">
+                  <span
+                    className="row-action"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/feature-flags/${flag.id}`)}
+                    onKeyDown={(event) =>
+                      event.key === "Enter" && navigate(`/feature-flags/${flag.id}`)
+                    }
+                  >
+                    Configure
+                  </span>
                   {flag.experiment?.enabled && (
                     <>
                       <span

@@ -262,6 +262,8 @@ export interface AlertRuleDto {
   metric: string | null;
   operator: string | null;
   threshold: number | null;
+  /** A dynamic threshold ("3x baseline"); null keeps the static one. */
+  thresholdFactor: number | null;
   windowSeconds: number | null;
   cooldownSeconds: number;
   channelIds: string[];
@@ -270,6 +272,8 @@ export interface AlertRuleDto {
   /** The tag dimensions the rule matches on. */
   filters: { tags?: Record<string, string> };
   isEnabled: boolean;
+  message: string | null;
+  folder: string | null;
   lastTriggeredAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -339,6 +343,7 @@ export interface IssueDto {
   lastRelease: string | null;
   status: "unresolved" | "resolved";
   eventCount: number;
+  userCount: number;
   firstSeen: string;
   lastSeen: string;
   latestEventId: string | null;
@@ -352,7 +357,7 @@ export interface IssueDto {
 // are the query language (`is:unresolved app:checkout lastSeen:-24h`).
 export async function listIssues(params: {
   query?: string;
-  sort?: "new" | "frequent" | "first-seen";
+  sort?: "new" | "frequent" | "first-seen" | "users";
   cursor?: string;
   limit?: number;
 } = {}) {

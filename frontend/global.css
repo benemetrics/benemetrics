@@ -685,6 +685,15 @@ textarea.field-control { height: auto; min-height: 74px; padding: 9px 11px; resi
 .env-name-edit .field-control { height: 30px; }
 .segment-rules { padding: 4px 17px 18px; }
 .segment-rules .payload-json { max-height: 300px; margin-top: 8px; }
+/* Flag editing: the variant and the targeting-rule rows of the config page. */
+.definition-rows { display: grid; gap: 8px; }
+.variant-row { display: grid; grid-template-columns: 1fr 1.3fr 1fr 80px auto; gap: 7px; align-items: center; }
+.rule-row { display: grid; grid-template-columns: 1.2fr .9fr 1fr .8fr auto; gap: 7px; align-items: center; }
+.weights-sum { color: var(--ink-faint); font-size: 8.5px; }
+.weights-sum.ok { color: #4ade80; }
+.weights-sum.bad { color: #f87171; }
+.list-screen-folder { padding: 12px 17px 4px; color: var(--ink-faint); font-size: 8.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; border-top: 1px solid var(--border); }
+.list-screen-folder:first-of-type { border-top: 0; }
 .secret-banner { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid #bfc1f5; border-radius: var(--radius-md); background: var(--brand-soft); }
 .secret-banner code { min-width: 0; flex: 1; overflow: hidden; color: var(--ink); font-family: "Geist Mono"; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; user-select: all; }
 .secret-note { margin-top: -4px; padding: 0 4px; color: var(--ink-faint); font-size: 8px; line-height: 1.6; }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Action } from "../Action";
 import { ScreenIntro } from "../ScreenIntro";
@@ -25,6 +25,20 @@ const TRIGGER_LABELS: Record<string, string> = {
 };
 
 const triggerLabel = (trigger: string) => TRIGGER_LABELS[trigger] ?? trigger;
+
+// A folder divider renders once per group; the ungrouped rules come last.
+function groupRulesByFolder(rules: AlertRuleDto[]): Array<{ rule: AlertRuleDto; headline: boolean }> {
+  const UNGROUPED = "\u0000ungrouped";
+  const sorted = [...rules].sort((a, b) =>
+    (a.folder ?? UNGROUPED).localeCompare(b.folder ?? UNGROUPED),
+  );
+  let previous: string | null | undefined;
+  return sorted.map((rule) => {
+    const headline = rule.folder !== previous;
+    previous = rule.folder;
+    return { rule, headline };
+  });
+}
 
 // The tag dimensions a rule matches on, e.g. "tier=gold, region=eu".
 // The Eden response wraps the payload in `data`.
@@ -254,15 +268,22 @@ export function Alerts() {
           <span>Destination</span>
           <span>Status</span>
         </div>
-        {rules.map((rule) => {
+        {groupRulesByFolder(rules).map((entry) => {
           const destination =
-            rule.channelIds.length > 0
-              ? rule.channelIds
+            entry.rule.channelIds.length > 0
+              ? entry.rule.channelIds
                   .map((id) => channelById.get(id)?.name ?? id)
                   .join(" · ")
               : "All channels";
+          const rule = entry.rule;
           return (
-            <div className="list-screen-row" key={rule.id}>
+            <Fragment key={rule.id}>
+              {entry.headline && (
+                <div className="list-screen-folder">
+                  {rule.folder ?? "Ungrouped"}
+                </div>
+              )}
+            <div className="list-screen-row">
               <strong>{rule.name}</strong>
               <span>
                 {triggerLabel(rule.trigger)} · {rule.appId ? "App scope" : "Global"}
@@ -275,6 +296,17 @@ export function Alerts() {
                   {rule.isEnabled ? "Healthy" : "Disabled"}
                 </span>
                 <span className="row-actions">
+                  <span
+                    className="row-action"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/alerts/${rule.id}/edit`)}
+                    onKeyDown={(event) =>
+                      event.key === "Enter" && navigate(`/alerts/${rule.id}/edit`)
+                    }
+                  >
+                    Edit
+                  </span>
                   <span
                     className={`row-action ${testing === rule.id ? "is-busy" : ""}`}
                     role="button"
@@ -328,6 +360,7 @@ export function Alerts() {
                 </span>
               </span>
             </div>
+            </Fragment>
           );
         })}
         {status !== "ready" && (

@@ -153,6 +153,42 @@ describe("OIDC authentication", () => {
     expect(await adminStatus(token)).toBe(401);
   });
 
+  it("answers an unknown filter name and an out-of-scope name alike", async () => {
+    const token = await sign({ claims: { sub: SUBJECT } });
+
+    // An app that exists — the identity's grant is read-nothing, so the
+    // app is out of its scope.
+    const project = await fetch(`${baseUrl}/api/admin/projects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: ADMIN },
+      body: JSON.stringify({ name: `OIDC probe ${Date.now()}` }),
+    });
+    const projectId = ((await project.json()) as { id: string }).id;
+    const created = await fetch(`${baseUrl}/api/admin/projects/${projectId}/apps`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: ADMIN },
+      body: JSON.stringify({ name: "hidden-api" }),
+    });
+    const appName = ((await created.json()) as { name: string }).name;
+
+    const unknown = await fetch(
+      `${baseUrl}/api/admin/issues?query=${encodeURIComponent("app:does-not-exist")}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const hidden = await fetch(
+      `${baseUrl}/api/admin/issues?query=${encodeURIComponent(`app:${appName}`)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+
+    // The list cannot tell an unknown name from an out-of-scope one.
+    expect(unknown.status).toBe(200);
+    expect(hidden.status).toBe(200);
+    const unknownBody = (await unknown.json()) as { data: unknown[] };
+    const hiddenBody = (await hidden.json()) as { data: unknown[] };
+    expect(unknownBody.data.length).toBe(0);
+    expect(hiddenBody.data.length).toBe(0);
+  });
+
   it("rejects a token whose authorized party is another client", async () => {
     const token = await sign({
       claims: { sub: SUBJECT, azp: "other-client" },

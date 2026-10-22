@@ -434,6 +434,52 @@ export const appDAO = {
       .from(apps)
       .orderBy(asc(apps.createdAt)),
 
+  // The apps whose name starts with one of the prefixes (case-insensitive)
+  // — the permission scope names the prefixes, so the query filters
+  // instead of loading the whole table.
+  listByNamePrefixes: async (
+    prefixes: string[],
+  ): Promise<
+    Array<{ id: string; name: string; projectId: string; environmentId: string }>
+  > => {
+    if (prefixes.length === 0) return [];
+    const wanted = prefixes.map((prefix) => `${prefix.toLowerCase()}%`);
+    return await db
+      .select({
+        id: apps.id,
+        name: apps.name,
+        projectId: apps.projectId,
+        environmentId: apps.environmentId,
+      })
+      .from(apps)
+      .where(
+        sql`(${sql.join(
+          wanted.map((pattern) => sql`lower(${apps.name}) like ${pattern}`),
+          sql` or `,
+        )})`,
+      )
+      .orderBy(asc(apps.createdAt));
+  },
+
+  // The apps that live in the given environments.
+  listByEnvironmentIds: async (
+    environmentIds: string[],
+  ): Promise<
+    Array<{ id: string; name: string; projectId: string; environmentId: string }>
+  > => {
+    if (environmentIds.length === 0) return [];
+    return await db
+      .select({
+        id: apps.id,
+        name: apps.name,
+        projectId: apps.projectId,
+        environmentId: apps.environmentId,
+      })
+      .from(apps)
+      .where(inArray(apps.environmentId, environmentIds))
+      .orderBy(asc(apps.createdAt));
+  },
+
   // The issue query resolves an app by its exact name (case-insensitive).
   findByName: async (name: string): Promise<{ id: string } | undefined> =>
     (

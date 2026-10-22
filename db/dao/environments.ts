@@ -234,6 +234,34 @@ export const environmentDAO = {
   },
 
   // The scope engine matches environment names across every project.
+  // The environments whose name is in the list (case-insensitive) — the
+  // permission scope names them, so the query filters instead of loading
+  // the whole table.
+  listByNames: async (names: string[]): Promise<EnvironmentResponse[]> => {
+    if (names.length === 0) return [];
+    const wanted = names.map((name) => name.toLowerCase());
+    return await db
+      .select(environmentFields)
+      .from(environments)
+      .where(
+        sql`lower(${environments.name}) in (${sql.join(
+          wanted.map((name) => sql`${name}`),
+          sql`, `,
+        )})`,
+      )
+      .orderBy(asc(environments.createdAt));
+  },
+
+  // The environments with the given ids.
+  listByIds: async (ids: string[]): Promise<EnvironmentResponse[]> => {
+    if (ids.length === 0) return [];
+    return await db
+      .select(environmentFields)
+      .from(environments)
+      .where(inArray(environments.id, ids))
+      .orderBy(asc(environments.createdAt));
+  },
+
   listAll: async (): Promise<EnvironmentResponse[]> =>
     db.select(environmentFields).from(environments).orderBy(asc(environments.createdAt)),
 

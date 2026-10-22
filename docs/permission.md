@@ -35,6 +35,8 @@ The admin token is the master credential. It is compared in constant time (no ti
 
 **Revocation:** Rotate by updating `ADMIN_TOKEN` environment variable and restarting the server. No hot-reload; active sessions terminate on next request. **Open item:** Zero-downtime token rotation mechanism (token versioning or key rotation).
 
+**Lifecycle (known limitation):** the token never expires, is not bound to a person, and the UI keeps it in `localStorage`. There is no rotation, revocation or sign-out story beyond replacing the environment variable and restarting; the audit trail records the rule/grant changes, not the token's use. Deployments that need a short-lived credential should use the provider identities (a scoped grant) and keep the admin token for the administrative writes.
+
 ### OIDC/OAuth2 JWT
 
 A three-part JWT is verified **locally** using the provider's public signing keys (JWKS) when a provider is configured. The token is **never sent to the provider**.
@@ -67,6 +69,8 @@ Verification flow:
 
 Failures are silent (no token logging) and result in an unauthenticated request. The id becomes the key for the grant lookups.
 
+**An outage is not an invalid credential:** a token the provider rejects (a bad signature, a wrong audience) is an unauthenticated request (401), but a provider that cannot be reached (the JWKS fetch failed or timed out) answers **503** — the operator can tell the two apart.
+
 **Production requirement:** Issuer and JWKS URLs **should use HTTPS** — HTTP is only for local testing; whoever controls the fetch can substitute signing keys. The backend **warns** but does not enforce it: whether the provider is reachable over TLS depends on the deployment's infrastructure, which the application cannot know. Enforcing it is the deployment's call.
 
 ---
@@ -92,10 +96,11 @@ For a given identity (an id), the effective scope is determined in order:
 
 ### Scope Expansion to Visibility Sets
 
-The scope (environment names + app prefixes) expands into concrete visibility sets by scanning all apps and environments at request time. **Expansion runs per-request; for large deployments, consider caching the visibility sets (open item).**
+The scope (environment names + app prefixes) expands into concrete visibility sets at request time. The queries filter on the names and the prefixes in SQL (the whole topology is not loaded), and the expansion still runs per request — for large deployments, consider caching the visibility sets (open item).
 
 - **App visible** when its name starts with a permitted prefix **OR** its environment's name is permitted.
   > **⚠ Security implication:** Granting an environment name (e.g., `production`) grants access to **ALL apps in that environment**, regardless of app prefixes. This includes future apps added to that environment. Use app prefixes for fine-grained control.
+- **The names match across every project** — an environment name or an app-name prefix is not bound to a project. A rule for `production` grants the reads in every project that has an environment with that name. A prefix is a plain prefix, so `prod` also matches `prod-experiments` (the prefix shadowing is part of the same rule).
 - **Environment visible** when its name is permitted **OR** it contains a visible app.
 - **Project visible** when it contains any visible app or environment.
 
@@ -167,7 +172,7 @@ Always requires credentials — the admin token or a verified provider JWT (same
 
 - **Events list** — App filter intersected with visible apps; explicit out-of-scope filter yields empty list
 - **Event detail** — 404 unless event's app is visible
-- **Live events WebSocket** — Guarded separately (browsers cannot set headers on upgrade). Accepts token via query parameter. 401 without credentials, no-grant message without grant. Registers client with visible app IDs for fan-out filtering. **Security note:** Long-lived credential in URL (access logs, proxy logs, browser history, Referer headers). Current design uses the same token as HTTP; **open item:** short-lived one-shot ticket design for WebSocket upgrades with periodic re-validation. Stream is not re-validated after `open()` — if permissions are revoked, the socket stays connected until disconnect. **Mitigation:** Use short JWT expiry (e.g., 5–15 min) and rely on token expiration for revocation; for immediate revocation, configure the IdP to support token introspection (RFC 7662) — **open item:** implement introspection endpoint call on each WebSocket message or periodic re-check.
+- **Live feed** — There is **no backend WebSocket**: the browser subscribes to NATS directly (`sentry.events`) and the backend does not fan the events out. The backend's permission model therefore does not filter the live feed — the NATS listener is the deployment's responsibility (TLS + an account/token, with the per-account subject permissions when the deployment needs them). The events the UI *polls* (`/events/*`) are scoped as described above.
 - **Replays** — read under `/api/admin/events/:eventId/replay/:replayId`; follows the event's app scope via the admin guard; 404 for out-of-scope (indistinguishable from missing). The browser fetches the returned presigned object-store URLs directly; there is no `/storage/*` proxy surface.
 
 ### Environments Exposure
@@ -255,6 +260,7 @@ Same shape as rules, with the identity id (unique) instead of the group name, pl
 - Scope lists stored as JSON text; corrupt/hand-edited JSON degrades to empty arrays (fail closed: "read nothing"). Invalid JSON or non-array values degrade to empty arrays.
 - Uniqueness enforced at database level (unique indexes); creation attempts insert with `ON CONFLICT DO NOTHING`; if no row returned, queries for existing record and returns 409 on duplicate (maps unique violation to conflict error).
 - Rename collisions (updating a group name or an identity id to an existing value) must map to conflict errors — see Open Items.
+- The object store's scope is **key-shape coupled**: the replay segments live under `replays/<projectId>/<appId>/…` and the reads build that prefix from the stored event's project and app, so the key itself carries the scope. A new kind of offloaded object needs a matching prefix rule in `backend/events/offload.ts` — the scope is not a separate table.
 
 ---
 

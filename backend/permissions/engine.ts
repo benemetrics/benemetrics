@@ -98,46 +98,36 @@ export async function resolveScopeForIdentity(identity: {
  * app; a project is visible when it holds a visible app or environment.
  */
 export async function computeScopedView(scope: PermissionScope): Promise<ScopedView> {
-  const environments = await environmentDAO.listAll();
-  const apps = await appDAO.listAll();
-
-  const environmentNames = new Set(
-    scope.environments.map((name) => name.toLowerCase()),
-  );
+  // The scope names the environments and the app-name prefixes, so the
+  // queries filter on them instead of loading the whole topology.
+  const environmentNames = scope.environments.map((name) => name.toLowerCase());
   const appPrefixes = scope.appPrefixes.map((prefix) => prefix.toLowerCase());
 
-  const environmentById = new Map(environments.map((environment) => [environment.id, environment]));
+  const namedEnvironments = await environmentDAO.listByNames(environmentNames);
+  const namedEnvironmentIds = new Set(
+    namedEnvironments.map((environment) => environment.id),
+  );
+
+  const prefixApps = await appDAO.listByNamePrefixes(appPrefixes);
+  const environmentApps =
+    namedEnvironmentIds.size > 0
+      ? await appDAO.listByEnvironmentIds([...namedEnvironmentIds])
+      : [];
 
   const appIds = new Set<string>();
-  for (const app of apps) {
-    const environment = environmentById.get(app.environmentId);
-    const environmentGranted = environment
-      ? environmentNames.has(environment.name.toLowerCase())
-      : false;
-    const prefixGranted = appPrefixes.some((prefix) =>
-      app.name.toLowerCase().startsWith(prefix),
-    );
-    if (environmentGranted || prefixGranted) appIds.add(app.id);
-  }
-
-  const environmentIds = new Set<string>();
-  for (const environment of environments) {
-    if (environmentNames.has(environment.name.toLowerCase())) {
-      environmentIds.add(environment.id);
-      continue;
-    }
-    const holdsVisibleApp = apps.some(
-      (app) => app.environmentId === environment.id && appIds.has(app.id),
-    );
-    if (holdsVisibleApp) environmentIds.add(environment.id);
-  }
-
+  const environmentIds = new Set<string>(namedEnvironmentIds);
   const projectIds = new Set<string>();
-  for (const app of apps) {
-    if (appIds.has(app.id)) projectIds.add(app.projectId);
+  for (const app of [...prefixApps, ...environmentApps]) {
+    appIds.add(app.id);
+    // An app makes its environment and its project visible.
+    environmentIds.add(app.environmentId);
+    projectIds.add(app.projectId);
   }
-  for (const environment of environments) {
-    if (environmentIds.has(environment.id)) projectIds.add(environment.projectId);
+
+  // The visible environments make their projects visible.
+  const visibleEnvironments = await environmentDAO.listByIds([...environmentIds]);
+  for (const environment of visibleEnvironments) {
+    projectIds.add(environment.projectId);
   }
 
   return { appIds, environmentIds, projectIds };

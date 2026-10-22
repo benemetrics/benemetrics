@@ -22,8 +22,13 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
     "/",
     async ({ query: { query, sort, cursor, limit }, request, isAdmin, adminScope }) => {
       const groups = parseIssueQuery(query ?? "");
-      let filters = await resolveIssueFilters(groups);
       const view = await scopedViewFor({ request, isAdmin, adminScope });
+      // A scoped identity gets an empty list for a name that does not
+      // exist — the same answer as a name that exists but is out of
+      // scope, so the list cannot be used to probe what exists.
+      let filters = await resolveIssueFilters(groups, {
+        unknownIsEmpty: view !== null,
+      });
       if (view) filters = narrowToScope(filters, [...view.appIds]);
       const page = await issueDAO.listPaged({
         filters,

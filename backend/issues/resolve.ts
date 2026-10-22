@@ -37,10 +37,15 @@ export function narrowToScope(
  */
 export async function resolveIssueFilters(
   groups: IssueQueryTerm[][],
+  options: {
+    now?: Date;
+    visibleAppIds?: string[];
+    unknownIsEmpty?: boolean;
+  } = {},
 ): Promise<IssueFilter[]> {
   const filters: IssueFilter[] = [];
   for (const terms of groups) {
-    filters.push(await resolveIssueFilter(terms));
+    filters.push(await resolveIssueFilter(terms, options));
   }
   return filters;
 }
@@ -127,28 +132,47 @@ export function timeBound(
   }
 }
 
-// The app ids a name or id points at.
-async function resolveAppIds(value: string): Promise<string[]> {
+// The app ids a name or id points at. A scoped identity gets an empty
+// list for a name that does not exist — the same answer as a name that
+// exists but is out of scope, so the list cannot be used to probe what
+// exists.
+async function resolveAppIds(
+  value: string,
+  unknownIsEmpty: boolean,
+): Promise<string[]> {
   const byId = await appDAO.findById(value);
   if (byId) return [byId.id];
   const byName = await appDAO.findByName(value);
   if (byName) return [byName.id];
+  if (unknownIsEmpty) return [];
   throw notFound("App", value);
 }
 
-async function resolveProjectAppIds(value: string): Promise<string[]> {
+async function resolveProjectAppIds(
+  value: string,
+  unknownIsEmpty: boolean,
+): Promise<string[]> {
   const project = await projectDAO.findById(value).catch(() => undefined);
   const resolved = project ?? (await projectDAO.findBySlug(value));
-  if (!resolved) throw notFound("Project", value);
+  if (!resolved) {
+    if (unknownIsEmpty) return [];
+    throw notFound("Project", value);
+  }
   return (await appDAO.listRawByProject(resolved.id)).map((app) => app.id);
 }
 
-async function resolveEnvironmentAppIds(value: string): Promise<string[]> {
+async function resolveEnvironmentAppIds(
+  value: string,
+  unknownIsEmpty: boolean,
+): Promise<string[]> {
   const byId = await environmentDAO.findById(value);
   const environments = byId
     ? [byId]
     : await environmentDAO.findByName(value);
-  if (environments.length === 0) throw notFound("Environment", value);
+  if (environments.length === 0) {
+    if (unknownIsEmpty) return [];
+    throw notFound("Environment", value);
+  }
   const appIds: string[] = [];
   for (const environment of environments) {
     for (const app of await appDAO.listByEnvironment(environment.id)) {
@@ -163,9 +187,15 @@ async function resolveEnvironmentAppIds(value: string): Promise<string[]> {
 // `release:` term fails the whole list.
 export async function resolveIssueFilter(
   terms: IssueQueryTerm[],
-  options: { now?: Date; visibleAppIds?: string[] } = {},
+  options: {
+    now?: Date;
+    visibleAppIds?: string[];
+    /** A name that does not resolve yields an empty list instead of a 404. */
+    unknownIsEmpty?: boolean;
+  } = {},
 ): Promise<IssueFilter> {
   const now = options.now ?? new Date();
+  const unknownIsEmpty = options.unknownIsEmpty ?? false;
   const filter: IssueFilter = {};
 
   const add = <T>(list: T[] | undefined, ...values: T[]): T[] => [
@@ -199,19 +229,19 @@ export async function resolveIssueFilter(
         break;
       }
       case "app": {
-        const appIds = await resolveAppIds(term.value);
+        const appIds = await resolveAppIds(term.value, unknownIsEmpty);
         if (term.negated) filter.excludedAppIds = add(filter.excludedAppIds, ...appIds);
         else filter.appIds = narrow(filter.appIds, appIds);
         break;
       }
       case "project": {
-        const appIds = await resolveProjectAppIds(term.value);
+        const appIds = await resolveProjectAppIds(term.value, unknownIsEmpty);
         if (term.negated) filter.excludedAppIds = add(filter.excludedAppIds, ...appIds);
         else filter.appIds = narrow(filter.appIds, appIds);
         break;
       }
       case "environment": {
-        const appIds = await resolveEnvironmentAppIds(term.value);
+        const appIds = await resolveEnvironmentAppIds(term.value, unknownIsEmpty);
         if (term.negated) filter.excludedAppIds = add(filter.excludedAppIds, ...appIds);
         else filter.appIds = narrow(filter.appIds, appIds);
         break;

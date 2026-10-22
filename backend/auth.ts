@@ -1,7 +1,7 @@
 import { env } from "bun";
 import { sourceMapTokenDAO, hashUploadToken } from "db/dao/source-map-tokens";
 import type { SourceMapTokenAuthRecord } from "db/dao/source-map-tokens";
-import { forbidden, unauthorized } from "backend/errors";
+import { forbidden, serviceUnavailable, unauthorized } from "backend/errors";
 import * as jose from "jose";
 import * as client from 'openid-client';
 import {
@@ -64,9 +64,23 @@ const verifyWithIdP = async (token: string) => {
     // The authorized party must be this client.
     if (payload.azp !== undefined && payload.azp !== clientId) return null;
     return { id: `${payload.iss}-${payload.sub}`, groups: readGroups(payload) };
-  } catch {
+  } catch (error) {
+    // A rejected token is an invalid credential; a provider that cannot be
+    // reached is an outage — the two must not look the same.
+    if (isProviderOutage(error)) {
+      throw serviceUnavailable(
+        "the identity provider could not be reached — the token was not verified",
+      );
+    }
     return null;
   }
+}
+
+// The JWKS fetch failed (the provider is down or the request timed out).
+function isProviderOutage(error: unknown): boolean {
+  if (error instanceof jose.errors.JWKSTimeout) return true;
+  if (error instanceof jose.errors.JOSEError) return false;
+  return true;
 }
 
 // The three credential surfaces of the API:

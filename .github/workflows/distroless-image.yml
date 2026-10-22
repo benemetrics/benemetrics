@@ -57,7 +57,6 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ghcr.io/${{ env.IMAGE_NAME }}:latest
-            ghcr.io/${{ env.IMAGE_NAME }}-${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Image digest

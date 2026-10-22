@@ -83,6 +83,14 @@ export const alertChannelDAO = {
     return channel;
   },
 
+  // Every channel, whatever its scope — the import resolves the channel
+  // names; `list` is the scoped read.
+  listAll: async (): Promise<AlertChannel[]> =>
+    db
+      .select(channelFields)
+      .from(alertChannels)
+      .orderBy(desc(alertChannels.createdAt)),
+
   list: async (scope: AlertScope | null): Promise<AlertChannel[]> =>
     db
       .select(channelFields)

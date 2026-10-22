@@ -736,6 +736,50 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(incidents.data[0]!.value).toBe(2);
     });
 
+    it("exports the rules and imports them back", async () => {
+      const appRecord = await makeApp();
+
+      await apiRequest("POST", "/api/admin/alerting/rules", {
+        name: `exported ${uniq()}`,
+        metric: "error_count",
+        operator: "gt",
+        threshold: 3,
+        windowSeconds: 3600,
+        appId: appRecord.id,
+      });
+
+      const document = await json<{
+        version: number;
+        rules: Array<{ name: string; threshold: number | null }>;
+      }>(await apiRequest("GET", "/api/admin/alerting/export"));
+      expect(document.version).toBe(1);
+      const exported = document.rules.find((rule) =>
+        rule.name.startsWith("exported"),
+      );
+      expect(exported).toBeDefined();
+      expect(exported!.threshold).toBe(3);
+
+      // The import skips the rules that exist and creates the new ones.
+      const imported = await json<{ created: string[]; skipped: string[] }>(
+        await apiRequest("POST", "/api/admin/alerting/import", {
+          version: 1,
+          rules: [
+            ...document.rules,
+            {
+              name: `imported ${uniq()}`,
+              metric: "error_count",
+              operator: "gt",
+              threshold: 5,
+              windowSeconds: 600,
+              appId: appRecord.id,
+            },
+          ],
+        }),
+      );
+      expect(imported.skipped.length).toBeGreaterThan(0);
+      expect(imported.created.length).toBe(1);
+    });
+
     it("records the rule changes in its history", async () => {
       const appRecord = await makeApp();
 

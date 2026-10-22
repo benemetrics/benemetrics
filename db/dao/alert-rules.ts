@@ -109,6 +109,14 @@ export const alertRuleDAO = {
       .where(and(isNotNull(alertRules.projectId), isNull(alertRules.appId)))
       .orderBy(desc(alertRules.createdAt)),
 
+  // Every rule, whatever its scope — the export and the import need them
+  // all; `list` is the scoped read.
+  listAll: async (): Promise<AlertRule[]> =>
+    db
+      .select(ruleFields)
+      .from(alertRules)
+      .orderBy(desc(alertRules.createdAt)),
+
   list: async (scope: AlertScope | null): Promise<AlertRule[]> =>
     db
       .select(ruleFields)

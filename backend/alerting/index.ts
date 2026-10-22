@@ -29,6 +29,23 @@ const ruleFiltersSchema = arktype({
   tags: arktype({ "[string]": "string" }).optional(),
 });
 const optionalAlertTrigger = "'threshold' | 'new_issue' | 'regression'?";
+// A rule as it travels between installations: the channels travel by name
+// (the ids are local to an installation) and the scope travels by id.
+const importedRuleSchema = arktype({
+  name: "string",
+  trigger: "'threshold' | 'new_issue' | 'regression'?",
+  metric: "string | null?",
+  operator: "string | null?",
+  threshold: "number | null?",
+  windowSeconds: "number | null?",
+  measurement: "string | null?",
+  cooldownSeconds: "number | null?",
+  filters: ruleFiltersSchema.optional(),
+  message: "string | null?",
+  appId: "string.uuid | null?",
+  projectId: "string.uuid | null?",
+  channels: "string[]?",
+});
 
 // The rule's change is recorded with the actor and the state after it.
 async function recordRuleChange(
@@ -328,6 +345,121 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       return { success: true };
     },
     { params: arktype({ id: "string.uuid" }) },
+  )
+  .get(
+    "/export",
+    async ({ query }) => {
+      if (query.appId) await appDAO.findByIdOrThrow(query.appId);
+      // The export covers everything; the query narrows it in memory.
+      const all = await alertRuleDAO.listAll();
+      const rules = all.filter(
+        (rule) =>
+          (!query.appId || rule.appId === query.appId) &&
+          (!query.projectId || rule.projectId === query.projectId),
+      );
+      const channels = await alertChannelDAO.listAll();
+      const channelNames = new Map(channels.map((c) => [c.id, c.name]));
+      return {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        rules: rules.map((rule) => ({
+          name: rule.name,
+          trigger: rule.trigger,
+          metric: rule.metric,
+          operator: rule.operator,
+          threshold: rule.threshold,
+          windowSeconds: rule.windowSeconds,
+          measurement: rule.measurement,
+          cooldownSeconds: rule.cooldownSeconds,
+          filters: rule.filters,
+          message: rule.message,
+          appId: rule.appId,
+          projectId: rule.projectId,
+          channels: rule.channelIds.map((id) => channelNames.get(id) ?? id),
+        })),
+      };
+    },
+    {
+      query: arktype({
+        appId: "string.uuid?",
+        projectId: "string.uuid?",
+      }),
+    },
+  )
+  .post(
+    "/import",
+    async ({ body, adminId }) => {
+      const created: string[] = [];
+      const skipped: string[] = [];
+      // The channels travel by name: the ids are local to an installation.
+      const channelsByName = new Map(
+        (await alertChannelDAO.listAll()).map((channel) => [
+          channel.name,
+          channel.id,
+        ]),
+      );
+      const existingNames = new Set(
+        (await alertRuleDAO.listAll()).map((rule) => rule.name),
+      );
+      for (const rule of body.rules ?? []) {
+        const channelIds: string[] = [];
+        for (const name of rule.channels ?? []) {
+          const channelId = channelsByName.get(name);
+          if (channelId) channelIds.push(channelId);
+        }
+        const appId = rule.appId ?? null;
+        const projectId = rule.projectId ?? null;
+        if (appId) await appDAO.findByIdOrThrow(appId);
+        if (projectId) await projectDAO.findByIdOrThrow(projectId);
+        const name = rule.name.trim();
+        if (name.length === 0) {
+          skipped.push("(unnamed)");
+          continue;
+        }
+        if (existingNames.has(name)) {
+          skipped.push(name);
+          continue;
+        }
+        existingNames.add(name);
+        const createdRule = await alertRuleDAO.create(
+          rule.trigger === "threshold"
+            ? {
+                name,
+                trigger: "threshold",
+                metric: rule.metric ?? "error_count",
+                operator: rule.operator ?? "gt",
+                threshold: rule.threshold ?? 1,
+                windowSeconds: rule.windowSeconds ?? 300,
+                measurement: rule.measurement ?? null,
+                cooldownSeconds: rule.cooldownSeconds ?? 3600,
+                channelIds: JSON.stringify(channelIds),
+                appId,
+                projectId,
+                filters: JSON.stringify(rule.filters ?? {}),
+                message: rule.message ?? null,
+              }
+            : {
+                name,
+                trigger: rule.trigger ?? "new_issue",
+                cooldownSeconds: rule.cooldownSeconds ?? 3600,
+                channelIds: JSON.stringify(channelIds),
+                appId,
+                projectId,
+                filters: JSON.stringify(rule.filters ?? {}),
+                message: rule.message ?? null,
+              },
+        );
+        await recordRuleChange(createdRule, "created", adminId);
+        created.push(name);
+      }
+      return { created, skipped };
+    },
+    {
+      body: arktype({
+        version: "number?",
+        rules: importedRuleSchema.array().optional(),
+      }),
+    },
   )
   .get(
     "/silences",

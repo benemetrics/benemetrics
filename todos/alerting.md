@@ -31,7 +31,7 @@
 ## UI / Organization
 
 - [ ] Rule grouping / folders for UI organization
-- [ ] Rule migration tooling (import/export JSON/YAML)
+- [x] Rule migration tooling (import/export JSON/YAML) — `GET /api/admin/alerting/export` and `POST /api/admin/alerting/import` (the channels travel by name)
 
 ## Reliability / Performance
 

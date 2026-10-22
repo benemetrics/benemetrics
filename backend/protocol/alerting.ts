@@ -60,10 +60,14 @@ export interface AlertRule {
   metric: AlertMetric | null;
   operator: AlertOperator | null;
   threshold: number | null;
+  /** A dynamic threshold ("3x baseline"): null keeps the static threshold. */
+  thresholdFactor: number | null;
   windowSeconds: number | null;
   cooldownSeconds: number;
   channelIds: string[];
   measurement: string | null;
+  /** The folder groups the rules in the admin UI; null is the ungrouped. */
+  folder: string | null;
   appId: string | null;
   projectId: string | null;
   /** The dimensions the rule matches on. */

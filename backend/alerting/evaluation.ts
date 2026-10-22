@@ -150,6 +150,94 @@ async function computeRuleValue(
   }
 }
 
+// The dynamic-threshold history: the same metric over the windows
+// preceding the evaluation window.
+const BASELINE_SECONDS = Number(process.env.ALERT_BASELINE_SECONDS) || 24 * 3600;
+
+interface Window {
+  appId?: string | null;
+  projectId?: string | null;
+}
+
+// The baseline of a dynamic rule (`factor × baseline`): the average of the
+// same metric per evaluation window over the history, or the quantile of
+// the whole history window for a latency metric. `null` — the history has
+// no samples — means "no verdict".
+async function computeBaselineMetric(
+  scope: Window,
+  metric: AlertMetric,
+  windowSeconds: number,
+  measurement: string | null,
+  filters?: AlertRuleFilters,
+): Promise<number | null> {
+  const until = new Date(Date.now() - windowSeconds * 1000).toISOString();
+  const since = new Date(
+    Math.max(0, Date.now() - BASELINE_SECONDS * 1000),
+  ).toISOString();
+  const windows = Math.max(1, Math.floor((Date.now() - new Date(since).getTime()) / (windowSeconds * 1000)));
+  switch (metric) {
+    case "event_count":
+    case "error_count":
+    case "fatal_count": {
+      const total =
+        scope.projectId && !scope.appId
+          ? await countProjectMetricSamples(
+              scope.projectId,
+              metric,
+              since,
+              filters?.tags,
+              until,
+            )
+          : await countMetricSamples(
+              scope.appId!,
+              metric,
+              since,
+              filters?.tags,
+              until,
+            );
+      return total > 0 ? total / windows : null;
+    }
+    case "new_issue_count": {
+      const apps =
+        scope.projectId && !scope.appId
+          ? await appDAO.listRawByProject(scope.projectId)
+          : [{ id: scope.appId! }];
+      const counts = await Promise.all(
+        apps.map(async (app) => issueDAO.countNewSince(app.id, since, filters?.tags)),
+      );
+      const total = counts.reduce((sum, count) => sum + count, 0);
+      return total > 0 ? total / windows : null;
+    }
+    case "latency_p95":
+    case "latency_p99": {
+      const quantile = metric === "latency_p95" ? 95 : 99;
+      const name = measurement ?? DEFAULT_MEASUREMENT;
+      const value =
+        scope.projectId && !scope.appId
+          ? await projectMetricSampleQuantile(
+              scope.projectId,
+              name,
+              quantile,
+              since,
+              filters?.tags,
+              until,
+            )
+          : await metricSampleQuantile(
+              scope.appId!,
+              name,
+              quantile,
+              since,
+              filters?.tags,
+              until,
+            );
+      // An empty history has no baseline.
+      return value > 0 ? value : null;
+    }
+    default:
+      return null;
+  }
+}
+
 async function evaluateRules(scope: {
   appId?: string;
   projectId?: string;
@@ -167,11 +255,10 @@ async function evaluateRules(scope: {
   for (const rule of enabled) {
     incidents.push(
       await (async (): Promise<AlertIncident | null> => {
-      const { metric, operator, threshold, windowSeconds } = rule;
+      const { metric, operator, windowSeconds } = rule;
       if (
         metric === null ||
         operator === null ||
-        threshold === null ||
         windowSeconds === null
       ) {
         return null;
@@ -183,6 +270,34 @@ async function evaluateRules(scope: {
         rule.measurement,
         rule.filters,
       );
+      // A dynamic threshold ("3x baseline"): the rule needs the history to
+      // produce a verdict; without it the evaluation is skipped.
+      let threshold: number | null = rule.threshold;
+      if (rule.thresholdFactor !== null) {
+        const baseline = await computeBaselineMetric(
+          scope,
+          metric,
+          windowSeconds,
+          rule.measurement,
+          rule.filters,
+        );
+        if (baseline === null) {
+          logDecision({
+            event: "evaluated",
+            rule: rule.name,
+            scope: scope.projectId ? { projectId: scope.projectId } : { appId },
+            metric,
+            value,
+            threshold: null,
+            thresholdFactor: rule.thresholdFactor,
+            outcome: "no_baseline",
+          });
+          return null;
+        }
+        threshold = rule.thresholdFactor * baseline;
+      } else if (threshold === null) {
+        return null;
+      }
       const breached = operator === "gt" ? value > threshold : value < threshold;
       countRuleEvaluated();
 

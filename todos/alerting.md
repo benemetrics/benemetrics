@@ -18,7 +18,7 @@
 - [x] Alert rule templating (variables in notification message) — a rule's `message` template renders `{{rule.name}}`, `{{metric}}`, `{{value}}`, `{{threshold}}`, `{{operator}}`, `{{windowSeconds}}` and `{{appId}}`
 - [x] Per-environment rules — the alerting model has **no environment scope**: it is global → project → app. The project scope landed with the project-scoped channels and rules.
 - [x] Metric alert on `event_count` with `lt` operator for "traffic drop" detection — the metric and the operator are available in the builder and covered by a test
-- [ ] Dynamic threshold (e.g., "3x baseline") instead of static threshold
+- [x] Dynamic threshold (e.g., "3x baseline") instead of static threshold — `alert_rules.threshold_factor` (real, nullable); when set, the sweeper compares the windowed value against `factor × baseline`, where the baseline is the per-window average of the same metric over the history preceding the evaluation window (`ALERT_BASELINE_SECONDS`, default 24h; latency rules use the history quantile). The evaluation skips (`no_baseline`) while the history is empty, the API requires a static threshold or a factor, and the builder has a dynamic/static toggle. Incident and notification carry the effective threshold.
 
 ## Incident Management
 

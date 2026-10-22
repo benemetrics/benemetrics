@@ -29,6 +29,13 @@ export const alertRules = pgTable(
     metric: text("metric"),
     operator: text("operator"),
     threshold: real("threshold"),
+    // A dynamic threshold ("3x baseline"): when set, the rule compares the
+    // windowed value against `threshold_factor × baseline` instead of the
+    // static threshold; the baseline is the per-window average of the same
+    // metric over the history preceding the evaluation window.
+    thresholdFactor: real("threshold_factor"),
+    // The folder groups the rules in the admin UI; null is the ungrouped.
+    folder: text("folder"),
     windowSeconds: integer("window_seconds"),
     cooldownSeconds: integer("cooldown_seconds").notNull().default(3600),
     channelIds: text("channel_ids").notNull().default("[]"),

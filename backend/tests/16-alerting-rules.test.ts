@@ -14,7 +14,11 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { evaluateRulesForApp } from "../alerting/evaluation";
-import { listClickHouseMetricSamplesForEvent } from "../clickhouse";
+import {
+  insertClickHouseMetricSamples,
+  listClickHouseMetricSamplesForEvent,
+} from "../clickhouse";
+import type { MetricSample } from "../protocol/metrics";
 import { issueDAO } from "db/dao/issues";
 import { handleFetch as fetch, TEST_ORIGIN, waitForStoredEvent } from "./test-helpers";
 
@@ -468,6 +472,26 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(patched.threshold).toBe(5);
       expect(patched.isEnabled).toBe(false);
 
+      // The editor PATCHes the whole definition: the tag filters and the
+      // message template are set and cleared through the same surface.
+      const filtered = await json<{ filters: { tags?: Record<string, string> }; message: string | null }>(
+        await apiRequest("PATCH", `/api/admin/alerting/rules/${created.id}`, {
+          filters: { tags: { tier: "gold" } },
+          message: "{{rule.name}}: {{metric}} is {{value}}",
+        }),
+      );
+      expect(filtered.filters).toEqual({ tags: { tier: "gold" } });
+      expect(filtered.message).toBe("{{rule.name}}: {{metric}} is {{value}}");
+
+      const cleared = await json<{ filters: { tags?: Record<string, string> }; message: string | null }>(
+        await apiRequest("PATCH", `/api/admin/alerting/rules/${created.id}`, {
+          filters: { tags: {} },
+          message: null,
+        }),
+      );
+      expect(cleared.filters).toEqual({});
+      expect(cleared.message).toBe(null);
+
       const removed = await apiRequest("DELETE", `/api/admin/alerting/rules/${created.id}`);
       expect(removed.status).toBe(200);
 
@@ -559,6 +583,99 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(notification.threshold).toBe(2);
       expect(notification.severity).toBe("warning");
       expect(notification.appId).toBe(appRecord.id);
+    });
+
+    it("refuses a threshold rule without a static threshold or a factor (400)", async () => {
+      const appRecord = await makeApp();
+      const response = await apiRequest("POST", "/api/admin/alerting/rules", {
+        name: `bare threshold ${uniq()}`,
+        metric: "error_count",
+        operator: "gt",
+        windowSeconds: 3600,
+        appId: appRecord.id,
+      });
+      expect(response.status).toBe(400);
+    });
+
+    it("fires on a dynamic threshold (factor times the baseline)", async () => {
+      const appRecord = await makeApp();
+      const ruleName = `dynamic ${uniq()}`;
+
+      const channel = await json<{ id: string }>(
+        await apiRequest("POST", "/api/admin/alerting/channels", {
+          name: `web-dyn-${uniq()}`,
+          type: "webhook",
+          config: { url: webhookUrl },
+          appId: appRecord.id,
+        }),
+      );
+
+      const created = await json<{ thresholdFactor: number | null; threshold: number | null }>(
+        await apiRequest("POST", "/api/admin/alerting/rules", {
+          name: ruleName,
+          metric: "error_count",
+          operator: "gt",
+          thresholdFactor: 3,
+          windowSeconds: 3600,
+          cooldownSeconds: 60,
+          channelIds: [channel.id],
+          appId: appRecord.id,
+        }),
+      );
+      expect(created.thresholdFactor).toBe(3);
+      expect(created.threshold).toBe(null);
+
+      // The baseline: 24 error_count samples within the last 24 hours but
+      // before the evaluation window. 24 samples / 24 windows = a baseline
+      // of 1, so the factor makes the dynamic threshold 3.
+      const samples: MetricSample[] = [];
+      for (let i = 0; i < 24; i++) {
+        samples.push({
+          projectId: appRecord.projectId,
+          appId: appRecord.id,
+          eventId: crypto.randomUUID(),
+          metric: "error_count",
+          value: 1,
+          dimension: "count",
+          tags: {},
+          receivedAt: new Date(Date.now() - (120 + i) * 60_000).toISOString(),
+        });
+      }
+      await insertClickHouseMetricSamples(samples);
+
+      // Without the history the evaluation skips: no incident, no webhook.
+      await evaluateRulesForApp(appRecord.id);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const preIncidents = await json<{ data: unknown[] }>(
+        await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+      );
+      expect(preIncidents.data.length).toBe(0);
+
+      // Four fresh errors breach the dynamic threshold (value 4 > 3 × 1).
+      for (let i = 0; i < 4; i++) {
+        const response = await ingestEvent(
+          appRecord,
+          errorEvent(crypto.randomUUID(), `dynamic ${i}`),
+        );
+        expect(response.status).toBe(200);
+      }
+
+      const incidents = await waitFor(
+        async () =>
+          json<{ data: Array<Record<string, unknown>> }>(
+            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+          ),
+        (body) => body.data.length > 0,
+      );
+      expect(incidents.data.length).toBe(1);
+      expect(incidents.data[0]!.value).toBe(4);
+      expect(incidents.data[0]!.threshold).toBe(3);
+
+      const bodies = await waitForWebhook(
+        (body) => body.ruleName === ruleName && body.metric === "error_count",
+      );
+      const notification = bodies.find((body) => body.ruleName === ruleName)!;
+      expect(notification.threshold).toBe(3);
     });
 
     it("matches only the samples carrying the filtered tag", async () => {

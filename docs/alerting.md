@@ -80,9 +80,11 @@ A rule defines a trigger condition and its notification targets.
 | `trigger` | `"threshold"` | `"new_issue"` / `"regression"` |
 | `metric` | Required (one of 6) | `null` |
 | `operator` | Required (`gt` / `lt`) | `null` |
-| `threshold` | Required (number) | `null` |
+| `threshold` | Required unless `thresholdFactor` is set | `null` |
+| `thresholdFactor` | Optional (> 0, dynamic threshold; `null` = static) | `null` |
 | `windowSeconds` | Required (> 0) | `null` |
 | `measurement` | Optional (string, default `duration`) | `null` |
+| `folder` | Optional (string, UI grouping; `null` = ungrouped) | Optional |
 | `cooldownSeconds` | Optional (default 3600) | Optional (default 3600) |
 | `channelIds` | Optional (array of channel IDs) | Optional |
 | `isEnabled` | Optional (default `true`) | Optional (default `true`) |
@@ -136,6 +138,8 @@ interface AlertRuleFilters {
 For each enabled threshold rule in the scope:
 1. Compute metric value over `windowSeconds` via `computeRuleValue` (ClickHouse for sentinels/quantiles, Postgres for `new_issue_count`), **applying rule filters** (tag filters, environment filters). Tag filters translate to ClickHouse `WHERE` clauses on the metric samples table (e.g., `WHERE tag_service IN ('api', 'payments')`); environment filters restrict to samples from the specified environments.
 2. Check breach: `operator === 'gt' ? value > threshold : value < threshold`.
+   - **Dynamic threshold** (`thresholdFactor` set, e.g. `3` = "3x baseline"): the effective threshold is `thresholdFactor × baseline`, where the baseline is the same metric's per-window average over the history preceding the evaluation window (`ALERT_BASELINE_SECONDS`, default 24h; latency metrics use the quantile over the whole history window). The evaluation is **skipped** (logged as `no_baseline`, no incident change) while the history has no samples — a baseline computed from nothing would make every event an anomaly.
+   - A rule needs either a static `threshold` or a `thresholdFactor`; both may be absent in the schema but the API rejects the combination. The incident and the notification carry the **effective** threshold.
 3. If **not breached**: close any open incident for the rule (`resolveOpen`).
 4. If **breached**:
    - Check cooldown: skip if `lastTriggeredAt` within `cooldownSeconds`.

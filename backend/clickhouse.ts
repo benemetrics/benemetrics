@@ -72,6 +72,8 @@ const ISSUE_EVENTS_COLUMNS: readonly ChColumn[] = [
   ["release", "String"],
   ["environment", "String"],
   ["user", "String"],
+  // The occurrence's tags; a JSON object as a string.
+  ["tags", "String"],
   ["receivedAt", "DateTime64(3)"],
 ];
 
@@ -309,6 +311,7 @@ function createIssueEventsView(): ChQuery {
       JSONExtractString(digest, 'release') AS release,
       JSONExtractString(digest, 'environment') AS environment,
       JSONExtractString(digest, 'user') AS user,
+      JSONExtractRaw(digest, 'tags') AS tags,
       assumeNotNull(parsed_receivedAt) AS receivedAt
     FROM (
       SELECT id, projectId, appId,
@@ -503,6 +506,32 @@ async function ensureEventsEngineColumns(): Promise<void> {
 
 // The metrics' store table gains the tags column; the engine table is
 // rebuilt when it predates the column (the stream keeps the data).
+// The issue index carries the occurrence's tags; the column and the view
+// are added to an existing installation.
+async function ensureIssueEventsColumns(): Promise<void> {
+  const [column] = await queryRows<{ name: string }>(
+    sql`
+      SELECT name FROM system.columns
+      WHERE database = ${CLICKHOUSE_DATABASE} AND table = 'sentry_issue_events' AND name = 'tags'
+    `,
+  );
+  if (!column) {
+    console.log("[ClickHouse] Adding the tags column to sentry_issue_events");
+    await runCommand(sql`ALTER TABLE ${ISSUE_EVENTS_TABLE} ADD COLUMN tags String`);
+  }
+  const [view] = await queryRows<{ create_table_query: string }>(
+    sql`
+      SELECT create_table_query FROM system.tables
+      WHERE database = ${CLICKHOUSE_DATABASE} AND name = 'sentry_issue_events_mv'
+    `,
+  );
+  if (view && !view.create_table_query.includes("JSONExtractRaw(digest, 'tags')")) {
+    console.log("[ClickHouse] Recreating the issue events view with the tags column");
+    await runCommand(sql`DROP TABLE IF EXISTS ${ISSUE_EVENTS_VIEW}`);
+  }
+  await runCommand(createIssueEventsView());
+}
+
 async function ensureMetricsColumns(): Promise<void> {
   const [column] = await queryRows<{ name: string }>(
     sql`
@@ -668,7 +697,7 @@ export async function initClickHouse(): Promise<void> {
     await ensureEventsEngineColumns();
     await ensureView("sentry_events_mv", createEventsView());
     await runCommand(createIssueEventsTable());
-    await ensureView("sentry_issue_events_mv", createIssueEventsView());
+    await ensureIssueEventsColumns();
     await runCommand(createMetricsTable());
     await ensureMetricsColumns();
     await runCommand(createMetricsEngineTable());
@@ -958,6 +987,38 @@ export async function clickHouseReleaseFingerprints(options: {
   const rows = await queryRows<{ fingerprint: string }>(sql`
     SELECT DISTINCT fingerprint FROM ${ISSUE_EVENTS_TABLE} FINAL
     WHERE release = ${options.release} AND appId IN ${options.appIds}
+  `);
+  return rows.map((row) => row.fingerprint);
+}
+
+// The fingerprints whose occurrences carry a level, a user or a tag, across
+// the given apps. The semantics are "any occurrence" — the level of the
+// latest occurrence is not the level of the issue.
+export async function clickHouseIssueFingerprints(options: {
+  column: "level" | "user";
+  value: string;
+  appIds: string[];
+}): Promise<string[]> {
+  if (options.appIds.length === 0) return [];
+  const rows = await queryRows<{ fingerprint: string }>(sql`
+    SELECT DISTINCT fingerprint FROM ${ISSUE_EVENTS_TABLE} FINAL
+    WHERE ${options.column} = ${options.value} AND appId IN ${options.appIds}
+  `);
+  return rows.map((row) => row.fingerprint);
+}
+
+// The fingerprints whose occurrences carry a tag — the tags travel as a
+// JSON string in the column.
+export async function clickHouseIssueFingerprintsByTag(options: {
+  key: string;
+  value: string;
+  appIds: string[];
+}): Promise<string[]> {
+  if (options.appIds.length === 0) return [];
+  const rows = await queryRows<{ fingerprint: string }>(sql`
+    SELECT DISTINCT fingerprint FROM ${ISSUE_EVENTS_TABLE} FINAL
+    WHERE JSONExtractString(tags, ${options.key}) = ${options.value}
+      AND appId IN ${options.appIds}
   `);
   return rows.map((row) => row.fingerprint);
 }

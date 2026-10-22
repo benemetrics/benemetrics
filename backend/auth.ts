@@ -28,8 +28,18 @@ export interface UploadAuthResult {
   token?: SourceMapTokenAuthRecord;
 }
 
+// A plain-HTTP issuer is refused by the OIDC client unless the deployment
+// opts in: the tokens would travel in the clear. HTTPS is the
+// recommendation; the opt-in exists for a local provider.
+const allowInsecure = env.OIDC_ALLOW_INSECURE_HTTP === "true";
 const config = env.OIDC_ISSUER && env.OIDC_CLIENT_ID
-  ? await client.discovery(new URL(env.OIDC_ISSUER), env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET)
+  ? await client.discovery(
+    new URL(env.OIDC_ISSUER),
+    env.OIDC_CLIENT_ID,
+    env.OIDC_CLIENT_SECRET,
+    undefined,
+    allowInsecure ? { execute: [client.allowInsecureRequests] } : undefined,
+  )
   : null
 const jwksURI = config?.serverMetadata().jwks_uri;
 const jwks = jwksURI ? jose.createRemoteJWKSet(new URL(jwksURI), { timeoutDuration: 5_000, cacheMaxAge: 600_000 }) : null;

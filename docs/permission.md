@@ -71,7 +71,7 @@ Failures are silent (no token logging) and result in an unauthenticated request.
 
 **An outage is not an invalid credential:** a token the provider rejects (a bad signature, a wrong audience) is an unauthenticated request (401), but a provider that cannot be reached (the JWKS fetch failed or timed out) answers **503** — the operator can tell the two apart.
 
-**Production requirement:** Issuer and JWKS URLs **should use HTTPS** — HTTP is only for local testing; whoever controls the fetch can substitute signing keys. The backend **warns** but does not enforce it: whether the provider is reachable over TLS depends on the deployment's infrastructure, which the application cannot know. Enforcing it is the deployment's call.
+**Production requirement:** Issuer and JWKS URLs **must use HTTPS** — whoever controls the fetch can substitute signing keys. A plain-HTTP issuer is refused by the OIDC client unless the deployment opts in with `OIDC_ALLOW_INSECURE_HTTP=true` (for a local provider only — the tokens would travel in the clear). The opt-in relaxes the discovery only: the signature, the audience, the issuer and the `azp` checks stay in force.
 
 ---
 
@@ -309,8 +309,9 @@ Same shape as rules, with the identity id (unique) instead of the group name, pl
 | Setting | Effect |
 |---------|--------|
 | `ADMIN_TOKEN` | Master credential; always accepted. Unset with no provider configured ⇒ every surface is 401 |
-| `OIDC_ISSUER` / `OAUTH_ISSUER` | Issuer + discovery base; provider considered configured. **Should be HTTPS in production** (the backend warns, it does not enforce). |
-| `OIDC_JWKS_URL` | JWKS override (skips discovery). **Should be HTTPS in production** (the backend warns, it does not enforce). |
+| `OIDC_ISSUER` / `OAUTH_ISSUER` | Issuer + discovery base; provider considered configured. **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
+| `OIDC_JWKS_URL` | JWKS override (skips discovery). **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
+| `OIDC_ALLOW_INSECURE_HTTP` | `true` allows a plain-HTTP issuer (local providers only). The signature, audience, issuer and `azp` checks are unchanged. |
 | `OIDC_AUDIENCE` / `OIDC_CLIENT_ID` / `OAUTH_CLIENT_ID` | Expected audience. **Critical:** Without this, any token from the configured issuer is accepted. `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID` also enable the browser login flow. |
 | `OIDC_SCOPES` | Scopes requested by the browser login flow (default `openid email profile`). |
 | `OIDC_EMAIL_CLAIM` / `OIDC_GROUPS_CLAIM` / `OIDC_NAME_CLAIM` | Claim mapping (defaults: email, groups, name). Groups claim split on `/[\s,;|]+/`. |
@@ -321,7 +322,7 @@ Startup never prints secrets.
 
 - Audience without issuer (or issuer without audience) means every provider JWT fails — only the admin token works
 - Neither credential configured (no `ADMIN_TOKEN`, no provider) locks every surface in every environment
-- Issuer/JWKS URLs should be HTTPS in any real deployment (whoever controls the fetch controls signing keys) — the backend warns, the deployment decides
+- Issuer/JWKS URLs must be HTTPS in any real deployment (whoever controls the fetch controls signing keys) — a plain-HTTP issuer needs the explicit `OIDC_ALLOW_INSECURE_HTTP=true` opt-in
 - No audience configured + issuer configured = accepts tokens for any client from that issuer
 - Browser login requires a public SPA client, the exact redirect URI allowlisted, and CORS on discovery/token/JWKS — without them startup falls back to the admin-token prompt
 - Admin token in localStorage is vulnerable to XSS — use httpOnly cookies or secure token vault in production

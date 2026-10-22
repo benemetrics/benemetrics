@@ -427,23 +427,25 @@ bun run test                  # the whole suite (needs the docker services)
 
 ### The local identity provider
 
-`docker compose up -d keycloak` starts Keycloak on <https://localhost:8443>
+`docker compose up -d keycloak` starts Keycloak on <http://localhost:8080>
 (the admin console: `admin` / `admin`). The realm `benemetrics` is imported
 from the compose config: the public SPA client `benemetrics`, the bearer
 client `benemetrics-backend`, the groups `backend-team` / `frontend-team` and
 the user `sso@example.com` (password `sentry`).
 
-The provider serves TLS with a self-signed certificate that the compose
-generates into the `keycloak_tls` volume. The backend trusts it through
-`NODE_EXTRA_CA_CERTS`:
-
 ```bash
-docker compose cp keycloak-cert:/tls/tls.crt /tmp/benemetrics-ca.crt
-export NODE_EXTRA_CA_CERTS=/tmp/benemetrics-ca.crt
-export OIDC_ISSUER="https://localhost:8443/realms/benemetrics"
+export OIDC_ISSUER="http://localhost:8080/realms/benemetrics"
 export OIDC_CLIENT_ID="benemetrics-backend"
+export OIDC_ALLOW_INSECURE_HTTP=true
 bun run dev
 ```
+
+A plain-HTTP issuer is refused by the OIDC client unless the deployment opts
+in with `OIDC_ALLOW_INSECURE_HTTP=true` — the tokens would travel in the
+clear. **HTTPS is the recommendation** for anything but a local provider: put
+the provider behind TLS and point the issuer at its `https://` URL (the
+issuer is what the backend and the browser agree on, so it has to match the
+provider's own URL).
 
 The layout:
 

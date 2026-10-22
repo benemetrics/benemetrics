@@ -70,6 +70,15 @@ describe("Issue query grammar", () => {
       value: "production",
     });
     expect(parse("release:2.3.1")[0]).toMatchObject({ kind: "release" });
+    expect(parse("user:alice@example.com")[0]).toMatchObject({
+      kind: "user",
+      value: "alice@example.com",
+    });
+    expect(parse("tag:tier:gold")[0]).toMatchObject({
+      kind: "tag",
+      key: "tier",
+      value: "gold",
+    });
     expect(parse("event.type:error")[0]).toMatchObject({ kind: "eventType" });
     expect(parse("timesSeen:>100")[0]).toMatchObject({
       kind: "timesSeen",
@@ -142,7 +151,7 @@ describe("Issue query grammar", () => {
   });
 
   it("rejects a reserved key", () => {
-    const message = expectBad("user:someone");
+    const message = expectBad("assigned:someone");
     expect(message).toContain("unsupported term");
   });
 

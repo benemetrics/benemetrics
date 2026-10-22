@@ -28,6 +28,8 @@ export type IssueQueryTerm =
   | { kind: "firstSeen"; operator: TimeOperator | null; value: TimeValue; negated: boolean }
   | { kind: "lastSeen"; operator: TimeOperator | null; value: TimeValue; negated: boolean }
   | { kind: "timesSeen"; operator: NumberOperator; value: number; negated: boolean }
+  | { kind: "user"; value: string; negated: boolean }
+  | { kind: "tag"; key: string; value: string; negated: boolean }
   | { kind: "text"; value: string; negated: boolean };
 
 // The keys the grammar knows. `reserved` parses strictly but is not
@@ -38,6 +40,8 @@ const KEYS = {
   project: "project",
   environment: "environment",
   level: "level",
+  user: "user",
+  tag: "tag",
   "event.type": "eventType",
   release: "release",
   firstseen: "firstSeen",
@@ -46,8 +50,6 @@ const KEYS = {
 } as const;
 
 const RESERVED = new Set([
-  "user",
-  "tag",
   "assigned",
   "bookmarked",
   "has",
@@ -142,6 +144,8 @@ type TermKind =
   | "project"
   | "environment"
   | "level"
+  | "user"
+  | "tag"
   | "eventType"
   | "release"
   | "firstSeen"
@@ -184,6 +188,21 @@ function parsePair(
     case "release":
       if (!value) fail("empty value", term);
       return { kind: "release", value, negated: false };
+    case "user":
+      if (!value) fail("empty value", term);
+      return { kind: "user", value, negated: false };
+    case "tag": {
+      const separator = value.indexOf(":");
+      if (separator <= 0 || separator === value.length - 1) {
+        fail("a tag is <key>:<value>", term);
+      }
+      return {
+        kind: "tag",
+        key: value.slice(0, separator),
+        value: value.slice(separator + 1),
+        negated: false,
+      };
+    }
     case "firstSeen":
     case "lastSeen": {
       if (operator && !["<", "<=", ">", ">=", "="].includes(operator)) {

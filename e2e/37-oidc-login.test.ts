@@ -127,10 +127,11 @@ beforeAll(async () => {
   });
   issuer = `http://127.0.0.1:${provider.port}`;
 
-  // The backend discovers the provider when it boots and openid-client
-  // refuses plain HTTP, so the backend keeps the suite's TLS provider.
-  // The browser talks to the loopback provider above (the SPA accepts HTTP
-  // on loopback), so the frontend bundle is built with that issuer.
+  // The backend discovers the provider when it boots, so it keeps the
+  // suite's provider (the stub speaks plain HTTP; the backend is told that
+  // the insecure issuer is allowed). The browser talks to the loopback
+  // provider above (the SPA accepts HTTP on loopback), so the frontend
+  // bundle is built with that issuer.
   app = (await import("../backend/index")).default;
   app.listen(0);
   baseUrl = `http://localhost:${(app as any).server.port}`;

@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "typecheck": "bun check",
-    "test": "eval \"$(bun scripts/oidc-fixture.ts)\" && bun test --parallel=1 backend/tests/ e2e/",
+    "test": "bun test --parallel=1 backend/tests/ e2e/",
     "dev": "bun --hot backend/index.ts",
     "start": "bun backend/index.ts",
     "consumer": "bun backend/consumer.ts",

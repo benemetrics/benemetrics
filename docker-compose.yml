@@ -117,52 +117,23 @@ services:
   # Keycloak: the local identity provider. The realm (the clients, the
   # groups and the test user) is imported from the config below.
   #
-  # openid-client refuses plain-HTTP issuers, so Keycloak serves TLS with a
-  # self-signed certificate. The issuer is https://localhost:8443.
+  # It speaks plain HTTP — a local provider has no secret to protect. HTTPS
+  # is the recommendation for a real one: the issuer URL is what the backend
+  # and the browser agree on, so it must match the provider's own URL.
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
-    depends_on:
-      keycloak-cert:
-        condition: service_completed_successfully
     command: ["start", "--import-realm"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      KC_HTTP_ENABLED: "false"
-      KC_HTTPS_PORT: "8443"
-      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/tls/tls.crt
-      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/tls/tls.key
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_PORT: "8080"
       KC_HOSTNAME_STRICT: "false"
     configs:
       - source: keycloak-realm
         target: /opt/keycloak/data/import/realm.json
     ports:
-      - "8443:8443"
-    volumes:
-      - keycloak_tls:/opt/keycloak/conf/tls:ro
-
-  # Generates the self-signed certificate Keycloak serves. It keeps the
-  # certificate it generated, so the CA bundle the backend trusts stays
-  # valid across restarts.
-  keycloak-cert:
-    image: alpine:3
-    command:
-      - sh
-      - -c
-      - |
-        apk add --no-cache openssl
-        if [ ! -f /tls/tls.crt ]; then
-          openssl req -x509 -newkey rsa:2048 -nodes \
-            -keyout /tls/tls.key \
-            -out /tls/tls.crt \
-            -days 3650 \
-            -subj "/CN=localhost" \
-            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
-        fi
-        # Keycloak runs as a non-root user and has to read the key.
-        chmod 644 /tls/tls.key /tls/tls.crt
-    volumes:
-      - keycloak_tls:/tls
+      - "8080:8080"
 
   # The API and the UI. `docker compose --profile app up -d` serves them on
   # http://localhost:31337/ui.
@@ -213,7 +184,6 @@ volumes:
   nats_data:
   rustfs_data:
   rustfs_logs:
-  keycloak_tls:
 
 configs:
   # The NATS server configuration. The values come from the environment of

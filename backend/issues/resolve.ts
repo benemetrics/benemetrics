@@ -1,7 +1,11 @@
 import { notFound } from "backend/errors";
 import { appDAO, projectDAO } from "db/dao/project";
 import { environmentDAO } from "db/dao/environments";
-import { clickHouseReleaseFingerprints } from "../clickhouse";
+import {
+  clickHouseIssueFingerprints,
+  clickHouseIssueFingerprintsByTag,
+  clickHouseReleaseFingerprints,
+} from "../clickhouse";
 import type {
   IssueQueryTerm,
   NumberOperator,
@@ -196,6 +200,10 @@ export async function resolveIssueFilter(
 ): Promise<IssueFilter> {
   const now = options.now ?? new Date();
   const unknownIsEmpty = options.unknownIsEmpty ?? false;
+  // The apps a term may look at: the visible ones for a scoped identity,
+  // every app otherwise.
+  const visibleAppIds = async (): Promise<string[]> =>
+    options.visibleAppIds ?? (await appDAO.listAll()).map((app) => app.id);
   const filter: IssueFilter = {};
 
   const add = <T>(list: T[] | undefined, ...values: T[]): T[] => [
@@ -219,8 +227,56 @@ export async function resolveIssueFilter(
         break;
       }
       case "level": {
-        if (term.negated) filter.excludedLevels = add(filter.excludedLevels, term.value);
-        else filter.levels = add(filter.levels, term.value);
+        // Any occurrence: the level of the latest occurrence is not the
+        // level of the issue.
+        const appIds = await visibleAppIds();
+        const fingerprints = await clickHouseIssueFingerprints({
+          column: "level",
+          value: term.value,
+          appIds,
+        });
+        if (term.negated) {
+          filter.excludedFingerprints = add(
+            filter.excludedFingerprints,
+            ...fingerprints,
+          );
+        } else {
+          filter.fingerprints = add(filter.fingerprints, ...fingerprints);
+        }
+        break;
+      }
+      case "user": {
+        const appIds = await visibleAppIds();
+        const fingerprints = await clickHouseIssueFingerprints({
+          column: "user",
+          value: term.value,
+          appIds,
+        });
+        if (term.negated) {
+          filter.excludedFingerprints = add(
+            filter.excludedFingerprints,
+            ...fingerprints,
+          );
+        } else {
+          filter.fingerprints = add(filter.fingerprints, ...fingerprints);
+        }
+        break;
+      }
+      case "tag": {
+        const appIds = await visibleAppIds();
+        const fingerprints = await clickHouseIssueFingerprintsByTag({
+          key: term.key,
+          value: term.value,
+          appIds,
+        });
+        if (term.negated) {
+          filter.excludedFingerprints = add(
+            filter.excludedFingerprints,
+            ...fingerprints,
+          );
+        } else {
+          filter.fingerprints = add(filter.fingerprints, ...fingerprints);
+        }
         break;
       }
       case "eventType": {
@@ -247,9 +303,7 @@ export async function resolveIssueFilter(
         break;
       }
       case "release": {
-        const appIds =
-          options.visibleAppIds ??
-          (await appDAO.listAll()).map((app) => app.id);
+        const appIds = await visibleAppIds();
         const fingerprints = await clickHouseReleaseFingerprints({
           release: term.value,
           appIds,

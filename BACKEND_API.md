@@ -83,10 +83,11 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 | `OIDC_AUDIENCE`, `OIDC_CLIENT_ID`, `OAUTH_CLIENT_ID` | – | Expected `aud` claim (checked when set); `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID` also enable the browser login flow |
 | `OIDC_SCOPES` | `openid email profile` | Scopes requested by the browser login flow |
 | `OIDC_EMAIL_CLAIM`, `OIDC_GROUPS_CLAIM`, `OIDC_NAME_CLAIM` | `email`, `groups`, `name` | Claim mapping for verified identity |
+| `OIDC_ALLOW_INSECURE_HTTP` | – | `true` lets the discovery read a plain-HTTP issuer (a local provider). **HTTPS is the recommendation** — the tokens would travel in the clear otherwise |
 
 **DB Selection Logic** (`db/index.ts`): `NODE_ENV=test` → in-memory PGlite; else `DATABASE_URL` present → Postgres (Bun SQL); else file-backed PGlite in `./.pglite`. Committed migrations in `db/migrations` applied at startup (idempotent, tracked in `drizzle.__drizzle_migrations`).
 
-**Docker Compose** provides the whole stack — Postgres 17 (`:5432`), ClickHouse (`:8123`, `:9000`), RustFS (`:9100` S3 API, `:9101` console — `rustfsadmin`/`rustfsadmin`; `sentry-replays` bucket created by `rustfs-init`), NATS (`:4222` + WS `:9222`), Keycloak (`:8443`) and the API + the consumer (`:31337`). The environment of the API and the consumer is the `x-app-environment` block of `docker-compose.yml`; the NATS configuration is an inline compose config whose values come from the environment of the service.
+**Docker Compose** provides the whole stack — Postgres 17 (`:5432`), ClickHouse (`:8123`, `:9000`), RustFS (`:9100` S3 API, `:9101` console — `rustfsadmin`/`rustfsadmin`; `sentry-replays` bucket created by `rustfs-init`), NATS (`:4222` + WS `:9222`), Keycloak (`:8080`) and the API + the consumer (`:31337`). The environment of the API and the consumer is the `x-app-environment` block of `docker-compose.yml`; the NATS configuration is an inline compose config whose values come from the environment of the service.
 
 **Container image** (`Dockerfile`): the API (`bun index.js`) and the side-effects consumer (`bun consumer.js`) are two entry points of the same image; the production bundle is built by `scripts/build.ts` (the bunfig plugins are not applied by `bun build`, so the virtual OIDC module is registered there).
 

@@ -1,9 +1,10 @@
 /**
  * The suite's identity provider stub.
  *
- * openid-client refuses plain-HTTP issuers, so the stub serves the
- * discovery document and the JWKS over TLS with a self-signed certificate
- * the suite trusts through NODE_EXTRA_CA_CERTS (see e2e/oidc-fixture.ts).
+ * The stub serves the discovery document and the JWKS over plain HTTP: the
+ * OIDC client refuses an insecure issuer unless the deployment opts in
+ * (OIDC_ALLOW_INSECURE_HTTP), and the suite does — a local stub has no
+ * secret to protect. HTTPS is the recommendation for a real provider.
  *
  * The module configures the environment at import time: the backend
  * discovers the provider when it boots, so the variables must be set
@@ -12,7 +13,6 @@
  */
 import * as jose from "jose";
 import {
-  ensureCertificate,
   ensureSigningKey,
   persistPort,
   readPublicJwk,
@@ -45,14 +45,13 @@ const shared = globalThis as {
 let trusted = false;
 
 async function startProvider(): Promise<OidcProvider> {
-  const { cert, key } = ensureCertificate();
   const privateKey = await ensureSigningKey();
   const jwks = { keys: [readPublicJwk()] };
 
   let port = resolvePort();
   const handler = (request: Request): Response => {
     const { pathname } = new URL(request.url);
-    const issuer = `https://localhost:${port}/`;
+    const issuer = `http://localhost:${port}/`;
     if (pathname === "/.well-known/openid-configuration") {
       return Response.json({ issuer, jwks_uri: `${issuer}jwks` });
     }
@@ -62,16 +61,16 @@ async function startProvider(): Promise<OidcProvider> {
 
   let server: ReturnType<typeof Bun.serve>;
   try {
-    server = Bun.serve({ port, tls: { cert, key }, fetch: handler });
+    server = Bun.serve({ port, fetch: handler });
   } catch {
     // The port is taken (another run): fall back to an ephemeral one and
     // remember it, so the issuer stays stable for the rest of the run.
-    server = Bun.serve({ port: 0, tls: { cert, key }, fetch: handler });
+    server = Bun.serve({ port: 0, fetch: handler });
     port = server.port ?? port;
     persistPort(port);
   }
 
-  const issuer = `https://localhost:${port}/`;
+  const issuer = `http://localhost:${port}/`;
   const provider: OidcProvider = {
     issuer,
     clientId: OIDC_CLIENT_ID,
@@ -101,7 +100,7 @@ async function startProvider(): Promise<OidcProvider> {
     trusted = discovery.ok;
   } catch {
     console.warn(
-      "[oidc] the provider stub is not reachable; run `bun scripts/oidc-fixture.ts` so the certificate is trusted",
+      "[oidc] the provider stub is not reachable; the suite runs without it",
     );
   }
 
@@ -114,12 +113,15 @@ export const oidcProvider: OidcProvider = (shared.__sentryOidcProvider ??=
 
 // The environment is re-asserted for every test file: a file may point the
 // browser at its own loopback provider, and the next file needs the
-// backend's issuer back. Without the trusted certificate the provider stays
+// backend's issuer back. Without a reachable discovery the provider stays
 // unconfigured — the backend would fail closed on the discovery.
 if (shared.__sentryOidcTrusted) {
   process.env.OIDC_ISSUER = oidcProvider.issuer;
   process.env.OIDC_CLIENT_ID = oidcProvider.clientId;
   process.env.OIDC_AUDIENCE = oidcProvider.clientId;
+  // The stub speaks plain HTTP, so the OIDC client has to be told that the
+  // insecure issuer is allowed.
+  process.env.OIDC_ALLOW_INSECURE_HTTP = "true";
 }
 
 /** The identity id the backend derives from a verified token. */

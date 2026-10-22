@@ -1,2 +1,0 @@
-CREATE UNIQUE INDEX "alert_channels_global_name_idx" ON "alert_channels" ("name") WHERE "app_id" is null;--> statement-breakpoint
-CREATE UNIQUE INDEX "alert_rules_global_name_idx" ON "alert_rules" ("name") WHERE "app_id" is null;

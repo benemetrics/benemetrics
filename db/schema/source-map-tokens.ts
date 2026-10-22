@@ -3,6 +3,7 @@ import {
   text,
   index,
 } from "drizzle-orm/pg-core";
+import { isoTimestamp } from "./timestamps";
 
 // CI upload token for source maps (sentry-cli / SENTRY_AUTH_TOKEN).
 // Scoped to one project + environment; only the SHA-256 hash of the
@@ -19,10 +20,10 @@ export const sourceMapTokens = pgTable(
     tokenPrefix: text("token_prefix").notNull(),
     name: text("name").notNull(),
     createdBy: text("created_by").notNull(),
-    createdAt: text("created_at").notNull(),
-    lastUsedAt: text("last_used_at"),
-    expiresAt: text("expires_at"),
-    revokedAt: text("revoked_at"),
+    createdAt: isoTimestamp("created_at").notNull(),
+    lastUsedAt: isoTimestamp("last_used_at"),
+    expiresAt: isoTimestamp("expires_at"),
+    revokedAt: isoTimestamp("revoked_at"),
   },
   (table) => ({
     projectIdIdx: index("source_map_tokens_project_id_idx").on(table.projectId),

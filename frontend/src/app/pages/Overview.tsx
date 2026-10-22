@@ -7,18 +7,16 @@ import {
   AGGREGATE_EVENT_LIMIT,
   api,
   listEvents,
+  listIssues,
   type AlertChannelDto,
   type AlertRuleDto,
+  type IssueDto,
   type ReleaseDto,
 } from "../../lib/api";
+import { loadAllPages } from "../../lib/cursor";
 import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils";
-import { eventTitle, groupIssues, type StoredEvent } from "../../lib/issues";
+import { eventTitle, type StoredEvent } from "../../lib/issues";
 import { subscribeLiveFeed } from "../../lib/live-events";
-
-interface Health {
-  status: string;
-  eventsStored: number;
-}
 
 function bucketize(events: StoredEvent[], spanMs: number, buckets = 6): number[] {
   const start = Date.now() - spanMs;
@@ -91,9 +89,10 @@ export function Overview() {
   const applicationId = application?.id;
   const [range, setRange] = useState("24 hours");
   const [rangeMenuOpen, setRangeMenuOpen] = useState(false);
-  const [health, setHealth] = useState<Health | null>(null);
   const [events, setEvents] = useState<StoredEvent[]>([]);
   const [eventsStatus, setEventsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [issues, setIssues] = useState<IssueDto[]>([]);
+  const [issuesStatus, setIssuesStatus] = useState<"loading" | "ready" | "error">("loading");
   const [rules, setRules] = useState<AlertRuleDto[]>([]);
   const [channels, setChannels] = useState<AlertChannelDto[]>([]);
   const [releases, setReleases] = useState<ReleaseDto[]>([]);
@@ -118,10 +117,25 @@ export function Overview() {
         if (!cancelled) setEventsStatus((current) => (current === "ready" ? current : "error"));
       }
       try {
-        const healthResult = await api.health.get();
-        if (!cancelled && healthResult?.data) setHealth(healthResult.data);
+        // The real issue model (status + fingerprint + counters), not a
+        // client-side regrouping of the event window.
+        const rows = await loadAllPages<IssueDto>(async (cursor, limit) => {
+          const terms = ["is:unresolved"];
+          if (applicationId) terms.push(`app:${applicationId}`);
+          else if (projectId) terms.push(`project:${projectId}`);
+          const result = await listIssues({
+            query: terms.join(" "),
+            cursor,
+            limit,
+          });
+          return (result?.data as { data?: IssueDto[] } | null)?.data ?? [];
+        });
+        if (!cancelled) {
+          setIssues(rows);
+          setIssuesStatus("ready");
+        }
       } catch {
-        // keep the last health on failure
+        if (!cancelled) setIssuesStatus((current) => (current === "ready" ? current : "error"));
       }
     };
     load();
@@ -133,9 +147,7 @@ export function Overview() {
   }, [projectId, environmentId, applicationId]);
 
   // Live feed: the page subscribes to NATS directly (there is no backend
-  // fan-out) and prepends events as they are ingested. A `clear` — the
-  // events store was truncated — empties the list until the next poll
-  // refills it.
+  // fan-out) and prepends events as they are ingested.
   useEffect(() => {
     const close = subscribeLiveFeed({
       onItem: (item) => {
@@ -159,7 +171,6 @@ export function Overview() {
           ].slice(0, AGGREGATE_EVENT_LIMIT),
         );
       },
-      onClear: () => setEvents([]),
     });
     return close;
   }, [projectId, environmentId, applicationId, applications]);
@@ -168,15 +179,30 @@ export function Overview() {
     let cancelled = false;
     (async () => {
       try {
-        const [rulesResult, channelsResult, releasesResult] = await Promise.all([
-          api.api.admin.alerting.rules.get(),
-          api.api.admin.alerting.channels.get(),
-          api.api.admin.releases.get(),
+        const [alertRules, alertChannels, releaseList] = await Promise.all([
+          loadAllPages<AlertRuleDto>(async (cursor, limit) => {
+            const result = await api.api.admin.alerting.rules.get({
+              $query: { limit, ...(cursor ? { cursor } : {}) },
+            });
+            return (result?.data as { data?: AlertRuleDto[] } | null)?.data ?? [];
+          }),
+          loadAllPages<AlertChannelDto>(async (cursor, limit) => {
+            const result = await api.api.admin.alerting.channels.get({
+              $query: { limit, ...(cursor ? { cursor } : {}) },
+            });
+            return (result?.data as { data?: AlertChannelDto[] } | null)?.data ?? [];
+          }),
+          loadAllPages<ReleaseDto>(async (cursor, limit) => {
+            const result = await api.api.admin.releases.get({
+              $query: { limit, ...(cursor ? { cursor } : {}) },
+            });
+            return (result?.data as { data?: ReleaseDto[] } | null)?.data ?? [];
+          }),
         ]);
         if (cancelled) return;
-        setRules(((rulesResult?.data as { data?: AlertRuleDto[] })?.data ?? []));
-        setChannels(((channelsResult?.data as { data?: AlertChannelDto[] })?.data ?? []));
-        setReleases(((releasesResult?.data as { data?: ReleaseDto[] })?.data ?? []));
+        setRules(alertRules);
+        setChannels(alertChannels);
+        setReleases(releaseList);
       } catch {
         // keep the current lists on failure
       }
@@ -234,13 +260,15 @@ export function Overview() {
     .toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
     .toUpperCase();
 
-  const issueGroups = useMemo(() => groupIssues(windowed), [windowed]);
-  const visibleIssues = useMemo(
+  const attentionIssues = useMemo(
     () =>
-      [...issueGroups]
-        .sort((a, b) => b.events - a.events || Date.parse(b.lastSeen) - Date.parse(a.lastSeen))
+      [...issues]
+        .sort(
+          (a, b) =>
+            b.eventCount - a.eventCount || Date.parse(b.lastSeen) - Date.parse(a.lastSeen),
+        )
         .slice(0, 4),
-    [issueGroups],
+    [issues],
   );
   const recentEvents = events.slice(0, 4);
 
@@ -305,9 +333,9 @@ export function Overview() {
               <Icon name="alert" />
             </div>
           </div>
-          <div className="metric-value">{issueGroups.length}</div>
+          <div className="metric-value">{issues.length}</div>
           <div className="metric-foot">
-            <span>distinct error signatures in the last {range} (latest {AGGREGATE_EVENT_LIMIT} stored items)</span>
+            <span>unresolved issues from the backend (fingerprint + status)</span>
           </div>
           <div className="sparkline red-line">
             <svg viewBox="0 0 240 48" preserveAspectRatio="none">
@@ -341,9 +369,11 @@ export function Overview() {
               <Icon name="logs" />
             </div>
           </div>
-          <div className="metric-value">{health?.eventsStored ?? 0}</div>
+          <div className="metric-value">
+            {events.length >= AGGREGATE_EVENT_LIMIT ? `${AGGREGATE_EVENT_LIMIT}+` : events.length}
+          </div>
           <div className="metric-foot">
-            <span>polling every {POLL_INTERVAL_MS / 1000}s</span>
+            <span>latest {AGGREGATE_EVENT_LIMIT} stored items · every {POLL_INTERVAL_MS / 1000}s</span>
           </div>
           <div className="sparkline blue-line">
             <svg viewBox="0 0 240 48" preserveAspectRatio="none">
@@ -381,53 +411,62 @@ export function Overview() {
           <div className="panel-header">
             <div>
               <div className="panel-title">Issues requiring attention</div>
-              <div className="panel-subtitle">Grouped by error signature · most frequent first</div>
+              <div className="panel-subtitle">Fingerprinted by the backend · most frequent first</div>
             </div>
             <Action variant="soft" onClick={() => navigate("/issues")}>
               View all issues <Icon name="chevron" size={14} />
             </Action>
           </div>
           <div className="issue-list">
-            {visibleIssues.map((issue) => (
-              <div
-                className="issue-row clickable"
-                key={issue.key}
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(`/issues/${issue.latestEventId}`)}
-                onKeyDown={(navEvent) =>
-                  navEvent.key === "Enter" && navigate(`/issues/${issue.latestEventId}`)
-                }
-              >
-                <div className={`severity ${issue.severity}`}>
-                  <Icon
-                    name={issue.severity === "critical" ? "alert" : issue.severity === "warning" ? "clock" : "code"}
-                    size={16}
-                  />
-                </div>
-                <div className="issue-main">
-                  <div className="issue-title">
-                    <span>{issue.code}</span>
-                    {issue.title}
+            {attentionIssues.map((issue) => {
+              const severity =
+                issue.eventCount >= 10 ? "critical" : issue.eventCount >= 3 ? "warning" : "info";
+              const appName = applications.find((app) => app.id === issue.appId)?.name ?? "";
+              const open = () =>
+                issue.latestEventId && navigate(`/issues/${issue.latestEventId}?issue=${issue.id}`);
+              return (
+                <div
+                  className={`issue-row ${issue.latestEventId ? "clickable" : ""}`}
+                  key={issue.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={open}
+                  onKeyDown={(navEvent) => navEvent.key === "Enter" && open()}
+                >
+                  <div className={`severity ${severity}`}>
+                    <Icon
+                      name={severity === "critical" ? "alert" : severity === "warning" ? "clock" : "code"}
+                      size={16}
+                    />
                   </div>
-                  <div className="issue-meta">
-                    <span>{issue.tag}</span>
-                    <span className="meta-dot">•</span>
-                    <span>{relativeTime(issue.lastSeen)}</span>
+                  <div className="issue-main">
+                    <div className="issue-title">
+                      <span>{issue.id.slice(0, 6).toUpperCase()}</span>
+                      {issue.title}
+                    </div>
+                    <div className="issue-meta">
+                      {appName && (
+                        <>
+                          <span>{appName}</span>
+                          <span className="meta-dot">•</span>
+                        </>
+                      )}
+                      <span>{relativeTime(issue.lastSeen)}</span>
+                    </div>
                   </div>
+                  <div className="issue-stat">
+                    <strong>{issue.eventCount}</strong>
+                    <span>events</span>
+                  </div>
+                  <div className="issue-stat">
+                    <strong>—</strong>
+                    <span>users</span>
+                  </div>
+                  <div className="issue-time">{relativeTime(issue.lastSeen)}</div>
                 </div>
-                <div className="issue-stat">
-                  <strong>{issue.events}</strong>
-                  <span>events</span>
-                </div>
-                <div className="issue-stat">
-                  <strong>{issue.users > 0 ? issue.users : "—"}</strong>
-                  <span>users</span>
-                </div>
-                <div className="issue-time">{relativeTime(issue.lastSeen)}</div>
-              </div>
-            ))}
-            {eventsStatus !== "ready" && (
+              );
+            })}
+            {issuesStatus !== "ready" && (
               <div className="issue-row">
                 <div className="severity info">
                   <Icon name="code" size={16} />
@@ -435,17 +474,17 @@ export function Overview() {
                 <div className="issue-main">
                   <div className="issue-title">
                     <span>—</span>
-                    {eventsStatus === "loading" ? "Loading issues…" : "Could not load issues"}
+                    {issuesStatus === "loading" ? "Loading issues…" : "Could not load issues"}
                   </div>
                   <div className="issue-meta">
-                    {eventsStatus === "loading"
-                      ? "Fetching the latest stored events"
+                    {issuesStatus === "loading"
+                      ? "Reading the issues API"
                       : "Check the backend connection and try again"}
                   </div>
                 </div>
               </div>
             )}
-            {eventsStatus === "ready" && visibleIssues.length === 0 && (
+            {issuesStatus === "ready" && attentionIssues.length === 0 && (
               <div className="issue-row">
                 <div className="severity info">
                   <Icon name="code" size={16} />

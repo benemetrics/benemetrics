@@ -1,3 +1,4 @@
+import nodemailer from "nodemailer";
 import type {
   AlertChannel,
   AlertChannelType,
@@ -30,6 +31,33 @@ function requireString(
   return value;
 }
 
+function optionalString(
+  config: Record<string, unknown>,
+  key: string,
+): string | undefined {
+  const value = config[key];
+  return typeof value === "string" && value ? value : undefined;
+}
+
+function optionalRecord(
+  config: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | undefined {
+  const value = config[key];
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  return value as Record<string, unknown>;
+}
+
+function optionalStringList(
+  config: Record<string, unknown>,
+  key: string,
+): string[] | undefined {
+  const value = config[key];
+  if (!Array.isArray(value)) return undefined;
+  const list = value.map((entry) => String(entry)).filter(Boolean);
+  return list.length > 0 ? list : undefined;
+}
+
 function severityEmoji(severity: AlertSeverity): string {
   switch (severity) {
     case "critical":
@@ -56,9 +84,18 @@ export const webhookNotifier: Notifier = {
   type: "webhook",
   async send(notification, config) {
     const url = requireString(config, "url", "webhook");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    const configured = config.headers;
+    if (configured && typeof configured === "object" && !Array.isArray(configured)) {
+      for (const [name, value] of Object.entries(configured)) {
+        if (typeof value === "string") headers[name] = value;
+      }
+    }
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(notification),
     });
     if (!response.ok) {
@@ -67,8 +104,6 @@ export const webhookNotifier: Notifier = {
   },
 };
 
-// Slack: incoming webhook URL when configured, otherwise the
-// chat.postMessage API (Bearer token + channel).
 export const slackNotifier: Notifier = {
   type: "slack",
   async send(notification, config) {
@@ -157,23 +192,220 @@ export const rocketChatNotifier: Notifier = {
   },
 };
 
-// Email: SMTP delivery via nodemailer is planned. Until then the
-// notifier is a stub — it reports a delivery failure so callers can
-// see the gap, but never breaks alert evaluation.
 export const emailNotifier: Notifier = {
   type: "email",
-  async send() {
-    throw new Error(
-      "email notifier is a stub: SMTP delivery not implemented yet",
-    );
+  async send(notification, config) {
+    const host = requireString(config, "host", "email");
+    const from = requireString(config, "from", "email");
+    const to = requireString(config, "to", "email");
+    const auth = config.auth;
+    const user =
+      auth && typeof auth === "object" && !Array.isArray(auth)
+        ? (auth as Record<string, unknown>).user
+        : undefined;
+    const pass =
+      auth && typeof auth === "object" && !Array.isArray(auth)
+        ? (auth as Record<string, unknown>).pass
+        : undefined;
+
+    const transport = nodemailer.createTransport({
+      host,
+      port: typeof config.port === "number" ? config.port : 587,
+      secure: config.secure === true,
+      ...(typeof user === "string" && typeof pass === "string"
+        ? { auth: { user, pass } }
+        : {}),
+    });
+
+    await transport.sendMail({
+      from,
+      to: to.split(",").map((address) => address.trim()).filter(Boolean),
+      subject: notification.title,
+      text: [
+        notification.message,
+        `severity: ${notification.severity}`,
+        `rule: ${notification.ruleName}`,
+        notification.trigger === "threshold"
+          ? `metric: ${notification.metric} = ${notification.value} (threshold ${notification.threshold})`
+          : `issue: ${notification.issue?.fingerprint ?? "unknown"}`,
+        `occurred at: ${notification.occurredAt}`,
+      ].join("\n"),
+    });
   },
 };
 
-const notifiers: Record<AlertChannelType, Notifier> = {
-  email: emailNotifier,
+function pagerDutySeverity(severity: AlertSeverity): string {
+  switch (severity) {
+    case "critical":
+      return "critical";
+    case "warning":
+      return "error";
+    default:
+      return "warning";
+  }
+}
+
+function opsgeniePriority(severity: AlertSeverity): string {
+  switch (severity) {
+    case "critical":
+      return "P1";
+    case "warning":
+      return "P2";
+    default:
+      return "P3";
+  }
+}
+
+export const pagerDutyNotifier: Notifier = {
+  type: "pagerduty",
+  async send(notification, config) {
+    const routingKey = requireString(config, "routing_key", "pagerduty");
+    const severity = optionalString(config, "severity") ?? pagerDutySeverity(notification.severity);
+    const customDetails = optionalRecord(config, "custom_details");
+    const response = await fetch("https://events.pagerduty.com/v2/envelopes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        routingKey,
+        eventAction: "trigger",
+        payload: {
+          summary: notification.title,
+          source: notification.ruleName,
+          severity,
+          customDetails: {
+            message: notification.message,
+            trigger: notification.trigger,
+            metric: notification.metric,
+            value: notification.value,
+            threshold: notification.threshold,
+            issue: notification.issue?.fingerprint ?? null,
+            occurredAt: notification.occurredAt,
+            ...customDetails,
+          },
+        },
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(
+        `pagerduty events API responded with status ${response.status}`,
+      );
+    }
+  },
+};
+
+export const opsgenieNotifier: Notifier = {
+  type: "opsgenie",
+  async send(notification, config) {
+    const apiKey = requireString(config, "api_key", "opsgenie");
+    const priority = optionalString(config, "priority") ?? opsgeniePriority(notification.severity);
+    const responders = optionalRecord(config, "responders");
+    const tags = optionalStringList(config, "tags");
+    const response = await fetch("https://api.opsgenie.com/v2/alerts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `GenieKey ${apiKey}`,
+      },
+      body: JSON.stringify({
+        message: notification.title,
+        description: notification.message,
+        source: notification.ruleName,
+        priority,
+        ...(responders ? { responders } : {}),
+        ...(tags && tags.length > 0 ? { tags } : {}),
+        details: {
+          trigger: notification.trigger,
+          metric: notification.metric,
+          value: notification.value,
+          threshold: notification.threshold,
+          issue: notification.issue?.fingerprint ?? null,
+          occurredAt: notification.occurredAt,
+        },
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`opsgenie alerts API responded with status ${response.status}`);
+    }
+  },
+};
+
+export const msTeamsNotifier: Notifier = {
+  type: "msteams",
+  async send(notification, config) {
+    const webhookUrl = requireString(config, "webhookUrl", "msteams");
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "message",
+        attachments: [
+          {
+            contentType: "application/vnd.microsoft.card.adaptive",
+            content: {
+              type: "AdaptiveCard",
+              body: [
+                {
+                  type: "TextBlock",
+                  size: "Medium",
+                  weight: "Bolder",
+                  text: notification.title,
+                },
+                { type: "TextBlock", wrap: true, text: notification.message },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(
+        `microsoft teams webhook responded with status ${response.status}`,
+      );
+    }
+  },
+};
+
+export const victorOpsNotifier: Notifier = {
+  type: "victorops",
+  async send(notification, config) {
+    const apiKey = requireString(config, "api_key", "victorops");
+    const routingKey = requireString(config, "routing_key", "victorops");
+    const messageType = optionalString(config, "message_type");
+    const entityDisplayName = optionalString(config, "entity_display_name");
+    const response = await fetch(
+      `https://alert.victorops.com/integrations/generic/20131114/alert/${apiKey}/${routingKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: notification.title,
+          entity_display_name: entityDisplayName ?? notification.ruleName,
+          entity_id: notification.issue?.fingerprint ?? notification.ruleName,
+          ...(messageType ? { message_type: messageType } : {}),
+          state_message: notification.message,
+          monitoring_tool: "Benedebug",
+          severity: notification.severity,
+          timestamp: notification.occurredAt,
+        }),
+      },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `victorops alert API responded with status ${response.status}`,
+      );
+    }
+  },
+};
+
+const notifiers: Partial<Record<AlertChannelType, Notifier>> = {
   webhook: webhookNotifier,
   slack: slackNotifier,
   rocketchat: rocketChatNotifier,
+  email: emailNotifier,
+  pagerduty: pagerDutyNotifier,
+  opsgenie: opsgenieNotifier,
+  msteams: msTeamsNotifier,
+  victorops: victorOpsNotifier,
 };
 
 function formatChatText(notification: AlertNotification): string {
@@ -203,7 +435,6 @@ export interface ThresholdRuleLike {
   windowSeconds: number;
 }
 
-// Shape shared by every rule kind (test sends and issue triggers).
 export interface AlertRuleLike {
   name: string;
   trigger: AlertTrigger;
@@ -259,7 +490,10 @@ export function buildIssueAlertNotification(
   };
 }
 
-export function buildTestNotification(rule: AlertRuleLike): AlertNotification {
+export function buildTestNotification(
+  rule: AlertRuleLike,
+  appId: string | null = null,
+): AlertNotification {
   const isThreshold = rule.trigger === "threshold";
   return {
     title: `Test alert: ${rule.name}`,
@@ -270,13 +504,11 @@ export function buildTestNotification(rule: AlertRuleLike): AlertNotification {
     metric: isThreshold ? rule.metric : null,
     value: isThreshold ? (rule.threshold ?? 0) : null,
     threshold: isThreshold ? (rule.threshold ?? 0) : null,
-    appId: null,
+    appId,
     occurredAt: new Date().toISOString(),
   };
 }
 
-// Each channel is isolated: one failing
-// channel never blocks or fails the others.
 export async function deliverAlertToChannels(
   channels: AlertChannel[],
   notification: AlertNotification,
@@ -293,7 +525,7 @@ export async function deliverAlertToChannels(
         return {
           ...base,
           ok: false,
-          error: `unknown channel type: ${channel.type}`,
+          error: `no notifier for channel type: ${channel.type}`,
         };
       }
       try {

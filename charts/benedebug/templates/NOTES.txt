@@ -1,0 +1,57 @@
+Benedebug is installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+{{- if .Values.ingress.enabled }}
+
+1. Open the UI:
+
+{{- range .Values.ingress.hosts }}
+{{- $scheme := "http" }}
+{{- range $.Values.ingress.tls }}
+{{- if has (printf "%s" $.host) .hosts }}{{ $scheme = "https" }}{{ end }}
+{{- end }}
+   {{ $scheme }}://{{ .host }}/ui
+{{- end }}
+
+2. Sign in with the admin token. It is the master credential
+   (`Authorization: API-Key <token>`):
+
+{{- if .Values.adminToken }}
+   {{ .Values.adminToken }}
+{{- else }}
+   kubectl --namespace {{ .Release.Namespace }} get secret {{ include "benedebug.secretName" . }} \
+     -o jsonpath='{.data.admin-token}' | base64 -d; echo
+{{- end }}
+
+{{- if .Values.oidc.issuer }}
+
+   An OIDC provider is configured ({{ .Values.issuer | default .Values.oidc.issuer }}): the browser
+   login is the authorization-code + PKCE flow, and the admin token stays valid.
+{{- end }}
+{{- else }}
+
+1. The API is reachable in-cluster:
+
+   kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "benedebug.fullname" . }}-backend {{ .Values.backend.service.port }}:{{ .Values.backend.service.port }}
+   curl -H "Authorization: API-Key <admin-token>" http://127.0.0.1:{{ .Values.backend.service.port }}/api/admin/projects
+{{- end }}
+
+{{- if .Values.dependencies.nats.enabled }}
+
+The live feed (the browser subscribes to NATS over WebSocket) needs the
+WebSocket listener to be reachable from the browser. The UI falls back to
+ws://<ui-host>:{{ .Values.nats.websocketPort }}, so publish that
+port (dependencies.nats.websocket.service.type) or point the deployment at
+your own ws:// endpoint.
+{{- end }}
+
+{{- if .Values.consumer.enabled }}
+
+The side-effects consumer applies the Postgres transitions (issues, alerts,
+releases). Check it with:
+
+   kubectl --namespace {{ .Release.Namespace }} logs deploy/{{ include "benedebug.fullname" . }}-consumer
+{{- end }}
+
+Run the smoke test:
+
+   helm --namespace {{ .Release.Namespace }} test {{ .Release.Name }}

@@ -7,12 +7,9 @@ import type {
 import type { EnvelopeHeader } from "../protocol/envelope-header";
 import type { ItemHeader } from "../protocol/item-header";
 
-// OTLP status codes (0 = unset, 1 = ok, 2 = error).
 const STATUS_OK = 1;
 const STATUS_ERROR = 2;
 
-// OTLP span kinds (1 = internal, 2 = server, 3 = client,
-// 4 = producer, 5 = consumer).
 const KIND_SERVER = 2;
 const KIND_CLIENT = 3;
 const KIND_PRODUCER = 4;
@@ -27,13 +24,14 @@ export interface OtlpEnvelope {
   id: string;
   envelopeHeader: string;
   envelopeItems: string;
+  // Kept beside the serialized envelope so the caller need not re-parse.
+  items: Array<{ header: ItemHeader; payload: unknown }>;
 }
 
 function randomHex(length: number): string {
   return crypto.randomUUID().replace(/-/g, "").slice(0, length);
 }
 
-// OTLP JSON encodes 64-bit integers as decimal strings.
 function nanoToSeconds(
   nano: string | number | undefined,
 ): number | undefined {
@@ -65,9 +63,6 @@ function unwrapValue(value: OtlpAnyValue | undefined): unknown {
   return undefined;
 }
 
-// Attributes become Sentry tags (string-valued, like
-// Sentry's own tag model). sentry.measurement.* keys are
-// measurements instead and are skipped here.
 function toTags(
   attributes: OtlpKeyValue[] | undefined,
   out: Record<string, string> = {},
@@ -176,10 +171,6 @@ function buildChildSpan(span: OtlpSpan): Record<string, unknown> {
   };
 }
 
-// Converts an OTLP/JSON ExportTraceServiceRequest into
-// Sentry transaction envelopes: one per trace id, with the
-// root span as the transaction (segment) and the remaining
-// spans of the trace as its child spans.
 export function convertOtlpToEnvelopes(
   raw: string,
 ): OtlpEnvelope[] | null {
@@ -225,8 +216,6 @@ export function convertOtlpToEnvelopes(
         .map((item) => item.span.spanId)
         .filter((id): id is string => Boolean(id)),
     );
-    // The segment is the first span whose parent is absent
-    // or outside the batch.
     const segmentIndex = items.findIndex(
       (item) =>
         !item.span.parentSpanId || !spanIds.has(item.span.parentSpanId),
@@ -255,6 +244,7 @@ export function convertOtlpToEnvelopes(
       id: eventId,
       envelopeHeader: JSON.stringify(header),
       envelopeItems: JSON.stringify([{ header: itemHeader, payload: transaction }]),
+      items: [{ header: itemHeader, payload: transaction }],
     });
   }
   return envelopes;

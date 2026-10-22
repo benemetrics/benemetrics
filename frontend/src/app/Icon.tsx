@@ -18,6 +18,7 @@ export type IconName =
   | "more"
   | "release"
   | "search"
+  | "shield"
   | "spark"
   | "stack";
 
@@ -117,6 +118,7 @@ const paths: Record<IconName, ReactNode> = {
       <path d="m8 12 3 3 5-6" />
     </>
   ),
+  shield: <path d="M12 3 5 6v5c0 4.4 2.9 8.4 7 10 4.1-1.6 7-5.6 7-10V6l-7-3Z" />,
   search: (
     <>
       <circle cx="11" cy="11" r="7" />

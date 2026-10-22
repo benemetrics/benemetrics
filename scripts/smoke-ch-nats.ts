@@ -15,8 +15,9 @@
  */
 
 import { createClient, type ClickHouseClient } from "@clickhouse/client";
-import { AckPolicy, StorageType, connect } from "nats";
-import type { JetStreamManager, NatsConnection } from "nats";
+import { AckPolicy, StorageType, jetstream, jetstreamManager } from "@nats-io/jetstream";
+import type { JetStreamManager } from "@nats-io/jetstream";
+import { connect, type NatsConnection } from "@nats-io/transport-node";
 
 const NATS_SERVERS = process.env.NATS_SERVERS || "nats://localhost:4222";
 const CH_NATS_URL = process.env.CLICKHOUSE_NATS_URL || "nats:4222";
@@ -90,7 +91,7 @@ async function main(): Promise<void> {
 
     log(`connecting to NATS at ${NATS_SERVERS}`);
     nc = await connect({ servers: NATS_SERVERS });
-    const jsm = await nc.jetstreamManager();
+    const jsm = await jetstreamManager(nc);
     manager = jsm;
 
     await jsm.streams.delete(STREAM).catch(() => {});
@@ -127,7 +128,7 @@ async function main(): Promise<void> {
     await clickhouse.command({
       query: `
         CREATE MATERIALIZED VIEW ${SINK_MV} TO ${SINK}
-        AS SELECT id, value, type, now() AS receivedAt FROM ${QUEUE} WHERE type != 'clear'
+        AS SELECT id, value, type, now() AS receivedAt FROM ${QUEUE}
       `,
     });
     log("ClickHouse NATS engine table and materialized view created");
@@ -135,7 +136,7 @@ async function main(): Promise<void> {
     const payload = new TextEncoder().encode(
       JSON.stringify({ id: EVENT_ID, value: 42, type: "envelope" }),
     );
-    await nc.jetstream().publish(SUBJECT, payload);
+    await jetstream(nc).publish(SUBJECT, payload);
     log(`published ${EVENT_ID} to ${SUBJECT}`);
 
     await waitFor("the event in ClickHouse", 30_000, async () => {

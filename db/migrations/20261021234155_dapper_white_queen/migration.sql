@@ -1,0 +1,1 @@
+ALTER TABLE "permission_grants" ADD COLUMN "can_write" integer DEFAULT 0 NOT NULL;

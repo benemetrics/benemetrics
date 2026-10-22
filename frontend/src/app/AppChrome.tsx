@@ -4,6 +4,7 @@ import { AppSidebar } from "./AppSidebar";
 import { Topbar } from "./Topbar";
 import { MobileNavBar } from "./MobileNavBar";
 import { Toaster } from "./Toaster";
+import { AuthPrompt } from "./AuthPrompt";
 
 export function AppChrome() {
   return (
@@ -18,6 +19,7 @@ export function AppChrome() {
         </div>
         <MobileNavBar />
         <Toaster />
+        <AuthPrompt />
       </div>
     </WorkspaceProvider>
   );

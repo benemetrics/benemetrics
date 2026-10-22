@@ -11,6 +11,8 @@ import {
   setAdminToken,
 } from "../lib/api";
 import { POLL_INTERVAL_MS } from "../lib/utils";
+import { subscribeLiveFeed } from "../lib/live-events";
+import { loadAllPages } from "../lib/cursor";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -21,13 +23,12 @@ function initials(name: string): string {
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { project, application, adminUser } = useWorkspace();
+  const { project, application, adminUser, isAdmin } = useWorkspace();
   const projectId = project?.id;
   const applicationId = application?.id;
   const [issueCount, setIssueCount] = useState(0);
   const [issueCountCapped, setIssueCountCapped] = useState(false);
   const [alertCount, setAlertCount] = useState(0);
-  const [health, setHealth] = useState<{ status: string; eventsStored: number } | null>(null);
   const [healthState, setHealthState] = useState<"loading" | "ok" | "down">("loading");
   const [sessionOpen, setSessionOpen] = useState(false);
   const [tokenDraft, setTokenDraft] = useState(() => getAdminToken());
@@ -41,41 +42,33 @@ export function AppSidebar() {
     let cancelled = false;
     const load = async () => {
       try {
+        const terms = ["is:unresolved"];
+        if (applicationId) terms.push(`app:${applicationId}`);
+        else if (projectId) terms.push(`project:${projectId}`);
         const result = await listIssues({
-          projectId,
-          appId: applicationId,
-          status: "unresolved",
-          limit: 1,
+          query: terms.join(" "),
+          limit: 100,
         });
-        const body = result?.data as {
-          pagination?: { total: number };
-        } | null;
-        const total = body?.pagination?.total ?? 0;
+        const list = (result?.data as { data?: unknown[] } | null)?.data ?? [];
         if (!cancelled) {
-          setIssueCount(Math.min(total, 99));
-          setIssueCountCapped(total > 99);
+          // No totals with cursor pagination: show what the first page
+          // holds and flag a full page as "more than shown".
+          setIssueCount(Math.min(list.length, 99));
+          setIssueCountCapped(list.length >= 100);
         }
       } catch {
         // keep last counts on failure
       }
       try {
-        const rules = await api.api.admin.alerting.rules.get();
-        const list = ((rules?.data as { data?: { isEnabled: boolean }[] })?.data ?? []);
+        const list = await loadAllPages<{ id: string; isEnabled: boolean }>(async (cursor, limit) => {
+          const result = await api.api.admin.alerting.rules.get({
+            $query: { limit, ...(cursor ? { cursor } : {}) },
+          });
+          return (result?.data as { data?: { id: string; isEnabled: boolean }[] } | null)?.data ?? [];
+        });
         if (!cancelled) setAlertCount(list.filter((rule) => rule.isEnabled).length);
       } catch {
         // keep last counts on failure
-      }
-      try {
-        const healthResult = await api.health.get();
-        if (cancelled) return;
-        if (healthResult?.data) {
-          setHealth(healthResult.data);
-          setHealthState("ok");
-        } else {
-          setHealthState("down");
-        }
-      } catch {
-        if (!cancelled) setHealthState("down");
       }
     };
     load();
@@ -85,6 +78,15 @@ export function AppSidebar() {
       clearInterval(interval);
     };
   }, [projectId, applicationId]);
+
+  // The health signal is the live feed's connection: one WebSocket to NATS
+  // replaces the health probe.
+  useEffect(() => {
+    const close = subscribeLiveFeed({
+      onStatus: (status) => setHealthState(status === "connected" ? "ok" : "down"),
+    });
+    return close;
+  }, []);
 
   return (
     <aside className="sidebar">
@@ -98,7 +100,7 @@ export function AppSidebar() {
       <ProjectSwitcher />
 
       <nav className="nav-list" aria-label="Main navigation">
-        {NAV.map((item) => (
+        {NAV.filter((item) => isAdmin || !item.adminOnly).map((item) => (
           <div
             key={item.path}
             className={`nav-item ${location.pathname === item.path ? "active" : ""}`}
@@ -166,11 +168,16 @@ export function AppSidebar() {
         )}
         {project && (
           <div className="workspace-plan" style={{ padding: "8px 11px 0" }}>
+            {!isAdmin && (
+              <div className="workspace-plan" style={{ padding: "8px 11px 0" }}>
+                Read-only access
+              </div>
+            )}
             {healthState === "down"
-              ? "Backend unreachable — retrying"
+              ? "Live feed disconnected — retrying"
               : healthState === "loading"
-                ? "Checking backend…"
-                : `${health?.eventsStored ?? 0} events stored`}
+                ? "Connecting to the live feed…"
+                : "Live feed connected"}
           </div>
         )}
       </div>

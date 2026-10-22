@@ -1,0 +1,25 @@
+apiVersion: v2
+name: benedebug
+description: Benedebug — a lightweight Sentry alternative (errors, performance, feature flags, alerting) on Bun, NATS, ClickHouse and Postgres.
+type: application
+
+# The chart version. Bump it on every template change.
+version: 0.1.0
+
+# The app version. Defaults to the image tag when the tag is empty.
+appVersion: "0.1.0"
+
+keywords:
+  - sentry
+  - error-tracking
+  - observability
+  - performance
+  - feature-flags
+  - alerting
+
+home: https://github.com/acme/benedebug
+sources:
+  - https://github.com/acme/benedebug
+
+annotations:
+  category: Monitoring

@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "./Icon";
+import { useWorkspace } from "./WorkspaceContext";
 import { MOBILE_MORE_NAV, MOBILE_NAV } from "./workspace";
 
 export function MobileNavBar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAdmin } = useWorkspace();
   const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
@@ -26,7 +28,7 @@ export function MobileNavBar() {
 
   return (
     <nav className="mobile-nav" aria-label="Mobile navigation">
-      {MOBILE_NAV.map((item) => (
+      {MOBILE_NAV.filter((item) => isAdmin || !item.adminOnly).map((item) => (
         <div
           key={item.path}
           className={location.pathname === item.path ? "active" : ""}
@@ -52,7 +54,7 @@ export function MobileNavBar() {
       </div>
       {moreOpen && (
         <div className="mobile-more-menu">
-          {MOBILE_MORE_NAV.map((item) => (
+          {MOBILE_MORE_NAV.filter((item) => isAdmin || !item.adminOnly).map((item) => (
             <div
               key={item.path}
               className={location.pathname === item.path ? "active" : ""}

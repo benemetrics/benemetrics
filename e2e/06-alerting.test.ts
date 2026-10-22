@@ -6,8 +6,8 @@
  */
 
 import * as Sentry from "@sentry/bun";
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
-import { clearStoredEvents, startTestServer, waitForEventListItem, type TestServer } from "./test-helpers";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { startTestServer, waitForEventListItem, type TestServer } from "./test-helpers";
 
 let SERVER_URL = "";
 let testServer: TestServer | null = null;
@@ -28,7 +28,7 @@ async function apiRequest(
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Bearer e2e-admin-token",
+      Authorization: "API-Key e2e-admin-token",
     },
   };
   if (body !== undefined) {
@@ -59,10 +59,6 @@ async function waitForEvent(eventId: string, timeout: number = 5000): Promise<Te
   return null;
 }
 
-async function clearEvents(): Promise<void> {
-  await clearStoredEvents(SERVER_URL);
-}
-
 function initSentryForTest(config: { dsn: string; release?: string }): void {
   const { init } = require("@sentry/bun");
   init({
@@ -82,7 +78,6 @@ beforeAll(async () => {
   testServer = await startTestServer();
   SERVER_URL = testServer.baseUrl;
   if (!DSN) DSN = testServer.dsn;
-  await clearEvents();
 });
 
 afterAll(() => {
@@ -91,23 +86,13 @@ afterAll(() => {
 
 describe("Alerting (06-alerting.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN });
   });
 
-  afterAll(async () => {
-    await clearEvents();
-  });
-
   beforeEach(async () => {
-    await clearEvents();
     // Clear Sentry SDK isolation scope breadcrumbs to prevent cross-test contamination
     const { getIsolationScope } = require("@sentry/bun");
     getIsolationScope()._breadcrumbs = [];
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("sends check-in for cron job start (in_progress) and fetches it", async () => {
@@ -119,13 +104,7 @@ describe("Alerting (06-alerting.md)", () => {
 
     await Sentry.flush(5000);
 
-    const checkInEvent = await waitForEventListItem(
-      SERVER_URL,
-      (item) => item.itemTypes.includes("check_in"),
-    );
-    expect(checkInEvent).toBeDefined();
-
-    const checkIn = await fetchEvent(checkInEvent!.id);
+    const checkIn = await waitForEvent(checkInId);
     expect(checkIn).toBeDefined();
     expect((checkIn as any).monitor_slug).toBe("nightly-backup");
     expect((checkIn as any).status).toBe("in_progress");
@@ -141,13 +120,7 @@ describe("Alerting (06-alerting.md)", () => {
 
     await Sentry.flush(5000);
 
-    const checkInEvent = await waitForEventListItem(
-      SERVER_URL,
-      (item) => item.itemTypes.includes("check_in"),
-    );
-    expect(checkInEvent).toBeDefined();
-
-    const checkIn = await fetchEvent(checkInEvent!.id);
+    const checkIn = await waitForEvent(checkInId);
     expect(checkIn).toBeDefined();
     expect((checkIn as any).status).toBe("ok");
     expect((checkIn as any).duration).toBe(300);
@@ -163,13 +136,7 @@ describe("Alerting (06-alerting.md)", () => {
 
     await Sentry.flush(5000);
 
-    const checkInEvent = await waitForEventListItem(
-      SERVER_URL,
-      (item) => item.itemTypes.includes("check_in"),
-    );
-    expect(checkInEvent).toBeDefined();
-
-    const checkIn = await fetchEvent(checkInEvent!.id);
+    const checkIn = await waitForEvent(checkInId);
     expect(checkIn).toBeDefined();
     expect((checkIn as any).status).toBe("error");
     expect((checkIn as any).duration).toBe(50);
@@ -225,9 +192,17 @@ describe("Alerting (06-alerting.md)", () => {
 
     await Sentry.flush(5000);
 
-    const transactionEvent = await waitForEventListItem(
+    const transactionEvent = await waitForEventListItem<{
+      id: string;
+      itemTypes: string[];
+      transaction?: { transaction?: string };
+    }>(
       SERVER_URL,
-      (item) => item.itemTypes.includes("transaction"),
+      (item) =>
+        item.itemTypes.includes("transaction") &&
+        item.transaction?.transaction === "GET /api/slow-endpoint",
+      15000,
+      testServer!.appId,
     );
     expect(transactionEvent).toBeDefined();
 
@@ -250,6 +225,8 @@ describe("Alerting (06-alerting.md)", () => {
     const feedbackEvent = await waitForEventListItem(
       SERVER_URL,
       (item) => item.itemTypes.includes("feedback"),
+      10000,
+      testServer!.appId,
     );
     expect(feedbackEvent).toBeDefined();
 

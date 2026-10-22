@@ -4,7 +4,7 @@ import { Action } from "../Action";
 import { Icon } from "../Icon";
 import { ScreenIntro } from "../ScreenIntro";
 import { useWorkspace } from "../WorkspaceContext";
-import { api, type AppDto, type EnvironmentDto } from "../../lib/api";
+import { api, listEvents, type AppDto, type EnvironmentDto } from "../../lib/api";
 import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils";
 import { notify } from "../../lib/toast";
 import { platformSymbol } from "../../lib/platform";
@@ -30,6 +30,7 @@ export function Projects() {
   const {
     project,
     environments,
+    environment,
     refreshApplications,
     refreshEnvironments,
     refreshProjects,
@@ -37,7 +38,8 @@ export function Projects() {
   } = useWorkspace();
   const [apps, setApps] = useState<AppDto[]>([]);
   const [appsStatus, setAppsStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [health, setHealth] = useState<{ status: string; eventsStored: number } | null>(null);
+  const [eventsStored, setEventsStored] = useState(0);
+  const [eventsCapped, setEventsCapped] = useState(false);
   const [creating, setCreating] = useState(false);
   const [appName, setAppName] = useState("");
   const [appPlatform, setAppPlatform] = useState(PLATFORMS[0]!);
@@ -101,10 +103,16 @@ export function Projects() {
     let cancelled = false;
     const load = async () => {
       try {
-        const result = await api.health.get();
-        if (!cancelled && result?.data) setHealth(result.data);
+        // Cursor pagination carries no total: show the first page's size and
+        // mark a full page as "at least this many".
+        const result = await listEvents({ projectId, limit: 100 });
+        const list = (result?.data as { data?: unknown[] } | null)?.data ?? [];
+        if (!cancelled) {
+          setEventsStored(list.length);
+          setEventsCapped(list.length >= 100);
+        }
       } catch {
-        // keep the last health on failure
+        // keep the last count on failure
       }
     };
     load();
@@ -113,13 +121,17 @@ export function Projects() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []);
+  }, [projectId]);
 
   const create = async () => {
     const name = appName.trim();
     if (!project || !name) return;
     try {
-      const created = (await api.api.admin.projects[project.id].apps.post({ name, platform: appPlatform }))?.data;
+      const created = (await api.api.admin.projects[project.id].apps.post({
+        name,
+        platform: appPlatform,
+        environment: environment?.slug,
+      }))?.data;
       if (!created) {
         notify(`Could not create "${name}" — check the name and try again.`);
         return;
@@ -327,7 +339,7 @@ export function Projects() {
         </div>
         <div className="project-health">
           <span></span>
-          {health?.eventsStored ?? 0} events stored
+          {eventsCapped ? "100+" : eventsStored} events stored
         </div>
       </section>
       <div className="section-label-row">
@@ -437,7 +449,7 @@ export function Projects() {
           <div className="new-app-card" style={{ cursor: "default" }}>
             <div className="new-app-plus">+</div>
             <strong>Add application</strong>
-            <span>Connect another service</span>
+            <span>Connect another service{environment ? ` in ${environment.name}` : ""}</span>
             <div className="create-project-inline" style={{ marginTop: 16, width: "100%" }}>
               <input
                 className="inline-project-input"
@@ -480,7 +492,7 @@ export function Projects() {
           >
             <div className="new-app-plus">+</div>
             <strong>Add application</strong>
-            <span>Connect another service</span>
+            <span>Connect another service{environment ? ` in ${environment.name}` : ""}</span>
           </div>
         )}
       </section>

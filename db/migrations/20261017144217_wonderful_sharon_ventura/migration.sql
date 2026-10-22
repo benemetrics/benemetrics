@@ -1,1 +1,0 @@
-DROP TABLE "dsn_records";

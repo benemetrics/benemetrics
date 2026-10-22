@@ -17,7 +17,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import app from "../backend/index";
 
-const ADMIN_TOKEN = "Bearer e2e-admin-token";
+const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const ORG = "default";
 const RELEASE = "ui-1.0.0";
 
@@ -72,7 +72,7 @@ async function uploadMultipart(
 async function waitForIssue(timeoutMs = 15000): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const response = await adminRequest("GET", `/api/admin/issues?appId=${appRecord.id}`);
+    const response = await adminRequest("GET", `/api/admin/issues?query=${encodeURIComponent(`app:${appRecord.id}`)}`);
     const body = (await response.json()) as { data?: Array<{ status: string }> };
     if (body.data?.some((issue) => issue.status === "unresolved")) return;
     await Bun.sleep(100);

@@ -1,15 +1,10 @@
-// Issue-state transitions for an ingested event:
-//   - a fingerprint never seen for the app  → new issue
-//   - a resolved issue that gets an event   → regression (reopened)
-// Every transition is race-safe at the database level, so concurrent
-// deliveries of the same event never double-fire an alert.
 
 import { issueDAO } from "db/dao/issues";
+import { extractEventItems } from "../events/utils";
 import {
-  extractEventItems,
-  issueFingerprint,
-  issueTitle,
-} from "../events/utils";
+  issueDigestsFromPayloads,
+  type IssueDigest,
+} from "./grouping";
 
 export interface TrackedIssue {
   id: string;
@@ -22,58 +17,92 @@ export interface IssueTrackingResult {
   regressions: TrackedIssue[];
 }
 
+// The digests of a message: the ones the ingest handler attached, or — for
+// a message published before the digest existed — the ones extracted from
+// the envelope items.
+export function parseIssueDigests(
+  issueEvents: string | undefined,
+  envelopeItems: string,
+): IssueDigest[] {
+  if (issueEvents) {
+    try {
+      const digests = JSON.parse(issueEvents);
+      if (Array.isArray(digests)) return digests as IssueDigest[];
+    } catch {
+      // Fall through to the envelope items.
+    }
+  }
+  return issueDigestsFromPayloads(extractEventItems(envelopeItems));
+}
+
 export async function trackIssuesForEvent(
   appId: string,
-  envelopeItems: string,
+  digests: IssueDigest[],
   receivedAt: string,
   latestEventId: string,
 ): Promise<IssueTrackingResult> {
-  // One transition per fingerprint even when the envelope carries
-  // several event items of the same issue.
-  const payloads = new Map<string, Record<string, unknown>>();
-  for (const payload of extractEventItems(envelopeItems)) {
-    const fingerprint = issueFingerprint(payload);
-    if (!payloads.has(fingerprint)) payloads.set(fingerprint, payload);
+  // One entry per fingerprint: the first digest plus the occurrence count.
+  const occurrences = new Map<string, { digest: IssueDigest; count: number }>();
+  for (const digest of digests) {
+    const existing = occurrences.get(digest.fingerprint);
+    if (existing) existing.count += 1;
+    else occurrences.set(digest.fingerprint, { digest, count: 1 });
   }
 
-  const newIssues: TrackedIssue[] = [];
-  const regressions: TrackedIssue[] = [];
+  const tracked = await Promise.all(
+    [...occurrences].map(
+      async ([
+        fingerprint,
+        { digest, count },
+      ]): Promise<{
+        newIssue?: TrackedIssue;
+        regression?: TrackedIssue;
+      }> => {
+        const occurrence = {
+          receivedAt,
+          latestEventId,
+          occurrences: count,
+          title: digest.title,
+          culprit: digest.culprit,
+          level: digest.level,
+          type: digest.type,
+          release: digest.release,
+        };
+        const created = await issueDAO.createIfNew({
+          appId,
+          fingerprint,
+          title: digest.title,
+          culprit: digest.culprit,
+          level: digest.level,
+          type: digest.type,
+          firstRelease: digest.release,
+          lastRelease: digest.release,
+          eventCount: count,
+          firstSeen: receivedAt,
+          lastSeen: receivedAt,
+          latestEventId,
+        });
+        if (created) {
+          return { newIssue: { id: created.id, fingerprint: created.fingerprint, title: created.title } };
+        }
 
-  for (const [fingerprint, payload] of payloads) {
-    const created = await issueDAO.createIfNew({
-      appId,
-      fingerprint,
-      title: issueTitle(payload),
-      firstSeen: receivedAt,
-      lastSeen: receivedAt,
-      latestEventId,
-    });
-    if (created) {
-      newIssues.push({
-        id: created.id,
-        fingerprint: created.fingerprint,
-        title: created.title,
-      });
-      continue;
-    }
+        const regressed = await issueDAO.regressIfResolved(
+          appId,
+          fingerprint,
+          occurrence,
+        );
+        if (regressed) {
+          return { regression: { id: regressed.id, fingerprint: regressed.fingerprint, title: regressed.title } };
+        }
 
-    const regressed = await issueDAO.regressIfResolved(
-      appId,
-      fingerprint,
-      receivedAt,
-      latestEventId,
-    );
-    if (regressed) {
-      regressions.push({
-        id: regressed.id,
-        fingerprint: regressed.fingerprint,
-        title: regressed.title,
-      });
-      continue;
-    }
+        await issueDAO.markSeen(appId, fingerprint, occurrence);
+        return {};
+      },
+    ),
+  );
 
-    await issueDAO.markSeen(appId, fingerprint, receivedAt, latestEventId);
-  }
-
-  return { newIssues, regressions };
+  return {
+    newIssues: tracked.flatMap((entry) => (entry.newIssue ? [entry.newIssue] : [])),
+    regressions: tracked.flatMap((entry) => (entry.regression ? [entry.regression] : [])),
+  };
 }

@@ -4,6 +4,7 @@ import { Action } from "../Action";
 import { Icon } from "../Icon";
 import { ScreenIntro } from "../ScreenIntro";
 import { api, type SegmentDto } from "../../lib/api";
+import { loadAllPages } from "../../lib/cursor";
 import { notify } from "../../lib/toast";
 
 type FlagType = "boolean" | "string" | "number" | "json";
@@ -56,18 +57,65 @@ export function NewFeatureFlag() {
   const [audience, setAudience] = useState<SegmentDto[]>([]);
   const [audienceStatus, setAudienceStatus] = useState<"loading" | "ready" | "error">("loading");
   const [selectedSegments, setSelectedSegments] = useState<string[]>([]);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
+  const [apps, setApps] = useState<Array<{ id: string; name: string }>>([]);
+  const [projectId, setProjectId] = useState("");
+  const [appId, setAppId] = useState("");
   const [newSegmentOpen, setNewSegmentOpen] = useState(false);
   const [newSegmentName, setNewSegmentName] = useState("");
   const [newSegmentDescription, setNewSegmentDescription] = useState("");
   const [newSegmentRules, setNewSegmentRules] = useState("");
 
   useEffect(() => {
+    void (async () => {
+      try {
+        const rows = await loadAllPages<{ id: string; name: string }>(
+          async (cursor, limit) => {
+            const result = await api.api.admin.projects.get({
+              $query: { limit, ...(cursor ? { cursor } : {}) },
+            });
+            return (
+              (result?.data as { data?: { id: string; name: string }[] } | null)
+                ?.data ?? []
+            );
+          },
+        );
+        setProjects(rows);
+        if (rows.length > 0) setProjectId((current) => current || rows[0]!.id);
+      } catch {
+        // The picker stays empty; the create will report the missing scope.
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!projectId) {
+      setApps([]);
+      return;
+    }
+    void (async () => {
+      try {
+        const result = await api.api.admin.projects[projectId].get();
+        const detail = result?.data as { apps?: { id: string; name: string }[] } | null;
+        setApps(detail?.apps ?? []);
+      } catch {
+        setApps([]);
+      }
+    })();
+  }, [projectId]);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const result = await api.api.admin.segments.get();
+        const segments = await loadAllPages<SegmentDto>(async (cursor, limit) => {
+          const result = await api.api.admin.segments.get({
+            $query: { limit, ...(cursor ? { cursor } : {}) },
+          });
+          return (result?.data as { data?: SegmentDto[] } | null)?.data ?? [];
+        });
         if (!cancelled) {
-          setAudience((result?.data as { data?: SegmentDto[] } | null)?.data ?? []);
+          setAudience(segments);
           setAudienceStatus("ready");
         }
       } catch {
@@ -171,6 +219,8 @@ export function NewFeatureFlag() {
           type,
           defaultValue: parsed.value as string | number | boolean,
           segments: audienceIds,
+          projectId,
+          ...(appId ? { appId } : {}),
         }),
       );
       if (!created?.id) {
@@ -260,6 +310,41 @@ export function NewFeatureFlag() {
                   setKey(slugify(event.target.value));
                 }}
               />
+            </div>
+            <div className="form-field">
+              <span>Project</span>
+              <select
+                className="field-control"
+                aria-label="Flag project"
+                value={projectId}
+                onChange={(event) => {
+                  setProjectId(event.target.value);
+                  setAppId("");
+                }}
+              >
+                <option value="">Select a project</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-field">
+              <span>App (optional)</span>
+              <select
+                className="field-control"
+                aria-label="Flag app"
+                value={appId}
+                onChange={(event) => setAppId(event.target.value)}
+              >
+                <option value="">The whole project</option>
+                {apps.map((app) => (
+                  <option key={app.id} value={app.id}>
+                    {app.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="form-field full">
               <span>Description</span>

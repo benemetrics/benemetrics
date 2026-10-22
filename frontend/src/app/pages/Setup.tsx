@@ -2,13 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Icon } from "../Icon";
 import { Action } from "../Action";
-import {
-  api,
-  ingestEnvelope,
-  type AppDto,
-  type ProjectDto,
-} from "../../lib/api";
+import { api, appDsn, ingestEnvelope, listEvents, type AppDto, type ProjectDto } from "../../lib/api";
 import { platformSymbol } from "../../lib/platform";
+import { loadAllPages } from "../../lib/cursor";
 import { notify } from "../../lib/toast";
 import { POLL_INTERVAL_MS } from "../../lib/utils";
 
@@ -50,16 +46,19 @@ export function Setup() {
   const [testing, setTesting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [output, setOutput] = useState<string | null>(null);
-  const [baseline, setBaseline] = useState<number | null>(null);
+  const [pendingEventId, setPendingEventId] = useState<string | null>(null);
   const [received, setReceived] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const projectsResult = await api.api.admin.projects.get();
-        const projectList: ProjectDto[] =
-          (projectsResult?.data as { data?: ProjectDto[] } | null)?.data ?? [];
+        const projectList = await loadAllPages<ProjectDto>(async (cursor, limit) => {
+          const result = await api.api.admin.projects.get({
+            $query: { limit, ...(cursor ? { cursor } : {}) },
+          });
+          return (result?.data as { data?: ProjectDto[] } | null)?.data ?? [];
+        });
         const allApps: AppDto[] = [];
         for (const project of projectList) {
           const detail = await api.api.admin.projects[project.id].get();
@@ -89,14 +88,14 @@ export function Setup() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!pendingEventId || !app?.id) return;
     const load = async () => {
       try {
-        const result = await api.health.get();
-        const stored = result?.data?.eventsStored;
-        if (cancelled || stored == null) return;
-        if (baseline != null && stored > baseline) {
-          setReceived(true);
-        }
+        // The newest event for this app is the test event once it lands;
+        // ingest is asynchronous (NATS → ClickHouse), so poll for its id.
+        const result = await listEvents({ appId: app.id, limit: 1 });
+        const newest = (result?.data as { data?: { id: string }[] } | null)?.data?.[0];
+        if (!cancelled && newest?.id === pendingEventId) setReceived(true);
       } catch {
         // keep waiting on failure
       }
@@ -107,9 +106,9 @@ export function Setup() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [baseline]);
+  }, [pendingEventId, app?.id]);
 
-  const dsn = app?.dsn ?? null;
+  const dsn = app ? appDsn(app) : null;
   const appProject = projects.find((item) => item.id === app?.projectId) ?? null;
   const symbol = platformSymbol(app?.platform ?? "web");
 
@@ -199,8 +198,7 @@ export function Setup() {
       });
       if (result?.id) {
         setOutput(`Accepted — stored as ${String(result.id).slice(0, 8)}…`);
-        const healthResult = await api.health.get();
-        setBaseline(healthResult?.data?.eventsStored ?? null);
+        setPendingEventId(eventId);
       } else {
         setOutput(`Rejected — ${JSON.stringify(result)}`);
         notify("The test event was rejected. Check the application's ingest key.");

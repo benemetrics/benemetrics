@@ -1,5 +1,17 @@
+import { env } from "bun";
 import { sourceMapTokenDAO, hashUploadToken } from "db/dao/source-map-tokens";
-import type { SourceMapToken } from "db/schema/source-map-tokens";
+import type { SourceMapTokenAuthRecord } from "db/dao/source-map-tokens";
+import { forbidden, unauthorized } from "backend/errors";
+import * as jose from "jose";
+import * as client from 'openid-client';
+import {
+  NO_READ_PERMISSION_MESSAGE,
+  isScopedReadPath,
+  requireScopedRead,
+  resolveAccessForIdentity,
+} from './permissions/engine';
+import type { PermissionScope } from './protocol/permissions';
+
 
 export interface SentryAuthTarget {
   publicKey: string;
@@ -10,21 +22,134 @@ export interface SentryAuthResult {
   publicKey?: string;
 }
 
-export interface AdminAuthResult {
-  valid: boolean;
-  user?: {
-    id: string;
-    email: string;
-    name: string;
-    roles: string[];
-  };
-  error?: string;
-}
-
 export interface UploadAuthResult {
   valid: boolean;
   error?: string;
-  token?: SourceMapToken;
+  token?: SourceMapTokenAuthRecord;
+}
+
+const config = env.OIDC_ISSUER && env.OIDC_CLIENT_ID
+  ? await client.discovery(new URL(env.OIDC_ISSUER), env.OIDC_CLIENT_ID, env.OIDC_CLIENT_SECRET)
+  : null
+const jwksURI = config?.serverMetadata().jwks_uri;
+const jwks = jwksURI ? jose.createRemoteJWKSet(new URL(jwksURI), { timeoutDuration: 5_000, cacheMaxAge: 600_000 }) : null;
+
+// The groups claim, split on the delimiters the common IdPs use.
+function readGroups(payload: jose.JWTPayload): string[] {
+  const claim = env.OIDC_GROUPS_CLAIM ?? "groups";
+  const raw = payload[claim];
+  const list = Array.isArray(raw)
+    ? raw
+    : typeof raw === "string"
+      ? raw.split(/[\s,;|]+/)
+      : [];
+  return list
+    .map((group) => String(group).trim().toLowerCase())
+    .filter((group) => group.length > 0);
+}
+
+const verifyWithIdP = async (token: string) => {
+  if (!jwks) return null;
+  const clientId = env.OIDC_CLIENT_ID ?? env.OAUTH_CLIENT_ID;
+  const issuer = env.OIDC_ISSUER;
+  try {
+    const { payload } = await jose.jwtVerify(token, jwks, {
+      audience: clientId,
+      // The issuer must be the configured one; the trailing slash is
+      // normalized, the way the providers write it.
+      ...(issuer
+        ? { issuer: [issuer, issuer.replace(/\/+$/, "")] }
+        : {}),
+    });
+    // The authorized party must be this client.
+    if (payload.azp !== undefined && payload.azp !== clientId) return null;
+    return { id: `${payload.iss}-${payload.sub}`, groups: readGroups(payload) };
+  } catch {
+    return null;
+  }
+}
+
+// The three credential surfaces of the API:
+// - public: no credential (the UI bundle, the root redirect)
+// - dsn: the SDK public key (ingestion, the flag evaluation)
+// - oidc: the admin token (the master credential) or a verified provider identity (the admin surface)
+//
+// Every oidc route group resolves the identity through `resolveIdentity`,
+// so the credential check lives in one place and fails closed before any handler runs.
+
+export interface Identity {
+  /** The id every grant keys on: `local-admin` or `<issuer>-<subject>`. */
+  id: string;
+  /** The token's groups claim, lowercased. */
+  groups: string[];
+  /** The master admin token — unrestricted, never scoped. */
+  admin: boolean;
+}
+
+export async function resolveIdentity({ request }: { request: Request }): Promise<Identity> {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader) throw unauthorized();
+
+  const [type, token] = authHeader.split(" ");
+  if (!type || !token) throw unauthorized();
+
+  switch (type) {
+    case "API-Key": {
+      const expected = env.ADMIN_TOKEN ? Buffer.from(env.ADMIN_TOKEN) : null;
+      const given = Buffer.from(token);
+      // The length check keeps a wrong-length credential a 401: the
+      // constant-time compare throws on a mismatch.
+      if (expected && given.length === expected.length && crypto.timingSafeEqual(given, expected)) {
+        return { id: "local-admin", groups: [], admin: true };
+      }
+      throw unauthorized();
+    }
+    case "Bearer": {
+      const identity = await verifyWithIdP(token);
+      if (identity) return { ...identity, admin: false };
+      throw unauthorized();
+    }
+    default: throw unauthorized();
+  }
+}
+
+// Elysia merges a resolve's return value into the context, so the identity
+// travels as `adminId` / `adminGroups` / `isAdmin` / `adminScope` / `canWrite`.
+export async function resolveAdminId({ request }: { request: Request }): Promise<{
+  adminId: string;
+  adminGroups: string[];
+  isAdmin: boolean;
+  adminScope: PermissionScope | null;
+  canWrite: boolean;
+}> {
+  const identity = await resolveIdentity({ request });
+  if (identity.admin) {
+    return {
+      adminId: identity.id,
+      adminGroups: identity.groups,
+      isAdmin: true,
+      adminScope: null,
+      canWrite: true,
+    };
+  }
+  const access = await resolveAccessForIdentity(identity);
+  if (!access) throw unauthorized(NO_READ_PERMISSION_MESSAGE);
+  // The reads are allowlisted; a writer may also perform the writes.
+  if (access.canWrite) {
+    const isRead = request.method === "GET" || request.method === "HEAD";
+    if (isRead && !isScopedReadPath(new URL(request.url).pathname)) {
+      throw forbidden("Scoped identities are read-only");
+    }
+  } else {
+    requireScopedRead(request);
+  }
+  return {
+    adminId: identity.id,
+    adminGroups: identity.groups,
+    isAdmin: false,
+    adminScope: access.scope,
+    canWrite: access.canWrite,
+  };
 }
 
 // Sentry SDK authentication: the DSN public key is sent either as the
@@ -41,101 +166,6 @@ export function validateAuth(request: Request, target: SentryAuthTarget): Sentry
   return { valid: sentryKey === target.publicKey, publicKey: sentryKey };
 }
 
-const ADMIN_USER = {
-  id: "admin-1",
-  email: "admin@company.com",
-  name: "Admin User",
-  roles: ["admin"],
-};
-
-// An identity provider is considered configured when any of its settings
-// are present in the environment. No OIDC/OAuth flow is implemented yet;
-// the flag only forces admin credentials on the dev-open UI surfaces.
-export function isAuthProviderConfigured(): boolean {
-  return Boolean(
-    process.env.OIDC_ISSUER ||
-      process.env.OIDC_CLIENT_ID ||
-      process.env.OAUTH_ISSUER ||
-      process.env.OAUTH_CLIENT_ID,
-  );
-}
-
-// Whether admin credentials are enforced on the UI surfaces that are
-// otherwise open in dev (/events, /storage). Always enforced in
-// production, or when ADMIN_TOKEN / an identity provider is configured.
-export function adminAuthEnforced(): boolean {
-  return (
-    Boolean(process.env.ADMIN_TOKEN) ||
-    process.env.NODE_ENV === "production" ||
-    isAuthProviderConfigured()
-  );
-}
-
-// Startup banner so the effective admin auth mode is never a guess: identity
-// provider vs ADMIN_TOKEN vs locked. Never prints secrets.
-export function logAuthMode(): void {
-  if (isAuthProviderConfigured()) {
-    console.log(
-      "[Auth] OIDC/OAuth2 is configured — admin API requires the identity provider; ADMIN_TOKEN is ignored",
-    );
-    return;
-  }
-
-  if (process.env.ADMIN_TOKEN) {
-    console.log("[Auth] ADMIN_TOKEN is set — admin API requires the configured token");
-    return;
-  }
-
-  console.warn(
-    "[Auth] ADMIN_TOKEN is not set — /api/admin/* rejects every request (set ADMIN_TOKEN to log in)",
-  );
-}
-
-function constantTimeEquals(a: string, b: string): boolean {
-  const encoder = new TextEncoder();
-  const left = encoder.encode(a);
-  const right = encoder.encode(b);
-  if (left.length !== right.length) return false;
-  return crypto.timingSafeEqual(left, right);
-}
-
-// Admin token check, shared by HTTP (Authorization header) and WebSocket
-// upgrades (browsers cannot set headers, so the token may arrive as a query
-// parameter instead). ADMIN_TOKEN is the credential only while no
-// OIDC/OAuth2 env is configured; once a provider is configured the token is
-// ignored and the provider flow takes over (not implemented yet, so this
-// fails closed instead of silently falling back).
-export function validateAdminToken(
-  token: string | null | undefined,
-): AdminAuthResult {
-  if (isAuthProviderConfigured()) {
-    return { valid: false, error: "Identity provider authentication required" };
-  }
-
-  if (!token) {
-    return { valid: false, error: "Missing or invalid Authorization header" };
-  }
-
-  const adminToken = process.env.ADMIN_TOKEN;
-  if (adminToken && constantTimeEquals(token, adminToken)) {
-    return { valid: true, user: { ...ADMIN_USER } };
-  }
-
-  return { valid: false, error: "Invalid or expired token" };
-}
-
-// Admin authentication: Bearer ADMIN_TOKEN, accepted only while no identity
-// provider is configured.
-export function validateAdminAuth(request: Request): AdminAuthResult {
-  const authHeader = request.headers.get("Authorization");
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return { valid: false, error: "Missing or invalid Authorization header" };
-  }
-
-  return validateAdminToken(authHeader.slice(7).trim());
-}
-
 // Tokens are scoped to one project + environment and stored hashed;
 // only the bearer (SENTRY_AUTH_TOKEN) or X-Upload-Token header is accepted.
 export async function validateUploadAuth(
@@ -147,7 +177,6 @@ export async function validateUploadAuth(
     request.headers.get("X-Upload-Token");
 
   if (!raw) return { valid: false, error: "Missing upload token" };
-
   const token = await sourceMapTokenDAO.findByHash(hashUploadToken(raw));
   if (!token) return { valid: false, error: "Invalid upload token" };
   if (token.revokedAt)

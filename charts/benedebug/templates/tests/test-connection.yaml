@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "benedebug.fullname" . }}-test-connection"
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: api
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      env:
+        - name: BASE_URL
+          value: "http://{{ include "benedebug.fullname" . }}-backend:{{ .Values.backend.service.port }}"
+        - name: ADMIN_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "benedebug.secretName" . }}
+              key: admin-token
+      command:
+        - bun
+        - -e
+        - |
+          const base = process.env.BASE_URL!;
+          const headers = { Authorization: `API-Key ${process.env.ADMIN_TOKEN}` };
+          const projects = await fetch(`${base}/api/admin/projects`, { headers });
+          if (!projects.ok) {
+            console.error(`the admin API answered ${projects.status}`);
+            process.exit(1);
+          }
+          const body = (await projects.json()) as { data: unknown[] };
+          console.log(`the admin API is reachable — ${body.data.length} project(s) configured`);

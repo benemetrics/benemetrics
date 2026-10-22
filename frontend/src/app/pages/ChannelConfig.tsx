@@ -3,15 +3,28 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Action } from "../Action";
 import { ScreenIntro } from "../ScreenIntro";
 import { api, type AlertChannelDto, type AlertRuleDto } from "../../lib/api";
+import { loadAllPages } from "../../lib/cursor";
 import { notify } from "../../lib/toast";
 
-type ChannelType = "slack" | "rocketchat" | "email" | "webhook";
+type ChannelType =
+  | "slack"
+  | "rocketchat"
+  | "email"
+  | "webhook"
+  | "pagerduty"
+  | "opsgenie"
+  | "msteams"
+  | "victorops";
 
 const TYPE_NAMES: Record<ChannelType, string> = {
   slack: "Slack",
   rocketchat: "Rocket.Chat",
   email: "Email",
   webhook: "Webhook",
+  pagerduty: "PagerDuty",
+  opsgenie: "Opsgenie",
+  msteams: "Microsoft Teams",
+  victorops: "VictorOps",
 };
 
 const TYPE_MARKS: Record<ChannelType, string> = {
@@ -19,6 +32,10 @@ const TYPE_MARKS: Record<ChannelType, string> = {
   rocketchat: "R",
   email: "@",
   webhook: "↗",
+  pagerduty: "P",
+  opsgenie: "O",
+  msteams: "T",
+  victorops: "V",
 };
 
 function unwrapOne<T>(response: unknown): T | null {
@@ -26,13 +43,6 @@ function unwrapOne<T>(response: unknown): T | null {
   const candidate = response as { data?: T | null; error?: unknown };
   if (candidate.error) return null;
   return candidate.data ?? null;
-}
-
-function unwrapList<T>(response: unknown): T[] {
-  if (!response || typeof response !== "object") return [];
-  const candidate = response as { data?: { data?: T[] } | null; error?: unknown };
-  if (candidate.error) return [];
-  return candidate.data?.data ?? [];
 }
 
 function configString(config: Record<string, unknown>, key: string): string {
@@ -51,6 +61,8 @@ export function ChannelConfig() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [token, setToken] = useState("");
   const [slackChannel, setSlackChannel] = useState("");
+  const [routingKey, setRoutingKey] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -75,15 +87,25 @@ export function ChannelConfig() {
         setStatus("ready");
 
         const [globalRules, appRules] = await Promise.all([
-          api.api.admin.alerting.rules.get(),
+          loadAllPages<AlertRuleDto>(async (cursor, limit) => {
+            const result = await api.api.admin.alerting.rules.get({
+              $query: { limit, ...(cursor ? { cursor } : {}) },
+            });
+            return (result?.data as { data?: AlertRuleDto[] } | null)?.data ?? [];
+          }),
           loaded.appId
-            ? api.api.admin.alerting.rules.get({ $query: { appId: loaded.appId } })
-            : Promise.resolve(null),
+            ? loadAllPages<AlertRuleDto>(async (cursor, limit) => {
+                const result = await api.api.admin.alerting.rules.get({
+                  $query: { appId: loaded.appId, limit, ...(cursor ? { cursor } : {}) },
+                });
+                return (result?.data as { data?: AlertRuleDto[] } | null)?.data ?? [];
+              })
+            : Promise.resolve([] as AlertRuleDto[]),
         ]);
         if (!cancelled) {
           const byId = new Map<string, AlertRuleDto>();
-          for (const rule of unwrapList<AlertRuleDto>(globalRules)) byId.set(rule.id, rule);
-          for (const rule of unwrapList<AlertRuleDto>(appRules)) byId.set(rule.id, rule);
+          for (const rule of globalRules) byId.set(rule.id, rule);
+          for (const rule of appRules) byId.set(rule.id, rule);
           setRules([...byId.values()]);
         }
       } catch {
@@ -107,6 +129,12 @@ export function ChannelConfig() {
       config = webhookUrl.trim()
         ? { webhookUrl: webhookUrl.trim() }
         : { token: token.trim(), channel: slackChannel.trim() };
+    }
+    if (type === "pagerduty") config = { routing_key: routingKey.trim() };
+    if (type === "opsgenie") config = { api_key: apiKey.trim() };
+    if (type === "msteams") config = { webhookUrl: webhookUrl.trim() };
+    if (type === "victorops") {
+      config = { api_key: apiKey.trim(), routing_key: routingKey.trim() };
     }
     setSaving(true);
     try {
@@ -206,6 +234,58 @@ export function ChannelConfig() {
                       onChange={(event) => setWebhookUrl(event.target.value)}
                     />
                   </div>
+                )}
+                {type === "pagerduty" && (
+                  <div className="form-field full">
+                    <span>Routing key</span>
+                    <input
+                      className="field-control code-value"
+                      value={routingKey}
+                      onChange={(event) => setRoutingKey(event.target.value)}
+                    />
+                  </div>
+                )}
+                {type === "opsgenie" && (
+                  <div className="form-field full">
+                    <span>API key</span>
+                    <input
+                      className="field-control code-value"
+                      type="password"
+                      value={apiKey}
+                      onChange={(event) => setApiKey(event.target.value)}
+                    />
+                  </div>
+                )}
+                {type === "msteams" && (
+                  <div className="form-field full">
+                    <span>Incoming webhook URL</span>
+                    <input
+                      className="field-control code-value"
+                      value={webhookUrl}
+                      onChange={(event) => setWebhookUrl(event.target.value)}
+                    />
+                  </div>
+                )}
+                {type === "victorops" && (
+                  <>
+                    <div className="form-field">
+                      <span>API key</span>
+                      <input
+                        className="field-control code-value"
+                        type="password"
+                        value={apiKey}
+                        onChange={(event) => setApiKey(event.target.value)}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <span>Routing key</span>
+                      <input
+                        className="field-control code-value"
+                        value={routingKey}
+                        onChange={(event) => setRoutingKey(event.target.value)}
+                      />
+                    </div>
+                  </>
                 )}
                 {type === "slack" && (
                   <>

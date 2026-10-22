@@ -2,8 +2,27 @@ import { db } from "db";
 import { releases, type Release, type ReleaseInsert } from "db/schema/releases";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
+import { cursorAfter, cursorLimit } from "./cursor";
 
 type ReleaseCreateInput = Omit<ReleaseInsert, "id"> & { id?: string };
+
+// Every release field is part of the API response; the projection keeps
+// the response shape stable if the table grows more columns.
+const releaseFields = {
+  id: releases.id,
+  appId: releases.appId,
+  version: releases.version,
+  ref: releases.ref,
+  url: releases.url,
+  owner: releases.owner,
+  status: releases.status,
+  firstSeen: releases.firstSeen,
+  lastSeen: releases.lastSeen,
+  eventCount: releases.eventCount,
+  latestEventId: releases.latestEventId,
+  createdAt: releases.createdAt,
+  updatedAt: releases.updatedAt,
+};
 
 async function insertRelease(data: ReleaseCreateInput) {
   const now = new Date().toISOString();
@@ -16,7 +35,7 @@ async function insertRelease(data: ReleaseCreateInput) {
       updatedAt: now,
     })
     .onConflictDoNothing({ target: [releases.appId, releases.version] })
-    .returning();
+    .returning(releaseFields);
   return created;
 }
 
@@ -32,7 +51,7 @@ export const releaseDAO = {
   findById: async (id: string): Promise<Release | undefined> =>
     (
       await db
-        .select()
+        .select(releaseFields)
         .from(releases)
         .where(eq(releases.id, id))
         .limit(1)
@@ -50,7 +69,7 @@ export const releaseDAO = {
   ): Promise<Release | undefined> =>
     (
       await db
-        .select()
+        .select(releaseFields)
         .from(releases)
         .where(and(eq(releases.appId, appId), eq(releases.version, version)))
         .limit(1)
@@ -105,39 +124,38 @@ export const releaseDAO = {
         // Redelivered events must not be counted twice.
         where: sql`${releases.latestEventId} is distinct from ${event.eventId}`,
       })
-      .returning();
+      .returning(releaseFields);
     if (row) return row;
     return releaseDAO.findByAppAndVersionOrThrow(appId, version);
   },
 
   list: async (options: {
     appId?: string;
-    page?: number;
+    cursor?: string;
     limit?: number;
-  }): Promise<{
-    data: Release[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
-  }> => {
-    const page = options.page ?? 1;
-    const limit = options.limit ?? 20;
-    const offset = (page - 1) * limit;
-    const where = options.appId ? eq(releases.appId, options.appId) : undefined;
+  }): Promise<{ data: Release[] }> => {
+    const limit = cursorLimit(options.limit);
+    // Releases without an event yet fall back to the creation time, so the
+    // keyset order matches the coalesced sort expression exactly.
+    const sort = sql`coalesce(${releases.lastSeen}, ${releases.createdAt})`;
+    const scope = options.appId ? eq(releases.appId, options.appId) : undefined;
+    const { condition, empty } = await cursorAfter(
+      releases,
+      releases.id,
+      sort,
+      options.cursor,
+    );
+    if (empty) return { data: [] };
+    const where = scope && condition ? and(scope, condition) : (scope ?? condition);
 
-    const [rows, total] = await Promise.all([
-      db
-        .select()
-        .from(releases)
-        .where(where)
-        .orderBy(desc(sql`coalesce(${releases.lastSeen}, ${releases.createdAt})`))
-        .limit(limit)
-        .offset(offset),
-      db.$count(releases, where),
-    ]);
+    const data = await db
+      .select(releaseFields)
+      .from(releases)
+      .where(where)
+      .orderBy(desc(sort), desc(releases.id))
+      .limit(limit);
 
-    return {
-      data: rows,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-    };
+    return { data };
   },
 
   updateOrThrow: async (id: string, data: Partial<ReleaseInsert>) => {
@@ -146,7 +164,7 @@ export const releaseDAO = {
         .update(releases)
         .set({ ...data, updatedAt: new Date().toISOString() })
         .where(eq(releases.id, id))
-        .returning()
+        .returning(releaseFields)
     )[0];
     if (!updated) throw notFound("Release", id);
     return updated;

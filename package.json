@@ -5,9 +5,10 @@
   "private": true,
   "scripts": {
     "typecheck": "bun check",
-    "test": "bun test --parallel=1 tests/ e2e/",
+    "test": "eval \"$(bun scripts/oidc-fixture.ts)\" && bun test --parallel=1 backend/tests/ e2e/",
     "dev": "bun --hot backend/index.ts",
     "start": "bun backend/index.ts",
+    "consumer": "bun backend/consumer.ts",
     "test:error-tracking": "bun test e2e/01-error-tracking.test.ts",
     "test:error-tracking-ui": "bun test e2e/01-error-tracking-ui.test.ts",
     "test:release-tracking": "bun test e2e/02-release-tracking.test.ts",
@@ -15,15 +16,17 @@
     "test:session-replay": "bun test e2e/04-session-replay.test.ts",
     "test:breadcrumbs": "bun test e2e/05-breadcrumbs.test.ts",
     "test:alerting": "bun test e2e/06-alerting.test.ts",
-    "test:alerting-rules": "bun test tests/16-alerting-rules.test.ts",
+    "test:alerting-rules": "bun test backend/tests/16-alerting-rules.test.ts",
     "test:authentication": "bun test e2e/08-authentication.test.ts",
     "test:feature-flags": "bun test e2e/09-feature-flags.test.ts",
-    "test:projects": "bun test tests/12-projects-apps.test.ts"
+    "test:projects": "bun test backend/tests/12-projects-apps.test.ts"
   },
   "dependencies": {
     "@clickhouse/client": "^1.24.1",
     "@electric-sql/pglite": "^0.5.10",
     "@elysiajs/eden": "^1.4.9",
+    "@nats-io/jetstream": "^3.4.0",
+    "@nats-io/transport-node": "^3.4.0",
     "@sentry/bun": "^8.0.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -31,14 +34,17 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "1.0.0-rc.4",
     "elysia": "^1.4.30",
+    "jose": "^6.2.12",
     "lucide-react": "^1.56.0",
-    "nats": "^2.29.3",
     "nats.ws": "^1.30.3",
+    "nodemailer": "^10.1.7",
+    "openid-client": "^6.8.8",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
     "rrweb-player": "^2.1.7",
-    "tailwindcss": "4"
+    "tailwindcss": "4",
+    "waddler": "0.1.1"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.3",

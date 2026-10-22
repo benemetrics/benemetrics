@@ -22,6 +22,11 @@ RUN sed -i 's|href="./global.css"|href="./global.compiled.css"|' frontend/index.
 # https://bun.com/docs/bundler/fullstack#ahead-of-time-bundling
 RUN bun build --target=bun --production --outdir=dist ./backend/index.ts
 
+# The side-effects consumer is the second entry point of the same image:
+# it applies the Postgres side effects (issues, alerts, releases) from the
+# durable pull consumer.
+RUN bun build --target=bun --production --outdir=dist ./backend/consumer.ts
+
 # Drizzle reads db/migrations and the PGlite fallback loads its WASM/data
 # assets from disk at runtime, relative to the bundle directory
 RUN cp -r db/migrations dist/migrations \
@@ -43,6 +48,11 @@ ENV NODE_ENV=production
 ENV PORT=31337
 
 EXPOSE 31337
+
+# Container liveness — the API has no health endpoint, so the root redirect
+# to the UI is the liveness signal.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD ["bun", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT || 31337) + '/', { redirect: 'manual' }).then((r) => process.exit(r.status < 400 ? 0 : 1)).catch(() => process.exit(1))"]
 
 # Run the server
 CMD ["bun", "index.js"]

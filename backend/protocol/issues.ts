@@ -1,8 +1,5 @@
-// An issue is unresolved until it is resolved through the admin API;
-// a new event on a resolved issue reopens it (a regression).
 export type IssueStatus = "unresolved" | "resolved";
 
-// Compact issue reference carried by alert notifications.
 export interface IssueSummary {
   fingerprint: string;
   title: string;
@@ -13,11 +10,15 @@ export interface Issue {
   appId: string;
   fingerprint: string;
   title: string;
+  culprit: string | null;
+  level: string;
+  type: "error" | "message";
+  firstRelease: string | null;
+  lastRelease: string | null;
   status: IssueStatus;
   eventCount: number;
   firstSeen: string;
   lastSeen: string;
-  /** Stored event id of the most recent occurrence (null for legacy rows). */
   latestEventId: string | null;
   createdAt: string;
   updatedAt: string;

@@ -10,14 +10,8 @@ import {
   type AlertRuleDto,
 } from "../../lib/api";
 import { notify } from "../../lib/toast";
+import { loadAllPages } from "../../lib/cursor";
 import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils";
-
-function unwrapList<T>(response: unknown): T[] {
-  if (!response || typeof response !== "object") return [];
-  const candidate = response as { data?: { data?: T[] } | null; error?: unknown };
-  if (candidate.error) return [];
-  return candidate.data?.data ?? [];
-}
 
 interface EffectiveAlertConfig {
   channels: AlertChannelDto[];
@@ -49,14 +43,29 @@ export function Alerts() {
     const load = async () => {
       try {
         const [rulesResult, channelsResult, incidentsResult] = await Promise.all([
-          api.api.admin.alerting.rules.get(),
-          api.api.admin.alerting.channels.get(),
-          api.api.admin.alerting.incidents.get(),
+          loadAllPages<AlertRuleDto>(async (cursor, limit) => {
+            const result = await api.api.admin.alerting.rules.get({
+              $query: { limit, ...(cursor ? { cursor } : {}) },
+            });
+            return (result?.data as { data?: AlertRuleDto[] } | null)?.data ?? [];
+          }),
+          loadAllPages<AlertChannelDto>(async (cursor, limit) => {
+            const result = await api.api.admin.alerting.channels.get({
+              $query: { limit, ...(cursor ? { cursor } : {}) },
+            });
+            return (result?.data as { data?: AlertChannelDto[] } | null)?.data ?? [];
+          }),
+          loadAllPages<AlertIncidentDto>(async (cursor, limit) => {
+            const result = await api.api.admin.alerting.incidents.get({
+              $query: { limit, ...(cursor ? { cursor } : {}) },
+            });
+            return (result?.data as { data?: AlertIncidentDto[] } | null)?.data ?? [];
+          }),
         ]);
         if (cancelled) return;
-        setRules(unwrapList(rulesResult));
-        setChannels(unwrapList(channelsResult));
-        setIncidents(unwrapList(incidentsResult));
+        setRules(rulesResult);
+        setChannels(channelsResult);
+        setIncidents(incidentsResult);
         setStatus("ready");
       } catch {
         // keep the current lists on failure, but stop the loading state

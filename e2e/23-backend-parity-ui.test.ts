@@ -16,7 +16,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import app from "../backend/index";
 
-const ADMIN_TOKEN = "Bearer e2e-admin-token";
+const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const PROJECT_NAME = `Parity UI Project ${Date.now()}`;
 const SEGMENT_NAME = `Paying customers ${Date.now()}`;
 const TOKEN_NAME = `Upload token ${Date.now()}`;
@@ -26,6 +26,9 @@ const RULE_NAME = `Parity rule ${Date.now()}`;
 
 let baseUrl = "";
 let view: Bun.WebView;
+// The DSN public key of the app the SDK surfaces authenticate with.
+let appPublicKey = "";
+let projectId = "";
 
 const adminHeaders = () => ({
   "Content-Type": "application/json",
@@ -150,12 +153,14 @@ describe("Backend parity — admin UI surfaces", () => {
     const project = (await (
       await adminRequest("POST", "/api/admin/projects", { name: PROJECT_NAME })
     ).json()) as { id: string };
+    projectId = project.id;
     const appRecord = (await (
       await adminRequest("POST", `/api/admin/projects/${project.id}/apps`, {
         name: "Parity App",
         platform: "web",
       })
-    ).json()) as { id: string; environment: { id: string } };
+    ).json()) as { id: string; publicKey: string; environment: { id: string } };
+    appPublicKey = appRecord.publicKey;
 
     // Segment fixture (rules use the targeting-rule shape).
     await adminRequest("POST", "/api/admin/segments", {
@@ -319,5 +324,50 @@ describe("Backend parity — admin UI surfaces", () => {
     await clickNav("Segments");
     const segmentsBody = await waitForTextInUI(segmentName);
     expect(segmentsBody).toContain(segmentName);
+  }, 30000);
+
+  it("renders the experiment Results dashboard", async () => {
+    const stamp = Date.now();
+    const created = await adminRequest("POST", "/api/admin/feature-flags", {
+      projectId,
+      key: `results-${stamp}`,
+      name: `Results flag ${stamp}`,
+      type: "boolean",
+      defaultValue: false,
+      variants: [
+        { key: "control", name: "Control", value: false, weight: 50 },
+        { key: "treatment", name: "Treatment", value: true, weight: 50 },
+      ],
+      experiment: { enabled: true, primaryMetric: "conversion" },
+    });
+    const flag = (await created.json()) as { id: string; key: string };
+    await adminRequest("POST", `/api/admin/feature-flags/${flag.id}/status`, {
+      status: "active",
+    });
+
+    // Persist a few assignments so the dashboard has participants. The
+    // SDK surface authenticates with the DSN public key.
+    for (let i = 0; i < 12; i++) {
+      const evaluateUrl = new URL(`${baseUrl}/api/sentry/flags/evaluate`);
+      evaluateUrl.searchParams.set("sentry_key", appPublicKey);
+      await fetch(evaluateUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user: { id: `results-user-${stamp}-${i}` },
+          flags: [flag.key],
+        }),
+      });
+    }
+
+    await clickNav("Feature flags");
+    await waitForTextInUI(flag.key);
+    expect(await clickRowAction(flag.key, "Results")).toBe(true);
+
+    const panel = await waitForTextInUI("Primary metric");
+    // innerText reflects the CSS-uppercased table header.
+    expect(panel).toContain("PARTICIPANTS");
+    expect(panel).toContain("95% CI");
+    expect(panel).toContain("Recommendation");
   }, 30000);
 });

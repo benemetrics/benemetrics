@@ -6,8 +6,8 @@
  */
 
 import * as Sentry from "@sentry/bun";
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
-import { clearStoredEvents, startTestServer, waitForEventListItem, type TestServer } from "./test-helpers";
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { startTestServer, waitForEventListItem, type TestServer } from "./test-helpers";
 
 let SERVER_URL = "";
 let testServer: TestServer | null = null;
@@ -16,6 +16,10 @@ interface TestResult {
   id: string;
   itemTypes: string[];
   [key: string]: unknown;
+}
+
+interface EventListItem extends TestResult {
+  transaction?: { transaction?: string };
 }
 
 async function apiRequest(
@@ -28,7 +32,7 @@ async function apiRequest(
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Bearer e2e-admin-token",
+      Authorization: "API-Key e2e-admin-token",
     },
   };
   if (body !== undefined) {
@@ -59,10 +63,6 @@ async function waitForEvent(eventId: string, timeout: number = 5000): Promise<Te
   return null;
 }
 
-async function clearEvents(): Promise<void> {
-  await clearStoredEvents(SERVER_URL);
-}
-
 function initSentryForTest(config: { dsn: string; release?: string }): void {
   const { init } = require("@sentry/bun");
   init({
@@ -82,7 +82,6 @@ beforeAll(async () => {
   testServer = await startTestServer();
   SERVER_URL = testServer.baseUrl;
   if (!DSN) DSN = testServer.dsn;
-  await clearEvents();
 });
 
 afterAll(() => {
@@ -91,20 +90,7 @@ afterAll(() => {
 
 describe("Performance Monitoring (03-performance-monitoring.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("creates and finishes a span (transaction) and fetches it", async () => {
@@ -120,9 +106,13 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
     await Sentry.flush(5000);
 
-    const transactionEvent = await waitForEventListItem(
+    const transactionEvent = await waitForEventListItem<EventListItem>(
       SERVER_URL,
-      (item) => item.itemTypes.includes("transaction"),
+      (item) =>
+        item.itemTypes.includes("transaction") &&
+        item.transaction?.transaction === "GET /api/users/:id",
+      15000,
+      testServer!.appId,
     );
     expect(transactionEvent).toBeDefined();
 
@@ -165,9 +155,13 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
     await Sentry.flush(5000);
 
-    const transactionEvent = await waitForEventListItem(
+    const transactionEvent = await waitForEventListItem<EventListItem>(
       SERVER_URL,
-      (item) => item.itemTypes.includes("transaction"),
+      (item) =>
+        item.itemTypes.includes("transaction") &&
+        item.transaction?.transaction === "POST /api/orders",
+      15000,
+      testServer!.appId,
     );
     expect(transactionEvent).toBeDefined();
 
@@ -195,9 +189,13 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
     await Sentry.flush(5000);
 
-    const transactionEvent = await waitForEventListItem(
+    const transactionEvent = await waitForEventListItem<EventListItem>(
       SERVER_URL,
-      (item) => item.itemTypes.includes("transaction"),
+      (item) =>
+        item.itemTypes.includes("transaction") &&
+        item.transaction?.transaction === "GET /dashboard",
+      15000,
+      testServer!.appId,
     );
     expect(transactionEvent).toBeDefined();
 
@@ -223,9 +221,13 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
     await Sentry.flush(5000);
 
-    const transactionEvent = await waitForEventListItem(
+    const transactionEvent = await waitForEventListItem<EventListItem>(
       SERVER_URL,
-      (item) => item.itemTypes.includes("transaction"),
+      (item) =>
+        item.itemTypes.includes("transaction") &&
+        item.transaction?.transaction === "GET /api/products",
+      15000,
+      testServer!.appId,
     );
     expect(transactionEvent).toBeDefined();
 
@@ -246,9 +248,13 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
     await Sentry.flush(5000);
 
-    const transactionEvent = await waitForEventListItem(
+    const transactionEvent = await waitForEventListItem<EventListItem>(
       SERVER_URL,
-      (item) => item.itemTypes.includes("transaction"),
+      (item) =>
+        item.itemTypes.includes("transaction") &&
+        item.transaction?.transaction === "GET /api/failing",
+      15000,
+      testServer!.appId,
     );
     expect(transactionEvent).toBeDefined();
 
@@ -301,9 +307,13 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
     expect(result).toBeDefined();
     await Sentry.flush(5000);
 
-    const transactionEvent = await waitForEventListItem(
+    const transactionEvent = await waitForEventListItem<EventListItem>(
       SERVER_URL,
-      (item) => item.itemTypes.includes("transaction"),
+      (item) =>
+        item.itemTypes.includes("transaction") &&
+        item.transaction?.transaction === "GET /api/continued",
+      15000,
+      testServer!.appId,
     );
     expect(transactionEvent).toBeDefined();
 

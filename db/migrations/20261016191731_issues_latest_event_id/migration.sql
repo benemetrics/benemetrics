@@ -1,1 +1,0 @@
-ALTER TABLE "issues" ADD COLUMN "latest_event_id" text;

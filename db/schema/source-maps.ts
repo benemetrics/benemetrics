@@ -4,6 +4,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { isoTimestamp } from "./timestamps";
 
 // A source map artifact uploaded for a release. `filename` is the
 // artifact name sentry-cli sends (the --url-prefix path, e.g.
@@ -19,7 +20,7 @@ export const sourceMaps = pgTable(
     dist: text("dist"),
     filename: text("filename").notNull(),
     mapJson: text("map_json").notNull(),
-    createdAt: text("created_at").notNull(),
+    createdAt: isoTimestamp("created_at").notNull(),
   },
   (table) => ({
     projectIdIdx: index("source_maps_project_id_idx").on(table.projectId),

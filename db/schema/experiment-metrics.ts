@@ -4,6 +4,7 @@ import {
   real,
   index,
 } from "drizzle-orm/pg-core";
+import { isoTimestamp } from "./timestamps";
 
 export const experimentMetrics = pgTable(
   "experiment_metrics",
@@ -14,7 +15,7 @@ export const experimentMetrics = pgTable(
     userId: text("user_id").notNull(),
     metricName: text("metric_name").notNull(),
     value: real("value").notNull().default(1),
-    recordedAt: text("recorded_at").notNull(),
+    recordedAt: isoTimestamp("recorded_at").notNull(),
   },
   (table) => ({
     flagMetricIdx: index("experiment_metrics_flag_metric_idx").on(

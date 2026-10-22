@@ -1,32 +1,57 @@
 import { db } from "db";
 import {
   alertIncidents,
-  type AlertIncidentRow,
   type AlertIncidentInsert,
 } from "db/schema/alert-incidents";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
+import type {
+  AlertIncident,
+  AlertIncidentStatus,
+  AlertMetric,
+  AlertTrigger,
+} from "backend/protocol/alerting";
+import { cursorAfter, cursorLimit, type CursorPage } from "./cursor";
+import type { Executor } from "./executor";
 
 type AlertIncidentCreateInput = Omit<AlertIncidentInsert, "id"> & {
   id?: string;
 };
 
+// The enum-ish text columns are cast to the protocol unions in the read.
+const incidentFields = {
+  id: alertIncidents.id,
+  ruleId: alertIncidents.ruleId,
+  appId: alertIncidents.appId,
+  trigger: sql<AlertTrigger>`${alertIncidents.trigger}`,
+  metric: sql<AlertMetric | null>`${alertIncidents.metric}`,
+  value: alertIncidents.value,
+  threshold: alertIncidents.threshold,
+  issueFingerprint: alertIncidents.issueFingerprint,
+  status: sql<AlertIncidentStatus>`${alertIncidents.status}`,
+  triggeredAt: alertIncidents.triggeredAt,
+  resolvedAt: alertIncidents.resolvedAt,
+};
+
 export const alertIncidentDAO = {
-  create: async (data: AlertIncidentCreateInput) => {
-    const [created] = await db
+  create: async (
+    data: AlertIncidentCreateInput,
+    executor: Executor = db,
+  ) => {
+    const [created] = await executor
       .insert(alertIncidents)
       .values({ ...data, id: data.id ?? crypto.randomUUID() })
-      .returning();
+      .returning(incidentFields);
     if (!created) {
       throw internalError("Failed to create alert incident");
     }
     return created;
   },
 
-  findById: async (id: string): Promise<AlertIncidentRow | undefined> =>
+  findById: async (id: string): Promise<AlertIncident | undefined> =>
     (
       await db
-        .select()
+        .select(incidentFields)
         .from(alertIncidents)
         .where(eq(alertIncidents.id, id))
         .limit(1)
@@ -42,41 +67,74 @@ export const alertIncidentDAO = {
 
   list: async (options: {
     appId?: string;
-    page?: number;
+    cursor?: string;
     limit?: number;
-  }): Promise<{
-    data: AlertIncidentRow[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
-  }> => {
-    const page = options.page ?? 1;
-    const limit = options.limit ?? 20;
-    const offset = (page - 1) * limit;
-    const conditions = options.appId
-      ? [eq(alertIncidents.appId, options.appId)]
-      : [];
-    const where = conditions.length === 1 ? conditions[0] : undefined;
+  }): Promise<CursorPage<AlertIncident>> => {
+    const limit = cursorLimit(options.limit);
+    const scope = options.appId ? eq(alertIncidents.appId, options.appId) : undefined;
+    const { condition, empty } = await cursorAfter(
+      alertIncidents,
+      alertIncidents.id,
+      alertIncidents.triggeredAt,
+      options.cursor,
+    );
+    if (empty) return { data: [] };
+    const where = scope && condition ? and(scope, condition) : (scope ?? condition);
 
-    const [rows, total] = await Promise.all([
-      db
-        .select()
-        .from(alertIncidents)
-        .where(where)
-        .orderBy(desc(alertIncidents.triggeredAt))
-        .limit(limit)
-        .offset(offset),
-      db.$count(alertIncidents, where),
-    ]);
+    const data = await db
+      .select(incidentFields)
+      .from(alertIncidents)
+      .where(where)
+      .orderBy(desc(alertIncidents.triggeredAt), desc(alertIncidents.id))
+      .limit(limit);
 
-    return {
-      data: rows,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return { data };
   },
+
+  listPaged: async (options: {
+    appId?: string;
+    cursor?: string;
+    limit?: number;
+  }): Promise<CursorPage<AlertIncident>> => await alertIncidentDAO.list(options),
+
+  updateOrThrow: async (
+    id: string,
+    data: Partial<typeof alertIncidents.$inferInsert>,
+  ): Promise<AlertIncident> => {
+    const [updated] = await db
+      .update(alertIncidents)
+      .set(data)
+      .where(eq(alertIncidents.id, id))
+      .returning(incidentFields);
+    if (!updated) throw notFound("Alert incident", id);
+    return updated;
+  },
+
+  delete: async (id: string): Promise<boolean> => {
+    const deleted = await db
+      .delete(alertIncidents)
+      .where(eq(alertIncidents.id, id))
+      .returning({ id: alertIncidents.id });
+    return deleted.length > 0;
+  },
+
+  findOpen: async (
+    ruleId: string,
+    executor: Executor = db,
+  ): Promise<AlertIncident | undefined> =>
+    (
+      await executor
+        .select(incidentFields)
+        .from(alertIncidents)
+        .where(
+          and(
+            eq(alertIncidents.ruleId, ruleId),
+            eq(alertIncidents.status, "firing"),
+          ),
+        )
+        .orderBy(desc(alertIncidents.triggeredAt))
+        .limit(1)
+    )[0],
 
   // Closes every open incident of a rule (the metric recovered).
   resolveOpen: async (ruleId: string) => {
@@ -98,10 +156,13 @@ export const alertIncidentDAO = {
 
   // Latest firing of a rule for one issue — drives the per-issue
   // cooldown of issue triggers.
-  findLastForIssue: async (ruleId: string, fingerprint: string) =>
+  findLastForIssue: async (
+    ruleId: string,
+    fingerprint: string,
+  ): Promise<{ triggeredAt: string } | undefined> =>
     (
       await db
-        .select()
+        .select({ triggeredAt: alertIncidents.triggeredAt })
         .from(alertIncidents)
         .where(
           and(

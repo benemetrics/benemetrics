@@ -11,6 +11,7 @@ import {
   type SourceMapTokenSecretDto,
 } from "../../lib/api";
 import { notify } from "../../lib/toast";
+import { loadAllPages } from "../../lib/cursor";
 import { relativeTime } from "../../lib/utils";
 
 function formatBytes(bytes: number): string {
@@ -62,13 +63,23 @@ export function SourceMaps() {
     }
     (async () => {
       try {
-        const [tokensResult, mapsResult] = await Promise.all([
-          api.api.admin["source-map-tokens"].get({ $query: { projectId } }),
-          api.api.admin["source-maps"].get({ $query: { projectId, limit: 100 } }),
+        const [tokens, maps] = await Promise.all([
+          loadAllPages<SourceMapTokenDto>(async (cursor, limit) => {
+            const result = await api.api.admin["source-map-tokens"].get({
+              $query: { projectId, limit, ...(cursor ? { cursor } : {}) },
+            });
+            return (result?.data as { data?: SourceMapTokenDto[] } | null)?.data ?? [];
+          }),
+          loadAllPages<SourceMapArtifactDto>(async (cursor, limit) => {
+            const result = await api.api.admin["source-maps"].get({
+              $query: { projectId, limit, ...(cursor ? { cursor } : {}) },
+            });
+            return (result?.data as { data?: SourceMapArtifactDto[] } | null)?.data ?? [];
+          }),
         ]);
         if (cancelled) return;
-        setTokens((tokensResult?.data as { data?: SourceMapTokenDto[] } | null)?.data ?? []);
-        setMaps((mapsResult?.data as { data?: SourceMapArtifactDto[] } | null)?.data ?? []);
+        setTokens(tokens);
+        setMaps(maps);
         setStatus("ready");
       } catch {
         if (!cancelled) setStatus("error");

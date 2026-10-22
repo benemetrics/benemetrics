@@ -1,5 +1,4 @@
-import { sourceMapDAO } from "db/dao/source-maps";
-import type { SourceMap } from "db/schema/source-maps";
+import { sourceMapDAO, type SourceMapContent } from "db/dao/source-maps";
 
 interface Mapping {
   generatedLine: number;
@@ -19,7 +18,8 @@ interface ParsedSourceMap {
 }
 
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-const B64_LOOKUP: Record<string, number> = {};
+// A null prototype keeps `constructor` and friends out of the lookup.
+const B64_LOOKUP: Record<string, number> = Object.create(null);
 for (let i = 0; i < B64.length; i++) {
   B64_LOOKUP[B64[i]!] = i;
 }
@@ -29,7 +29,7 @@ function decodeVlq(segment: string, values: number[]): void {
   let value = 0;
   for (const char of segment) {
     const digit = B64_LOOKUP[char];
-    if (digit === undefined) {
+    if (typeof digit !== "number") {
       throw new Error(`Invalid base64 VLQ character: ${char}`);
     }
     const hasContinuation = (digit & 32) !== 0;
@@ -45,8 +45,6 @@ function decodeVlq(segment: string, values: number[]): void {
   }
 }
 
-// Decodes the base64-VLQ `mappings` field into absolute
-// positions (source maps store deltas).
 export function decodeMappings(mappings: string): Mapping[] {
   const result: Mapping[] = [];
   let generatedLine = 0;
@@ -74,7 +72,6 @@ export function decodeMappings(mappings: string): Mapping[] {
           sourceColumn,
         });
       } else {
-        // Segment without source info: generated-only position.
         result.push({
           generatedLine,
           generatedColumn,
@@ -99,7 +96,6 @@ export interface OriginalPosition {
   postContext: string[];
 }
 
-// Maps a 1-indexed generated position to its original position.
 export function originalPositionFor(
   map: ParsedSourceMap,
   line: number,
@@ -122,7 +118,7 @@ export function originalPositionFor(
   const source = map.sources[best.sourceIndex];
   if (source === undefined) return null;
 
-  const sourceLine = best.sourceLine; // 0-indexed
+  const sourceLine = best.sourceLine;
   const content = map.sourcesContent?.[best.sourceIndex];
   let contextLine: string | null = null;
   let preContext: string[] = [];
@@ -150,57 +146,81 @@ function basename(path: string): string {
   return parts[parts.length - 1] ?? normalized;
 }
 
-// Matches a generated frame filename against an uploaded
-// artifact name: exact, basename, or the artifact's
-// basename with the ".map" suffix stripped (Sentry
-// convention: "app.js.map" is the map for "app.js").
-function artifactMatches(mapFilename: string, filename: string): boolean {
-  if (mapFilename === filename) return true;
+// An exact filename wins over a basename match.
+function matchRank(mapFilename: string, filename: string): number {
+  if (mapFilename === filename) return 0;
+  if (basename(mapFilename) === basename(filename)) return 1;
   const mapBase = basename(mapFilename);
-  const base = basename(filename);
-  if (mapBase === base) return true;
-  if (mapBase.endsWith(".map")) {
-    return mapBase.slice(0, -4) === base;
+  if (mapBase.endsWith(".map") && mapBase.slice(0, -4) === basename(filename)) {
+    return 2;
   }
-  return false;
+  return -1;
 }
 
-const parsedMapCache = new Map<string, ParsedSourceMap>();
+interface Versioned<T> {
+  createdAt: string;
+  value: T;
+}
+
+const parsedMapCache = new Map<string, Versioned<ParsedSourceMap>>();
 const MAX_PARSED_CACHE = 100;
 
-export function parseMapCached(id: string, mapJson: string): ParsedSourceMap {
-  const cached = parsedMapCache.get(id);
-  if (cached) return cached;
-  const parsed = JSON.parse(mapJson) as ParsedSourceMap;
+export function parseMapCached(
+  artifact: SourceMapContent,
+): ParsedSourceMap {
+  const cached = parsedMapCache.get(artifact.id);
+  if (cached && cached.createdAt === artifact.createdAt) return cached.value;
+  const parsed = JSON.parse(artifact.mapJson) as ParsedSourceMap;
   if (parsedMapCache.size >= MAX_PARSED_CACHE) parsedMapCache.clear();
-  parsedMapCache.set(id, parsed);
+  parsedMapCache.set(artifact.id, {
+    createdAt: artifact.createdAt,
+    value: parsed,
+  });
   return parsed;
 }
 
-const decodedMappingsCache = new Map<string, Mapping[]>();
+const decodedMappingsCache = new Map<string, Versioned<Mapping[]>>();
 
-function decodedMappingsFor(id: string, map: ParsedSourceMap): Mapping[] {
-  const cached = decodedMappingsCache.get(id);
-  if (cached) return cached;
+function decodedMappingsFor(
+  artifact: SourceMapContent,
+  map: ParsedSourceMap,
+): Mapping[] {
+  const cached = decodedMappingsCache.get(artifact.id);
+  if (cached && cached.createdAt === artifact.createdAt) return cached.value;
   const decoded = decodeMappings(map.mappings);
   if (decodedMappingsCache.size >= MAX_PARSED_CACHE) decodedMappingsCache.clear();
-  decodedMappingsCache.set(id, decoded);
+  decodedMappingsCache.set(artifact.id, {
+    createdAt: artifact.createdAt,
+    value: decoded,
+  });
   return decoded;
+}
+
+// A re-upload replaces the artifact body; the cached parse must not survive it.
+export function invalidateSourceMapCache(artifactId: string): void {
+  parsedMapCache.delete(artifactId);
+  decodedMappingsCache.delete(artifactId);
 }
 
 export async function findSourceMapFor(
   projectId: string,
   release: string,
   filename: string,
-): Promise<SourceMap | null> {
+): Promise<SourceMapContent | null> {
   const maps = await sourceMapDAO.findByRelease(projectId, release);
   if (maps.length === 0) return null;
-  return maps.find((map) => artifactMatches(map.filename, filename)) ?? null;
+  let best: SourceMapContent | null = null;
+  let bestRank = Number.POSITIVE_INFINITY;
+  for (const map of maps) {
+    const rank = matchRank(map.filename, filename);
+    if (rank >= 0 && rank < bestRank) {
+      best = map;
+      bestRank = rank;
+    }
+  }
+  return best;
 }
 
-// Rewrites exception stack frames in place with their original
-// positions (Sentry frame conventions: original_filename,
-// original_lineno, original_colno + source context lines).
 export async function symbolicateEventPayload(
   projectId: string,
   release: string | null,
@@ -221,6 +241,19 @@ export async function symbolicateEventPayload(
   const maps = await sourceMapDAO.findByRelease(projectId, release);
   if (maps.length === 0) return false;
 
+  const bestFor = (filename: string): SourceMapContent | null => {
+    let best: SourceMapContent | null = null;
+    let bestRank = Number.POSITIVE_INFINITY;
+    for (const candidate of maps) {
+      const rank = matchRank(candidate.filename, filename);
+      if (rank >= 0 && rank < bestRank) {
+        best = candidate;
+        bestRank = rank;
+      }
+    }
+    return best;
+  };
+
   let symbolicated = false;
   for (const value of values) {
     const frames = value?.stacktrace?.frames;
@@ -230,7 +263,7 @@ export async function symbolicateEventPayload(
       const filename = frame.filename;
       if (typeof filename !== "string") continue;
 
-      const map = maps.find((candidate) => artifactMatches(candidate.filename, filename));
+      const map = bestFor(filename);
       if (!map) continue;
 
       const lineno = typeof frame.lineno === "number" ? frame.lineno : 1;
@@ -238,12 +271,12 @@ export async function symbolicateEventPayload(
 
       let position: OriginalPosition | null = null;
       try {
-        const parsed = parseMapCached(map.id, map.mapJson);
+        const parsed = parseMapCached(map);
         position = originalPositionFor(
           parsed,
           lineno,
           colno,
-          decodedMappingsFor(map.id, parsed),
+          decodedMappingsFor(map, parsed),
         );
       } catch (e) {
         console.error(
@@ -259,9 +292,9 @@ export async function symbolicateEventPayload(
       frame.original_colno = position.column;
       if (position.contextLine !== null) {
         frame.context_line = position.contextLine;
-        frame.pre_context = position.preContext;
-        frame.post_context = position.postContext;
       }
+      frame.pre_context = position.preContext;
+      frame.post_context = position.postContext;
       symbolicated = true;
     }
   }

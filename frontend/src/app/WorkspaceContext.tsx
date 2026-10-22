@@ -8,13 +8,17 @@ import {
 } from "react";
 import {
   api,
+  getSession,
   listEnvironments,
+  viewerProfile,
   type AdminProfileDto,
   type AppDto,
   type EnvironmentDto,
   type ProjectDto,
+  type SessionDto,
 } from "../lib/api";
 import { notify } from "../lib/toast";
+import { loadAllPages } from "../lib/cursor";
 
 interface WorkspaceValue {
   projects: ProjectDto[];
@@ -36,8 +40,12 @@ interface WorkspaceValue {
   refreshApplications: () => Promise<void>;
   /** Re-read the project list; returns null when the request fails. */
   refreshProjects: () => Promise<ProjectDto[] | null>;
-  /** Authenticated admin (from GET /api/admin/me), or null when unauthenticated. */
+  /** Locally decoded viewer identity for display; null when no token is stored. */
   adminUser: AdminProfileDto | null;
+  /** The server's answer: false when the identity is scoped read-only. */
+  isAdmin: boolean;
+  /** The scope the server granted; null for the unrestricted admin token. */
+  scope: SessionDto["scope"];
   query: string;
   setQuery: (value: string) => void;
 }
@@ -58,20 +66,23 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [environment, setEnvironment] = useState<EnvironmentDto | null>(null);
   const [applications, setApplications] = useState<AppDto[]>([]);
   const [application, setApplication] = useState<AppDto | null>(null);
-  const [adminUser, setAdminUser] = useState<AdminProfileDto | null>(null);
+  const [adminUser] = useState<AdminProfileDto | null>(() => viewerProfile());
+  const [isAdmin, setIsAdmin] = useState(true);
+  const [scope, setScope] = useState<SessionDto["scope"]>(null);
   const [query, setQuery] = useState("");
 
+  // The server decides whether the identity is the admin or a scoped
+  // read-only one; the UI never guesses it from the token.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const result = await api.api.admin.me.get();
-        const profile = (result?.data as AdminProfileDto | null) ?? null;
-        if (!cancelled && profile && typeof profile.email === "string") {
-          setAdminUser(profile);
-        }
+        const session = await getSession();
+        if (cancelled) return;
+        setIsAdmin(session?.isAdmin ?? true);
+        setScope(session?.scope ?? null);
       } catch {
-        // unauthenticated / offline — the UI shows the sign-in prompt
+        if (!cancelled) setIsAdmin(true);
       }
     })();
     return () => {
@@ -83,10 +94,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
-        const payload = unwrapData<{ data: ProjectDto[]; pagination: unknown }>(
-          await api.api.admin.projects.get(),
-        );
-        const list = payload?.data ?? [];
+        const list = await loadAllPages<ProjectDto>(async (cursor, limit) => {
+          const payload = unwrapData<{ data?: ProjectDto[] }>(
+            await api.api.admin.projects.get({
+              $query: { limit, ...(cursor ? { cursor } : {}) },
+            }),
+          );
+          return payload?.data ?? [];
+        });
         if (cancelled) return;
         setProjects(list);
         if (list.length > 0) {
@@ -197,10 +212,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const refreshProjects = useCallback(async (): Promise<ProjectDto[] | null> => {
     try {
-      const payload = unwrapData<{ data: ProjectDto[]; pagination: unknown }>(
-        await api.api.admin.projects.get(),
-      );
-      const list = payload?.data ?? [];
+      const list = await loadAllPages<ProjectDto>(async (cursor, limit) => {
+        const payload = unwrapData<{ data?: ProjectDto[] }>(
+          await api.api.admin.projects.get({
+            $query: { limit, ...(cursor ? { cursor } : {}) },
+          }),
+        );
+        return payload?.data ?? [];
+      });
       setProjects(list);
       return list;
     } catch {
@@ -266,6 +285,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         refreshApplications,
         refreshProjects,
         adminUser,
+        isAdmin,
+        scope,
         query,
         setQuery,
       }}

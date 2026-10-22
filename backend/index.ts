@@ -1,24 +1,18 @@
 import { Elysia } from "elysia";
-import { logAuthMode } from "./auth";
 import { ApiError } from "./errors";
 import ui from "../frontend/index.html";
-import { eventsRoutes, ingestionRoutes } from "./events";
-import { otlpRoutes } from "./otlp";
-import { sourceMapUploadRoutes } from "./api0/source-maps";
-import { storageRoutes } from "./storage";
-import { replayRoutes } from "./replays";
-import { evaluationRoutes } from "./evaluation";
-import { flagsStreamRoutes } from "./flags-stream";
-import { flagsV1Routes } from "./flags-v1";
-import { adminRoutes } from "./admin";
+import { apiRoutes } from "./routes";
 import { startAlertSweeper } from "./alerting/evaluation";
-import { initNats } from "./nats";
 import { initClickHouse } from "./clickhouse";
+import { assertStorageConfigured } from "./storage";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 
 const app = new Elysia({
   serve: {
+    // The server-wide body bound: generous enough for the 10 MB source-map
+    // upload, small enough that no request can exhaust the process.
+    maxRequestBodySize: 12 * 1024 * 1024,
     routes: {
       "/ui": ui,
       "/ui/*": ui,
@@ -28,6 +22,12 @@ const app = new Elysia({
   .onError(({ code, error, set }) => {
     if (error instanceof ApiError) {
       set.status = error.httpStatus;
+      // A rate-limited answer carries the Sentry-compatible headers so the
+      // SDKs' own client limiter backs off.
+      if (error.rateLimit) {
+        set.headers["Retry-After"] = String(error.rateLimit.retryAfter);
+        set.headers["X-Sentry-Rate-Limits"] = `${error.rateLimit.retryAfter}:${error.rateLimit.categories}:${error.rateLimit.scope}`;
+      }
       return { error: error.message };
     }
     if (code === "VALIDATION") {
@@ -42,30 +42,17 @@ const app = new Elysia({
     set.status = 500;
     return { error: "Internal Server Error" };
   })
-  // Liveness probe for Docker/orchestration only. The UI does not read it:
-  // dashboard counts come from the events API.
-  .get("/health", () => ({ status: "ok" }))
   .get("/", () => Response.redirect("/ui"))
-  .use(eventsRoutes)
-  .use(ingestionRoutes)
-  .use(otlpRoutes)
-  .use(sourceMapUploadRoutes)
-  .use(storageRoutes)
-  .use(replayRoutes)
-  .use(evaluationRoutes)
-  .use(flagsStreamRoutes)
-  .use(flagsV1Routes)
-  .use(adminRoutes);
+  .use(apiRoutes);
 
 if (import.meta.main) {
-  logAuthMode();
   app.listen(SERVER_PORT, async () => {
     console.log(`[Server] Sentry backend listening on port ${SERVER_PORT}`);
     try {
-      // Boot order: NATS (stream + durable pull consumers) before
-      // ClickHouse (engine tables + views). Both retry a few times and
-      // then fail fast — the server never runs half-wired.
-      await initNats();
+      // NATS is connected when `./nats` is imported (publish side). The
+      // stream and its durable consumers belong to `backend/consumer.ts`;
+      // ClickHouse attaches its engine tables to those durables here.
+      assertStorageConfigured();
       await initClickHouse();
     } catch (err) {
       console.error(

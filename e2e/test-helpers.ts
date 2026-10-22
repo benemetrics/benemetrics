@@ -1,7 +1,7 @@
 /**
  * Shared helpers for listener-needing e2e suites (SDK-driven tests, WebView
- * UI tests); in-process API tests live in `tests/` and use
- * `tests/test-helpers.ts` instead.
+ * UI tests); in-process API tests live in `backend/tests/` and use
+ * `backend/tests/test-helpers.ts` instead.
  *
  * Starts the real backend on an ephemeral port and provisions a project +
  * app through the admin API. Ingestion never auto-creates apps anymore, so
@@ -12,7 +12,7 @@ import app from "../backend/index";
 
 export const ADMIN_HEADERS = {
   "Content-Type": "application/json",
-  Authorization: "Bearer e2e-admin-token",
+  Authorization: "API-Key e2e-admin-token",
 };
 
 /** Polls `fn` until the predicate holds; returns the last value either way. */
@@ -57,10 +57,14 @@ export async function waitForEventListItem<
   baseUrl: string,
   predicate: (item: T) => boolean,
   timeoutMs = 10000,
+  appId?: string,
 ): Promise<T | null> {
+  const query = appId
+    ? `?limit=100&appId=${encodeURIComponent(appId)}`
+    : "?limit=100";
   return await waitFor(
     async () => {
-      const response = await fetch(`${baseUrl}/events?limit=100`, {
+      const response = await fetch(`${baseUrl}/events${query}`, {
         headers: ADMIN_HEADERS,
       });
       const body = (await response.json()) as { data?: T[] };
@@ -68,23 +72,6 @@ export async function waitForEventListItem<
     },
     (value) => value !== null,
     timeoutMs,
-  );
-}
-
-// Clears stored events and waits for the asynchronous truncate to drain:
-// the clear travels through NATS, so a late truncate would otherwise
-// wipe the next test's freshly ingested events.
-export async function clearStoredEvents(baseUrl: string): Promise<void> {
-  await fetch(`${baseUrl}/events/clear`, { method: "POST", headers: ADMIN_HEADERS });
-  await waitFor(
-    async () => {
-      const response = await fetch(`${baseUrl}/events?limit=1`, {
-        headers: ADMIN_HEADERS,
-      });
-      const body = (await response.json()) as { pagination?: { total?: number } };
-      return body.pagination?.total ?? -1;
-    },
-    (total) => total === 0,
   );
 }
 
@@ -121,12 +108,13 @@ export async function startTestServer(): Promise<TestServer> {
   }
   const created = (await appResponse.json()) as {
     id: string;
-    dsn: string;
+    number: number;
+    publicKey: string;
   };
 
   return {
     baseUrl,
-    dsn: created.dsn,
+    dsn: `http://${created.publicKey}@${new URL(baseUrl).host}/${created.number}`,
     projectId: project.id,
     appId: created.id,
     stop: () => server?.stop(true),

@@ -86,6 +86,15 @@ body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--canvas)
 .token-input:focus { border-color: rgba(185,198,255,.55); }
 .token-save { display: grid; place-items: center; height: 30px; margin-top: 6px; border-radius: 7px; background: var(--brand); color: #fff; font-size: 10px; font-weight: 600; cursor: pointer; }
 .toast { position: fixed; bottom: 92px; left: 50%; z-index: 60; transform: translateX(-50%); max-width: min(420px, calc(100vw - 40px)); padding: 11px 15px; border: 1px solid rgba(255,255,255,.09); border-radius: 9px; background: rgba(20,26,38,.96); color: #eef0f5; font-size: 11px; font-weight: 500; box-shadow: 0 14px 34px rgba(8,12,20,.32); }
+.auth-prompt-backdrop { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 20px; background: rgba(9,13,22,.55); }
+.auth-prompt { width: min(380px, 100%); padding: 22px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: 0 24px 60px rgba(6,12,25,.35); }
+.auth-prompt h2 { margin: 0 0 6px; font-size: 16px; letter-spacing: -.2px; }
+.auth-prompt p { margin: 0 0 16px; color: var(--ink-muted); font-size: 11px; line-height: 1.5; }
+.auth-prompt-label { display: block; margin-bottom: 6px; color: var(--ink-faint); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.auth-prompt-input { width: 100%; height: 36px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 12px; outline: none; }
+.auth-prompt-input:focus { border-color: var(--brand); }
+.auth-prompt-save { width: 100%; height: 36px; margin-top: 12px; border: 0; border-radius: 8px; background: var(--brand); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; }
+.auth-prompt-save:hover { background: var(--brand-dark); }
 .pagination { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 17px; border-top: 1px solid var(--border); color: var(--ink-muted); font-size: 9.5px; }
 .pagination-actions { display: flex; gap: 6px; }
 .pagination-button { padding: 6px 11px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--ink); font-size: 9.5px; font-weight: 600; cursor: pointer; }
@@ -690,3 +699,20 @@ textarea.field-control { height: auto; min-height: 74px; padding: 9px 11px; resi
   .mini-metrics.four > div:last-child { grid-column: auto; }
 }
 
+
+/* Experiment Results Dashboard: participants, conversions, Wilson CI and
+   z-test p-value per variant, with the backend recommendation. */
+.row-action.active { color: var(--ink); text-decoration: underline; }
+.list-screen-row.experiment-results-row { display: block; min-height: 0; padding: 0 18px 16px; }
+.experiment-results { display: flex; flex-direction: column; gap: 10px; }
+.experiment-results-head { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--ink-muted); font-size: 9px; }
+.experiment-results-head strong { color: var(--ink); }
+.experiment-hypothesis { flex-basis: 100%; color: var(--ink-faint); font-style: italic; }
+.experiment-table { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.experiment-table-row { display: grid; grid-template-columns: 1.4fr .9fr .9fr .7fr 1.4fr .8fr .8fr; gap: 10px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--ink-muted); font-size: 9px; }
+.experiment-table-row:last-child { border-bottom: 0; }
+.experiment-table-row.head { background: var(--surface-subtle); color: var(--ink-faint); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.experiment-table-row.winner { background: var(--brand-soft); }
+.experiment-table-row strong { color: var(--ink); font-size: 10px; }
+.experiment-recommendation { color: var(--ink-muted); font-size: 9px; }
+.experiment-recommendation strong { color: var(--brand); }

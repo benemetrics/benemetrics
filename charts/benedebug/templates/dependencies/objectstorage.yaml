@@ -1,0 +1,114 @@
+{{- if .Values.dependencies.objectStorage.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "benedebug.fullname" . }}-objectstorage
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+    app.kubernetes.io/component: objectstorage
+spec:
+  type: ClusterIP
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: s3
+    - name: console
+      port: 9001
+      targetPort: console
+  selector:
+    {{- include "benedebug.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: objectstorage
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "benedebug.fullname" . }}-objectstorage
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+    app.kubernetes.io/component: objectstorage
+spec:
+  serviceName: {{ include "benedebug.fullname" . }}-objectstorage
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "benedebug.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: objectstorage
+  template:
+    metadata:
+      labels:
+        {{- include "benedebug.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: objectstorage
+    spec:
+      containers:
+        - name: objectstorage
+          image: "{{ .Values.dependencies.objectStorage.image.repository }}:{{ .Values.dependencies.objectStorage.image.tag }}"
+          imagePullPolicy: {{ .Values.dependencies.objectStorage.image.pullPolicy }}
+          ports:
+            - name: s3
+              containerPort: 9000
+            - name: console
+              containerPort: 9001
+          env:
+            - name: RUSTFS_VOLUMES
+              value: /data
+            - name: RUSTFS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "benedebug.secretName" . }}
+                  key: object-storage-access-key-id
+            - name: RUSTFS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "benedebug.secretName" . }}
+                  key: object-storage-secret-access-key
+            - name: RUSTFS_CONSOLE_ENABLE
+              value: "true"
+            - name: RUSTFS_OBS_LOG_DIRECTORY
+              value: /var/log/rustfs
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: logs
+              mountPath: /var/log/rustfs
+          readinessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: s3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.dependencies.objectStorage.resources | nindent 12 }}
+      volumes:
+        - name: data
+          {{- if .Values.dependencies.objectStorage.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "benedebug.fullname" . }}-objectstorage
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: logs
+          emptyDir: {}
+      # RustFS runs as UID 10001; the volumes need a matching group.
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+  {{- if .Values.dependencies.objectStorage.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.dependencies.objectStorage.persistence.storageClass }}
+        annotations:
+          volume.beta.kubernetes.io/storage-class: {{ . }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.dependencies.objectStorage.persistence.accessModes | nindent 10 }}
+        {{- if .Values.dependencies.objectStorage.persistence.storageClass }}
+        storageClassName: {{ .Values.dependencies.objectStorage.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.dependencies.objectStorage.persistence.size }}
+  {{- end }}
+{{- end }}

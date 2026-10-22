@@ -12,12 +12,12 @@
  */
 
 import * as Sentry from "@sentry/bun";
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import app from "../backend/index";
 
 const PROJECT_NAME = `E2E UI Project ${Date.now()}`;
 
-const ADMIN_TOKEN = "Bearer e2e-admin-token";
+const ADMIN_TOKEN = "API-Key e2e-admin-token";
 
 let baseUrl = "";
 let dsn = "";
@@ -25,13 +25,6 @@ let view: Bun.WebView;
 
 function uniqueMarker(): string {
   return `e2e-ui-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-}
-
-async function clearEvents(): Promise<void> {
-  await fetch(`${baseUrl}/events/clear`, {
-    method: "POST",
-    headers: { Authorization: ADMIN_TOKEN },
-  });
 }
 
 /**
@@ -93,7 +86,6 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
     app.listen(0);
     const server = (app as any).server;
     baseUrl = `http://localhost:${server.port}`;
-    await clearEvents();
 
     // Apps are only created through the admin API; provision one and
     // point the Sentry SDK at its real DSN.
@@ -112,8 +104,8 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
       headers: adminHeaders,
       body: JSON.stringify({ name: "UI App" }),
     });
-    const created = (await appResponse.json()) as { dsn: string; publicKey: string };
-    dsn = created.dsn;
+    const created = (await appResponse.json()) as { number: number; publicKey: string };
+    dsn = `http://${created.publicKey}@${new URL(baseUrl).host}/${created.number}`;
 
     Sentry.init({
       dsn,
@@ -132,18 +124,9 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
     await view.navigate(`${baseUrl}/ui/issues`);
   });
 
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
-  });
-
   afterAll(async () => {
     await Sentry.flush(2000);
     await Sentry.close();
-    await clearEvents();
     await view?.close();
     (app as any).server?.stop(true);
   });
@@ -193,15 +176,18 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
     const msg2 = uniqueMarker();
     const msg3 = uniqueMarker();
 
-    Sentry.captureException(new Error(msg1));
+    // Distinct error types and a message event: same-type exceptions share
+    // a fingerprint and would collapse into earlier issues, hiding their
+    // messages from the grouped list.
+    Sentry.captureException(new SyntaxError(msg1));
     Sentry.captureMessage(msg2, "error");
-    Sentry.captureException(new TypeError(msg3));
+    Sentry.captureException(new RangeError(msg3));
 
     await Sentry.flush(5000);
     await selectProjectInUI(PROJECT_NAME);
-    await waitForTextInUI(`Error: ${msg1}`);
+    await waitForTextInUI(`SyntaxError: ${msg1}`);
     await waitForTextInUI(msg2);
-    await waitForTextInUI(`TypeError: ${msg3}`);
+    await waitForTextInUI(`RangeError: ${msg3}`);
   }, 30000);
 
   it("does not display an event that was never sent (negative case)", async () => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Action } from "../Action";
 import { ScreenIntro } from "../ScreenIntro";
 import { api, type SegmentDto } from "../../lib/api";
+import { loadAllPages } from "../../lib/cursor";
 import { notify } from "../../lib/toast";
 import { relativeTime } from "../../lib/utils";
 
@@ -33,9 +34,14 @@ export function Segments() {
     let cancelled = false;
     (async () => {
       try {
-        const result = await api.api.admin.segments.get();
+        const rows = await loadAllPages<SegmentDto>(async (cursor, limit) => {
+          const result = await api.api.admin.segments.get({
+            $query: { limit, ...(cursor ? { cursor } : {}) },
+          });
+          return (result?.data as { data?: SegmentDto[] } | null)?.data ?? [];
+        });
         if (!cancelled) {
-          setSegments((result?.data as { data?: SegmentDto[] } | null)?.data ?? []);
+          setSegments(rows);
           setStatus("ready");
         }
       } catch {

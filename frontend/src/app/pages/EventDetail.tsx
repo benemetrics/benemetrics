@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ScreenIntro } from "../ScreenIntro";
 import { useWorkspace } from "../WorkspaceContext";
-import { AGGREGATE_EVENT_LIMIT, api, listEvents } from "../../lib/api";
 import {
-  payloadFingerprint,
-  type ExceptionFrame,
-  type StoredEvent,
-} from "../../lib/issues";
+  AGGREGATE_EVENT_LIMIT,
+  api,
+  getIssueStats,
+  listEvents,
+  listIssueOccurrences,
+  type IssueOccurrenceDto,
+  type IssueStatsDto,
+} from "../../lib/api";
+import { type ExceptionFrame, type StoredEvent } from "../../lib/issues";
 import { relativeTime } from "../../lib/utils";
 import "rrweb-player/dist/style.css";
 
@@ -47,26 +51,24 @@ interface EventPayload {
   };
 }
 
-// GET /replays/by-event/:eventId — the recording segments of the session
-// the event was reported in, already assembled in playback order.
+// GET /api/admin/events/:eventId/replay/:replayId — one page of presigned
+// segment URLs (S3). The keys embed the segment start, so pages arrive in
+// playback order; the player is fed with `addEvent` as segments land.
 interface ReplaySegment {
   key: string;
-  events: number;
+  url: string;
   bytes: number;
-  startedAt: string | null;
 }
 
-interface ReplayPayload {
-  replayId: string | null;
+interface ReplayPage {
+  replayId: string;
   available: boolean;
-  truncated: boolean;
-  bytes: number;
+  expiresAt: string | null;
   segments: ReplaySegment[];
-  events: unknown[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
-const HOUR_MS = 3_600_000;
-const BUCKET_COUNT = 24;
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -252,6 +254,10 @@ function metricValueText(row: MetricRow): string {
 
 export function EventDetail() {
   const { eventId = "" } = useParams();
+  const [searchParams] = useSearchParams();
+  // The issue the event belongs to: the server owns the grouping, so the
+  // page asks for the issue's occurrences instead of matching events itself.
+  const issueId = searchParams.get("issue") ?? "";
   const navigate = useNavigate();
   const { project, environment, application } = useWorkspace();
   const projectId = project?.id;
@@ -260,11 +266,16 @@ export function EventDetail() {
   const [payload, setPayload] = useState<EventPayload | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [related, setRelated] = useState<StoredEvent[]>([]);
+  const [occurrences, setOccurrences] = useState<IssueOccurrenceDto[]>([]);
+  const [stats, setStats] = useState<IssueStatsDto | null>(null);
   const [relatedStatus, setRelatedStatus] = useState<"idle" | "loading" | "ready" | "error">(
     "idle",
   );
-  const [replay, setReplay] = useState<ReplayPayload | null>(null);
+  const [replayId, setReplayId] = useState<string | null>(null);
   const [replayStatus, setReplayStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [replayAvailable, setReplayAvailable] = useState(true);
+  const [replayMeta, setReplayMeta] = useState({ segments: 0, events: 0, bytes: 0 });
+  const [replayDurationLabel, setReplayDurationLabel] = useState<string | null>(null);
   const replayStage = useRef<HTMLDivElement | null>(null);
   const detailsRef = useRef<HTMLElement | null>(null);
 
@@ -286,68 +297,108 @@ export function EventDetail() {
     };
   }, [eventId]);
 
-  // The backend resolves the replay from the stored event (replay metadata
-  // or `contexts.replay` on the error) and assembles its segments, so the
-  // section stays authoritative even when a payload shape is new here.
+  // The event payload carries the replay link (`contexts.replay.replay_id`),
+  // so the page only needs the event id and the replay id to stream the
+  // session's segments back from the object store.
+  useEffect(() => {
+    setReplayId(null);
+    setReplayStatus("loading");
+    setReplayAvailable(true);
+    setReplayMeta({ segments: 0, events: 0, bytes: 0 });
+    setReplayDurationLabel(null);
+  }, [eventId]);
+
   useEffect(() => {
     if (status !== "ready") return;
-    let cancelled = false;
-    setReplayStatus("loading");
-    (async () => {
-      try {
-        const result = await api.replays["by-event"][eventId].get();
-        if (cancelled) return;
-        setReplay((result?.data as ReplayPayload | null) ?? null);
-        setReplayStatus("ready");
-      } catch {
-        if (!cancelled) setReplayStatus("error");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [eventId, status]);
+    const id = payload?.contexts?.replay?.replay_id ?? null;
+    setReplayId(id);
+    setReplayStatus(id ? "loading" : "ready");
+    setReplayAvailable(true);
+    setReplayMeta({ segments: 0, events: 0, bytes: 0 });
+    setReplayDurationLabel(null);
+  }, [payload, status]);
 
   // rrweb is pulled in only when a replay exists so ordinary event pages
-  // do not pay for the player bundle.
+  // do not pay for the player bundle. Segments are fetched a page at a time
+  // and pushed into the running player with `addEvent`, in playback order.
   useEffect(() => {
     const stage = replayStage.current;
-    if (
-      !stage ||
-      replayStatus !== "ready" ||
-      !replay?.available ||
-      replay.events.length === 0
-    ) {
-      return;
-    }
+    if (!stage || !replayId) return;
     let cancelled = false;
-    let player: { $destroy?: () => void } | null = null;
+    let player: { addEvent?: (event: unknown) => void; $destroy?: () => void } | null = null;
+    const loaded: unknown[] = [];
+
     (async () => {
       const { default: RrwebPlayer } = await import("rrweb-player");
-      if (cancelled) return;
-      stage.innerHTML = "";
-      player = new RrwebPlayer({
-        target: stage,
-        props: {
-          events: replay.events as never[],
-          width: Math.max(360, Math.min(stage.clientWidth || 960, 1440)),
-          height: 460,
-          autoPlay: false,
-          showController: true,
-        },
-      }) as { $destroy?: () => void };
+      let cursor: string | null = null;
+      let firstPage = true;
+      do {
+        const response =
+          cursor === null
+            ? await api.api.admin.events[eventId].replay[replayId].get()
+            : await api.api.admin.events[eventId].replay[replayId].get({
+                $query: { cursor },
+              });
+        if (cancelled) return;
+        const page = response?.data as ReplayPage | null;
+        if (!page || page.available === false) {
+          setReplayAvailable(false);
+          setReplayStatus("ready");
+          return;
+        }
+
+        const pageEvents: unknown[] = [];
+        for (const segment of page.segments) {
+          const objectResponse = await fetch(segment.url);
+          const events = await objectResponse.json().catch(() => null);
+          const list = Array.isArray(events) ? events : [];
+          pageEvents.push(...list);
+          setReplayMeta((meta) => ({
+            segments: meta.segments + 1,
+            events: meta.events + list.length,
+            bytes: meta.bytes + segment.bytes,
+          }));
+        }
+        cursor = page.nextCursor;
+
+        if (cancelled) return;
+        if (firstPage) {
+          firstPage = false;
+          loaded.push(...pageEvents);
+          if (loaded.length > 0) {
+            stage.innerHTML = "";
+            player = new RrwebPlayer({
+              target: stage,
+              props: {
+                events: loaded as never[],
+                width: Math.max(360, Math.min(stage.clientWidth || 960, 1440)),
+                height: 460,
+                autoPlay: false,
+                showController: true,
+              },
+            }) as { addEvent?: (event: unknown) => void; $destroy?: () => void };
+          }
+        } else {
+          for (const event of pageEvents) player?.addEvent?.(event);
+          loaded.push(...pageEvents);
+        }
+        setReplayDurationLabel(replayDuration(loaded));
+        setReplayStatus("ready");
+      } while (cursor !== null && !cancelled);
     })().catch((err) => {
       console.error(
         "[replay] Player failed to load:",
         err instanceof Error ? err.message : String(err),
       );
+      if (!cancelled) setReplayStatus("error");
     });
+
     return () => {
       cancelled = true;
       player?.$destroy?.();
       stage.innerHTML = "";
     };
-  }, [replay, replayStatus]);
+  }, [replayId, eventId]);
 
   const first = payload?.exception?.values?.[0];
   const title = first
@@ -358,16 +409,42 @@ export function EventDetail() {
   const displayFrames = [...frames].reverse();
   const tags = Object.entries(payload?.tags ?? {}).slice(0, 12);
   const userId = payload?.user?.email ?? payload?.user?.username ?? payload?.user?.id ?? null;
-  const fingerprint = payload ? payloadFingerprint(payload) : null;
-  const replayDurationLabel = replay ? replayDuration(replay.events) : null;
 
-  // The stored window the issue panels read from. Matching mirrors the
-  // backend's ingestion-time grouping so the list and metrics contain
-  // exactly the events the backend folded into this issue.
+  // The issue's occurrences and counters come from the server: it owns the
+  // grouping, so the page never recomputes a fingerprint.
   useEffect(() => {
-    if (!fingerprint) return;
+    if (!issueId) return;
     let cancelled = false;
     setRelatedStatus("loading");
+    (async () => {
+      try {
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const [occurrenceResult, statsResult] = await Promise.all([
+          listIssueOccurrences(issueId, { limit: AGGREGATE_EVENT_LIMIT }),
+          getIssueStats(issueId, { from: since, stepSeconds: 3600 }),
+        ]);
+        const list =
+          (occurrenceResult?.data as { data?: IssueOccurrenceDto[] } | null)?.data ?? [];
+        const counters = (statsResult?.data as IssueStatsDto | null) ?? null;
+        if (cancelled) return;
+        setOccurrences(list);
+        setStats(counters);
+        setRelatedStatus("ready");
+      } catch {
+        // the panels keep their empty state on failure
+        if (!cancelled) setRelatedStatus("error");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [issueId]);
+
+  // The stored window supplies the payloads the panels aggregate; the
+  // occurrences decide which of them belong to this issue.
+  useEffect(() => {
+    if (!issueId) return;
+    let cancelled = false;
     (async () => {
       try {
         const result = await listEvents({
@@ -379,47 +456,48 @@ export function EventDetail() {
         const list = (result?.data as { data?: StoredEvent[] })?.data ?? [];
         if (cancelled) return;
         setRelated(list);
-        setRelatedStatus("ready");
       } catch {
         // the panels keep their empty state on failure
-        if (!cancelled) setRelatedStatus("error");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [fingerprint, projectId, environmentId, applicationId]);
+  }, [issueId, projectId, environmentId, applicationId]);
 
-  const issueEvents = useMemo(() => {
-    if (!fingerprint) return [];
-    return related
-      .filter((stored) => stored.itemTypes?.includes("event"))
-      .filter((stored) => payloadFingerprint(stored.event) === fingerprint)
-      .sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt));
-  }, [related, fingerprint]);
+  const payloadByMessageId = useMemo(() => {
+    const map = new Map<string, StoredEvent>();
+    for (const stored of related) map.set(stored.id, stored);
+    return map;
+  }, [related]);
+
+  const occurrenceIds = useMemo(
+    () => new Set(occurrences.map((occurrence) => occurrence.messageId)),
+    [occurrences],
+  );
+
+  // The payloads the panels aggregate: the loaded events that the server
+  // grouped into this issue.
+  const issueEvents = useMemo(
+    () =>
+      related.filter(
+        (stored) => occurrenceIds.has(stored.id) && stored.itemTypes?.includes("event"),
+      ),
+    [related, occurrenceIds],
+  );
 
   const metrics = useMemo(() => buildIssueMetrics(issueEvents), [issueEvents]);
 
   const selectEvent = (id: string) => {
-    if (id !== eventId) navigate(`/issues/${id}`);
+    if (id !== eventId) navigate(`/issues/${id}?issue=${issueId}`);
     // The details sit below the list; bring the updated event into view.
     requestAnimationFrame(() => {
       detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
 
-  // Frequency: same-issue events in the stored window, bucketed hourly.
-  const buckets = new Array<number>(BUCKET_COUNT).fill(0);
-  if (fingerprint) {
-    const now = Date.now();
-    for (const event of issueEvents) {
-      const age = now - Date.parse(event.receivedAt);
-      if (Number.isNaN(age) || age < 0 || age >= BUCKET_COUNT * HOUR_MS) continue;
-      const index = BUCKET_COUNT - 1 - Math.floor(age / HOUR_MS);
-      if (index < 0 || index >= BUCKET_COUNT) continue;
-      buckets[index] = (buckets[index] ?? 0) + 1;
-    }
-  }
+  // Frequency: the server's hourly buckets over the last 24 hours.
+  const buckets = (stats?.points ?? []).map((point) => point.eventCount);
   const bucketMax = Math.max(...buckets, 1);
   const relatedTotal = buckets.reduce((total, count) => total + count, 0);
 
@@ -528,8 +606,8 @@ export function EventDetail() {
                     ? "Matching the loaded event window…"
                     : relatedStatus === "error"
                       ? "The event list could not be loaded."
-                      : `${issueEvents.length} event${
-                          issueEvents.length === 1 ? "" : "s"
+                      : `${occurrences.length} event${
+                          occurrences.length === 1 ? "" : "s"
                         }: click one to read its details`}
                 </div>
               </div>
@@ -541,54 +619,65 @@ export function EventDetail() {
               <span>Seen</span>
             </div>
             <div className="issue-events-scroll">
-              {issueEvents.map((stored) => {
-                const row = (stored.event ?? {}) as EventPayload;
+              {occurrences.map((occurrence) => {
+                const stored = payloadByMessageId.get(occurrence.messageId);
+                const row = (stored?.event ?? {}) as EventPayload;
                 const rowFirst = row.exception?.values?.[0];
-                const replayId = row.contexts?.replay?.replay_id;
+                const rowReplayId = row.contexts?.replay?.replay_id;
                 const hasReplay =
-                  Boolean(replayId) ||
+                  Boolean(rowReplayId) ||
                   Boolean(
-                    stored.itemTypes?.some(
+                    stored?.itemTypes?.some(
                       (type) => type === "replay_event" || type === "replay_recording",
                     ),
                   );
-                const user = row.user?.email ?? row.user?.username ?? row.user?.id ?? "—";
-                const line = row.message ?? rowFirst?.value ?? row.transaction ?? stored.id;
+                const user =
+                  row.user?.email ??
+                  row.user?.username ??
+                  row.user?.id ??
+                  occurrence.user ??
+                  "—";
+                const line =
+                  row.message ||
+                  rowFirst?.value ||
+                  row.transaction ||
+                  occurrence.title ||
+                  occurrence.messageId;
                 return (
                   <div
-                    key={stored.id}
-                    className={`data-row clickable${stored.id === eventId ? " selected" : ""}`}
+                    key={occurrence.messageId}
+                    className={`data-row clickable${occurrence.messageId === eventId ? " selected" : ""}`}
                     role="button"
                     tabIndex={0}
-                    onClick={() => selectEvent(stored.id)}
+                    onClick={() => selectEvent(occurrence.messageId)}
                     onKeyDown={(keyEvent) => {
-                      if (keyEvent.key === "Enter") selectEvent(stored.id);
+                      if (keyEvent.key === "Enter") selectEvent(occurrence.messageId);
                     }}
                   >
                     <div className="issue-main">
                       <div className="issue-title">
-                        <span>{stored.id.slice(0, 6).toUpperCase()}</span>
+                        <span>{occurrence.messageId.slice(0, 6).toUpperCase()}</span>
                         {line}
                       </div>
                       <div className="issue-meta">
                         {hasReplay && (
                           <span
                             className="replay-tag"
-                            title={replayId ? `replay ${replayId}` : "replay attached"}
+                            title={rowReplayId ? `replay ${rowReplayId}` : "replay attached"}
                           >
                             replay
                           </span>
                         )}
-                        <span>{row.culprit ?? rowFirst?.type ?? row.level ?? "error"}</span>
+                        <span>{row.culprit ?? rowFirst?.type ?? occurrence.level ?? "error"}</span>
                       </div>
                     </div>
                     <span className="event-cell" title={user}>
                       {user}
                     </span>
-                    <span className="event-cell" title={row.release ?? ""}>
-                      {row.release ?? "—"}
+                    <span className="event-cell" title={row.release ?? occurrence.release}>
+                      {row.release ?? occurrence.release ?? "—"}
                     </span>
-                    <span className="event-cell">{relativeTime(stored.receivedAt)}</span>
+                    <span className="event-cell">{relativeTime(occurrence.receivedAt)}</span>
                   </div>
                 );
               })}
@@ -714,8 +803,8 @@ export function EventDetail() {
                   segments.
                 </div>
               </div>
-              {replay?.replayId && (
-                <div className="filter-chip">replay {replay.replayId.slice(0, 8)}</div>
+              {replayId && (
+                <div className="filter-chip">replay {replayId.slice(0, 8)}</div>
               )}
             </div>
             {replayStatus === "loading" && (
@@ -724,40 +813,41 @@ export function EventDetail() {
             {replayStatus === "error" && (
               <div className="panel-subtitle">Could not load the session replay.</div>
             )}
-            {replayStatus === "ready" && !replay?.replayId && (
+            {replayStatus === "ready" && !replayId && (
               <div className="panel-subtitle">
                 No session replay is linked to this issue — enable Session Replay in the
                 browser SDK to record the sessions around your errors.
               </div>
             )}
-            {replayStatus === "ready" && replay?.replayId && (
+            {replayId && !replayAvailable && (
+              <div className="panel-subtitle">
+                {`Replay ${replayId.slice(0, 8)} is linked, but the object store could not be read.`}
+              </div>
+            )}
+            {replayId && replayAvailable && (
               <>
-                {replay.segments.length > 0 && (
+                {replayMeta.segments > 0 && (
                   <div className="replay-meta">
                     <div className="filter-chip">
-                      {replay.segments.length === 1
+                      {replayMeta.segments === 1
                         ? "1 segment"
-                        : `${replay.segments.length} segments`}
+                        : `${replayMeta.segments} segments`}
                     </div>
                     <div className="filter-chip">
-                      {replay.events.length === 1
+                      {replayMeta.events === 1
                         ? "1 event"
-                        : `${replay.events.length} events`}
+                        : `${replayMeta.events} events`}
                     </div>
-                    <div className="filter-chip">{formatBytes(replay.bytes)}</div>
+                    <div className="filter-chip">{formatBytes(replayMeta.bytes)}</div>
                     {replayDurationLabel && (
                       <div className="filter-chip">{replayDurationLabel}</div>
                     )}
-                    {replay.truncated && <div className="filter-chip">truncated</div>}
                   </div>
                 )}
-                {replay.available && replay.events.length > 0 ? (
-                  <div className="replay-stage" ref={replayStage} />
-                ) : (
+                <div className="replay-stage" ref={replayStage} />
+                {replayStatus === "ready" && replayMeta.events === 0 && (
                   <div className="panel-subtitle">
-                    {replay.available
-                      ? `Replay ${replay.replayId.slice(0, 8)} is linked, but no recording segments are stored yet.`
-                      : `Replay ${replay.replayId.slice(0, 8)} is linked, but the object store could not be read.`}
+                    {`Replay ${replayId.slice(0, 8)} is linked, but no recording segments are stored yet.`}
                   </div>
                 )}
               </>

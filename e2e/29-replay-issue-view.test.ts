@@ -2,29 +2,25 @@
  * E2E Test: Session replay for an issue.
  *
  * The issue details page (/ui/issues/:eventId) carries a "Session replay"
- * section next to the event details. The backend links the error to the
- * recording that was running around it (replay metadata items, or
- * `contexts.replay` on the error event) and reads the segments back from
- * object storage, assembled in playback order. Events without a replay
- * keep the section visible with an explicit empty state.
+ * section next to the event details. The error event links the recording
+ * that was running around it (`contexts.replay.replay_id`); the backend
+ * returns pages of presigned object-store URLs for that session and the
+ * browser streams the segments straight into rrweb.
  *
- * Uses the local storage backend (LOCAL_STORAGE_DIR) so segments are
- * written and read in-process; the S3 write path is covered by
- * 28-replay-offload.test.ts. The API is asserted directly for ordering,
- * absent replays and unknown events; a real Chrome session asserts the
- * section on the page.
+ * The suite runs against the compose RustFS (`docker compose up -d rustfs
+ * rustfs-init`, bucket `sentry-replays`); the bucket's CORS rule allows the
+ * UI origin to fetch the presigned GETs. The API is asserted directly for
+ * ordering, pagination, absent replays and unknown events; a real Chrome
+ * session asserts the section on the page.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { startTestServer, type TestServer } from "./test-helpers";
 
-const ADMIN_TOKEN = "Bearer e2e-admin-token";
+const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const REPLAY_ID = "4f9a4f9a4f9a4f9a4f9a4f9a4f9a4f9a";
-// The later segment's message id sorts before the earlier one, so
-// assembling by object key order alone would play the session backwards.
+// The later segment's message id sorts before the earlier one; only the
+// start-time prefix in the object key keeps playback order correct.
 const EARLY_SEGMENT_ID = "ffffffff-1111-4111-8111-111111111111";
 const LATE_SEGMENT_ID = "00000000-2222-4222-8222-222222222222";
 const EARLY_START_MS = 1_700_000_000_000;
@@ -32,43 +28,23 @@ const LATE_START_MS = 1_700_000_030_000;
 
 interface ReplaySegment {
   key: string;
-  events: number;
+  url: string;
   bytes: number;
-  startedAt: string | null;
 }
 
-interface ReplayPayload {
-  replayId: string | null;
+interface ReplayPage {
+  replayId: string;
   available: boolean;
-  truncated: boolean;
-  bytes: number;
+  expiresAt: string | null;
   segments: ReplaySegment[];
-  events: Array<Record<string, unknown>>;
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 let testServer: TestServer;
-let storageDir = "";
 let view: Bun.WebView;
 let errorEventId = "";
 let plainEventId = "";
-
-// Snapshot the outer environment so the file leaves no storage env behind.
-const ORIGINAL_ENV = {
-  S3_BUCKET: process.env.S3_BUCKET,
-  S3_ENDPOINT: process.env.S3_ENDPOINT,
-  S3_REGION: process.env.S3_REGION,
-  S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
-  S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
-  S3_SESSION_TOKEN: process.env.S3_SESSION_TOKEN,
-  LOCAL_STORAGE_DIR: process.env.LOCAL_STORAGE_DIR,
-};
-
-function restoreStorageEnv(): void {
-  for (const [name, value] of Object.entries(ORIGINAL_ENV)) {
-    if (value === undefined) delete process.env[name];
-    else process.env[name] = value;
-  }
-}
 
 function buildEnvelope(
   header: Record<string, unknown>,
@@ -106,15 +82,30 @@ async function apiGet<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-// Ingestion is asynchronous (NATS -> ClickHouse): the replay link is
-// readable once the stored event is visible, so poll instead of racing.
-async function waitForReplay(eventId: string, timeoutMs = 10000): Promise<ReplayPayload> {
+function replayRequest(
+  eventId: string,
+  replayId: string,
+  query = "",
+): Promise<Response> {
+  return fetch(
+    `${testServer.baseUrl}/api/admin/events/${eventId}/replay/${replayId}${query}`,
+    { headers: { Authorization: ADMIN_TOKEN } },
+  );
+}
+
+// Ingestion is asynchronous (NATS -> ClickHouse): the replay endpoint
+// needs the stored event for its project/app scope, so poll instead of
+// racing.
+async function waitForReplay(
+  eventId: string,
+  replayId: string,
+  query = "",
+  timeoutMs = 15000,
+): Promise<ReplayPage> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const response = await fetch(`${testServer.baseUrl}/replays/by-event/${eventId}`, {
-      headers: { Authorization: ADMIN_TOKEN },
-    });
-    if (response.ok) return (await response.json()) as ReplayPayload;
+    const response = await replayRequest(eventId, replayId, query);
+    if (response.ok) return (await response.json()) as ReplayPage;
     await Bun.sleep(100);
   }
   throw new Error(`replay for event ${eventId} never became available`);
@@ -134,7 +125,7 @@ function replayMeta(replayId: string, segmentId: number, timestamp: number) {
 }
 
 // A realistic rrweb batch: session meta, a full snapshot and incrementals,
-// each carrying the millisecond timestamp playback order is derived from.
+// each carrying the millisecond timestamp the object key is ordered by.
 function replayRecording(
   href: string,
   timestamp: number,
@@ -250,15 +241,6 @@ async function waitForSelector(selector: string, timeoutMs = 15000): Promise<boo
 
 describe("Session replay on the issue details page", () => {
   beforeAll(async () => {
-    storageDir = await mkdtemp(join(tmpdir(), "e2e-replay-issue-"));
-    delete process.env.S3_BUCKET;
-    delete process.env.S3_ENDPOINT;
-    delete process.env.S3_REGION;
-    delete process.env.S3_ACCESS_KEY_ID;
-    delete process.env.S3_SECRET_ACCESS_KEY;
-    delete process.env.S3_SESSION_TOKEN;
-    process.env.LOCAL_STORAGE_DIR = storageDir;
-
     testServer = await startTestServer();
 
     // The error event carries the replay link the SDK attaches while a
@@ -299,29 +281,56 @@ describe("Session replay on the issue details page", () => {
   afterAll(async () => {
     await view?.close();
     testServer?.stop();
-    restoreStorageEnv();
-    if (storageDir) await rm(storageDir, { recursive: true, force: true });
   });
 
-  it("assembles the linked replay's segments in playback order", async () => {
-    const replay = await waitForReplay(errorEventId);
+  it("returns presigned segment URLs in playback order", async () => {
+    const replay = await waitForReplay(errorEventId, REPLAY_ID);
 
     expect(replay.replayId).toBe(REPLAY_ID);
     expect(replay.available).toBe(true);
-    expect(replay.truncated).toBe(false);
-    expect(replay.bytes).toBeGreaterThan(0);
+    expect(replay.hasMore).toBe(false);
+    expect(replay.nextCursor).toBeNull();
+    expect(replay.expiresAt).toBeTruthy();
     expect(replay.segments).toHaveLength(2);
-    expect(replay.events).toHaveLength(6);
+    expect(replay.segments[0]!.bytes).toBeGreaterThan(0);
 
-    // Playback order follows the rrweb timestamps, not the sorted key
-    // order (which would put the later segment first).
+    // Playback order follows the start-time prefix, not the message id.
     expect(replay.segments[0]!.key).toContain(EARLY_SEGMENT_ID);
-    expect(replay.segments[0]!.startedAt).toBe(new Date(EARLY_START_MS).toISOString());
-    expect(replay.events[0]!.timestamp).toBe(EARLY_START_MS);
-    expect((replay.events[0]!.data as { href?: string }).href).toBe(
-      "https://example.com/checkout",
+    expect(replay.segments[1]!.key).toContain(LATE_SEGMENT_ID);
+
+    const early = (await (await fetch(replay.segments[0]!.url)).json()) as Array<{
+      timestamp: number;
+      data?: { href?: string };
+    }>;
+    const late = (await (await fetch(replay.segments[1]!.url)).json()) as Array<{
+      data?: { texts?: string };
+    }>;
+    expect(early[0]!.timestamp).toBe(EARLY_START_MS);
+    expect(early[0]!.data?.href).toBe("https://example.com/checkout");
+    expect(late[2]!.data?.texts).toBe("thank-you");
+  }, 30000);
+
+  it("pages segments with the cursor (limit=1)", async () => {
+    const first = await waitForReplay(errorEventId, REPLAY_ID, "?limit=1");
+    expect(first.segments).toHaveLength(1);
+    expect(first.segments[0]!.key).toContain(EARLY_SEGMENT_ID);
+    expect(first.hasMore).toBe(true);
+    expect(first.nextCursor).toBe(first.segments[0]!.key);
+
+    const secondResponse = await replayRequest(
+      errorEventId,
+      REPLAY_ID,
+      `?limit=1&cursor=${encodeURIComponent(first.nextCursor!)}`,
     );
-    expect((replay.events[5]!.data as { texts?: string }).texts).toBe("thank-you");
+    expect(secondResponse.status).toBe(200);
+    const second = (await secondResponse.json()) as ReplayPage;
+    expect(second.segments).toHaveLength(1);
+    expect(second.segments[0]!.key).toContain(LATE_SEGMENT_ID);
+    expect(second.hasMore).toBe(false);
+    expect(second.nextCursor).toBeNull();
+
+    const invalid = await replayRequest(errorEventId, REPLAY_ID, "?cursor=replays/other");
+    expect(invalid.status).toBe(400);
   }, 30000);
 
   it("reports a linked replay with no stored segments as available and empty", async () => {
@@ -334,26 +343,20 @@ describe("Session replay on the issue details page", () => {
       }),
     );
 
-    const replay = await waitForReplay(eventId);
+    const replay = await waitForReplay(eventId, replayId);
     expect(replay.replayId).toBe(replayId);
     expect(replay.available).toBe(true);
     expect(replay.segments).toEqual([]);
-    expect(replay.events).toEqual([]);
+    expect(replay.hasMore).toBe(false);
   }, 30000);
 
-  it("reports no replay for events without a replay link", async () => {
-    const replay = await waitForReplay(plainEventId);
-    expect(replay.replayId).toBeNull();
-    expect(replay.available).toBe(true);
-    expect(replay.segments).toEqual([]);
-    expect(replay.events).toEqual([]);
+  it("leaves events without a replay link unlinked", async () => {
+    const detail = await apiGet<{ replay_id?: string }>(`/events/${plainEventId}`);
+    expect(detail.replay_id).toBeUndefined();
   }, 30000);
 
   it("404s for unknown events", async () => {
-    const response = await fetch(
-      `${testServer.baseUrl}/replays/by-event/${crypto.randomUUID()}`,
-      { headers: { Authorization: ADMIN_TOKEN } },
-    );
+    const response = await replayRequest(crypto.randomUUID(), REPLAY_ID);
     expect(response.status).toBe(404);
   }, 30000);
 

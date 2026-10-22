@@ -1,20 +1,8 @@
 import { db } from "db";
 import { experimentMetrics } from "db/schema/experiment-metrics";
-import { countDistinct, eq, and } from "drizzle-orm";
+import { count, eq, and } from "drizzle-orm";
 import type { PgInsertValue } from "drizzle-orm/pg-core";
-import { internalError } from "backend/errors";
-
-type MetricRow = typeof experimentMetrics.$inferSelect;
-
-export interface MetricRecord {
-  id: string;
-  flagId: string;
-  variantKey: string;
-  userId: string;
-  metricName: string;
-  value: number;
-  recordedAt: string;
-}
+import type { Executor } from "./executor";
 
 export interface VariantCount {
   variantKey: string;
@@ -22,26 +10,23 @@ export interface VariantCount {
 }
 
 export const experimentMetricDAO = {
+  // Tracking is fire-and-forget: the route only needs the write to succeed.
   record: async (
     data: Omit<PgInsertValue<typeof experimentMetrics>, "id" | "recordedAt"> & {
       id?: string;
       recordedAt?: string;
     },
-  ): Promise<MetricRecord> => {
-    const [row] = await db
-      .insert(experimentMetrics)
-      .values({
-        ...data,
-        id: data.id ?? crypto.randomUUID(),
-        recordedAt: data.recordedAt ?? new Date().toISOString(),
-      })
-      .returning();
-    if (!row) {
-      throw internalError("Failed to record experiment metric");
-    }
-    return row;
+    executor: Executor = db,
+  ): Promise<void> => {
+    await executor.insert(experimentMetrics).values({
+      ...data,
+      id: data.id ?? crypto.randomUUID(),
+      recordedAt: data.recordedAt ?? new Date().toISOString(),
+    });
   },
 
+  // Conversions are metric rows, not distinct users: a user who records
+  // the primary metric twice counts twice.
   countByVariant: async (
     flagId: string,
     metricName: string,
@@ -49,7 +34,7 @@ export const experimentMetricDAO = {
     const rows = await db
       .select({
         variantKey: experimentMetrics.variantKey,
-        count: countDistinct(experimentMetrics.userId),
+        count: count(),
       })
       .from(experimentMetrics)
       .where(

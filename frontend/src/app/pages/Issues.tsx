@@ -9,6 +9,7 @@ import { POLL_INTERVAL_MS, relativeTime } from "../../lib/utils";
 const PAGE_SIZE = 20;
 
 type StatusFilter = "unresolved" | "resolved" | "all";
+type SortFilter = "new" | "frequent" | "first-seen";
 
 const STATUS_FILTERS: Array<{ id: StatusFilter; label: string }> = [
   { id: "unresolved", label: "Status: Unresolved" },
@@ -16,18 +17,44 @@ const STATUS_FILTERS: Array<{ id: StatusFilter; label: string }> = [
   { id: "all", label: "Status: All" },
 ];
 
+const SORT_FILTERS: Array<{ id: SortFilter; label: string }> = [
+  { id: "new", label: "Newest" },
+  { id: "frequent", label: "Most frequent" },
+  { id: "first-seen", label: "First seen" },
+];
+
+// The search grammar: the toolbar text is the free-text part, the chips
+// and the workspace add the rest.
+function buildQuery(
+  search: string,
+  status: StatusFilter,
+  projectId?: string,
+  applicationId?: string,
+): string {
+  const terms: string[] = [];
+  if (status !== "all") terms.push(`is:${status}`);
+  if (applicationId) terms.push(`app:${applicationId}`);
+  else if (projectId) terms.push(`project:${projectId}`);
+  for (const word of search.split(/\s+/).filter(Boolean)) {
+    terms.push(/\s/u.test(word) ? `"${word}"` : word);
+  }
+  return terms.join(" ");
+}
+
 export function Issues() {
   const navigate = useNavigate();
   const { project, application, query, setQuery } = useWorkspace();
   const projectId = project?.id;
   const applicationId = application?.id;
   const [issues, setIssues] = useState<IssueDto[]>([]);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [health, setHealth] = useState<{ status: string; eventsStored: number } | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  // Cursor stack: index 0 is the first page (no cursor); Next appends the
+  // last row's id, Prev steps back through the visited pages.
+  const [cursors, setCursors] = useState<Array<string | undefined>>([undefined]);
+  const [pageIndex, setPageIndex] = useState(0);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("unresolved");
-  const [page, setPage] = useState(1);
+  const [sortFilter, setSortFilter] = useState<SortFilter>("new");
   const [searchTerm, setSearchTerm] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -39,39 +66,28 @@ export function Issues() {
   }, [query]);
 
   useEffect(() => {
-    setPage(1);
-  }, [projectId, applicationId, statusFilter, searchTerm]);
+    setCursors([undefined]);
+    setPageIndex(0);
+  }, [projectId, applicationId, statusFilter, sortFilter, searchTerm]);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
         const result = await listIssues({
-          projectId,
-          appId: applicationId,
-          status: statusFilter === "all" ? undefined : statusFilter,
-          q: searchTerm || undefined,
-          page,
+          query: buildQuery(searchTerm, statusFilter, projectId, applicationId),
+          sort: sortFilter,
+          cursor: cursors[pageIndex],
           limit: PAGE_SIZE,
         });
-        const body = result?.data as {
-          data?: IssueDto[];
-          pagination?: { page: number; limit: number; total: number; totalPages: number };
-        } | null;
+        const list = (result?.data as { data?: IssueDto[] } | null)?.data ?? [];
         if (cancelled) return;
-        setIssues(body?.data ?? []);
-        setTotal(body?.pagination?.total ?? body?.data?.length ?? 0);
-        setTotalPages(Math.max(1, body?.pagination?.totalPages ?? 1));
+        setIssues(list);
+        setHasMore(list.length === PAGE_SIZE);
         setStatus("ready");
       } catch {
         // keep the last rows on fetch failure, but stop the loading state
         if (!cancelled) setStatus((current) => (current === "ready" ? current : "error"));
-      }
-      try {
-        const healthResult = await api.health.get();
-        if (!cancelled && healthResult?.data) setHealth(healthResult.data);
-      } catch {
-        // keep the last health on fetch failure
       }
     };
     load();
@@ -80,11 +96,21 @@ export function Issues() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [projectId, applicationId, statusFilter, searchTerm, page, reloadToken]);
+  }, [projectId, applicationId, statusFilter, sortFilter, searchTerm, cursors, pageIndex, reloadToken]);
 
   const setFilter = (filter: StatusFilter) => {
     setStatusFilter(filter);
-    setPage(1);
+  };
+
+  const goNext = () => {
+    const last = issues[issues.length - 1];
+    if (!last || !hasMore) return;
+    setCursors((stack) => {
+      const next = stack.slice(0, pageIndex + 1);
+      next[pageIndex + 1] = last.id;
+      return next;
+    });
+    setPageIndex((index) => index + 1);
   };
 
   // Resolving an issue arms the "regression" alert trigger for its next
@@ -103,7 +129,6 @@ export function Issues() {
     }
   };
 
-  const currentPage = Math.min(page, totalPages);
   const scopeCopy = application ? "this app" : "this project";
   const emptyTitle = searchTerm
     ? "No matching issues"
@@ -150,6 +175,18 @@ export function Issues() {
             {filter.label}
           </div>
         ))}
+        {SORT_FILTERS.map((filter) => (
+          <div
+            key={filter.id}
+            className={`filter-chip clickable ${sortFilter === filter.id ? "active" : ""}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => setSortFilter(filter.id)}
+            onKeyDown={(event) => event.key === "Enter" && setSortFilter(filter.id)}
+          >
+            {filter.label}
+          </div>
+        ))}
         <div className="filter-chip">
           {application
             ? `App: ${application.name}`
@@ -157,7 +194,6 @@ export function Issues() {
               ? `Project: ${project.name}`
               : "All projects"}
         </div>
-        {health && <div className="filter-chip">{health.eventsStored} stored</div>}
       </div>
       <article className="panel data-panel">
         <div className="data-head">
@@ -173,11 +209,11 @@ export function Issues() {
             role="button"
             tabIndex={0}
             onClick={() => {
-              if (issue.latestEventId) navigate(`/issues/${issue.latestEventId}`);
+              if (issue.latestEventId) navigate(`/issues/${issue.latestEventId}?issue=${issue.id}`);
             }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && issue.latestEventId) {
-                navigate(`/issues/${issue.latestEventId}`);
+                navigate(`/issues/${issue.latestEventId}?issue=${issue.id}`);
               }
             }}
           >
@@ -187,7 +223,7 @@ export function Issues() {
                 {issue.title}
               </div>
               <div className="issue-meta issue-meta-truncate" title={issue.fingerprint}>
-                {issue.fingerprint}
+                {issue.culprit ?? issue.fingerprint}
               </div>
             </div>
             <strong>{issue.eventCount}</strong>
@@ -253,31 +289,34 @@ export function Issues() {
             <span>—</span>
           </div>
         )}
-        {status === "ready" && total > 0 && (
+        {status === "ready" && issues.length > 0 && (
           <div className="pagination">
             <span>
-              Page {currentPage} of {totalPages} · {total} issue{total === 1 ? "" : "s"}
+              Page {pageIndex + 1}
+              {hasMore ? "+" : ""} · {issues.length} shown
               {searchTerm ? ` matching “${searchTerm}”` : ""}
             </span>
             <div className="pagination-actions">
-              {currentPage > 1 && (
+              {pageIndex > 0 && (
                 <div
                   className="pagination-button"
                   role="button"
                   tabIndex={0}
-                  onClick={() => setPage(currentPage - 1)}
-                  onKeyDown={(event) => event.key === "Enter" && setPage(currentPage - 1)}
+                  onClick={() => setPageIndex((index) => Math.max(0, index - 1))}
+                  onKeyDown={(event) =>
+                    event.key === "Enter" && setPageIndex((index) => Math.max(0, index - 1))
+                  }
                 >
                   ← Prev
                 </div>
               )}
-              {currentPage < totalPages && (
+              {hasMore && (
                 <div
                   className="pagination-button"
                   role="button"
                   tabIndex={0}
-                  onClick={() => setPage(currentPage + 1)}
-                  onKeyDown={(event) => event.key === "Enter" && setPage(currentPage + 1)}
+                  onClick={goNext}
+                  onKeyDown={(event) => event.key === "Enter" && goNext()}
                 >
                   Next →
                 </div>

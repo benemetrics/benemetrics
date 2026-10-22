@@ -80,6 +80,28 @@ function failurePayload(
   };
 }
 
+// The page reads the issue's occurrences from the server, so the test
+// resolves the issue the events were folded into. The issue tracks the
+// latest occurrence, so any of the issue's events identifies it.
+async function resolveIssueId(eventIds: string[], timeoutMs = 20000): Promise<string> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const response = await fetch(
+      `${testServer.baseUrl}/api/admin/issues?query=${encodeURIComponent(`app:${testServer.appId}`)}&limit=100`,
+      { headers: { Authorization: "API-Key e2e-admin-token" } },
+    );
+    const body = (await response.json()) as {
+      data?: Array<{ id: string; latestEventId: string | null }>;
+    };
+    const issue = (body.data ?? []).find((entry) =>
+      eventIds.includes(entry.latestEventId ?? ""),
+    );
+    if (issue) return issue.id;
+    await Bun.sleep(300);
+  }
+  throw new Error(`No issue found for events ${eventIds.join(", ")}`);
+}
+
 async function waitForTextInUI(text: string, timeoutMs = 20000): Promise<string> {
   const start = Date.now();
   let body = "";
@@ -218,7 +240,8 @@ describe("Issue details — metrics, event list and event switching", () => {
   });
 
   it("aggregates every event of the issue into the metrics panel", async () => {
-    await view.navigate(`${testServer.baseUrl}/ui/issues/${firstEventId}`);
+    const issueId = await resolveIssueId([firstEventId, secondEventId]);
+    await view.navigate(`${testServer.baseUrl}/ui/issues/${firstEventId}?issue=${issueId}`);
     // Firefox and bob only exist on the second event, so their presence
     // proves the panel aggregated more than the selected event.
     await waitForTextInUI("Firefox 115.0");
@@ -280,6 +303,7 @@ describe("Issue details — metrics, event list and event switching", () => {
     expect((await view.evaluate("location.pathname")) ?? "").toBe(
       `/ui/issues/${secondEventId}`,
     );
+    expect((await view.evaluate("location.search")) ?? "").toContain("issue=");
     const rows = await waitForEventRows(
       (list) => list.find((row) => row.selected)?.text.includes("Second failure") === true,
     );

@@ -4,6 +4,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { isoTimestamp } from "./timestamps";
 
 export const experimentAssignments = pgTable(
   "experiment_assignments",
@@ -13,7 +14,7 @@ export const experimentAssignments = pgTable(
     userId: text("user_id").notNull(),
     variantKey: text("variant_key").notNull(),
     context: text("context").notNull().default("{}"),
-    assignedAt: text("assigned_at").notNull(),
+    assignedAt: isoTimestamp("assigned_at").notNull(),
   },
   (table) => ({
     flagUserUnique: uniqueIndex("experiment_assignments_flag_user_idx").on(

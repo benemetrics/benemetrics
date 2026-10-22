@@ -12,15 +12,13 @@ import app from "../backend/index";
 
 const ADMIN_HEADERS = {
   "Content-Type": "application/json",
-  Authorization: "Bearer e2e-admin-token",
+  Authorization: "API-Key e2e-admin-token",
 };
 
 interface AppResponse {
   id: string;
   number: number;
-  dsn: string;
   publicKey: string;
-  host: string;
 }
 
 interface EventRecord {
@@ -73,7 +71,7 @@ beforeAll(async () => {
   created = (await appResponse.json()) as AppResponse;
 
   Sentry.init({
-    dsn: created.dsn,
+    dsn: `http://${created.publicKey}@${new URL(baseUrl).host}/${created.number}`,
     environment: "test",
     release: "e2e-sdk-dsn",
     defaultIntegrations: false,
@@ -88,11 +86,13 @@ afterAll(async () => {
 
 describe("Official Sentry SDK connects with the provided app DSN", () => {
   it("hands out a DSN the SDK accepts as-is", () => {
-    const dsnUrl = new URL(created.dsn);
+    const dsnUrl = new URL(
+      `http://${created.publicKey}@${new URL(baseUrl).host}/${created.number}`,
+    );
 
     expect(created.number).toBeGreaterThan(0);
     expect(dsnUrl.protocol).toBe(new URL(baseUrl).protocol);
-    expect(dsnUrl.host).toBe(created.host);
+    expect(dsnUrl.host).toBe(new URL(baseUrl).host);
     expect(dsnUrl.username).toBe(created.publicKey);
     expect(dsnUrl.pathname).toBe(`/${created.number}`);
 

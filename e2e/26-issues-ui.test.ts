@@ -17,7 +17,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import app from "../backend/index";
 
-const ADMIN_TOKEN = "Bearer e2e-admin-token";
+const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const PROJECT_NAME = `Issues UI ${Date.now()}`;
 const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
@@ -39,7 +39,7 @@ async function adminRequest(
 }
 
 async function issueStatus(): Promise<string | null> {
-  const response = await adminRequest("GET", `/api/admin/issues?appId=${appRecord.id}`);
+  const response = await adminRequest("GET", `/api/admin/issues?query=${encodeURIComponent(`app:${appRecord.id}`)}`);
   const body = (await response.json()) as { data?: Array<{ status: string }> };
   return body.data?.[0]?.status ?? null;
 }

@@ -16,6 +16,7 @@ import { FeatureFlags } from "./app/pages/FeatureFlags";
 import { NewFeatureFlag } from "./app/pages/NewFeatureFlag";
 import { Segments } from "./app/pages/Segments";
 import { SourceMaps } from "./app/pages/SourceMaps";
+import { Permissions } from "./app/pages/Permissions";
 import { Projects } from "./app/pages/Projects";
 import { Setup } from "./app/pages/Setup";
 import { ErrorBoundary } from "./app/ErrorBoundary";
@@ -43,6 +44,7 @@ export function App() {
             <Route path="/feature-flags/new" element={<NewFeatureFlag />} />
             <Route path="/segments" element={<Segments />} />
             <Route path="/source-maps" element={<SourceMaps />} />
+          <Route path="/permissions" element={<Permissions />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/setup" element={<Setup />} />
           </Route>

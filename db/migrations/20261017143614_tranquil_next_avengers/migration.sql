@@ -1,1 +1,0 @@
-ALTER TABLE "stored_events" DROP COLUMN "raw";

@@ -1,0 +1,103 @@
+{{- if .Values.dependencies.postgres.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "benedebug.fullname" . }}-postgres
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: {{ .Values.database.port }}
+      targetPort: postgres
+  selector:
+    {{- include "benedebug.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "benedebug.fullname" . }}-postgres
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  serviceName: {{ include "benedebug.fullname" . }}-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "benedebug.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels:
+        {{- include "benedebug.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.dependencies.postgres.image.repository }}:{{ .Values.dependencies.postgres.image.tag }}"
+          imagePullPolicy: {{ .Values.dependencies.postgres.image.pullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.database.user | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "benedebug.secretName" . }}
+                  key: postgres-password
+            - name: POSTGRES_DB
+              value: {{ .Values.database.database | quote }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - {{ .Values.database.user | quote }}
+                - -d
+                - {{ .Values.database.database | quote }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.dependencies.postgres.resources | nindent 12 }}
+      volumes:
+        - name: data
+          {{- if .Values.dependencies.postgres.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "benedebug.fullname" . }}-postgres
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.dependencies.postgres.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.dependencies.postgres.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.dependencies.postgres.persistence.storageClass }}
+        annotations:
+          volume.beta.kubernetes.io/storage-class: {{ . }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.dependencies.postgres.persistence.accessModes | nindent 10 }}
+        {{- if .Values.dependencies.postgres.persistence.storageClass }}
+        storageClassName: {{ .Values.dependencies.postgres.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.dependencies.postgres.persistence.size }}
+  {{- end }}
+{{- end }}

@@ -3,9 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Action } from "../Action";
 import { ScreenIntro } from "../ScreenIntro";
 import { api, type AlertChannelDto } from "../../lib/api";
+import { loadAllPages } from "../../lib/cursor";
 import { notify } from "../../lib/toast";
 
-type ChannelType = "slack" | "rocketchat" | "email" | "webhook";
+type ChannelType =
+  | "slack"
+  | "rocketchat"
+  | "email"
+  | "webhook"
+  | "pagerduty"
+  | "opsgenie"
+  | "msteams"
+  | "victorops";
 
 const CHANNEL_TYPES: Array<{
   type: ChannelType;
@@ -37,14 +46,31 @@ const CHANNEL_TYPES: Array<{
     mark: "↗",
     copy: "Post the alert payload to a custom HTTP endpoint.",
   },
+  {
+    type: "pagerduty",
+    name: "PagerDuty",
+    mark: "P",
+    copy: "Trigger a PagerDuty event with a routing key.",
+  },
+  {
+    type: "opsgenie",
+    name: "Opsgenie",
+    mark: "O",
+    copy: "Raise an Opsgenie alert with an API key.",
+  },
+  {
+    type: "msteams",
+    name: "Microsoft Teams",
+    mark: "T",
+    copy: "Post an adaptive card to a Teams incoming webhook.",
+  },
+  {
+    type: "victorops",
+    name: "VictorOps",
+    mark: "V",
+    copy: "Raise a VictorOps alert with an API and routing key.",
+  },
 ];
-
-function unwrapList<T>(response: unknown): T[] {
-  if (!response || typeof response !== "object") return [];
-  const candidate = response as { data?: { data?: T[] } | null; error?: unknown };
-  if (candidate.error) return [];
-  return candidate.data?.data ?? [];
-}
 
 function unwrapOne<T>(response: unknown): T | null {
   if (!response || typeof response !== "object") return null;
@@ -63,12 +89,19 @@ export function AlertChannels() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [token, setToken] = useState("");
   const [slackChannel, setSlackChannel] = useState("");
+  const [routingKey, setRoutingKey] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const result = await api.api.admin.alerting.channels.get();
-      setChannels(unwrapList<AlertChannelDto>(result));
+      const rows = await loadAllPages<AlertChannelDto>(async (cursor, limit) => {
+        const result = await api.api.admin.alerting.channels.get({
+          $query: { limit, ...(cursor ? { cursor } : {}) },
+        });
+        return (result?.data as { data?: AlertChannelDto[] } | null)?.data ?? [];
+      });
+      setChannels(rows);
       setStatus("ready");
     } catch {
       setStatus((current) => (current === "ready" ? current : "error"));
@@ -86,6 +119,8 @@ export function AlertChannels() {
     setWebhookUrl("");
     setToken("");
     setSlackChannel("");
+    setRoutingKey("");
+    setApiKey("");
   };
 
   const create = async () => {
@@ -100,6 +135,12 @@ export function AlertChannels() {
       config = webhookUrl.trim()
         ? { webhookUrl: webhookUrl.trim() }
         : { token: token.trim(), channel: slackChannel.trim() };
+    }
+    if (formType === "pagerduty") config = { routing_key: routingKey.trim() };
+    if (formType === "opsgenie") config = { api_key: apiKey.trim() };
+    if (formType === "msteams") config = { webhookUrl: webhookUrl.trim() };
+    if (formType === "victorops") {
+      config = { api_key: apiKey.trim(), routing_key: routingKey.trim() };
     }
     setSaving(true);
     try {
@@ -260,6 +301,63 @@ export function AlertChannels() {
                 )}
               </>
             )}
+            {formType === "pagerduty" && (
+              <div className="form-field full">
+                <span>Routing key</span>
+                <input
+                  className="field-control code-value"
+                  placeholder="R0…"
+                  value={routingKey}
+                  onChange={(event) => setRoutingKey(event.target.value)}
+                />
+              </div>
+            )}
+            {formType === "opsgenie" && (
+              <div className="form-field full">
+                <span>API key</span>
+                <input
+                  className="field-control code-value"
+                  type="password"
+                  placeholder="…"
+                  value={apiKey}
+                  onChange={(event) => setApiKey(event.target.value)}
+                />
+              </div>
+            )}
+            {formType === "msteams" && (
+              <div className="form-field full">
+                <span>Incoming webhook URL</span>
+                <input
+                  className="field-control code-value"
+                  placeholder="https://outlook.office.com/webhook/…"
+                  value={webhookUrl}
+                  onChange={(event) => setWebhookUrl(event.target.value)}
+                />
+              </div>
+            )}
+            {formType === "victorops" && (
+              <>
+                <div className="form-field">
+                  <span>API key</span>
+                  <input
+                    className="field-control code-value"
+                    type="password"
+                    placeholder="…"
+                    value={apiKey}
+                    onChange={(event) => setApiKey(event.target.value)}
+                  />
+                </div>
+                <div className="form-field">
+                  <span>Routing key</span>
+                  <input
+                    className="field-control code-value"
+                    placeholder="…"
+                    value={routingKey}
+                    onChange={(event) => setRoutingKey(event.target.value)}
+                  />
+                </div>
+              </>
+            )}
             {formType === "email" && (
               <div className="form-field full">
                 <span>Delivery</span>
@@ -287,8 +385,9 @@ export function AlertChannels() {
         <div>
           <strong>Default routing</strong>
           <span>
-            Alert rules without explicit destinations notify every channel in scope. Only the
-            webhook, Slack, and Rocket.Chat notifiers deliver today.
+            Alert rules without explicit destinations notify every channel in scope. The webhook,
+            Slack, Rocket.Chat, email, PagerDuty, Opsgenie, Microsoft Teams and VictorOps
+            notifiers deliver today.
           </span>
         </div>
         <Action variant="soft" onClick={() => navigate("/alerts")}>

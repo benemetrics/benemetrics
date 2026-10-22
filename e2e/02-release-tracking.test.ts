@@ -6,8 +6,8 @@
  */
 
 import * as Sentry from "@sentry/bun";
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
-import { clearStoredEvents, startTestServer, waitForEventListItem, type TestServer } from "./test-helpers";
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { startTestServer, waitForEventListItem, type TestServer } from "./test-helpers";
 
 let SERVER_URL = "";
 let testServer: TestServer | null = null;
@@ -28,7 +28,7 @@ async function apiRequest(
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Bearer e2e-admin-token",
+      Authorization: "API-Key e2e-admin-token",
     },
   };
   if (body !== undefined) {
@@ -59,10 +59,6 @@ async function waitForEvent(eventId: string, timeout: number = 5000): Promise<Te
   return null;
 }
 
-async function clearEvents(): Promise<void> {
-  await clearStoredEvents(SERVER_URL);
-}
-
 function initSentryForTest(config: { dsn: string; release?: string }): void {
   const { init } = require("@sentry/bun");
   init({
@@ -82,7 +78,6 @@ beforeAll(async () => {
   testServer = await startTestServer();
   SERVER_URL = testServer.baseUrl;
   if (!DSN) DSN = testServer.dsn;
-  await clearEvents();
 });
 
 afterAll(() => {
@@ -91,20 +86,7 @@ afterAll(() => {
 
 describe("Release Tracking (02-release-tracking.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN, release: "2.3.1-abc123" });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("sends events with release information and fetches it", async () => {
@@ -155,6 +137,8 @@ describe("Release Tracking (02-release-tracking.md)", () => {
     const transactionEvent = await waitForEventListItem(
       SERVER_URL,
       (item) => item.itemTypes.includes("transaction"),
+      10000,
+      testServer!.appId,
     );
     expect(transactionEvent).toBeDefined();
   });

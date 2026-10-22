@@ -5,4 +5,5 @@ dist
 .storage
 *.log
 e2e
+backend/tests
 .agents

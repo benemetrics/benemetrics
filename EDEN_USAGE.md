@@ -16,10 +16,10 @@ The `App` type is imported from the backend, providing full type safety for all 
 
 ## Basic Usage
 
-### Health Check
+### Health Check (Docker liveness probe)
 ```typescript
 const response = await api.health.get();
-// response.data -> { status: "ok", eventsStored: number }
+// response.data -> { status: "ok" }
 // response.error -> { message: string, code?: string }
 ```
 

@@ -6,9 +6,9 @@
  */
 
 import * as Sentry from "@sentry/bun";
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import app from "../backend/index";
-import { clearStoredEvents, startTestServer, type TestServer } from "./test-helpers";
+import { startTestServer, type TestServer } from "./test-helpers";
 
 let SERVER_URL = "";
 let testServer: TestServer | null = null;
@@ -28,7 +28,7 @@ async function apiRequest(
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Bearer e2e-admin-token",
+      Authorization: "API-Key e2e-admin-token",
     },
   };
   if (body !== undefined) {
@@ -58,10 +58,6 @@ async function waitForEvent(eventId: string, timeout: number = 5000): Promise<Te
   return null;
 }
 
-async function clearEvents(): Promise<void> {
-  await clearStoredEvents(SERVER_URL);
-}
-
 function initSentryForTest(config: { dsn: string; release?: string }): void {
   const { init } = require("@sentry/bun");
   init({
@@ -80,7 +76,6 @@ beforeAll(async () => {
   testServer = await startTestServer();
   SERVER_URL = testServer.baseUrl;
   if (!DSN) DSN = testServer.dsn;
-  await clearEvents();
 });
 
 afterAll(() => {
@@ -89,20 +84,7 @@ afterAll(() => {
 
 describe("Feature Flags - Setup & Configuration (09-feature-flags.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN, release: "v1.0.0-test" });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("initializes Sentry with feature flags configuration", async () => {
@@ -170,20 +152,7 @@ describe("Feature Flags - Setup & Configuration (09-feature-flags.md)", () => {
 
 describe("Feature Flags - Boolean Flag Patterns (09-feature-flags.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN, release: "v1.0.0-test" });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("simulates boolean flag evaluation pattern", () => {
@@ -254,20 +223,7 @@ describe("Feature Flags - Boolean Flag Patterns (09-feature-flags.md)", () => {
 
 describe("Feature Flags - Multivariate Flag Patterns (09-feature-flags.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN, release: "v1.0.0-test" });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("handles multivariate flag variants", () => {
@@ -342,20 +298,7 @@ describe("Feature Flags - Multivariate Flag Patterns (09-feature-flags.md)", () 
 
 describe("Feature Flags - Targeting Rules Patterns (09-feature-flags.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN, release: "v1.0.0-test" });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("evaluates targeting rule: user segment", () => {
@@ -417,20 +360,7 @@ describe("Feature Flags - Targeting Rules Patterns (09-feature-flags.md)", () =>
 
 describe("Feature Flags - Segments Patterns (09-feature-flags.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN, release: "v1.0.0-test" });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("defines segment with multiple rules", () => {
@@ -509,20 +439,7 @@ describe("Feature Flags - Segments Patterns (09-feature-flags.md)", () => {
 
 describe("Feature Flags - Kill Switch Patterns (09-feature-flags.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN, release: "v1.0.0-test" });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("implements manual kill switch pattern", () => {
@@ -585,20 +502,7 @@ describe("Feature Flags - Kill Switch Patterns (09-feature-flags.md)", () => {
 
 describe("Feature Flags - Release Integration (09-feature-flags.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN, release: "v2.3.0" });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("associates flags with release version", async () => {
@@ -651,20 +555,7 @@ describe("Feature Flags - Release Integration (09-feature-flags.md)", () => {
 
 describe("Feature Flags - Caching & Performance Patterns (09-feature-flags.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN, release: "v1.0.0-test" });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("implements flag caching with TTL", () => {
@@ -707,20 +598,7 @@ describe("Feature Flags - Caching & Performance Patterns (09-feature-flags.md)",
 
 describe("Feature Flags - Migration Patterns (09-feature-flags.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN, release: "v1.0.0-test" });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("maps LaunchDarkly flag structure to Sentry", () => {
@@ -806,20 +684,7 @@ describe("Feature Flags - Migration Patterns (09-feature-flags.md)", () => {
 
 describe("Feature Flags - Self-Hosted Config Patterns (09-feature-flags.md)", () => {
   beforeAll(async () => {
-    await clearEvents();
     initSentryForTest({ dsn: DSN, release: "v1.0.0-test" });
-  });
-
-  afterAll(async () => {
-    await clearEvents();
-  });
-
-  beforeEach(async () => {
-    await clearEvents();
-  });
-
-  afterEach(async () => {
-    await clearEvents();
   });
 
   it("validates self-hosted feature flags config structure", () => {

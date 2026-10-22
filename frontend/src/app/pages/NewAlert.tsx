@@ -5,14 +5,8 @@ import { Icon } from "../Icon";
 import { ScreenIntro } from "../ScreenIntro";
 import { useWorkspace } from "../WorkspaceContext";
 import { api, type AlertChannelDto } from "../../lib/api";
+import { loadAllPages } from "../../lib/cursor";
 import { notify } from "../../lib/toast";
-
-function unwrapList<T>(response: unknown): T[] {
-  if (!response || typeof response !== "object") return [];
-  const candidate = response as { data?: { data?: T[] } | null; error?: unknown };
-  if (candidate.error) return [];
-  return candidate.data?.data ?? [];
-}
 
 const METRICS = [
   ["event_count", "Event count"],
@@ -89,19 +83,29 @@ export function NewAlert() {
     let cancelled = false;
     (async () => {
       try {
-        const [globalResult, appResult] = await Promise.all([
-          api.api.admin.alerting.channels.get(),
+        const [globalChannels, appChannels] = await Promise.all([
+          loadAllPages<AlertChannelDto>(async (cursor, limit) => {
+            const result = await api.api.admin.alerting.channels.get({
+              $query: { limit, ...(cursor ? { cursor } : {}) },
+            });
+            return (result?.data as { data?: AlertChannelDto[] } | null)?.data ?? [];
+          }),
           scopeAppId
-            ? api.api.admin.alerting.channels.get({ $query: { appId: scopeAppId } })
-            : Promise.resolve(null),
+            ? loadAllPages<AlertChannelDto>(async (cursor, limit) => {
+                const result = await api.api.admin.alerting.channels.get({
+                  $query: { appId: scopeAppId, limit, ...(cursor ? { cursor } : {}) },
+                });
+                return (result?.data as { data?: AlertChannelDto[] } | null)?.data ?? [];
+              })
+            : Promise.resolve([] as AlertChannelDto[]),
         ]);
         // Same override semantics as the backend resolver: an app-scoped
         // channel with the same name replaces the global one.
         const byName = new Map<string, AlertChannelDto>();
-        for (const channel of unwrapList<AlertChannelDto>(globalResult)) {
+        for (const channel of globalChannels) {
           byName.set(channel.name, channel);
         }
-        for (const channel of unwrapList<AlertChannelDto>(appResult)) {
+        for (const channel of appChannels) {
           byName.set(channel.name, channel);
         }
         if (!cancelled) setChannels([...byName.values()]);
@@ -192,6 +196,10 @@ export function NewAlert() {
   const notificationMark = useMemo(() => {
     const type = selectedChannel?.type ?? "slack";
     if (type === "rocketchat") return { className: "rocket", mark: "R" };
+    if (type === "pagerduty") return { className: "pagerduty", mark: "P" };
+    if (type === "opsgenie") return { className: "opsgenie", mark: "O" };
+    if (type === "msteams") return { className: "msteams", mark: "T" };
+    if (type === "victorops") return { className: "victorops", mark: "V" };
     if (type === "email") return { className: "mail", mark: "@" };
     if (type === "webhook") return { className: "webhook", mark: "↗" };
     return { className: "slack", mark: "S" };

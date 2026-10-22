@@ -15,10 +15,6 @@ function isJson(text: string): boolean {
   }
 }
 
-// Parses the Sentry envelope wire format: the first line is the envelope
-// header, followed by items made of an item header line and a payload of
-// `length` bytes. Items without a positive length fall back to a single
-// newline-terminated line for compatibility with hand-written envelopes.
 export function parseEnvelope(raw: string): ParsedEnvelope | null {
   const bytes = new TextEncoder().encode(raw);
   const decoder = new TextDecoder();
@@ -48,7 +44,6 @@ export function parseEnvelope(raw: string): ParsedEnvelope | null {
       try {
         itemHeader = JSON.parse(itemHeaderLine) as ItemHeader;
       } catch {
-        // Malformed item header: stop parsing rather than guess.
         break;
       }
 
@@ -64,9 +59,6 @@ export function parseEnvelope(raw: string): ParsedEnvelope | null {
         let consumed = end;
 
         if (!isJson(sliced)) {
-          // Hand-written envelopes sometimes declare a wrong length;
-          // when the newline-terminated line is the valid JSON payload,
-          // prefer it over the truncated slice.
           const lineEnd = bytes.indexOf(0x0a, offset);
           const lineStop = lineEnd === -1 ? bytes.length : lineEnd;
           const line = decoder.decode(bytes.subarray(offset, lineStop));
@@ -89,7 +81,6 @@ export function parseEnvelope(raw: string): ParsedEnvelope | null {
       try {
         payload = JSON.parse(payloadText);
       } catch {
-        // Non-JSON payloads (attachments, replays) keep their raw text.
         payload = payloadText;
       }
       items.push({ header: itemHeader, payload });
@@ -102,8 +93,6 @@ export function parseEnvelope(raw: string): ParsedEnvelope | null {
   }
 }
 
-// Envelopes are stored as a header plus a normalized items array; the
-// items JSON column is the single source of truth.
 export function parseStoredEnvelope(stored: {
   envelopeHeader: string;
   envelopeItems: string;
@@ -141,10 +130,18 @@ export function extractEventId(parsed: { header: EnvelopeHeader; items: Array<{ 
     }
   }
 
+  // A check-in's own id is its stable event id: retries and status updates
+  // dedupe against it, and clients can fetch the check-in by the id the SDK
+  // returned from captureCheckIn.
+  for (const item of parsed.items) {
+    if (item.header.type !== "check_in") continue;
+    if (!item.payload || typeof item.payload !== "object") continue;
+    const checkInId = (item.payload as { check_in_id?: unknown }).check_in_id;
+    if (typeof checkInId === "string" && checkInId.length > 0) return checkInId;
+  }
+
   return crypto.randomUUID();
 }
-// Event-type payloads from a serialized envelope items array
-// (JSON text stored in stored_events.envelope_items).
 export function extractEventItems(
   envelopeItems: string,
 ): Array<Record<string, unknown>> {
@@ -162,75 +159,6 @@ export function extractEventItems(
   } catch {
     return [];
   }
-}
-
-// Human-readable issue title: exception type + value, the message,
-// or the fingerprint as a last resort.
-export function issueTitle(payload: Record<string, unknown>): string {
-  const exception = payload.exception as
-    | { values?: Array<{ type?: string; value?: string }> }
-    | undefined;
-  const top = exception?.values?.[0];
-  if (top) return `${top.type ?? "Error"}: ${top.value ?? ""}`.trim();
-  if (typeof payload.message === "string" && payload.message.trim()) {
-    return payload.message.slice(0, 200);
-  }
-  return issueFingerprint(payload);
-}
-
-interface ExceptionFrame {
-  filename?: string;
-  function?: string;
-  in_app?: boolean;
-}
-
-// SDKs order stack frames oldest-first, so the crash site is the LAST
-// frame (verified against @sentry/bun's stack parser). Pick the newest
-// in-app frame like Sentry, falling back to the newest frame with a
-// filename, then the newest frame.
-function crashFrame(
-  frames: ExceptionFrame[] | undefined,
-): ExceptionFrame | undefined {
-  if (!Array.isArray(frames) || frames.length === 0) return undefined;
-  for (let index = frames.length - 1; index >= 0; index -= 1) {
-    const frame = frames[index];
-    if (frame?.in_app === true && frame.filename) return frame;
-  }
-  for (let index = frames.length - 1; index >= 0; index -= 1) {
-    const frame = frames[index];
-    if (frame?.filename) return frame;
-  }
-  return frames[frames.length - 1];
-}
-
-// Groups events the way Sentry groups issues: explicit
-// fingerprint first, then the newest in-app frame, then message.
-export function issueFingerprint(
-  payload: Record<string, unknown>,
-): string {
-  if (Array.isArray(payload.fingerprint) && payload.fingerprint.length > 0) {
-    return payload.fingerprint.map(String).join("::");
-  }
-
-  const exception = payload.exception as
-    | {
-        values?: Array<{
-          type?: string;
-          stacktrace?: { frames?: ExceptionFrame[] };
-        }>;
-      }
-    | undefined;
-  const top = exception?.values?.[0];
-  if (top) {
-    const frame = crashFrame(top.stacktrace?.frames);
-    return `${top.type ?? "Error"}@${frame?.filename ?? ""}:${frame?.function ?? ""}`;
-  }
-
-  if (typeof payload.message === "string" && payload.message.trim()) {
-    return `msg:${payload.message.slice(0, 200)}`;
-  }
-
-  return "unknown";
 }
 
 export function extractRelease(parsed: {
@@ -273,6 +201,9 @@ export function normalizeTransactionPayload(payload: unknown): unknown {
       for (const [key, val] of Object.entries(p.measurements)) {
         if (typeof val === "object" && val !== null && "value" in val) measurements[key] = val;
         else if (typeof val === "number") measurements[key] = { value: val };
+        else if (typeof val === "string" && val.trim() !== "" && Number.isFinite(Number(val))) {
+          measurements[key] = { value: Number(val) };
+        }
       }
       if (Object.keys(measurements).length > 0) p.measurements = measurements;
     }

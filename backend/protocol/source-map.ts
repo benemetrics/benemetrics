@@ -12,7 +12,6 @@ interface SourceMapArtifactResponse {
 
 interface SourceMapArtifactListResponse {
   data: SourceMapArtifactResponse[];
-  pagination: { page: number; limit: number; total: number; totalPages: number };
 }
 
 interface SourceMapTokenResponse {
@@ -29,8 +28,6 @@ interface SourceMapTokenResponse {
   revokedAt: string | null;
 }
 
-// The raw token is returned exactly once: at creation and at
-// rotation. It is never stored or listed afterwards.
 interface SourceMapTokenWithSecret extends SourceMapTokenResponse {
   token: string;
 }

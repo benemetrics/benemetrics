@@ -1,21 +1,17 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
-import { appDAO } from "db/dao/project";
+import { appDAO, projectDAO } from "db/dao/project";
 import { alertChannelDAO } from "db/dao/alert-channels";
 import { alertRuleDAO } from "db/dao/alert-rules";
 import { alertIncidentDAO } from "db/dao/alert-incidents";
 import { badRequest } from "../errors";
-import { toChannel, toIncident, toRule } from "./serialize";
 import { resolveEffectiveAlertConfig } from "./resolver";
 import { buildTestNotification, deliverAlertToChannels } from "./notifiers";
-import type {
-  AlertMetric,
-  AlertOperator,
-  AlertTrigger,
-} from "../protocol/alerting";
+import { resolveAdminId } from "../auth";
 
-const channelType = "'email' | 'webhook' | 'slack' | 'rocketchat'";
-const optionalChannelType = "'email' | 'webhook' | 'slack' | 'rocketchat'?";
+const channelType =
+  "'email' | 'webhook' | 'slack' | 'rocketchat' | 'pagerduty' | 'opsgenie' | 'msteams' | 'victorops'";
+const optionalChannelType = `${channelType}?`;
 const alertMetric =
   "'event_count' | 'error_count' | 'fatal_count' | 'new_issue_count' | 'latency_p95' | 'latency_p99'";
 const optionalAlertMetric =
@@ -23,25 +19,32 @@ const optionalAlertMetric =
 const alertOperator = "'gt' | 'lt'";
 const optionalAlertOperator = "'gt' | 'lt'?";
 const issueAlertTrigger = "'new_issue' | 'regression'";
+// The dimensions a rule matches on: the tags an event carries.
+const ruleFiltersSchema = arktype({
+  tags: arktype({ "[string]": "string" }).optional(),
+});
 const optionalAlertTrigger = "'threshold' | 'new_issue' | 'regression'?";
 
-export const alertingRoutes = new Elysia({ prefix: "alerting" })
-  // ---- Channels ----------------------------------------------------------
+// ── oidc surface: the admin reads and writes ─────────────
+export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
+  .resolve(resolveAdminId)
   .get(
     "/channels",
-    async ({ query: { appId, page, limit } }) => {
+    async ({ query: { appId, projectId, cursor, limit } }) => {
       if (appId) await appDAO.findByIdOrThrow(appId);
-      const { data, pagination } = await alertChannelDAO.listPaged({
+      if (projectId) await projectDAO.findByIdOrThrow(projectId);
+      return alertChannelDAO.listPaged({
         appId: appId ?? null,
-        page,
+        projectId: projectId ?? null,
+        cursor,
         limit,
       });
-      return { data: data.map(toChannel), pagination };
     },
     {
       query: arktype({
         appId: "string.uuid?",
-        page: "string.integer.parse?",
+        projectId: "string.uuid?",
+        cursor: "string?",
         limit: "string.integer.parse?",
       }),
     },
@@ -50,14 +53,17 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
     "/channels",
     async ({ body }) => {
       const appId = body.appId ?? null;
+      const projectId = body.projectId ?? null;
       if (appId) await appDAO.findByIdOrThrow(appId);
+      if (projectId) await projectDAO.findByIdOrThrow(projectId);
       const created = await alertChannelDAO.create({
         name: body.name,
         type: body.type,
         config: JSON.stringify(body.config ?? {}),
         appId,
+        projectId,
       });
-      return toChannel(created);
+      return created;
     },
     {
       body: arktype({
@@ -65,13 +71,13 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
         type: channelType,
         config: "object?",
         appId: "string.uuid?",
+        projectId: "string.uuid?",
       }),
     },
   )
   .get(
     "/channels/:id",
-    async ({ params: { id } }) =>
-      toChannel(await alertChannelDAO.findByIdOrThrow(id)),
+    async ({ params: { id } }) => alertChannelDAO.findByIdOrThrow(id),
     { params: arktype({ id: "string.uuid" }) },
   )
   .patch(
@@ -84,7 +90,7 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
           ? { config: JSON.stringify(body.config) }
           : {}),
       });
-      return toChannel(updated);
+      return updated;
     },
     {
       params: arktype({ id: "string.uuid" }),
@@ -98,29 +104,29 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
   .delete(
     "/channels/:id",
     async ({ params: { id } }) => {
-      await alertChannelDAO.findByIdOrThrow(id);
       await alertChannelDAO.delete(id);
       return { success: true };
     },
     { params: arktype({ id: "string.uuid" }) },
   )
 
-  // ---- Rules -------------------------------------------------------------
   .get(
     "/rules",
-    async ({ query: { appId, page, limit } }) => {
+    async ({ query: { appId, projectId, cursor, limit } }) => {
       if (appId) await appDAO.findByIdOrThrow(appId);
-      const { data, pagination } = await alertRuleDAO.listPaged({
+      if (projectId) await projectDAO.findByIdOrThrow(projectId);
+      return alertRuleDAO.listPaged({
         appId: appId ?? null,
-        page,
+        projectId: projectId ?? null,
+        cursor,
         limit,
       });
-      return { data: data.map(toRule), pagination };
     },
     {
       query: arktype({
         appId: "string.uuid?",
-        page: "string.integer.parse?",
+        projectId: "string.uuid?",
+        cursor: "string?",
         limit: "string.integer.parse?",
       }),
     },
@@ -129,31 +135,13 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
     "/rules",
     async ({ body }) => {
       const appId = body.appId ?? null;
+      const projectId = body.projectId ?? null;
       if (appId) await appDAO.findByIdOrThrow(appId);
-      const base = {
-        name: body.name,
-        trigger: body.trigger ?? "threshold",
-        cooldownSeconds: body.cooldownSeconds ?? 3600,
-        channelIds: JSON.stringify(body.channelIds ?? []),
-        appId,
-      };
-      const created = await alertRuleDAO.create(
-        "metric" in body
-          ? {
-              ...base,
-              metric: body.metric,
-              operator: body.operator,
-              threshold: body.threshold,
-              windowSeconds: body.windowSeconds,
-              measurement: body.measurement ?? null,
-            }
-          : base,
-      );
-      return toRule(created);
+      if (projectId) await projectDAO.findByIdOrThrow(projectId);
+      const base = { name: body.name, trigger: body.trigger ?? "threshold", cooldownSeconds: body.cooldownSeconds ?? 3600, channelIds: JSON.stringify(body.channelIds ?? []), appId, projectId, filters: JSON.stringify(body.filters ?? {}) };
+      return alertRuleDAO.create("metric" in body ? { ...base, metric: body.metric, operator: body.operator, threshold: body.threshold, windowSeconds: body.windowSeconds, measurement: body.measurement ?? null } : base);
     },
     {
-      // Threshold rules carry the metric breach fields; issue triggers
-      // are fired by issue-state transitions instead and reject them.
       body: arktype({
         name: "string",
         trigger: "'threshold'?",
@@ -165,101 +153,35 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
         channelIds: "string.uuid[]?",
         measurement: "string?",
         appId: "string.uuid?",
-      }).or(
+        projectId: "string.uuid?",
+        filters: ruleFiltersSchema.optional(),
+      }).onUndeclaredKey("reject").or(
         arktype({
           name: "string",
           trigger: issueAlertTrigger,
           cooldownSeconds: "number.integer >= 0?",
           channelIds: "string.uuid[]?",
           appId: "string.uuid?",
+          projectId: "string.uuid?",
+          filters: ruleFiltersSchema.optional(),
         }).onUndeclaredKey("reject"),
       ),
     },
   )
   .get(
     "/rules/:id",
-    async ({ params: { id } }) =>
-      toRule(await alertRuleDAO.findByIdOrThrow(id)),
+    async ({ params: { id } }) => alertRuleDAO.findByIdOrThrow(id),
     { params: arktype({ id: "string.uuid" }) },
   )
   .patch(
     "/rules/:id",
     async ({ params: { id }, body }) => {
       const current = await alertRuleDAO.findByIdOrThrow(id);
-      const nextTrigger = (body.trigger ?? current.trigger) as AlertTrigger;
-      const nextMetric =
-        body.metric !== undefined
-          ? body.metric
-          : (current.metric as AlertMetric | null);
-      const nextOperator =
-        body.operator !== undefined
-          ? body.operator
-          : (current.operator as AlertOperator | null);
-      const nextThreshold =
-        body.threshold !== undefined ? body.threshold : current.threshold;
-      const nextWindowSeconds =
-        body.windowSeconds !== undefined
-          ? body.windowSeconds
-          : current.windowSeconds;
-
-      if (nextTrigger === "threshold") {
-        if (
-          nextMetric === null ||
-          nextOperator === null ||
-          nextThreshold === null ||
-          nextWindowSeconds === null
-        ) {
-          throw badRequest(
-            "threshold rules require metric, operator, threshold and windowSeconds",
-          );
-        }
-      } else if (
-        body.metric !== undefined ||
-        body.operator !== undefined ||
-        body.threshold !== undefined ||
-        body.windowSeconds !== undefined
-      ) {
-        throw badRequest(
-          "issue triggers do not accept metric, operator, threshold or windowSeconds",
-        );
-      }
-
-      // Switching to an issue trigger clears the metric-breach fields,
-      // switching back requires them again.
-      const thresholdFields =
-        nextTrigger === "threshold"
-          ? {
-              metric: nextMetric,
-              operator: nextOperator,
-              threshold: nextThreshold,
-              windowSeconds: nextWindowSeconds,
-              ...(body.measurement !== undefined
-                ? { measurement: body.measurement }
-                : {}),
-            }
-          : {
-              metric: null,
-              operator: null,
-              threshold: null,
-              windowSeconds: null,
-              measurement: null,
-            };
-
-      const updated = await alertRuleDAO.updateOrThrow(id, {
-        ...(body.name !== undefined ? { name: body.name } : {}),
-        ...(body.trigger !== undefined ? { trigger: body.trigger } : {}),
-        ...thresholdFields,
-        ...(body.cooldownSeconds !== undefined
-          ? { cooldownSeconds: body.cooldownSeconds }
-          : {}),
-        ...(body.channelIds !== undefined
-          ? { channelIds: JSON.stringify(body.channelIds) }
-          : {}),
-        ...(body.isEnabled !== undefined
-          ? { isEnabled: body.isEnabled ? 1 : 0 }
-          : {}),
-      });
-      return toRule(updated);
+      const trigger = body.trigger ?? current.trigger;
+      const next = { metric: body.metric ?? current.metric, operator: body.operator ?? current.operator, threshold: body.threshold ?? current.threshold, windowSeconds: body.windowSeconds ?? current.windowSeconds };
+      if (trigger === "threshold" && Object.values(next).some((value) => value == null)) throw badRequest("threshold rules require metric, operator, threshold and windowSeconds");
+      if (trigger !== "threshold" && [body.metric, body.operator, body.threshold, body.windowSeconds].some((value) => value !== undefined)) throw badRequest("issue triggers do not accept metric, operator, threshold or windowSeconds");
+      return alertRuleDAO.updateOrThrow(id, { ...body, ...(trigger === "threshold" ? { ...next, measurement: body.measurement ?? current.measurement } : { metric: null, operator: null, threshold: null, windowSeconds: null, measurement: null }), channelIds: JSON.stringify(body.channelIds ?? current.channelIds), isEnabled: (body.isEnabled ?? current.isEnabled) ? 1 : 0 });
     },
     {
       params: arktype({ id: "string.uuid" }),
@@ -280,8 +202,6 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
   .delete(
     "/rules/:id",
     async ({ params: { id } }) => {
-      await alertRuleDAO.findByIdOrThrow(id);
-      // Incidents are history of the rule, so they are removed with it.
       await alertIncidentDAO.deleteByRule(id);
       await alertRuleDAO.delete(id);
       return { success: true };
@@ -291,50 +211,39 @@ export const alertingRoutes = new Elysia({ prefix: "alerting" })
   .post(
     "/rules/:id/test",
     async ({ params: { id } }) => {
-      const rule = toRule(await alertRuleDAO.findByIdOrThrow(id));
+      const rule = await alertRuleDAO.findByIdOrThrow(id);
       const channels = rule.appId
-        ? (await resolveEffectiveAlertConfig(rule.appId)).channels
-        : (await alertChannelDAO.list(null)).map(toChannel);
-      const targets =
-        rule.channelIds.length > 0
-          ? rule.channelIds
-          : channels.map((channel) => channel.id);
-      const selected = channels.filter((channel) =>
-        targets.includes(channel.id),
-      );
-      const results = await deliverAlertToChannels(
-        selected,
-        buildTestNotification(rule),
-      );
+        ? (await resolveEffectiveAlertConfig({ appId: rule.appId })).channels
+        : await alertChannelDAO.list(null);
+      const targets = rule.channelIds.length > 0 ? rule.channelIds : channels.map((channel) => channel.id);
+      const results = await deliverAlertToChannels(channels.filter((channel) => targets.includes(channel.id)), buildTestNotification(rule, rule.appId));
       return { results };
     },
     { params: arktype({ id: "string.uuid" }) },
   )
 
-  // ---- Effective config & incidents --------------------------------------
   .get(
     "/apps/:appId/effective",
     async ({ params: { appId } }) => {
       await appDAO.findByIdOrThrow(appId);
-      return resolveEffectiveAlertConfig(appId);
+      return resolveEffectiveAlertConfig({ appId });
     },
     { params: arktype({ appId: "string.uuid" }) },
   )
   .get(
     "/incidents",
-    async ({ query: { appId, page, limit } }) => {
+    async ({ query: { appId, cursor, limit } }) => {
       if (appId) await appDAO.findByIdOrThrow(appId);
-      const { data, pagination } = await alertIncidentDAO.list({
+      return alertIncidentDAO.list({
         appId,
-        page,
+        cursor,
         limit,
       });
-      return { data: data.map(toIncident), pagination };
     },
     {
       query: arktype({
         appId: "string.uuid?",
-        page: "string.integer.parse?",
+        cursor: "string?",
         limit: "string.integer.parse?",
       }),
     },

@@ -1,0 +1,54 @@
+{{- if and .Values.dependencies.objectStorage.enabled .Values.dependencies.objectStorage.bucket.create }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "benedebug.fullname" . }}-bucket-init
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+    app.kubernetes.io/component: objectstorage
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        {{- include "benedebug.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: objectstorage
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        # Creates the bucket the replay segments are offloaded to and allows
+        # the UI to fetch the presigned segment URLs (GET/HEAD) cross-origin.
+        # Safe to re-run: the existing objects and rules are replaced
+        # idempotently.
+        - name: bucket-init
+          image: rustfs/rc:latest
+          env:
+            - name: ENDPOINT
+              value: {{ printf "http://%s-objectstorage:9000" (include "benedebug.fullname" .) | quote }}
+            - name: ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "benedebug.secretName" . }}
+                  key: object-storage-access-key-id
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "benedebug.secretName" . }}
+                  key: object-storage-secret-access-key
+            - name: BUCKET
+              value: {{ .Values.objectStorage.bucket | quote }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              until rc alias set local "$ENDPOINT" "$ACCESS_KEY" "$SECRET_KEY"; do sleep 2; done
+              until rc ls local/ >/dev/null 2>&1; do sleep 2; done
+              rc ls "local/$BUCKET" >/dev/null 2>&1 || rc mb "local/$BUCKET"
+              printf '%s' '{"rules":[{"allowedOrigins":[{{ range $i, $o := .Values.dependencies.objectStorage.bucket.allowedOrigins }}{{ if $i }},{{ end }}"{{ $o }}"{{ end }}],"allowedMethods":["GET","HEAD"],"allowedHeaders":["*"],"exposeHeaders":["ETag","Content-Length","Content-Type"],"maxAgeSeconds":3000}]}' \
+                | rc bucket cors set "local/$BUCKET" -
+{{- end }}

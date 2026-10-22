@@ -1,10 +1,32 @@
 import { db } from "db";
-import { environments, type Environment, type EnvironmentInsert } from "db/schema/environments";
-import { and, asc, desc, eq, ne } from "drizzle-orm";
+import { environments, type EnvironmentInsert } from "db/schema/environments";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
 import { uniqueViolationConstraint } from "db/pg-errors";
+import { cursorAfter, cursorLimit, type CursorPage } from "./cursor";
 
 type EnvironmentCreateInput = Omit<EnvironmentInsert, "id"> & { id?: string };
+
+export interface EnvironmentResponse {
+  id: string;
+  projectId: string;
+  name: string;
+  slug: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// `is_default` is exposed as a boolean, so the conversion is in the read.
+const environmentFields = {
+  id: environments.id,
+  projectId: environments.projectId,
+  name: environments.name,
+  slug: environments.slug,
+  isDefault: sql<boolean>`${environments.isDefault} = 1`,
+  createdAt: environments.createdAt,
+  updatedAt: environments.updatedAt,
+};
 
 const SLUG_CONSTRAINT = "environments_project_slug_idx";
 const ONE_DEFAULT_CONSTRAINT = "environments_one_default_idx";
@@ -14,7 +36,7 @@ const ONE_DEFAULT_CONSTRAINT = "environments_one_default_idx";
 export const environmentDAO = {
   create: async (data: EnvironmentCreateInput) => {
     const now = new Date().toISOString();
-    let created: Environment | undefined;
+    let created: EnvironmentResponse | undefined;
     try {
       [created] = await db
         .insert(environments)
@@ -27,7 +49,7 @@ export const environmentDAO = {
         .onConflictDoNothing({
           target: [environments.projectId, environments.slug],
         })
-        .returning();
+        .returning(environmentFields);
     } catch (err) {
       if (uniqueViolationConstraint(err) === ONE_DEFAULT_CONSTRAINT) {
         throw conflict("Only one environment can be the default for a project");
@@ -57,7 +79,7 @@ export const environmentDAO = {
         .onConflictDoNothing({
           target: [environments.projectId, environments.slug],
         })
-        .returning();
+        .returning(environmentFields);
       return created;
     };
 
@@ -78,10 +100,36 @@ export const environmentDAO = {
     return existing;
   },
 
-  findById: async (id: string): Promise<Environment | undefined> =>
+  // Resolves the environment an app is being created into: the named one
+  // (by slug or display name, created when missing) or the project default.
+  resolveForApp: async (projectId: string, environmentName?: string) => {
+    if (!environmentName) {
+      const defaultEnvironment = await environmentDAO.findDefault(projectId);
+      if (defaultEnvironment) return defaultEnvironment;
+      return environmentDAO.findOrCreate({ projectId, name: "Testing", slug: "testing", isDefault: 1 });
+    }
+
+    const slug = environmentName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    if (slug) {
+      const existing = await environmentDAO.findByProjectAndSlug(projectId, slug);
+      if (existing) return existing;
+    }
+    const byName = await environmentDAO.findByProjectAndName(projectId, environmentName);
+    if (byName) return byName;
+
+    const total = await environmentDAO.countByProject(projectId);
+    return environmentDAO.findOrCreate({
+      projectId,
+      name: environmentName,
+      slug: slug || crypto.randomUUID(),
+      isDefault: total === 0 ? 1 : 0,
+    });
+  },
+
+  findById: async (id: string): Promise<EnvironmentResponse | undefined> =>
     (
       await db
-        .select()
+        .select(environmentFields)
         .from(environments)
         .where(eq(environments.id, id))
         .limit(1)
@@ -93,79 +141,104 @@ export const environmentDAO = {
     return environment;
   },
 
-  findByProjectAndSlug: async (projectId: string, slug: string): Promise<Environment | undefined> =>
+  findByProjectAndSlug: async (projectId: string, slug: string): Promise<EnvironmentResponse | undefined> =>
     (
       await db
-        .select()
+        .select(environmentFields)
         .from(environments)
         .where(and(eq(environments.projectId, projectId), eq(environments.slug, slug)))
         .limit(1)
     )[0],
 
-  findByProjectAndName: async (projectId: string, name: string): Promise<Environment | undefined> =>
+  findByProjectAndName: async (projectId: string, name: string): Promise<EnvironmentResponse | undefined> =>
     (
       await db
-        .select()
+        .select(environmentFields)
         .from(environments)
         .where(and(eq(environments.projectId, projectId), eq(environments.name, name)))
         .limit(1)
     )[0],
 
-  findDefault: async (projectId: string): Promise<Environment | undefined> =>
+  // The issue query resolves an environment by its exact name
+  // (case-insensitive), across every project.
+  findByName: async (name: string): Promise<EnvironmentResponse[]> =>
+    db
+      .select(environmentFields)
+      .from(environments)
+      .where(sql`lower(${environments.name}) = lower(${name})`)
+      .orderBy(asc(environments.createdAt)),
+
+  findDefault: async (projectId: string): Promise<EnvironmentResponse | undefined> =>
     (
       await db
-        .select()
+        .select(environmentFields)
         .from(environments)
         .where(and(eq(environments.projectId, projectId), eq(environments.isDefault, 1)))
         .limit(1)
     )[0],
 
-  oldest: async (projectId: string): Promise<Environment | undefined> =>
+  // The default-repair path only needs the candidate id.
+  oldest: async (projectId: string): Promise<{ id: string } | undefined> =>
     (
       await db
-        .select()
+        .select({ id: environments.id })
         .from(environments)
         .where(eq(environments.projectId, projectId))
         .orderBy(asc(environments.createdAt))
         .limit(1)
     )[0],
 
-  listAllByProject: async (projectId: string): Promise<Environment[]> =>
+  // Project duplication copies name/slug/default only.
+  listAllByProject: async (projectId: string) =>
     db
-      .select()
+      .select({
+        id: environments.id,
+        name: environments.name,
+        slug: environments.slug,
+        isDefault: sql<boolean>`${environments.isDefault} = 1`,
+      })
       .from(environments)
       .where(eq(environments.projectId, projectId))
       .orderBy(asc(environments.createdAt)),
 
   list: async (options: {
-    projectId: string;
-    page?: number;
+    projectId?: string;
+    cursor?: string;
     limit?: number;
-  }): Promise<{
-    data: Environment[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
-  }> => {
-    const page = options.page ?? 1;
-    const limit = options.limit ?? 20;
-    const offset = (page - 1) * limit;
-    const where = eq(environments.projectId, options.projectId);
+    /** The visible environments of a scoped identity. */
+    environmentIds?: string[];
+  }): Promise<CursorPage<EnvironmentResponse>> => {
+    const limit = cursorLimit(options.limit);
+    const scope = options.projectId
+      ? eq(environments.projectId, options.projectId)
+      : options.environmentIds && options.environmentIds.length > 0
+        ? inArray(environments.id, options.environmentIds)
+        : undefined;
+    const { condition, empty } = await cursorAfter(
+      environments,
+      environments.id,
+      environments.createdAt,
+      options.cursor,
+    );
+    if (empty) return { data: [] };
+    const where = scope && condition ? and(scope, condition) : (scope ?? condition);
 
-    const [rows, total] = await Promise.all([
-      db
-        .select()
-        .from(environments)
-        .where(where)
-        .orderBy(desc(environments.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.$count(environments, where),
-    ]);
+    const data = await db
+      .select(environmentFields)
+      .from(environments)
+      .where(where)
+      .orderBy(desc(environments.createdAt), desc(environments.id))
+      .limit(limit);
 
-    return {
-      data: rows,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-    };
+    return { data };
   },
+
+  // The scope engine matches environment names across every project.
+  listAll: async (): Promise<EnvironmentResponse[]> =>
+    db.select(environmentFields).from(environments).orderBy(asc(environments.createdAt)),
+
+  countByProject: async (projectId: string): Promise<number> =>
+    Number(await db.$count(environments, eq(environments.projectId, projectId))),
 
   clearDefault: async (projectId: string, exceptId?: string) => {
     await db
@@ -178,28 +251,26 @@ export const environmentDAO = {
       );
   },
 
-  markDefault: async (id: string) =>
-    (
-      await db
-        .update(environments)
-        .set({ isDefault: 1, updatedAt: new Date().toISOString() })
-        .where(eq(environments.id, id))
-        .returning()
-    )[0],
+  // The caller only needs the side effect; repairing the default never
+  // reads the promoted row back.
+  markDefault: async (id: string): Promise<void> => {
+    await db
+      .update(environments)
+      .set({ isDefault: 1, updatedAt: new Date().toISOString() })
+      .where(eq(environments.id, id));
+  },
 
-  // Guarantees the "exactly one default per project" invariant after
-  // mutations: promotes the oldest environment when the project is left
-  // without a default.
-  ensureDefault: async (projectId: string) => {
-    const current = await environmentDAO.findDefault(projectId);
-    if (current) return current;
-    const oldest = await environmentDAO.oldest(projectId);
-    if (!oldest) return undefined;
+  // Restores the "exactly one default per project" invariant.
+  ensureDefault: async (projectId: string): Promise<void> => {
+    const [current, oldest] = await Promise.all([
+      environmentDAO.findDefault(projectId),
+      environmentDAO.oldest(projectId),
+    ]);
+    if (current || !oldest) return;
     try {
-      return await environmentDAO.markDefault(oldest.id);
+      await environmentDAO.markDefault(oldest.id);
     } catch (err) {
       if (uniqueViolationConstraint(err) !== ONE_DEFAULT_CONSTRAINT) throw err;
-      return environmentDAO.findDefault(projectId);
     }
   },
 
@@ -210,7 +281,7 @@ export const environmentDAO = {
           .update(environments)
           .set({ ...data, updatedAt: new Date().toISOString() })
           .where(eq(environments.id, id))
-          .returning()
+          .returning(environmentFields)
       )[0];
       if (!updated) throw notFound("Environment", id);
       return updated;

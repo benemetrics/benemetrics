@@ -1,0 +1,101 @@
+{{- if .Values.dependencies.clickhouse.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "benedebug.fullname" . }}-clickhouse
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+    app.kubernetes.io/component: clickhouse
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.clickhouse.port }}
+      targetPort: http
+    - name: native
+      port: 9000
+      targetPort: native
+  selector:
+    {{- include "benedebug.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: clickhouse
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "benedebug.fullname" . }}-clickhouse
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+    app.kubernetes.io/component: clickhouse
+spec:
+  serviceName: {{ include "benedebug.fullname" . }}-clickhouse
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "benedebug.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: clickhouse
+  template:
+    metadata:
+      labels:
+        {{- include "benedebug.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: clickhouse
+    spec:
+      containers:
+        - name: clickhouse
+          image: "{{ .Values.dependencies.clickhouse.image.repository }}:{{ .Values.dependencies.clickhouse.image.tag }}"
+          imagePullPolicy: {{ .Values.dependencies.clickhouse.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.clickhouse.port }}
+            - name: native
+              containerPort: 9000
+          env:
+            {{- if .Values.dependencies.clickhouse.skipUserSetup }}
+            # The image restricts the passwordless `default` user to localhost
+            # unless the user setup is skipped.
+            - name: CLICKHOUSE_SKIP_USER_SETUP
+              value: "1"
+            {{- end }}
+            - name: CLICKHOUSE_DB
+              value: {{ .Values.clickhouse.database | quote }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/clickhouse
+            - name: logs
+              mountPath: /var/log/clickhouse-server
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.dependencies.clickhouse.resources | nindent 12 }}
+      volumes:
+        - name: data
+          {{- if .Values.dependencies.clickhouse.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "benedebug.fullname" . }}-clickhouse
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: logs
+          emptyDir: {}
+  {{- if .Values.dependencies.clickhouse.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.dependencies.clickhouse.persistence.storageClass }}
+        annotations:
+          volume.beta.kubernetes.io/storage-class: {{ . }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.dependencies.clickhouse.persistence.accessModes | nindent 10 }}
+        {{- if .Values.dependencies.clickhouse.persistence.storageClass }}
+        storageClassName: {{ .Values.dependencies.clickhouse.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.dependencies.clickhouse.persistence.size }}
+  {{- end }}
+{{- end }}

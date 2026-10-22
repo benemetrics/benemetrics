@@ -4,13 +4,14 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
+import { isoTimestamp } from "./timestamps";
 
 export const segments = pgTable("segments", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").default(""),
   rules: text("rules").notNull().default("[]"),
-  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: isoTimestamp("created_at").notNull().default(sql`now()`),
 }, (table) => ({
   nameIdx: index("segments_name_idx").on(table.name),
 }));

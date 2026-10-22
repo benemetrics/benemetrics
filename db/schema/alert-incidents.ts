@@ -1,4 +1,6 @@
-import { pgTable, text, real, index } from "drizzle-orm/pg-core";
+import { pgTable, text, real, check, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm/sql";
+import { isoTimestamp } from "./timestamps";
 
 // An incident is "firing"
 // while its rule's metric breaches the threshold and
@@ -19,13 +21,21 @@ export const alertIncidents = pgTable(
     value: real("value"),
     threshold: real("threshold"),
     status: text("status").notNull().default("firing"),
-    triggeredAt: text("triggered_at").notNull(),
-    resolvedAt: text("resolved_at"),
+    triggeredAt: isoTimestamp("triggered_at").notNull(),
+    resolvedAt: isoTimestamp("resolved_at"),
   },
   (table) => ({
     ruleIdIdx: index("alert_incidents_rule_id_idx").on(table.ruleId),
     appIdIdx: index("alert_incidents_app_id_idx").on(table.appId),
     statusIdx: index("alert_incidents_status_idx").on(table.status),
+    triggerCheck: check(
+      "alert_incidents_trigger_check",
+      sql`${table.trigger} in ('threshold', 'new_issue', 'regression')`,
+    ),
+    statusCheck: check(
+      "alert_incidents_status_check",
+      sql`${table.status} in ('firing', 'resolved')`,
+    ),
   }),
 );
 

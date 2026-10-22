@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Action } from "../Action";
 import { ScreenIntro } from "../ScreenIntro";
-import { api } from "../../lib/api";
+import { api, type ExperimentResultsDto } from "../../lib/api";
+import { loadAllPages } from "../../lib/cursor";
 import { notify } from "../../lib/toast";
 
 interface FeatureFlagDto {
@@ -35,6 +36,80 @@ function readErrorMessage(response: unknown): string | null {
   return null;
 }
 
+function pct(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function pValueText(result: ExperimentResultsDto["variants"][number]): string {
+  if (result.pValue == null) return "—";
+  const value = result.pValue < 0.001 ? "<0.001" : result.pValue.toFixed(3);
+  return result.isSignificant ? `${value} ✓` : value;
+}
+
+/** The experiment Results Dashboard: participants, conversions, Wilson CI,
+ *  z-test p-value and the recommendation, per variant. */
+function ExperimentResultsPanel({ results }: { results: ExperimentResultsDto }) {
+  const { experiment, variants, recommendation } = results;
+  const participants = variants.reduce((sum, variant) => sum + variant.participants, 0);
+  return (
+    <div className="experiment-results">
+      <div className="experiment-results-head">
+        <span>
+          Primary metric: <strong>{experiment.primaryMetric ?? "conversion"}</strong>
+        </span>
+        <span>
+          {participants} participant{participants === 1 ? "" : "s"}
+        </span>
+        <span>Status: {experiment.status}</span>
+        {experiment.hypothesis && <span className="experiment-hypothesis">{experiment.hypothesis}</span>}
+      </div>
+      <div className="experiment-table">
+        <div className="experiment-table-row head">
+          <span>Variant</span>
+          <span>Participants</span>
+          <span>Conversions</span>
+          <span>Rate</span>
+          <span>95% CI</span>
+          <span>p-value</span>
+          <span>Lift</span>
+        </div>
+        {variants.map((variant) => (
+          <div
+            className={`experiment-table-row ${recommendation.winner === variant.key ? "winner" : ""}`}
+            key={variant.key}
+          >
+            <strong>{variant.name || variant.key}</strong>
+            <span>{variant.participants}</span>
+            <span>{variant.conversions}</span>
+            <span>{pct(variant.conversionRate)}</span>
+            <span>
+              [{pct(variant.confidenceInterval[0])}, {pct(variant.confidenceInterval[1])}]
+            </span>
+            <span>{pValueText(variant)}</span>
+            <span>
+              {variant.relativeImprovement == null ? "—" : pct(variant.relativeImprovement)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="experiment-recommendation">
+        {recommendation.winner ? (
+          <>
+            Recommendation: promote <strong>{recommendation.winner}</strong> ·{" "}
+            {recommendation.confidence} confidence ·{" "}
+            {recommendation.action === "implement" ? "ready to implement" : "keep running"}
+          </>
+        ) : (
+          <>
+            Recommendation: keep running ({recommendation.confidence} confidence — no significant
+            winner yet)
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function FeatureFlags() {
   const navigate = useNavigate();
   const [flags, setFlags] = useState<FeatureFlagDto[]>([]);
@@ -42,24 +117,37 @@ export function FeatureFlags() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [resultsFor, setResultsFor] = useState<string | null>(null);
+  const [results, setResults] = useState<ExperimentResultsDto | null>(null);
+  const [resultsStatus, setResultsStatus] = useState<"idle" | "loading" | "ready" | "error">(
+    "idle",
+  );
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const result = await api.api.admin["feature-flags"].get();
+        const rows = await loadAllPages<FeatureFlagDto>(async (cursor, limit) => {
+          const result = await api.api.admin["feature-flags"].get({
+            $query: { limit, ...(cursor ? { cursor } : {}) },
+          });
+          return (result?.data as { data?: FeatureFlagDto[] } | null)?.data ?? [];
+        });
         if (!cancelled) {
-          setFlags((result?.data as { data?: FeatureFlagDto[] } | null)?.data ?? []);
+          setFlags(rows);
           setStatus("ready");
         }
       } catch {
         if (!cancelled) setStatus("error");
       }
       try {
-        const projects = await api.api.admin.projects.get();
-        if (!cancelled) {
-          setProjectCount((projects?.data as { data?: unknown[] } | null)?.data?.length ?? 0);
-        }
+        const projects = await loadAllPages<{ id: string }>(async (cursor, limit) => {
+          const result = await api.api.admin.projects.get({
+            $query: { limit, ...(cursor ? { cursor } : {}) },
+          });
+          return (result?.data as { data?: { id: string }[] } | null)?.data ?? [];
+        });
+        if (!cancelled) setProjectCount(projects.length);
       } catch {
         // keep the current count on failure
       }
@@ -172,6 +260,30 @@ export function FeatureFlags() {
     }
   };
 
+  const toggleResults = async (flag: FeatureFlagDto) => {
+    if (resultsFor === flag.id) {
+      setResultsFor(null);
+      setResults(null);
+      setResultsStatus("idle");
+      return;
+    }
+    setResultsFor(flag.id);
+    setResults(null);
+    setResultsStatus("loading");
+    try {
+      const result = await api.api.admin.experiments[flag.id].results.get();
+      if ((result as { error?: unknown } | null)?.error) {
+        setResultsStatus("error");
+        return;
+      }
+      const data = (result?.data as ExperimentResultsDto | null) ?? null;
+      setResults(data);
+      setResultsStatus(data ? "ready" : "error");
+    } catch {
+      setResultsStatus("error");
+    }
+  };
+
   return (
     <div className="screen-stack">
       <ScreenIntro
@@ -208,7 +320,8 @@ export function FeatureFlags() {
         {flags.map((flag) => {
           const running = flag.experiment?.status === "running";
           return (
-            <div className="list-screen-row" key={flag.id}>
+            <Fragment key={flag.id}>
+              <div className="list-screen-row">
               <span className="flag-cell">
                 <strong>{flag.key}</strong>
                 <span>{flag.name}</span>
@@ -253,6 +366,15 @@ export function FeatureFlags() {
                         onKeyDown={(event) => event.key === "Enter" && promoteExperiment(flag)}
                       >
                         Promote
+                      </span>
+                      <span
+                        className={`row-action ${resultsFor === flag.id ? "active" : ""}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggleResults(flag)}
+                        onKeyDown={(event) => event.key === "Enter" && toggleResults(flag)}
+                      >
+                        {resultsFor === flag.id ? "Hide results" : "Results"}
                       </span>
                     </>
                   )}
@@ -305,6 +427,16 @@ export function FeatureFlags() {
                 </span>
               </span>
             </div>
+            {resultsFor === flag.id && (
+              <div className="list-screen-row experiment-results-row">
+                {resultsStatus === "loading" && <span>Loading experiment results…</span>}
+                {resultsStatus === "error" && (
+                  <span>Could not load experiment results for this flag.</span>
+                )}
+                {resultsStatus === "ready" && results && <ExperimentResultsPanel results={results} />}
+              </div>
+            )}
+            </Fragment>
           );
         })}
         {status !== "ready" && (

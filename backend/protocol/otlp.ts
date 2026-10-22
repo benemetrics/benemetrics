@@ -1,7 +1,3 @@
-// OTLP/JSON wire format (ExportTraceServiceRequest) as sent by
-// OpenTelemetry SDKs configured with the http/json protocol.
-// Only the fields needed for trace ingestion are modeled;
-// unknown fields are ignored.
 
 interface OtlpAnyValue {
   stringValue?: string;

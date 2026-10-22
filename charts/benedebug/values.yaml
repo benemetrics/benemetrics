@@ -1,0 +1,290 @@
+# Default values for the benedebug chart.
+# Every value below can be overridden with `-f my-values.yaml` or `--set`.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# The image built from the repository Dockerfile.
+# Build and push it first:
+#   docker build -t ghcr.io/your-org/benedebug:0.1.0 .
+#   docker push ghcr.io/your-org/benedebug:0.1.0
+image:
+  repository: ghcr.io/your-org/benedebug
+  # Defaults to the chart appVersion when empty.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# The admin API credential. It is the master key: `Authorization: API-Key
+# <token>`. Leave it empty and the chart generates one at install time and
+# prints it in the NOTES — set it explicitly to keep the value across
+# upgrades.
+adminToken: ""
+
+# OIDC provider (optional). With an issuer and a client id the backend also
+# accepts a verified provider JWT as a `Bearer` credential; the admin token
+# stays valid.
+oidc:
+  issuer: ""
+  clientId: ""
+  clientSecret: ""
+  scopes: "openid profile email"
+  audience: ""
+
+backend:
+  replicaCount: 2
+  port: 31337
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+  # The UI is served under /ui, the API under /api and /events.
+  service:
+    type: ClusterIP
+    port: 80
+    annotations: {}
+
+  # There is no health endpoint: the root redirects to the UI, and that
+  # redirect is the liveness signal.
+  probes:
+    startup:
+      enabled: true
+      failureThreshold: 30
+      periodSeconds: 2
+    readiness:
+      enabled: true
+      periodSeconds: 10
+      failureThreshold: 3
+    liveness:
+      enabled: true
+      periodSeconds: 20
+      failureThreshold: 3
+
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 75
+    targetMemoryUtilizationPercentage: 0
+
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+    maxUnavailable: null
+
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  priorityClassName: ""
+  terminationGracePeriodSeconds: 30
+  extraEnv: []
+
+consumer:
+  # The side-effects consumer applies the Postgres transitions (issues,
+  # alerts, releases). It is a singleton: the durable JetStream pull
+  # consumer distributes the events across the replicas.
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  priorityClassName: ""
+  extraEnv: []
+
+# The API and the admin UI.
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  hosts:
+    - host: benedebug.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: false
+
+# --- Postgres (control plane) ----------------------------------------------
+# The API needs a Postgres database. Point `url` at a managed instance and
+# set `dependencies.postgres.enabled=false` to use it.
+database:
+  url: ""
+  existingSecret: ""
+  existingSecretKey: "url"
+  # The bundled instance.
+  user: benedebug
+  password: ""
+  database: benedebug
+  port: 5432
+  sslMode: ""
+
+# --- ClickHouse (event store) ----------------------------------------------
+# The events and the metric samples live in ClickHouse. Point `host` at a
+# managed cluster and set `dependencies.clickhouse.enabled=false` to use it.
+clickhouse:
+  host: ""
+  port: 8123
+  database: benedebug
+  user: default
+  password: ""
+  existingSecret: ""
+  existingSecretKey: "password"
+  # The URL the ClickHouse engine tables use to reach NATS. It must be
+  # reachable *from ClickHouse*, not from the API pods.
+  natsUrl: ""
+
+# --- NATS JetStream (the broker) -------------------------------------------
+nats:
+  # The API connects here. Defaults to the bundled instance.
+  servers: ""
+  existingSecret: ""
+  existingSecretKey: "servers"
+  # The browser opens the live feed straight to NATS over WebSocket. The UI
+  # reads `globalThis.__NATS_WS_URL__` and falls back to
+  # `ws://<ui-host>:9222`, so the WebSocket listener has to be reachable
+  # under that name. See the README section "The live feed".
+  websocketPort: 9222
+  streamMaxBytes: 1073741824
+
+# --- Object store (session replay segments) --------------------------------
+# The object store is S3-required: there is no local-disk fallback.
+objectStorage:
+  endpoint: ""
+  bucket: benedebug-replays
+  region: us-east-1
+  accessKeyId: ""
+  secretAccessKey: ""
+  existingSecret: ""
+  existingSecretKey: "credentials"
+
+# --- Runtime knobs ----------------------------------------------------------
+config:
+  # How often the threshold rules are evaluated (ms).
+  alertEvaluationIntervalMs: 60000
+  # Boot retries for the required services (NATS, ClickHouse).
+  initRetryAttempts: 5
+  initRetryDelayMs: 1000
+  logLevel: info
+
+# --- The bundled services ---------------------------------------------------
+# Every dependency ships a StatefulSet, a Service and a PersistentVolumeClaim.
+# Turn one off when the corresponding managed service is configured above.
+dependencies:
+  postgres:
+    enabled: true
+    image:
+      repository: postgres
+      tag: "17-alpine"
+      pullPolicy: IfNotPresent
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+    podSecurityContext:
+      fsGroup: 999
+
+  clickhouse:
+    enabled: true
+    image:
+      repository: clickhouse/clickhouse-server
+      tag: "24.8"
+      pullPolicy: IfNotPresent
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1Gi
+      limits:
+        memory: 4Gi
+    # The passwordless `default` user is restricted to localhost unless the
+    # image skips the user setup.
+    skipUserSetup: true
+
+  nats:
+    enabled: true
+    image:
+      repository: nats
+      tag: "2.10"
+      pullPolicy: IfNotPresent
+    persistence:
+      enabled: true
+      size: 4Gi
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+    # The JetStream file store is bounded; a flood fills the stream and the
+    # publish answers 503 instead of growing the disk.
+    maxFileStore: 2GB
+    # Expose the WebSocket listener for the browser live feed.
+    websocket:
+      enabled: true
+      # LoadBalancer/NodePort publish port 9222 on the node, so the UI can
+      # reach `ws://<ui-host>:9222`.
+      service:
+        type: ClusterIP
+        annotations: {}
+        loadBalancerIP: ""
+        nodePort: null
+
+  objectStorage:
+    enabled: true
+    image:
+      repository: rustfs/rustfs
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+    # The bucket and its CORS rule are created by a post-install hook.
+    bucket:
+      create: true
+      allowedOrigins:
+        - "*"

@@ -6,6 +6,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
+import { isoTimestamp } from "./timestamps";
 
 // A release is a deployable version of an app. It is normally
 // auto-created when the first event carrying its version is
@@ -21,12 +22,12 @@ export const releases = pgTable(
     url: text("url"),
     owner: text("owner"),
     status: text("status").notNull().default("draft"),
-    firstSeen: text("first_seen"),
-    lastSeen: text("last_seen"),
+    firstSeen: isoTimestamp("first_seen"),
+    lastSeen: isoTimestamp("last_seen"),
     eventCount: integer("event_count").notNull().default(0),
     latestEventId: text("latest_event_id"),
-    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    createdAt: isoTimestamp("created_at").notNull().default(sql`now()`),
+    updatedAt: isoTimestamp("updated_at").notNull().default(sql`now()`),
   },
   (table) => ({
     appIdIdx: index("releases_app_id_idx").on(table.appId),

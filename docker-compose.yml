@@ -66,8 +66,9 @@ services:
       - rustfs_data:/data
       - rustfs_logs:/app/logs
 
-  # Creates the bucket the backend offloads replay segments to; safe to
-  # re-run (an existing bucket is kept).
+  # Creates the bucket the backend offloads replay segments to and allows
+  # the UI to fetch the presigned segment URLs (GET/HEAD) cross-origin;
+  # safe to re-run (existing objects and rules are replaced idempotently).
   rustfs-init:
     image: rustfs/rc:latest
     depends_on:
@@ -77,6 +78,7 @@ services:
       until rc alias set local http://rustfs:9000 rustfsadmin rustfsadmin; do sleep 1; done;
       until rc ls local/ >/dev/null 2>&1; do sleep 1; done;
       rc ls local/sentry-replays >/dev/null 2>&1 || rc mb local/sentry-replays;
+      printf '%s' '{\"rules\":[{\"allowedOrigins\":[\"*\"],\"allowedMethods\":[\"GET\",\"HEAD\"],\"allowedHeaders\":[\"*\"],\"exposeHeaders\":[\"ETag\",\"Content-Length\",\"Content-Type\"],\"maxAgeSeconds\":3000}]}' | rc bucket cors set local/sentry-replays -;
       "
 
 volumes:

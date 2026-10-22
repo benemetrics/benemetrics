@@ -6,6 +6,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { eq, sql } from "drizzle-orm";
+import { isoTimestamp } from "./timestamps";
 
 // Environments belong to a project and are shared by all
 // of its apps. An app is created inside an environment
@@ -17,8 +18,8 @@ export const environments = pgTable("environments", {
   name: text("name").notNull(),
   slug: text("slug").notNull(),
   isDefault: integer("is_default").notNull().default(0),
-  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  createdAt: isoTimestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: isoTimestamp("updated_at").notNull().default(sql`now()`),
 }, (table) => ({
   projectIdIdx: index("environments_project_id_idx").on(table.projectId),
   projectSlugUnique: uniqueIndex("environments_project_slug_idx").on(table.projectId, table.slug),

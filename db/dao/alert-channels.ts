@@ -1,12 +1,13 @@
 import { db } from "db";
 import {
   alertChannels,
-  type AlertChannelRow,
   type AlertChannelInsert,
 } from "db/schema/alert-channels";
-import { desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
 import { uniqueViolationConstraint } from "db/pg-errors";
+import type { AlertChannel, AlertChannelType } from "backend/protocol/alerting";
+import { cursorAfter, cursorLimit, type CursorPage } from "./cursor";
 
 type AlertChannelCreateInput = Omit<AlertChannelInsert, "id"> & {
   id?: string;
@@ -16,11 +17,34 @@ const SCOPE_NAME_CONSTRAINT = "alert_channels_scope_name_idx";
 const GLOBAL_NAME_CONSTRAINT = "alert_channels_global_name_idx";
 
 // appId IS NULL is the global scope.
-function scopeCondition(appId: string | null) {
-  return appId === null
-    ? isNull(alertChannels.appId)
-    : eq(alertChannels.appId, appId);
+export interface AlertScope {
+  /** The app scope — the narrowest. */
+  appId?: string | null;
+  /** The project scope. */
+  projectId?: string | null;
 }
+
+function scopeCondition(scope: AlertScope | null) {
+  if (!scope) return isNull(alertChannels.appId);
+  if (scope.appId) return eq(alertChannels.appId, scope.appId);
+  if (scope.projectId) {
+    return and(isNull(alertChannels.appId), eq(alertChannels.projectId, scope.projectId));
+  }
+  return isNull(alertChannels.appId);
+}
+
+// `config` is a JSON column stored as text; decode it in the read so
+// callers get the protocol shape directly.
+const channelFields = {
+  id: alertChannels.id,
+  name: alertChannels.name,
+  type: sql<AlertChannelType>`${alertChannels.type}`,
+  config: sql<Record<string, unknown>>`${alertChannels.config}::jsonb`,
+  appId: alertChannels.appId,
+  projectId: alertChannels.projectId,
+  createdAt: alertChannels.createdAt,
+  updatedAt: alertChannels.updatedAt,
+};
 
 export const alertChannelDAO = {
   create: async (data: AlertChannelCreateInput) => {
@@ -35,17 +59,17 @@ export const alertChannelDAO = {
         updatedAt: now,
       })
       .onConflictDoNothing()
-      .returning();
+      .returning(channelFields);
     if (!created) {
       throw conflict(`Alert channel already exists in this scope: ${data.name}`);
     }
     return created;
   },
 
-  findById: async (id: string): Promise<AlertChannelRow | undefined> =>
+  findById: async (id: string): Promise<AlertChannel | undefined> =>
     (
       await db
-        .select()
+        .select(channelFields)
         .from(alertChannels)
         .where(eq(alertChannels.id, id))
         .limit(1)
@@ -59,41 +83,38 @@ export const alertChannelDAO = {
     return channel;
   },
 
-  list: async (appId: string | null): Promise<AlertChannelRow[]> =>
+  list: async (scope: AlertScope | null): Promise<AlertChannel[]> =>
     db
-      .select()
+      .select(channelFields)
       .from(alertChannels)
-      .where(scopeCondition(appId))
+      .where(scopeCondition(scope))
       .orderBy(desc(alertChannels.createdAt)),
 
   listPaged: async (options: {
     appId: string | null;
-    page?: number;
+    projectId?: string | null;
+    cursor?: string;
     limit?: number;
-  }): Promise<{
-    data: AlertChannelRow[];
-    pagination: { page: number; limit: number; total: number; totalPages: number };
-  }> => {
-    const page = options.page ?? 1;
-    const limit = options.limit ?? 20;
-    const offset = (page - 1) * limit;
-    const where = scopeCondition(options.appId);
+  }): Promise<CursorPage<AlertChannel>> => {
+    const limit = cursorLimit(options.limit);
+    const scope = scopeCondition({ appId: options.appId, projectId: options.projectId });
+    const { condition, empty } = await cursorAfter(
+      alertChannels,
+      alertChannels.id,
+      alertChannels.createdAt,
+      options.cursor,
+    );
+    if (empty) return { data: [] };
+    const where = condition ? and(scope, condition) : scope;
 
-    const [rows, total] = await Promise.all([
-      db
-        .select()
-        .from(alertChannels)
-        .where(where)
-        .orderBy(desc(alertChannels.createdAt))
-        .limit(limit)
-        .offset(offset),
-      db.$count(alertChannels, where),
-    ]);
+    const data = await db
+      .select(channelFields)
+      .from(alertChannels)
+      .where(where)
+      .orderBy(desc(alertChannels.createdAt), desc(alertChannels.id))
+      .limit(limit);
 
-    return {
-      data: rows,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-    };
+    return { data };
   },
 
   updateOrThrow: async (id: string, data: Partial<AlertChannelInsert>) => {
@@ -102,7 +123,7 @@ export const alertChannelDAO = {
         .update(alertChannels)
         .set({ ...data, updatedAt: new Date().toISOString() })
         .where(eq(alertChannels.id, id))
-        .returning();
+        .returning(channelFields);
       if (!updated) {
         throw notFound("Alert channel", id);
       }

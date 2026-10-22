@@ -1,0 +1,174 @@
+import { db } from "db";
+import { permissionRules } from "db/schema/permissions";
+import { desc, eq } from "drizzle-orm";
+import { conflict, internalError, notFound } from "backend/errors";
+import { cursorAfter, cursorLimit } from "./cursor";
+
+export interface PermissionRuleRecord {
+  id: string;
+  name: string;
+  environments: string[];
+  appPrefixes: string[];
+  isEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PermissionRuleInput {
+  name: string;
+  environments: string[];
+  appPrefixes: string[];
+  isEnabled?: boolean;
+}
+
+const ruleFields = {
+  id: permissionRules.id,
+  name: permissionRules.name,
+  environments: permissionRules.environments,
+  appPrefixes: permissionRules.appPrefixes,
+  isEnabled: permissionRules.isEnabled,
+  createdAt: permissionRules.createdAt,
+  updatedAt: permissionRules.updatedAt,
+};
+
+function parseList(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function toRecord(row: {
+  id: string;
+  name: string;
+  environments: string;
+  appPrefixes: string;
+  isEnabled: number;
+  createdAt: string;
+  updatedAt: string;
+}): PermissionRuleRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    environments: parseList(row.environments),
+    appPrefixes: parseList(row.appPrefixes),
+    isEnabled: row.isEnabled === 1,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export const permissionRuleDAO = {
+  create: async (input: PermissionRuleInput): Promise<PermissionRuleRecord> => {
+    const now = new Date().toISOString();
+    const [row] = await db
+      .insert(permissionRules)
+      .values({
+        id: crypto.randomUUID(),
+        name: input.name.toLowerCase(),
+        environments: JSON.stringify(input.environments),
+        appPrefixes: JSON.stringify(input.appPrefixes),
+        isEnabled: input.isEnabled === false ? 0 : 1,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing({ target: permissionRules.name })
+      .returning(ruleFields);
+    if (!row) {
+      throw conflict(`Permission rule already exists: ${input.name}`);
+    }
+    return toRecord(row);
+  },
+
+  findById: async (id: string): Promise<PermissionRuleRecord | undefined> => {
+    const [row] = await db
+      .select(ruleFields)
+      .from(permissionRules)
+      .where(eq(permissionRules.id, id))
+      .limit(1);
+    return row ? toRecord(row) : undefined;
+  },
+
+  findByIdOrThrow: async (id: string): Promise<PermissionRuleRecord> => {
+    const rule = await permissionRuleDAO.findById(id);
+    if (!rule) throw notFound("Permission rule", id);
+    return rule;
+  },
+
+  findByName: async (name: string): Promise<PermissionRuleRecord | undefined> => {
+    const [row] = await db
+      .select(ruleFields)
+      .from(permissionRules)
+      .where(eq(permissionRules.name, name.toLowerCase()))
+      .limit(1);
+    return row ? toRecord(row) : undefined;
+  },
+
+  // The enabled rules only — the scope engine merges them.
+  listEnabled: async (): Promise<PermissionRuleRecord[]> => {
+    const rows = await db
+      .select(ruleFields)
+      .from(permissionRules)
+      .where(eq(permissionRules.isEnabled, 1));
+    return rows.map(toRecord);
+  },
+
+  list: async (options?: { cursor?: string; limit?: number }) => {
+    const limit = cursorLimit(options?.limit);
+    const { condition, empty } = await cursorAfter(
+      permissionRules,
+      permissionRules.id,
+      permissionRules.createdAt,
+      options?.cursor,
+    );
+    if (empty) return { data: [] };
+
+    const data = await db
+      .select(ruleFields)
+      .from(permissionRules)
+      .where(condition)
+      .orderBy(desc(permissionRules.createdAt), desc(permissionRules.id))
+      .limit(limit);
+
+    return { data: data.map(toRecord) };
+  },
+
+  updateOrThrow: async (
+    id: string,
+    data: Partial<PermissionRuleInput>,
+  ): Promise<PermissionRuleRecord> => {
+    const [row] = await db
+      .update(permissionRules)
+      .set({
+        ...(data.name !== undefined ? { name: data.name.toLowerCase() } : {}),
+        ...(data.environments !== undefined
+          ? { environments: JSON.stringify(data.environments) }
+          : {}),
+        ...(data.appPrefixes !== undefined
+          ? { appPrefixes: JSON.stringify(data.appPrefixes) }
+          : {}),
+        ...(data.isEnabled !== undefined
+          ? { isEnabled: data.isEnabled ? 1 : 0 }
+          : {}),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(permissionRules.id, id))
+      .returning(ruleFields);
+    if (!row) {
+      throw notFound("Permission rule", id);
+    }
+    return toRecord(row);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    const deleted = await db
+      .delete(permissionRules)
+      .where(eq(permissionRules.id, id))
+      .returning({ id: permissionRules.id });
+    if (deleted.length === 0) {
+      throw internalError(`Failed to delete permission rule ${id}`);
+    }
+  },
+};

@@ -2,31 +2,27 @@ import { db } from "db";
 import { experimentAssignments } from "db/schema/experiment-assignments";
 import { countDistinct, desc, eq, and, sql } from "drizzle-orm";
 import { internalError } from "backend/errors";
+import { cursorAfter, cursorLimit } from "./cursor";
 
-type AssignmentRow = typeof experimentAssignments.$inferSelect;
+// Sticky-assignment lookups only need the variant identity.
+const assignmentLookupFields = {
+  id: experimentAssignments.id,
+  variantKey: experimentAssignments.variantKey,
+  assignedAt: experimentAssignments.assignedAt,
+};
 
-export interface AssignmentRecord {
-  id: string;
-  flagId: string;
-  userId: string;
-  variantKey: string;
-  context: unknown;
-  assignedAt: string;
-}
+// The experiment users endpoint lists the participant's id (stored as
+// userId), its stored variant, and the context snapshot.
+const assignmentListFields = {
+  userId: experimentAssignments.userId,
+  variantKey: experimentAssignments.variantKey,
+  context: sql<unknown>`${experimentAssignments.context}::jsonb`,
+  assignedAt: experimentAssignments.assignedAt,
+};
 
 export interface VariantCount {
   variantKey: string;
   count: number;
-}
-
-function toAssignment(row: AssignmentRow): AssignmentRecord {
-  let context: unknown = {};
-  try {
-    context = row.context ? JSON.parse(row.context) : {};
-  } catch {
-    context = {};
-  }
-  return { ...row, context };
 }
 
 export const experimentAssignmentDAO = {
@@ -50,8 +46,8 @@ export const experimentAssignmentDAO = {
       .onConflictDoNothing({
         target: [experimentAssignments.flagId, experimentAssignments.userId],
       })
-      .returning();
-    if (row) return toAssignment(row);
+      .returning(assignmentLookupFields);
+    if (row) return row;
 
     const existing = await experimentAssignmentDAO.findByFlagAndUser(
       data.flagId,
@@ -65,7 +61,7 @@ export const experimentAssignmentDAO = {
 
   findByFlagAndUser: async (flagId: string, userId: string) => {
     const [row] = await db
-      .select()
+      .select(assignmentLookupFields)
       .from(experimentAssignments)
       .where(
         and(
@@ -74,19 +70,19 @@ export const experimentAssignmentDAO = {
         ),
       )
       .limit(1);
-    return row ? toAssignment(row) : undefined;
+    return row;
   },
 
   listByFlag: async (
     flagId: string,
     options: {
-      page: number;
-      limit: number;
+      cursor?: string;
+      limit?: number;
       variantKey?: string;
       search?: string;
     },
-  ): Promise<{ total: number; data: AssignmentRecord[] }> => {
-    const offset = (options.page - 1) * options.limit;
+  ) => {
+    const limit = cursorLimit(options.limit);
 
     const conditions = [eq(experimentAssignments.flagId, flagId)];
     if (options.variantKey) {
@@ -98,18 +94,23 @@ export const experimentAssignmentDAO = {
       );
     }
 
-    const [rows, total] = await Promise.all([
-      db
-        .select()
-        .from(experimentAssignments)
-        .where(and(...conditions))
-        .orderBy(desc(experimentAssignments.assignedAt))
-        .limit(options.limit)
-        .offset(offset),
-      db.$count(experimentAssignments, and(...conditions)),
-    ]);
+    const { condition, empty } = await cursorAfter(
+      experimentAssignments,
+      experimentAssignments.id,
+      experimentAssignments.assignedAt,
+      options.cursor,
+    );
+    if (empty) return { data: [] };
+    if (condition) conditions.push(condition);
 
-    return { total, data: rows.map(toAssignment) };
+    const data = await db
+      .select(assignmentListFields)
+      .from(experimentAssignments)
+      .where(and(...conditions))
+      .orderBy(desc(experimentAssignments.assignedAt), desc(experimentAssignments.id))
+      .limit(limit);
+
+    return { data };
   },
 
   countByVariant: async (

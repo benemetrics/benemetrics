@@ -1,8 +1,9 @@
 import { serviceUnavailable, unauthorized } from "backend/errors";
-import { appDAO } from "db/dao/project";
-import type { AppRecord } from "db/schema/project";
+import { appDAO, type AppResolveRecord } from "db/dao/project";
 import { validateAuth } from "../auth";
-import { publishEvent, publishMetricSamples, type SentryEventMessage } from "../nats";
+import { readBodyCapped } from "../ratelimit/hygiene";
+import { publishEvent, publishMetricSamples } from "../nats";
+import type { SentryEventMessage } from "../protocol/events";
 import type { MetricSample } from "../protocol/metrics";
 
 // DSNs generated for apps route ingestion through the app's numeric
@@ -13,7 +14,7 @@ import type { MetricSample } from "../protocol/metrics";
 async function resolveApp(
   request: Request,
   projectId: string,
-): Promise<AppRecord | undefined> {
+): Promise<AppResolveRecord | undefined> {
   const authHeader = request.headers.get("X-Sentry-Auth");
   const requestKey =
     authHeader?.match(/sentry_key=([^,]+)/)?.[1] ??
@@ -32,8 +33,7 @@ async function resolveApp(
   const byIngestKey = await appDAO.findByIngestKey(projectId);
   if (byIngestKey) return byIngestKey;
 
-  const apps = await appDAO.listRawByProject(projectId);
-  const byProject = apps.find((app) => app.publicKey === requestKey);
+  const byProject = await appDAO.findByProjectAndPublicKey(projectId, requestKey);
   if (byProject) return byProject;
 
   return await appDAO.findByPublicKey(requestKey);
@@ -44,7 +44,7 @@ async function resolveApp(
 export async function resolveAuthorizedApp(
   request: Request,
   projectId: string,
-): Promise<AppRecord> {
+): Promise<AppResolveRecord> {
   const app = await resolveApp(request, projectId);
   if (!app || !validateAuth(request, app).valid) {
     throw unauthorized("Unauthorized - Invalid DSN");
@@ -53,12 +53,32 @@ export async function resolveAuthorizedApp(
 }
 
 export async function readBody(request: Request): Promise<string> {
-  if (request.headers.get("Content-Encoding") === "gzip") {
-    const gunzip = new DecompressionStream("gzip");
-    const stream = request.body?.pipeThrough(gunzip);
-    return await new Response(stream).text();
+  return await readBodyCapped(request);
+}
+
+// A client that retries the same event in a loop must not make the server
+// do the work again. The event id is the idempotency key, so a recently
+// seen id is answered without an object-store write or a publish.
+const RECENT_ID_TTL_MS = 60_000;
+const RECENT_ID_MAX = 50_000;
+const recentIds = new Map<string, number>();
+
+export function wasRecentlyIngested(eventId: string): boolean {
+  const seenAt = recentIds.get(eventId);
+  if (seenAt === undefined) return false;
+  if (Date.now() - seenAt > RECENT_ID_TTL_MS) {
+    recentIds.delete(eventId);
+    return false;
   }
-  return await request.text();
+  return true;
+}
+
+export function markIngested(eventId: string): void {
+  if (recentIds.size >= RECENT_ID_MAX) {
+    const oldest = recentIds.keys().next().value;
+    if (oldest !== undefined) recentIds.delete(oldest);
+  }
+  recentIds.set(eventId, Date.now());
 }
 
 // Ingestion is a publish: the side-effects consumer (Postgres) and the
@@ -72,8 +92,7 @@ export async function dispatchIngestedEvent(
   samples: MetricSample[] = [],
 ): Promise<void> {
   try {
-    await publishEvent(message);
-    await publishMetricSamples(samples);
+    await Promise.all([publishEvent(message), publishMetricSamples(samples)]);
   } catch (err) {
     console.error(
       "[ingestion] Failed to publish event to NATS:",

@@ -11,13 +11,11 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import app from "../backend/index";
-import { getClickHouseClient } from "../backend/clickhouse";
+import { insertClickHouseMetricSamples } from "../backend/clickhouse";
 
-const ADMIN_TOKEN = "Bearer e2e-admin-token";
+const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const PROJECT_NAME = `Perf UI Project ${Date.now()}`;
 const MARKER = `GET /perf-ui-${Math.random().toString(36).slice(2, 8)}`;
-
-const TABLE = `${process.env.CLICKHOUSE_DATABASE || "default"}.sentry_metrics`;
 
 let baseUrl = "";
 let view: Bun.WebView;
@@ -108,6 +106,7 @@ function sample(
     metric,
     value,
     dimension,
+    tags: {},
     receivedAt: new Date(Date.now() - offsetMs).toISOString(),
   };
 }
@@ -149,12 +148,7 @@ describe("Performance metrics UI", () => {
       ),
       sample(project.id, appRecord.id, "stall_count", 2, "HomeScreen", 60_000),
     ];
-    await getClickHouseClient().insert({
-      table: TABLE,
-      values: rows,
-      format: "JSONEachRow",
-      clickhouse_settings: { date_time_input_format: "best_effort" },
-    });
+    await insertClickHouseMetricSamples(rows);
 
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${baseUrl}/ui/overview`);

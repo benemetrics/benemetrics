@@ -1,6 +1,3 @@
-// Shared API error vocabulary. Routes and DAOs throw these instead of
-// building HTTP responses; the root Elysia onError (backend/index.ts) is
-// the single place that maps them to an HTTP status and `{ error }` body.
 export const ErrorCode = {
   BAD_REQUEST: "BAD_REQUEST",
   UNAUTHORIZED: "UNAUTHORIZED",
@@ -8,6 +5,7 @@ export const ErrorCode = {
   NOT_FOUND: "NOT_FOUND",
   CONFLICT: "CONFLICT",
   PAYLOAD_TOO_LARGE: "PAYLOAD_TOO_LARGE",
+  TOO_MANY_REQUESTS: "TOO_MANY_REQUESTS",
   SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
   INTERNAL: "INTERNAL",
 } as const;
@@ -21,17 +19,30 @@ const HTTP_STATUS: Record<ErrorCode, number> = {
   NOT_FOUND: 404,
   CONFLICT: 409,
   PAYLOAD_TOO_LARGE: 413,
+  TOO_MANY_REQUESTS: 429,
   SERVICE_UNAVAILABLE: 503,
   INTERNAL: 500,
 };
 
+export interface RateLimitPayload {
+  /** Seconds the sender should wait before retrying. */
+  retryAfter: number;
+  /** The rate-limit categories the limit applies to. */
+  categories: string;
+  /** The scope the limit is keyed on: `key` or `project`. */
+  scope: string;
+}
+
 export class ApiError extends Error {
   readonly code: ErrorCode;
+  /** Set on a 429: the Sentry-compatible rate-limit metadata. */
+  readonly rateLimit?: RateLimitPayload;
 
-  constructor(code: ErrorCode, message: string) {
+  constructor(code: ErrorCode, message: string, rateLimit?: RateLimitPayload) {
     super(message);
     this.name = "ApiError";
     this.code = code;
+    this.rateLimit = rateLimit;
   }
 
   get httpStatus(): number {
@@ -64,6 +75,13 @@ export function conflict(message: string): ApiError {
 
 export function payloadTooLarge(message: string): ApiError {
   return new ApiError(ErrorCode.PAYLOAD_TOO_LARGE, message);
+}
+
+export function tooManyRequests(
+  message: string,
+  rateLimit: RateLimitPayload,
+): ApiError {
+  return new ApiError(ErrorCode.TOO_MANY_REQUESTS, message, rateLimit);
 }
 
 export function serviceUnavailable(message: string): ApiError {

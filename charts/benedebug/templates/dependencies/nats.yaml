@@ -1,0 +1,156 @@
+{{- if .Values.dependencies.nats.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "benedebug.fullname" . }}-nats
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+data:
+  nats-server.conf: |
+    # JetStream buffers the ingested events until ClickHouse consumes them
+    # by configuration (NATS table engine + durable pull consumer + MV).
+    # The WebSocket listener is what the UI live feed subscribes to directly.
+    port: 4222
+    http: 8222
+
+    jetstream {
+      store_dir: /data
+      max_file_store: {{ .Values.dependencies.nats.maxFileStore }}
+    }
+
+    websocket {
+      port: {{ .Values.nats.websocketPort }}
+      no_tls: true
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "benedebug.fullname" . }}-nats
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+spec:
+  type: ClusterIP
+  ports:
+    - name: client
+      port: 4222
+      targetPort: client
+    - name: monitor
+      port: 8222
+      targetPort: monitor
+  selector:
+    {{- include "benedebug.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+{{- if .Values.dependencies.nats.websocket.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "benedebug.fullname" . }}-nats-ws
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+  {{- with .Values.dependencies.nats.websocket.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  # The browser opens the live feed straight to NATS over WebSocket, so the
+  # listener has to be reachable from the outside.
+  type: {{ .Values.dependencies.nats.websocket.service.type }}
+  {{- with .Values.dependencies.nats.websocket.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  ports:
+    - name: websocket
+      port: {{ .Values.nats.websocketPort }}
+      targetPort: websocket
+      {{- if and (eq .Values.dependencies.nats.websocket.service.type "NodePort") .Values.dependencies.nats.websocket.service.nodePort }}
+      nodePort: {{ .Values.dependencies.nats.websocket.service.nodePort }}
+      {{- end }}
+      protocol: TCP
+  selector:
+    {{- include "benedebug.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+{{- end }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "benedebug.fullname" . }}-nats
+  labels:
+    {{- include "benedebug.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+spec:
+  serviceName: {{ include "benedebug.fullname" . }}-nats
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "benedebug.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: nats
+  template:
+    metadata:
+      labels:
+        {{- include "benedebug.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: nats
+    spec:
+      containers:
+        - name: nats
+          image: "{{ .Values.dependencies.nats.image.repository }}:{{ .Values.dependencies.nats.image.tag }}"
+          imagePullPolicy: {{ .Values.dependencies.nats.image.pullPolicy }}
+          args:
+            - -c
+            - /etc/nats/nats-server.conf
+          ports:
+            - name: client
+              containerPort: 4222
+            - name: monitor
+              containerPort: 8222
+            - name: websocket
+              containerPort: {{ .Values.nats.websocketPort }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nats
+              readOnly: true
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.dependencies.nats.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "benedebug.fullname" . }}-nats
+        - name: data
+          {{- if .Values.dependencies.nats.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "benedebug.fullname" . }}-nats
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+  {{- if .Values.dependencies.nats.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.dependencies.nats.persistence.storageClass }}
+        annotations:
+          volume.beta.kubernetes.io/storage-class: {{ . }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.dependencies.nats.persistence.accessModes | nindent 10 }}
+        {{- if .Values.dependencies.nats.persistence.storageClass }}
+        storageClassName: {{ .Values.dependencies.nats.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.dependencies.nats.persistence.size }}
+  {{- end }}
+{{- end }}

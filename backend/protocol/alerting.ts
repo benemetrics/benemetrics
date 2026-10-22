@@ -1,6 +1,14 @@
 import type { IssueSummary } from "./issues";
 
-export type AlertChannelType = "email" | "webhook" | "slack" | "rocketchat";
+export type AlertChannelType =
+  | "email"
+  | "webhook"
+  | "slack"
+  | "rocketchat"
+  | "pagerduty"
+  | "opsgenie"
+  | "msteams"
+  | "victorops";
 
 export type AlertMetric =
   | "event_count"
@@ -12,23 +20,27 @@ export type AlertMetric =
 
 export type AlertOperator = "gt" | "lt";
 
-// A rule fires on a windowed metric breach ("threshold") or on an
-// issue-state transition detected at ingestion ("new_issue" first
-// occurrence, "regression" reoccurrence of a resolved issue).
 export type AlertTrigger = "threshold" | "new_issue" | "regression";
 
 export type AlertSeverity = "info" | "warning" | "critical";
 
 export type AlertIncidentStatus = "firing" | "resolved";
 
-// A delivery endpoint. `appId: null` marks a global (default) channel;
-// an app-scoped channel with the same `name` replaces the global one.
+/**
+ * The dimensions a rule matches on. A tag filter keeps the samples (and
+ * the issue events) whose event carries the tag with that value.
+ */
+export interface AlertRuleFilters {
+  tags?: Record<string, string>;
+}
+
 export interface AlertChannel {
   id: string;
   name: string;
   type: AlertChannelType;
   config: Record<string, unknown>;
   appId: string | null;
+  projectId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,28 +50,24 @@ export interface AlertChannelCreateRequest {
   type: AlertChannelType;
   config?: Record<string, unknown>;
   appId?: string | null;
+  projectId?: string | null;
 }
-
-// Per-platform config shapes (all optional, validated at send time):
-//   webhook:   { url, headers? }
-//   slack:     { webhookUrl } | { token, channel }
-//   rocketchat:{ webhookUrl }
-//   email:     { to, from, ... } (SMTP — planned)
 
 export interface AlertRule {
   id: string;
   name: string;
   trigger: AlertTrigger;
-  // Set on threshold rules only; null on issue triggers.
   metric: AlertMetric | null;
   operator: AlertOperator | null;
   threshold: number | null;
   windowSeconds: number | null;
   cooldownSeconds: number;
   channelIds: string[];
-  // Measurement name for latency_* metrics (default "duration").
   measurement: string | null;
   appId: string | null;
+  projectId: string | null;
+  /** The dimensions the rule matches on. */
+  filters: AlertRuleFilters;
   isEnabled: boolean;
   lastTriggeredAt: string | null;
   createdAt: string;
@@ -71,8 +79,6 @@ export interface AlertIncident {
   ruleId: string;
   appId: string | null;
   trigger: AlertTrigger;
-  // Set on threshold incidents; issue-trigger incidents carry the
-  // fingerprint instead.
   metric: AlertMetric | null;
   value: number | null;
   threshold: number | null;
@@ -82,8 +88,6 @@ export interface AlertIncident {
   resolvedAt: string | null;
 }
 
-// Uniform notification payload — identical for every platform so the
-// caller never has to know platform quirks.
 export interface AlertNotification {
   title: string;
   message: string;
@@ -93,14 +97,12 @@ export interface AlertNotification {
   metric: AlertMetric | null;
   value: number | null;
   threshold: number | null;
-  // Present on issue-trigger notifications.
   issue?: IssueSummary;
   appId: string | null;
   occurredAt: string;
   link?: string;
 }
 
-// Failures are reported, never thrown into the request path.
 export interface DeliveryResult {
   channelId: string;
   channelName: string;

@@ -1,16 +1,13 @@
 import type { MetricBreakdownRow, MetricSeriesPoint } from "./protocol/metrics";
 import {
   countClickHouseMetricSamples,
+  countClickHouseMetricSamplesByProject,
   listMetricBreakdown,
   listMetricSeries,
   quantileClickHouseMetricSamples,
+  quantileClickHouseMetricSamplesByProject,
   type MetricReadFilter,
 } from "./clickhouse";
-
-// Metric reads are served by ClickHouse only — it is the samples store,
-// fed by the NATS metrics engine table. A ClickHouse failure is a failed
-// request (5xx), never a fallback: Postgres holds the control plane and
-// has no measurements.
 
 export async function queryMetricSeries(
   filters: MetricReadFilter,
@@ -26,14 +23,38 @@ export async function queryMetricBreakdown(
   return listMetricBreakdown({ ...filters, limit });
 }
 
-// Alert-sweeper reads: sentinel counts and measurement quantiles over the
-// app's samples in the window.
 export async function countMetricSamples(
   appId: string,
   metric: string,
   since: string,
+  tags?: Record<string, string>,
 ): Promise<number> {
-  return countClickHouseMetricSamples({ appId, metric, since });
+  return countClickHouseMetricSamples({ appId, metric, since, tags });
+}
+
+export async function countProjectMetricSamples(
+  projectId: string,
+  metric: string,
+  since: string,
+  tags?: Record<string, string>,
+): Promise<number> {
+  return countClickHouseMetricSamplesByProject({ projectId, metric, since, tags });
+}
+
+export async function projectMetricSampleQuantile(
+  projectId: string,
+  metric: string,
+  quantile: number,
+  since: string,
+  tags?: Record<string, string>,
+): Promise<number> {
+  return quantileClickHouseMetricSamplesByProject({
+    projectId,
+    metric,
+    quantile,
+    since,
+    tags,
+  });
 }
 
 export async function metricSampleQuantile(
@@ -41,6 +62,7 @@ export async function metricSampleQuantile(
   metric: string,
   quantile: number,
   since: string,
+  tags?: Record<string, string>,
 ): Promise<number> {
-  return quantileClickHouseMetricSamples({ appId, metric, quantile, since });
+  return quantileClickHouseMetricSamples({ appId, metric, quantile, since, tags });
 }

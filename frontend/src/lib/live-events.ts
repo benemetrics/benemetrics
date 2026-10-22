@@ -1,14 +1,17 @@
 /**
  * Live feed: the browser subscribes to NATS directly.
  *
- * There is no backend fan-out anymore: the UI opens its own WebSocket
- * connection to NATS (`nats.ws`) and subscribes to the `sentry.events`
- * subject, where every ingested envelope arrives as one JSON message
- * (`id, projectId, appId, envelopeHeader, envelopeItems, receivedAt,
- * type`). Envelopes are parsed with the same parser the events API uses
+ * There is no backend fan-out: the UI opens its own WebSocket connection
+ * to NATS (`nats.ws`) and subscribes to the `sentry.events` subject, where
+ * every ingested envelope arrives as one JSON message (`id, projectId,
+ * appId, envelopeHeader, envelopeItems, receivedAt, type`). Envelopes are
+ * parsed with the same parser the events API uses
  * (`backend/events/utils.ts`), so a live item has exactly the shape the
- * list endpoint returns, and a `clear` message resets the feed (the
- * events store was truncated).
+ * list endpoint returns.
+ *
+ * One connection serves the whole UI: the pages subscribe to the feed, the
+ * sidebar watches the connection state — that state is the health signal,
+ * there is no health endpoint to poll.
  *
  * URL: `globalThis.__NATS_WS_URL__` when the deployment injects one
  * (production keeps NATS behind TLS, optionally with a token), otherwise
@@ -39,17 +42,15 @@ export interface LiveEventItem {
 export type LiveFeedStatus = "connected" | "disconnected";
 
 export interface LiveFeedHandlers {
-  onItem: (item: LiveEventItem) => void;
-  /** The store was truncated: drop everything the feed showed. */
-  onClear: () => void;
+  onItem?: (item: LiveEventItem) => void;
   onStatus?: (status: LiveFeedStatus) => void;
 }
 
 /** The subject the API publishes ingested envelopes to. */
 export const LIVE_SUBJECT = "sentry.events";
 
-/** One feed message → an events-API item, `"clear"`, or null when unknown. */
-export function parseLiveMessage(raw: string): LiveEventItem | "clear" | null {
+/** One feed message → an events-API item, or null when unknown. */
+export function parseLiveMessage(raw: string): LiveEventItem | null {
   let message: {
     id?: string;
     projectId?: string;
@@ -57,7 +58,6 @@ export function parseLiveMessage(raw: string): LiveEventItem | "clear" | null {
     envelopeHeader?: string;
     envelopeItems?: string;
     receivedAt?: string;
-    type?: string;
   };
   try {
     message = JSON.parse(raw);
@@ -65,7 +65,6 @@ export function parseLiveMessage(raw: string): LiveEventItem | "clear" | null {
     return null;
   }
   if (!message || typeof message !== "object" || Array.isArray(message)) return null;
-  if (message.type === "clear") return "clear";
 
   const parsed = parseStoredEnvelope({
     envelopeHeader: message.envelopeHeader ?? "{}",
@@ -92,7 +91,7 @@ export function parseLiveMessage(raw: string): LiveEventItem | "clear" | null {
     itemTypes: items.map((item) => item.header.type),
     event: eventItem ? normalizeTransactionPayload(eventItem.payload) : null,
     transaction: transactionItem ? normalizeTransactionPayload(transactionItem.payload) : null,
-    feedback: feedbackItem ? feedbackItem.payload : null,
+    feedback: feedbackItem ? normalizeTransactionPayload(feedbackItem.payload) : null,
   };
 }
 
@@ -104,54 +103,80 @@ function defaultNatsWsUrl(): string {
   return `${scheme}//${window.location.hostname}:9222`;
 }
 
+type ItemHandler = (item: LiveEventItem) => void;
+type StatusHandler = (status: LiveFeedStatus) => void;
+
+const itemHandlers = new Set<ItemHandler>();
+const statusHandlers = new Set<StatusHandler>();
+let connection: NatsConnection | null = null;
+let subscription: Subscription | null = null;
+let connecting = false;
+let url: string | undefined;
+let currentStatus: LiveFeedStatus = "disconnected";
+
+function announce(status: LiveFeedStatus): void {
+  currentStatus = status;
+  for (const handler of statusHandlers) handler(status);
+}
+
+async function open(): Promise<void> {
+  if (connection || connecting) return;
+  connecting = true;
+  try {
+    const nc = await connect({ servers: url ?? defaultNatsWsUrl() });
+    connection = nc;
+    subscription = nc.subscribe(LIVE_SUBJECT);
+    // Registration is only complete once the server has the SUB —
+    // otherwise a message published right after "connected" is lost.
+    await nc.flush();
+    announce("connected");
+    void (async () => {
+      if (!subscription) return;
+      for await (const message of subscription) {
+        const parsed = parseLiveMessage(new TextDecoder().decode(message.data));
+        if (!parsed) continue;
+        for (const handler of itemHandlers) handler(parsed);
+      }
+      announce("disconnected");
+    })();
+  } catch {
+    announce("disconnected");
+  } finally {
+    connecting = false;
+  }
+}
+
 /**
  * Subscribes to the live feed; returns the unsubscribe function. The
- * connection is opened in the background — the feed is best-effort and
- * the lists keep polling, so a failed connect only means no live items.
+ * connection is shared: it opens with the first subscriber and closes with
+ * the last one. The feed is best-effort — a failed connect only means no
+ * live items.
  */
 export function subscribeLiveFeed(
   handlers: LiveFeedHandlers,
   options: { url?: string } = {},
 ): () => void {
-  const url = options.url ?? defaultNatsWsUrl();
-  let closed = false;
-  let connection: NatsConnection | null = null;
-  let subscription: Subscription | null = null;
-
-  void (async () => {
-    try {
-      const nc = await connect({ servers: url });
-      if (closed) {
-        await nc.close();
-        return;
-      }
-      connection = nc;
-      subscription = nc.subscribe(LIVE_SUBJECT);
-      // Registration is only complete once the server has the SUB —
-      // otherwise a message published right after "connected" is lost.
-      await nc.flush();
-      handlers.onStatus?.("connected");
-      void (async () => {
-        if (!subscription) return;
-        for await (const message of subscription) {
-          const parsed = parseLiveMessage(new TextDecoder().decode(message.data));
-          if (parsed === "clear") handlers.onClear();
-          else if (parsed) handlers.onItem(parsed);
-        }
-        handlers.onStatus?.("disconnected");
-      })();
-    } catch {
-      handlers.onStatus?.("disconnected");
-    }
-  })();
+  if (options.url) url = options.url;
+  if (handlers.onItem) itemHandlers.add(handlers.onItem);
+  if (handlers.onStatus) {
+    statusHandlers.add(handlers.onStatus);
+    // A late subscriber learns the state of the shared connection at once.
+    handlers.onStatus(currentStatus);
+  }
+  void open();
 
   return () => {
-    closed = true;
+    if (handlers.onItem) itemHandlers.delete(handlers.onItem);
+    if (handlers.onStatus) statusHandlers.delete(handlers.onStatus);
+    if (itemHandlers.size > 0 || statusHandlers.size > 0) return;
     try {
       subscription?.unsubscribe();
     } catch {
       // the connection is already gone
     }
-    void connection?.close().catch(() => {});
+    subscription = null;
+    const open_connection = connection;
+    connection = null;
+    void open_connection?.close().catch(() => {});
   };
 }

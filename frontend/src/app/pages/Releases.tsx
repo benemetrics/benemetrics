@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Action } from "../Action";
 import { ScreenIntro } from "../ScreenIntro";
 import { api, type ReleaseDto } from "../../lib/api";
+import { loadAllPages } from "../../lib/cursor";
 import { relativeTime } from "../../lib/utils";
 
 export function Releases() {
@@ -14,9 +15,14 @@ export function Releases() {
     let cancelled = false;
     (async () => {
       try {
-        const result = await api.api.admin.releases.get();
+        const rows = await loadAllPages<ReleaseDto>(async (cursor, limit) => {
+          const result = await api.api.admin.releases.get({
+            $query: { limit, ...(cursor ? { cursor } : {}) },
+          });
+          return (result?.data as { data?: ReleaseDto[] } | null)?.data ?? [];
+        });
         if (cancelled) return;
-        setReleases((result?.data as { data?: ReleaseDto[] } | null)?.data ?? []);
+        setReleases(rows);
         setStatus("ready");
       } catch {
         if (!cancelled) setStatus("error");

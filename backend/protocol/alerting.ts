@@ -76,6 +76,23 @@ export interface AlertRule {
   updatedAt: string;
 }
 
+// A delivery that failed: it is retried with a backoff and stays in the
+// queue while it keeps failing.
+export interface AlertDeadLetter {
+  id: string;
+  channelId: string;
+  channelName: string;
+  channelType: string;
+  ruleId: string | null;
+  appId: string | null;
+  notification: unknown;
+  error: string;
+  attempts: number;
+  nextAttemptAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AlertIncident {
   id: string;
   ruleId: string;

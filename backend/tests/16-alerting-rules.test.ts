@@ -718,6 +718,122 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(incidents.data[0]!.value).toBe(2);
     });
 
+    it("records a failed delivery in the dead letter queue", async () => {
+      const appRecord = await makeApp();
+
+      // Nothing listens on port 9 — the delivery always fails.
+      const channel = await json<{ id: string }>(
+        await apiRequest("POST", "/api/admin/alerting/channels", {
+          name: `dead-letter-${uniq()}`,
+          type: "webhook",
+          config: { url: "http://127.0.0.1:9/nothing" },
+          appId: appRecord.id,
+        }),
+      );
+
+      await apiRequest("POST", "/api/admin/alerting/rules", {
+        name: `dead letter ${uniq()}`,
+        metric: "error_count",
+        operator: "gt",
+        threshold: 0,
+        windowSeconds: 3600,
+        cooldownSeconds: 60,
+        channelIds: [channel.id],
+        appId: appRecord.id,
+      });
+
+      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "dead letter"));
+
+      const letters = await waitFor(
+        async () =>
+          json<{ data: Array<{ id: string; error: string; attempts: number }> }>(
+            await apiRequest("GET", "/api/admin/alerting/dead-letters"),
+          ),
+        (body) => body.data.length > 0,
+      );
+      const letter = letters.data[0]!;
+      expect(letter.error).toBeTruthy();
+
+      // A manual retry tries again and records the attempt.
+      const retried = await json<{ attempts: number }>(
+        await apiRequest(
+          "POST",
+          `/api/admin/alerting/dead-letters/${letter.id}/retry`,
+        ),
+      );
+      expect(retried.attempts).toBeGreaterThan(letter.attempts);
+
+      // The queue can be emptied; the delete is idempotent.
+      const deleted = await apiRequest(
+        "DELETE",
+        `/api/admin/alerting/dead-letters/${letter.id}`,
+      );
+      expect(deleted.status).toBe(200);
+      const again = await apiRequest(
+        "DELETE",
+        `/api/admin/alerting/dead-letters/${letter.id}`,
+      );
+      expect(again.status).toBe(200);
+    });
+
+    it("records a failed delivery in the dead letter queue", async () => {
+      const appRecord = await makeApp();
+
+      // Nothing listens on port 9 - the delivery always fails.
+      const channel = await json<{ id: string }>(
+        await apiRequest("POST", "/api/admin/alerting/channels", {
+          name: `dead-letter-${uniq()}`,
+          type: "webhook",
+          config: { url: "http://127.0.0.1:9/nothing" },
+          appId: appRecord.id,
+        }),
+      );
+
+      await apiRequest("POST", "/api/admin/alerting/rules", {
+        name: `dead letter ${uniq()}`,
+        metric: "error_count",
+        operator: "gt",
+        threshold: 0,
+        windowSeconds: 3600,
+        cooldownSeconds: 60,
+        channelIds: [channel.id],
+        appId: appRecord.id,
+      });
+
+      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "dead letter"));
+
+      const letters = await waitFor(
+        async () =>
+          json<{ data: Array<{ id: string; error: string; attempts: number }> }>(
+            await apiRequest("GET", "/api/admin/alerting/dead-letters"),
+          ),
+        (body) => body.data.length > 0,
+      );
+      const letter = letters.data[0]!;
+      expect(letter.error).toBeTruthy();
+
+      // A manual retry tries again and records the attempt.
+      const retried = await json<{ attempts: number }>(
+        await apiRequest(
+          "POST",
+          `/api/admin/alerting/dead-letters/${letter.id}/retry`,
+        ),
+      );
+      expect(retried.attempts).toBeGreaterThan(letter.attempts);
+
+      // The queue can be emptied; the delete is idempotent.
+      const deleted = await apiRequest(
+        "DELETE",
+        `/api/admin/alerting/dead-letters/${letter.id}`,
+      );
+      expect(deleted.status).toBe(200);
+      const again = await apiRequest(
+        "DELETE",
+        `/api/admin/alerting/dead-letters/${letter.id}`,
+      );
+      expect(again.status).toBe(200);
+    });
+
     it("acknowledges and assigns an incident", async () => {
       const appRecord = await makeApp();
 

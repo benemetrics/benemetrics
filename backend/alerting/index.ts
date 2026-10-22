@@ -4,11 +4,13 @@ import { appDAO, projectDAO } from "db/dao/project";
 import { alertChannelDAO } from "db/dao/alert-channels";
 import { alertRuleDAO } from "db/dao/alert-rules";
 import { alertIncidentDAO } from "db/dao/alert-incidents";
+import { alertDeadLetterDAO } from "db/dao/alert-dead-letters";
 import { badRequest } from "../errors";
 import { resolveEffectiveAlertConfig } from "./resolver";
 import { buildTestNotification, deliverAlertToChannels } from "./notifiers";
 import { resolveAdminId } from "../auth";
 import { readAlertingStats } from "./stats";
+import { retryDeadLetters } from "./dead-letters";
 
 const channelType =
   "'email' | 'webhook' | 'slack' | 'rocketchat' | 'pagerduty' | 'opsgenie' | 'msteams' | 'victorops'";
@@ -252,6 +254,35 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
         limit: "string.integer.parse?",
       }),
     },
+  )
+  .get(
+    "/dead-letters",
+    async ({ query: { cursor, limit } }) =>
+      alertDeadLetterDAO.list({ cursor, limit }),
+    {
+      query: arktype({
+        cursor: "string?",
+        limit: "string.integer.parse?",
+      }),
+    },
+  )
+  .post(
+    "/dead-letters/:id/retry",
+    async ({ params: { id } }) => {
+      const letter = await alertDeadLetterDAO.findByIdOrThrow(id);
+      await alertDeadLetterDAO.scheduleNow(id);
+      await retryDeadLetters();
+      return alertDeadLetterDAO.findById(id) ?? letter;
+    },
+    { params: arktype({ id: "string.uuid" }) },
+  )
+  .delete(
+    "/dead-letters/:id",
+    async ({ params: { id } }) => {
+      await alertDeadLetterDAO.delete(id);
+      return { success: true };
+    },
+    { params: arktype({ id: "string.uuid" }) },
   )
   .post(
     "/incidents/:id/acknowledge",

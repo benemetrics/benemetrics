@@ -1,6 +1,7 @@
 
 import { alertRuleDAO } from "db/dao/alert-rules";
 import { alertIncidentDAO } from "db/dao/alert-incidents";
+import { alertDeadLetterDAO } from "db/dao/alert-dead-letters";
 import { appDAO } from "db/dao/project";
 import { db } from "db";
 import { issueDAO } from "db/dao/issues";
@@ -13,6 +14,8 @@ import {
 import { trackIssuesForEvent, type TrackedIssue } from "../issues/tracking";
 import type { IssueDigest } from "../issues/grouping";
 import { resolveEffectiveAlertConfig, resolveScopedRules } from "./resolver";
+import { isClickHouseCircuitOpen } from "../clickhouse";
+import { mapWithConcurrency } from "./concurrency";
 import {
   countCooldownSkipped,
   countIncidentFired,
@@ -27,10 +30,45 @@ import {
 import type {
   AlertIncident,
   AlertMetric,
+  AlertNotification,
   AlertRuleFilters,
+  DeliveryResult,
 } from "../protocol/alerting";
 
 const DEFAULT_MEASUREMENT = "duration";
+
+// A failed delivery goes to the dead letter queue: the queue retries it
+// with a backoff.
+async function recordFailedDeliveries(
+  results: DeliveryResult[],
+  notification: AlertNotification,
+  ruleId: string,
+  appId: string | null,
+): Promise<void> {
+  for (const result of results) {
+    if (result.ok) continue;
+    try {
+      await alertDeadLetterDAO.create({
+        channelId: result.channelId,
+        channelName: result.channelName,
+        channelType: result.type,
+        ruleId,
+        appId,
+        notification: JSON.stringify(notification),
+        error: result.error ?? "the delivery failed",
+        attempts: 1,
+        nextAttemptAt: new Date(Date.now() + 60_000).toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error(
+        "[alerting] the failed delivery could not be recorded:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+}
 
 // The evaluation decisions are logged as one JSON line each — the rule,
 // the scope, the value and the outcome.
@@ -164,7 +202,8 @@ async function evaluateRules(scope: {
         appId,
         now,
       );
-      await deliverAlertToChannels(selected, notification);
+      const deliveries = await deliverAlertToChannels(selected, notification);
+      await recordFailedDeliveries(deliveries, notification, rule.id, appId);
       countIncidentFired();
       logDecision({
         event: "evaluated",
@@ -257,7 +296,16 @@ async function fireIssueTriggerRules(
               scope.appId,
               now,
             );
-            await deliverAlertToChannels(selected, notification);
+            const deliveries = await deliverAlertToChannels(
+              selected,
+              notification,
+            );
+            await recordFailedDeliveries(
+              deliveries,
+              notification,
+              rule.id,
+              scope.appId,
+            );
             countIncidentFired();
             logDecision({
               event: "issue_trigger",
@@ -290,7 +338,7 @@ async function fireIssueTriggerRules(
     appId: string,
     label: string,
     run: () => Promise<unknown>,
-  ): void {
+  ): Promise<void> {
     const guarded = () =>
       run().catch((error: unknown) => {
         console.error(
@@ -303,6 +351,7 @@ async function fireIssueTriggerRules(
       guarded,
     );
     evaluationChains.set(appId, next);
+    return next.then(() => undefined);
   }
 
   export function evaluateProjectRules(projectId: string): void {
@@ -315,6 +364,21 @@ async function fireIssueTriggerRules(
 
   export function evaluateRulesForApp(appId: string): void {
     enqueueAppWork(appId, "rule evaluation failed", () => evaluateRules({ appId }));
+  }
+
+  // The same evaluation, awaited — the sweep runs the apps in parallel.
+  export function evaluateRulesForAppAndWait(appId: string): Promise<void> {
+    return enqueueAppWork(appId, "rule evaluation failed", () =>
+      evaluateRules({ appId }),
+    );
+  }
+
+  export function evaluateProjectRulesAndWait(projectId: string): Promise<void> {
+    return enqueueAppWork(
+      `project:${projectId}`,
+      "project rule evaluation failed",
+      () => evaluateRules({ projectId }),
+    );
   }
 
   // Threshold rules belong to the sweeper: the ingestion path would read a
@@ -347,16 +411,30 @@ async function fireIssueTriggerRules(
     if (sweeperTimer !== null) return;
     const intervalMs = Number(process.env.ALERT_EVALUATION_INTERVAL_MS) || 60_000;
     sweeperTimer = setInterval(() => {
+      // A down ClickHouse would fail every app's evaluation; the circuit
+      // makes the queries fail fast, so the sweep is skipped as a whole.
+      if (isClickHouseCircuitOpen()) {
+        console.warn(
+          "[alerting] the sweep is skipped — the ClickHouse circuit is open",
+        );
+        return;
+      }
       void Promise.all([appDAO.listAll(), alertRuleDAO.listProjectScoped()])
-        .then(([apps, projectRules]) => {
-          for (const app of apps) evaluateRulesForApp(app.id);
+        .then(async ([apps, projectRules]) => {
+          const concurrency =
+            Number(process.env.ALERT_SWEEPER_CONCURRENCY) || 8;
           // The project-scoped rules are evaluated per project.
           const projectIds = new Set(
             projectRules
               .map((rule) => rule.projectId)
               .filter((id): id is string => Boolean(id)),
           );
-          for (const projectId of projectIds) evaluateProjectRules(projectId);
+          await mapWithConcurrency(apps, concurrency, (app) =>
+            evaluateRulesForAppAndWait(app.id),
+          );
+          await mapWithConcurrency([...projectIds], concurrency, (projectId) =>
+            evaluateProjectRulesAndWait(projectId),
+          );
         })
         .catch((error: unknown) => {
           console.error(

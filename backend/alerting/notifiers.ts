@@ -536,37 +536,108 @@ export function buildTestNotification(
   };
 }
 
+// The delivery queue: the notification volume is bounded, so a spike
+// cannot fan out without limit. The pending deliveries are capped and the
+// workers are bounded; a delivery that cannot be queued is refused and the
+// caller records it in the dead letter queue.
+const MAX_PENDING_DELIVERIES =
+  Number(process.env.ALERT_DELIVERY_QUEUE_SIZE) || 1000;
+const DELIVERY_CONCURRENCY =
+  Number(process.env.ALERT_DELIVERY_CONCURRENCY) || 8;
+
+interface PendingDelivery {
+  channel: AlertChannel;
+  notification: AlertNotification;
+  resolve: (result: DeliveryResult) => void;
+}
+
+const pendingDeliveries: PendingDelivery[] = [];
+let activeDeliveries = 0;
+
+// Sends one notification to one channel.
+export function deliverNotificationToChannel(
+  channel: AlertChannel,
+  notification: AlertNotification,
+): Promise<DeliveryResult> {
+  const base = {
+    channelId: channel.id,
+    channelName: channel.name,
+    type: channel.type,
+  };
+  const notifier = notifiers[channel.type];
+  if (!notifier) {
+    return Promise.resolve({
+      ...base,
+      ok: false,
+      error: `no notifier for channel type: ${channel.type}`,
+    });
+  }
+  return notifier.send(notification, channel.config).then(
+    () => {
+      countDelivery(true);
+      return { ...base, ok: true };
+    },
+    (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      countDelivery(false);
+      console.error(
+        `[alerting] delivery failed via ${channel.type} channel "${channel.name}": ${message}`,
+      );
+      return { ...base, ok: false, error: message };
+    },
+  );
+}
+
+function pumpDeliveries(): void {
+  while (
+    activeDeliveries < DELIVERY_CONCURRENCY &&
+    pendingDeliveries.length > 0
+  ) {
+    const job = pendingDeliveries.shift()!;
+    activeDeliveries += 1;
+    void deliverNotificationToChannel(job.channel, job.notification).then(
+      (result) => job.resolve(result),
+      () =>
+        job.resolve({
+          channelId: job.channel.id,
+          channelName: job.channel.name,
+          type: job.channel.type,
+          ok: false,
+          error: "the delivery failed",
+        }),
+    ).finally(() => {
+      activeDeliveries -= 1;
+      pumpDeliveries();
+    });
+  }
+}
+
+// Queues one delivery; the promise settles when it has been sent (or has
+// failed).
+export function enqueueDelivery(
+  channel: AlertChannel,
+  notification: AlertNotification,
+): Promise<DeliveryResult> {
+  if (pendingDeliveries.length >= MAX_PENDING_DELIVERIES) {
+    return Promise.resolve({
+      channelId: channel.id,
+      channelName: channel.name,
+      type: channel.type,
+      ok: false,
+      error: "the delivery queue is full",
+    });
+  }
+  return new Promise<DeliveryResult>((resolve) => {
+    pendingDeliveries.push({ channel, notification, resolve });
+    pumpDeliveries();
+  });
+}
+
 export async function deliverAlertToChannels(
   channels: AlertChannel[],
   notification: AlertNotification,
 ): Promise<DeliveryResult[]> {
   return Promise.all(
-    channels.map(async (channel): Promise<DeliveryResult> => {
-      const base = {
-        channelId: channel.id,
-        channelName: channel.name,
-        type: channel.type,
-      };
-      const notifier = notifiers[channel.type];
-      if (!notifier) {
-        return {
-          ...base,
-          ok: false,
-          error: `no notifier for channel type: ${channel.type}`,
-        };
-      }
-      try {
-        await notifier.send(notification, channel.config);
-        countDelivery(true);
-        return { ...base, ok: true };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        countDelivery(false);
-        console.error(
-          `[alerting] delivery failed via ${channel.type} channel "${channel.name}": ${message}`,
-        );
-        return { ...base, ok: false, error: message };
-      }
-    }),
+    channels.map((channel) => enqueueDelivery(channel, notification)),
   );
 }

@@ -382,20 +382,76 @@ function isTransientChError(err: unknown): boolean {
 
 // ClickHouse operations are idempotent (reads, IF NOT EXISTS DDL,
 // TRUNCATE, dedup-by-id inserts), so a request that dies with a
-// connection-level error is retried once: the HTTP agent can reuse a
+// connection-level error is retried: the HTTP agent can reuse a
 // socket the server has already closed, which surfaces as
 // ECONNRESET / "socket hang up".
-async function withChRetry<T>(operation: () => Promise<T>): Promise<T> {
-  try {
-    return await operation();
-  } catch (err) {
-    if (!isTransientChError(err)) throw err;
-    console.warn(
-      `[ClickHouse] Transient error, retrying: ${describeError(err)}`,
-    );
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    return operation();
+const CH_RETRY_ATTEMPTS = Number(process.env.CH_CLIKE_RETRY_ATTEMPTS) || 3;
+const CH_RETRY_DELAY_MS = Number(process.env.CH_CLIKE_RETRY_DELAY_MS) || 200;
+
+// The circuit breaker: repeated transient failures mean ClickHouse is down,
+// and hammering it does not help. The circuit opens and the queries fail
+// fast until it closes again.
+const CH_CIRCUIT_FAILURES = Number(process.env.CH_CLIKE_CIRCUIT_FAILURES) || 5;
+const CH_CIRCUIT_COOLDOWN_MS =
+  Number(process.env.CH_CLIKE_CIRCUIT_COOLDOWN_MS) || 30_000;
+
+export class ClickHouseUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ClickHouseUnavailableError";
   }
+}
+
+let consecutiveFailures = 0;
+let circuitOpenedAt = 0;
+
+/** Whether the circuit is open — the queries would fail fast. */
+export function isClickHouseCircuitOpen(): boolean {
+  return circuitIsOpen();
+}
+
+function circuitIsOpen(): boolean {
+  if (consecutiveFailures < CH_CIRCUIT_FAILURES) return false;
+  if (Date.now() - circuitOpenedAt >= CH_CIRCUIT_COOLDOWN_MS) {
+    // Half-open: the next request decides whether the circuit closes.
+    consecutiveFailures = 0;
+    return false;
+  }
+  return true;
+}
+
+async function withChRetry<T>(operation: () => Promise<T>): Promise<T> {
+  if (circuitIsOpen()) {
+    throw new ClickHouseUnavailableError(
+      "the ClickHouse circuit is open; the queries fail fast until it closes",
+    );
+  }
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= CH_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      const result = await operation();
+      consecutiveFailures = 0;
+      return result;
+    } catch (err) {
+      if (!isTransientChError(err)) throw err;
+      lastError = err;
+      if (attempt >= CH_RETRY_ATTEMPTS) break;
+      console.warn(
+        `[ClickHouse] Transient error, retrying (${attempt}/${CH_RETRY_ATTEMPTS}): ${describeError(err)}`,
+      );
+      await new Promise((resolve) =>
+        setTimeout(resolve, CH_RETRY_DELAY_MS * attempt),
+      );
+    }
+  }
+  consecutiveFailures += 1;
+  if (consecutiveFailures >= CH_CIRCUIT_FAILURES) {
+    circuitOpenedAt = Date.now();
+    console.error(
+      "[ClickHouse] the circuit is open — the queries fail fast until it closes",
+    );
+  }
+  throw lastError;
 }
 
 function describeError(err: unknown): string {

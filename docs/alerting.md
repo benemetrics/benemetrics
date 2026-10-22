@@ -476,6 +476,11 @@ Enforced at database level via unique indexes on `(project_id, name)` and `(proj
 
 13. **Incident acknowledgment / assignment**: an incident carries `acknowledgedAt` + `acknowledgedBy` and an `assignee`. `POST /api/admin/alerting/incidents/:id/acknowledge` takes the incident over (the admin id is recorded), `POST /api/admin/alerting/incidents/:id/assign` sets the assignee.
 
+14. **ClickHouse retry / circuit breaker**: the ClickHouse reads are retried with a backoff (`CH_CLIKE_RETRY_ATTEMPTS`, `CH_CLIKE_RETRY_DELAY_MS`). Repeated transient failures open a circuit (`CH_CLIKE_CIRCUIT_FAILURES`, `CH_CLIKE_CIRCUIT_COOLDOWN_MS`): the queries fail fast instead of hammering a down server, and the alert sweep is skipped as a whole until the circuit closes.
+15. **Sweeper parallelism**: the sweep evaluates the apps (and the project-scoped rules) with a bounded concurrency (`ALERT_SWEEPER_CONCURRENCY`, 8 by default) instead of one after the other.
+16. **Backpressure**: the deliveries go through a bounded queue (`ALERT_DELIVERY_QUEUE_SIZE`, 1000 pending) with a bounded number of workers (`ALERT_DELIVERY_CONCURRENCY`, 8). A delivery that cannot be queued is refused rather than fanned out.
+17. **Dead letter queue**: a delivery that fails is recorded (`alert_dead_letters`) and retried with an exponential backoff (`ALERT_DEAD_LETTER_BASE_MS`, `ALERT_DEAD_LETTER_MAX_MS`); the worker runs every `ALERT_DEAD_LETTER_INTERVAL_MS`. `GET /api/admin/alerting/dead-letters` lists the queue, `POST /api/admin/alerting/dead-letters/:id/retry` tries again now, `DELETE /api/admin/alerting/dead-letters/:id` discards it.
+
 **Not built:** the environment scope (dropped from the model).
 
 ---

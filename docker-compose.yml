@@ -1,5 +1,6 @@
-name: benemetrics
-
+# The project name follows the repository directory (docker compose's
+# default), so the volumes and the container names stay stable.
+#
 # The environment of the API and of the side-effects consumer. The host
 # development server (bun run dev) uses the same values — the service names
 # become localhost when the server runs outside compose.

@@ -76,12 +76,26 @@ jobs:
       # reach nats:4222, while the job reaches both on localhost.
       - name: Start ClickHouse and NATS (JetStream)
         run: |
-          docker network create sentry-test
-          docker run -d --name nats --network sentry-test \
+          docker network create benemetrics-test
+          cat > /tmp/nats-server.conf <<'EOF'
+          port: 4222
+          http: 8222
+
+          jetstream {
+            store_dir: /data
+            max_file_store: 4GB
+          }
+
+          websocket {
+            port: 9222
+            no_tls: true
+          }
+          EOF
+          docker run -d --name nats --network benemetrics-test \
             -p 4222:4222 -p 8222:8222 -p 9222:9222 \
-            -v "$PWD/infra/nats-server.conf:/etc/nats/nats-server.conf:ro" \
+            -v /tmp/nats-server.conf:/etc/nats/nats-server.conf:ro \
             nats:latest -c /etc/nats/nats-server.conf
-          docker run -d --name clickhouse --network sentry-test -p 8123:8123 \
+          docker run -d --name clickhouse --network benemetrics-test -p 8123:8123 \
             -e CLICKHOUSE_SKIP_USER_SETUP=1 \
             clickhouse/clickhouse-server:latest
 

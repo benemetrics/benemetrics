@@ -3,6 +3,7 @@ import { ApiError } from "./errors";
 import ui from "../frontend/index.html";
 import { apiRoutes } from "./routes";
 import { startAlertSweeper } from "./alerting/evaluation";
+import { startDeadLetterWorker } from "./alerting/dead-letters";
 import { initClickHouse } from "./clickhouse";
 import { assertStorageConfigured } from "./storage";
 
@@ -62,6 +63,7 @@ if (import.meta.main) {
       process.exit(1);
     }
     startAlertSweeper();
+    startDeadLetterWorker();
   });
 }
 

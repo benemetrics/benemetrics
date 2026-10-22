@@ -35,10 +35,10 @@
 
 ## Reliability / Performance
 
-- [ ] ClickHouse query retry / circuit breaker for evaluation
-- [ ] Sweeper parallelism (currently serial over apps)
-- [ ] Backpressure handling when notification volume spikes
-- [ ] Dead letter queue for failed deliveries (retry with backoff)
+- [x] ClickHouse query retry / circuit breaker for evaluation — the reads are retried with a backoff and repeated transient failures open a circuit: the queries fail fast and the sweep is skipped until it closes
+- [x] Sweeper parallelism (currently serial over apps) — the apps and the project-scoped rules are evaluated with a bounded concurrency (`ALERT_SWEEPER_CONCURRENCY`)
+- [x] Backpressure handling when notification volume spikes — the deliveries go through a bounded queue (`ALERT_DELIVERY_QUEUE_SIZE`) with a bounded number of workers (`ALERT_DELIVERY_CONCURRENCY`); what cannot be queued is refused
+- [x] Dead letter queue for failed deliveries (retry with backoff) — a failed delivery is recorded in `alert_dead_letters` and retried with an exponential backoff; the queue is read, retried and emptied through the admin API
 
 ## Observability
 

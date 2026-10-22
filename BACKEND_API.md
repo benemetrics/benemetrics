@@ -86,7 +86,7 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 
 **DB Selection Logic** (`db/index.ts`): `NODE_ENV=test` → in-memory PGlite; else `DATABASE_URL` present → Postgres (Bun SQL); else file-backed PGlite in `./.pglite`. Committed migrations in `db/migrations` applied at startup (idempotent, tracked in `drizzle.__drizzle_migrations`).
 
-**Docker Compose** provides: Postgres 17 (`:5432`), ClickHouse (`:8123`, `:9000`), RustFS (`:9100` S3 API, `:9101` console — `rustfsadmin`/`rustfsadmin`; `sentry-replays` bucket created by `rustfs-init`), NATS (`:4222` + WS `:4223`).
+**Docker Compose** provides the whole stack — Postgres 17 (`:5432`), ClickHouse (`:8123`, `:9000`), RustFS (`:9100` S3 API, `:9101` console — `rustfsadmin`/`rustfsadmin`; `sentry-replays` bucket created by `rustfs-init`), NATS (`:4222` + WS `:9222`), Keycloak (`:8443`) and the API + the consumer (`:31337`). The environment of the API and the consumer is the `x-app-environment` block of `docker-compose.yml`; the NATS configuration is an inline compose config whose values come from the environment of the service.
 
 **Container image** (`Dockerfile`): the API (`bun index.js`) and the side-effects consumer (`bun consumer.js`) are two entry points of the same image; the production bundle is built by `scripts/build.ts` (the bunfig plugins are not applied by `bun build`, so the virtual OIDC module is registered there).
 

@@ -16,8 +16,8 @@
  * URL: `globalThis.__NATS_WS_URL__` when the deployment injects one
  * (production keeps NATS behind TLS, optionally with a token), otherwise
  * the local dev listener on the UI host (`ws://<hostname>:9222`), which
- * mirrors `infra/nats-server.conf`. The client reconnects on its own;
- * while it is down the pages keep polling.
+ * mirrors the NATS service of the compose file. The client reconnects on
+ * its own; while it is down the pages keep polling.
  */
 
 import { connect, type NatsConnection, type Subscription } from "nats.ws";

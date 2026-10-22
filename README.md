@@ -413,16 +413,18 @@ bun run test                  # the whole suite (needs the docker services)
 ### The local identity provider
 
 `docker compose up -d keycloak` starts Keycloak on <https://localhost:8443>
-(the admin console: `admin` / `admin`). The realm `benemetrics` is imported from
-`infra/keycloak/realm.json`: the public SPA client `benemetrics`, the bearer
-client `benemetrics-backend`, the groups `backend-team` / `frontend-team` and the
-user `sso@example.com` (password `sentry`).
+(the admin console: `admin` / `admin`). The realm `benemetrics` is imported
+from the compose config: the public SPA client `benemetrics`, the bearer
+client `benemetrics-backend`, the groups `backend-team` / `frontend-team` and
+the user `sso@example.com` (password `sentry`).
 
-The provider serves TLS with a self-signed certificate the compose generates
-into `infra/keycloak/tls/`. The backend trusts it through `NODE_EXTRA_CA_CERTS`:
+The provider serves TLS with a self-signed certificate that the compose
+generates into the `keycloak_tls` volume. The backend trusts it through
+`NODE_EXTRA_CA_CERTS`:
 
 ```bash
-export NODE_EXTRA_CA_CERTS="$PWD/infra/keycloak/tls/tls.crt"
+docker compose cp keycloak-cert:/tls/tls.crt /tmp/benemetrics-ca.crt
+export NODE_EXTRA_CA_CERTS=/tmp/benemetrics-ca.crt
 export OIDC_ISSUER="https://localhost:8443"
 export OIDC_CLIENT_ID="benemetrics-backend"
 bun run dev
@@ -438,6 +440,7 @@ frontend/        the React SPA, served by the backend
 docs/            the architectural reference (the source of truth)
 charts/benemetrics/ the Helm chart
 e2e/             the end-to-end suites
+scripts/         the production bundle and the dev helpers
 ```
 
 ---

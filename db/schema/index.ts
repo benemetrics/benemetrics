@@ -9,6 +9,7 @@ export { experimentMetrics } from "./experiment-metrics";
 export { alertChannels } from "./alert-channels";
 export { alertRules } from "./alert-rules";
 export { alertIncidents } from "./alert-incidents";
+export { alertDeadLetters } from "./alert-dead-letters";
 export { sourceMapTokens } from "./source-map-tokens";
 export { permissionRules, permissionGrants, permissionAudit } from "./permissions";
 export { sourceMaps } from "./source-maps";

@@ -4,7 +4,7 @@ import { Icon } from "../Icon";
 import { Action } from "../Action";
 import { useWorkspace } from "../WorkspaceContext";
 import {
-  AGGREGATE_EVENT_LIMIT,
+  EVENT_PAGE_SIZE,
   api,
   listEvents,
   listIssues,
@@ -81,6 +81,11 @@ function eventTime(receivedAt: string): string {
   });
 }
 
+/** The selectable ranges of the Overview, in milliseconds. */
+function rangeSpanMs(range: string): number {
+  return range === "7 days" ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+}
+
 export function Overview() {
   const navigate = useNavigate();
   const { project, environment, application, applications, adminUser } = useWorkspace();
@@ -99,15 +104,25 @@ export function Overview() {
 
   useEffect(() => {
     let cancelled = false;
+    // The window is the range selection: every event inside it is fetched
+    // (the `since` filter bounds the query in time, not by item count).
     const load = async () => {
       try {
-        const result = await listEvents({
-          projectId,
-          environmentId,
-          appId: applicationId,
-          limit: AGGREGATE_EVENT_LIMIT,
-        });
-        const list = ((result?.data as { data?: StoredEvent[] })?.data ?? []) as StoredEvent[];
+        const since = new Date(Date.now() - rangeSpanMs(range)).toISOString();
+        const list = await loadAllPages<StoredEvent>(
+          async (cursor, limit) => {
+            const result = await listEvents({
+              projectId,
+              environmentId,
+              appId: applicationId,
+              cursor,
+              limit,
+              since,
+            });
+            return ((result?.data as { data?: StoredEvent[] })?.data ?? []) as StoredEvent[];
+          },
+          EVENT_PAGE_SIZE,
+        );
         if (!cancelled) {
           setEvents(list);
           setEventsStatus("ready");
@@ -144,10 +159,11 @@ export function Overview() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [projectId, environmentId, applicationId]);
+  }, [projectId, environmentId, applicationId, range]);
 
   // Live feed: the page subscribes to NATS directly (there is no backend
-  // fan-out) and prepends events as they are ingested.
+  // fan-out) and prepends events as they are ingested, keeping the ring
+  // bounded by the range in time.
   useEffect(() => {
     const close = subscribeLiveFeed({
       onItem: (item) => {
@@ -159,21 +175,22 @@ export function Overview() {
           );
           if (!visible) return;
         }
-        setEvents((current) =>
-          [
-            {
-              id: item.id,
-              itemTypes: item.itemTypes,
-              event: item.event,
-              receivedAt: item.receivedAt,
-            },
-            ...current.filter((event) => event.id !== item.id),
-          ].slice(0, AGGREGATE_EVENT_LIMIT),
-        );
+        const cutoff = Date.now() - rangeSpanMs(range);
+        setEvents((current) => [
+          {
+            id: item.id,
+            itemTypes: item.itemTypes,
+            event: item.event,
+            receivedAt: item.receivedAt,
+          },
+          ...current.filter(
+            (event) => event.id !== item.id && Date.parse(event.receivedAt) >= cutoff,
+          ),
+        ]);
       },
     });
     return close;
-  }, [projectId, environmentId, applicationId, applications]);
+  }, [projectId, environmentId, applicationId, applications, range]);
 
   useEffect(() => {
     let cancelled = false;
@@ -212,8 +229,8 @@ export function Overview() {
     };
   }, []);
 
-  const rangeSpanMs = range === "7 days" ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-  const windowStart = Date.now() - rangeSpanMs;
+  const rangeSpan = rangeSpanMs(range);
+  const windowStart = Date.now() - rangeSpan;
   const windowed = useMemo(
     () => events.filter((event) => Date.parse(event.receivedAt) >= windowStart),
     [events, windowStart],
@@ -235,16 +252,16 @@ export function Overview() {
     [errorEvents],
   );
 
-  const errorSeries = useMemo(() => bucketize(errorEvents, rangeSpanMs), [errorEvents, rangeSpanMs]);
+  const errorSeries = useMemo(() => bucketize(errorEvents, rangeSpan), [errorEvents, rangeSpan]);
   const warningSeries = useMemo(
-    () => bucketize(warningEvents, rangeSpanMs),
-    [warningEvents, rangeSpanMs],
+    () => bucketize(warningEvents, rangeSpan),
+    [warningEvents, rangeSpan],
   );
   const transactionSeries = useMemo(
-    () => bucketize(transactionEvents, rangeSpanMs),
-    [transactionEvents, rangeSpanMs],
+    () => bucketize(transactionEvents, rangeSpan),
+    [transactionEvents, rangeSpan],
   );
-  const volumeSeries = useMemo(() => bucketize(windowed, rangeSpanMs), [windowed, rangeSpanMs]);
+  const volumeSeries = useMemo(() => bucketize(windowed, rangeSpan), [windowed, rangeSpan]);
   const errorPaths = useMemo(() => seriesToPaths(errorSeries, 720, 180), [errorSeries]);
   const warningPaths = useMemo(() => seriesToPaths(warningSeries, 720, 180), [warningSeries]);
   const errorSparkline = useMemo(() => seriesToPaths(errorSeries, 240, 48), [errorSeries]);
@@ -253,7 +270,7 @@ export function Overview() {
     [transactionSeries],
   );
   const volumeSparkline = useMemo(() => seriesToPaths(volumeSeries, 240, 48), [volumeSeries]);
-  const xLabels = useMemo(() => bucketLabels(rangeSpanMs), [rangeSpanMs]);
+  const xLabels = useMemo(() => bucketLabels(rangeSpan), [rangeSpan]);
 
   const enabledRules = rules.filter((rule) => rule.isEnabled);
   const dateLabel = new Date()
@@ -353,7 +370,7 @@ export function Overview() {
           </div>
           <div className="metric-value">{transactionCount}</div>
           <div className="metric-foot">
-            <span>traces in the last {range} (latest {AGGREGATE_EVENT_LIMIT} stored items)</span>
+            <span>traces in the last {range}</span>
           </div>
           <div className="sparkline amber-line">
             <svg viewBox="0 0 240 48" preserveAspectRatio="none">
@@ -369,11 +386,9 @@ export function Overview() {
               <Icon name="logs" />
             </div>
           </div>
-          <div className="metric-value">
-            {events.length >= AGGREGATE_EVENT_LIMIT ? `${AGGREGATE_EVENT_LIMIT}+` : events.length}
-          </div>
+          <div className="metric-value">{events.length}</div>
           <div className="metric-foot">
-            <span>latest {AGGREGATE_EVENT_LIMIT} stored items · every {POLL_INTERVAL_MS / 1000}s</span>
+            <span>in the last {range} · every {POLL_INTERVAL_MS / 1000}s</span>
           </div>
           <div className="sparkline blue-line">
             <svg viewBox="0 0 240 48" preserveAspectRatio="none">

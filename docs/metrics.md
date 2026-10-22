@@ -221,9 +221,9 @@ Response: { data: [{ dimension, count, mean, p50, p95 }] }
 - **Latency table** from `breakdown` instead of a fixed event window
 - Issue detail unchanged
 
-### Overview (known limit)
+### Overview (time window, no item cap)
 
-The Overview's event-window charts evaluate the raw items client-side over the configured window (`AGGREGATE_EVENT_LIMIT`, 200); only the issue counters are read from the backend. Moving the charts to the metrics series API is deferred.
+The Overview reads every event of the selected window from `GET /api/admin/events` via the `since` filter — the window is the range selection (last 24 hours / last 7 days), evaluated client-side, with **no item cap**. The issue counters and the issue reads are aggregated server-side (ClickHouse index). The charts still evaluate client-side over that window; moving them to the metrics series API is the remaining deferred work (`TODO.md`).
 
 ### Logs (non-goal)
 

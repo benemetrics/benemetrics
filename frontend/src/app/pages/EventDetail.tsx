@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { ScreenIntro } from "../ScreenIntro";
 import { useWorkspace } from "../WorkspaceContext";
 import {
-  AGGREGATE_EVENT_LIMIT,
+  EVENT_PAGE_SIZE,
   api,
   getIssueStats,
   listEvents,
@@ -11,6 +11,7 @@ import {
   type IssueOccurrenceDto,
   type IssueStatsDto,
 } from "../../lib/api";
+import { loadAllPages } from "../../lib/cursor";
 import { type ExceptionFrame, type StoredEvent } from "../../lib/issues";
 import { relativeTime } from "../../lib/utils";
 import "rrweb-player/dist/style.css";
@@ -420,7 +421,7 @@ export function EventDetail() {
       try {
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const [occurrenceResult, statsResult] = await Promise.all([
-          listIssueOccurrences(issueId, { limit: AGGREGATE_EVENT_LIMIT }),
+          listIssueOccurrences(issueId, { limit: EVENT_PAGE_SIZE }),
           getIssueStats(issueId, { from: since, stepSeconds: 3600 }),
         ]);
         const list =
@@ -441,19 +442,28 @@ export function EventDetail() {
   }, [issueId]);
 
   // The stored window supplies the payloads the panels aggregate; the
-  // occurrences decide which of them belong to this issue.
+  // occurrences decide which of them belong to this issue. The window is the
+  // last 24 hours, matching the stats above — time-bounded, not item-capped.
   useEffect(() => {
     if (!issueId) return;
     let cancelled = false;
     (async () => {
       try {
-        const result = await listEvents({
-          projectId,
-          environmentId,
-          appId: applicationId,
-          limit: AGGREGATE_EVENT_LIMIT,
-        });
-        const list = (result?.data as { data?: StoredEvent[] })?.data ?? [];
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const list = await loadAllPages<StoredEvent>(
+          async (cursor, limit) => {
+            const result = await listEvents({
+              projectId,
+              environmentId,
+              appId: applicationId,
+              cursor,
+              limit,
+              since,
+            });
+            return (result?.data as { data?: StoredEvent[] })?.data ?? [];
+          },
+          EVENT_PAGE_SIZE,
+        );
         if (cancelled) return;
         setRelated(list);
       } catch {

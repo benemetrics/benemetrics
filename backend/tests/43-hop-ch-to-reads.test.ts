@@ -92,6 +92,17 @@ describe("Hop 4: ClickHouse -> reads", () => {
     expect(scoped.data).toHaveLength(2);
     expect(scoped.data.map((item) => item.id)).toEqual([newest, oldest]);
 
+    // A `since` bounds the window in time: the event older than the cutoff
+    // drops out, the rest stay.
+    const since = (await (
+      await fetch(
+        `${TEST_ORIGIN}/events?projectId=${app.projectId}&limit=10&since=${encodeURIComponent(new Date(now - 90_000).toISOString())}`,
+        { headers: ADMIN_HEADERS },
+      )
+    ).json()) as ListBody;
+    expect(since.data).toHaveLength(2);
+    expect(since.data.map((item) => item.id)).toEqual([other, newest]);
+
     const paged = (await (
       await fetch(`${TEST_ORIGIN}/events?projectId=${app.projectId}&limit=2`, {
         headers: ADMIN_HEADERS,

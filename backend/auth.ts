@@ -65,6 +65,9 @@ const verifyWithIdP = async (token: string) => {
   try {
     const { payload } = await jose.jwtVerify(token, jwks, {
       audience: clientId,
+      // An identity must expire: a token without `exp` is rejected
+      // (docs/permission.md §2).
+      requiredClaims: ["exp"],
       // The issuer must be the configured one; the trailing slash is
       // normalized, the way the providers write it.
       ...(issuer

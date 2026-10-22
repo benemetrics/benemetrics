@@ -7,16 +7,12 @@ items below are documented in `docs/` (`docs/rate-limiting.md`,
 
 ## Backend — contract gaps
 
-- [ ] **Reject a provider JWT without `exp`** — `docs/permission.md` §2/§11
-      require `exp`; the verifier (`backend/auth.ts`, `jwtVerify`) does not
-      pass `requiredClaims` yet, and
-      `e2e/35-oidc.test.ts` marks the case `it.todo`.
-- [ ] **Server-side aggregations on the Overview** — deliberately deferred:
-      the event-window charts still evaluate raw items client-side over the
-      last `AGGREGATE_EVENT_LIMIT` (200); the issue counters and the issue
-      reads are already aggregated server-side (ClickHouse index). Moving the
-      charts to the metrics series API is the remaining work
-      (`docs/metrics.md` §8 documents the limit).
+- [ ] **Server-side aggregations on the Overview** — deferred: the charts are
+      no longer item-capped — the fetch is time-based (`since` bounds the
+      events list to the selected window, 24 h / 7 d); moving the
+      aggregation to the metrics series API is only worth it when the
+      window's event count makes the refetch heavy
+      (`docs/metrics.md` §8 documents the current design).
 
 ## Issues — held (with reason, not scheduled)
 

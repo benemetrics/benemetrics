@@ -197,5 +197,8 @@ describe("OIDC authentication", () => {
     expect(await adminStatus(token)).toBe(401);
   });
 
-  it.todo("rejects a token without an expiry (the verifier does not require one)");
+  it("rejects a token without an expiry", async () => {
+    const token = await sign({ claims: { sub: SUBJECT }, expiresIn: null });
+    expect(await adminStatus(token)).toBe(401);
+  });
 });

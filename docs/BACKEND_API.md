@@ -211,7 +211,7 @@ Prefix: `/events` — `backend/events/index.ts` → `eventsRoutes`
 
 | Method | Path | Query | Description |
 |--------|------|-------|-------------|
-| `GET` | `/events/` | `cursor`, `limit`, `projectId`, `environmentId`, `appId` | List events from ClickHouse (`SELECT … FINAL`), envelope → UI shape |
+| `GET` | `/events/` | `cursor`, `limit`, `since`, `projectId`, `environmentId`, `appId` | List events from ClickHouse (`SELECT … FINAL`), envelope → UI shape; `since` bounds the window in time (ISO timestamp) |
 | `GET` | `/events/:eventId` | – | Fetch one event (parsed envelope item) |
 
 **Auth:** Inline credential check on every request (no open mode): admin token or a JWKS-verified provider JWT. Scoped identities only read events of their visible apps.

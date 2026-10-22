@@ -81,8 +81,8 @@ const authedFetch = ((input: string | URL | Request, init?: RequestInit) => {
 
 export const api = edenTreaty<App>(window.location.origin, { fetcher: authedFetch }) as any;
 
-/** Upper bound for client-side aggregations (dashboard counts and charts). */
-export const AGGREGATE_EVENT_LIMIT = 200;
+/** Page size for the event-window reads (the aggregation window is time-based, not item-capped). */
+export const EVENT_PAGE_SIZE = 200;
 
 // List stored events. Only defined query params are sent: Eden serializes
 // `undefined` values as the literal string "undefined".
@@ -92,6 +92,7 @@ export async function listEvents(params: {
   appId?: string;
   cursor?: string;
   limit?: number;
+  since?: string;
 } = {}) {
   const query: Record<string, string | number> = {};
   if (params.projectId) query.projectId = params.projectId;
@@ -99,6 +100,7 @@ export async function listEvents(params: {
   if (params.appId) query.appId = params.appId;
   if (params.cursor) query.cursor = params.cursor;
   if (params.limit) query.limit = params.limit;
+  if (params.since) query.since = params.since;
   const response =
     Object.keys(query).length > 0
       ? await api.events.get({ $query: query })

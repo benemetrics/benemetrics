@@ -7,6 +7,7 @@ export async function listStoredEvents(options?: {
   limit?: number;
   projectId?: string;
   appIds?: string[];
+  since?: string;
 }): Promise<{ data: StoredEvent[] }> {
   return listClickHouseEvents(options);
 }

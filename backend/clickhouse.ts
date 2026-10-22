@@ -778,6 +778,7 @@ export async function listClickHouseEvents(options?: {
   limit?: number;
   projectId?: string;
   appIds?: string[];
+  since?: string;
 }): Promise<{ data: StoredEvent[] }> {
   const limit = Math.min(Math.max(options?.limit ?? 20, 1), 100);
 
@@ -801,6 +802,11 @@ export async function listClickHouseEvents(options?: {
   const conditions: ChQuery[] = [];
   if (options?.projectId) conditions.push(sql`projectId = ${options.projectId}`);
   if (options?.appIds) conditions.push(sql`appId IN ${options.appIds}`);
+  // A null parse (junk `since`) yields no rows, like any other empty filter.
+  if (options?.since)
+    conditions.push(
+      sql`receivedAt >= parseDateTime64BestEffortOrNull(${options.since}, 3)`,
+    );
   if (after) conditions.push(after);
   const where = conditionsToWhere(conditions);
 

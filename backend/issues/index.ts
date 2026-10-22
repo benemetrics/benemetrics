@@ -1,8 +1,10 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { issueDAO } from "db/dao/issues";
+import { appDAO } from "db/dao/project";
 import {
   clickHouseIssueStats,
+  clickHouseIssueUserCounts,
   listClickHouseIssueOccurrences,
 } from "../clickhouse";
 import { autoStepSeconds } from "../metrics";
@@ -30,9 +32,17 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
         unknownIsEmpty: view !== null,
       });
       if (view) filters = narrowToScope(filters, [...view.appIds]);
+      const sortValue = parseIssueSort(sort);
+      // `sort=users` orders on the distinct-user count, which the issues
+      // table only knows after it is synced from the ClickHouse issue index.
+      if (sortValue === "users") {
+        const appIds = view ? [...view.appIds] : (await appDAO.listAll()).map((app) => app.id);
+        const counts = await clickHouseIssueUserCounts({ appIds });
+        await issueDAO.syncUserCounts(counts, appIds);
+      }
       const page = await issueDAO.listPaged({
         filters,
-        sort: parseIssueSort(sort),
+        sort: sortValue,
         cursor,
         limit,
       });
@@ -40,14 +50,14 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
         data: page.data,
         meta: {
           terms: groups.flat().map(summarizeTerm),
-          sort: parseIssueSort(sort),
+          sort: sortValue,
         },
       };
     },
     {
       query: arktype({
         query: "string?",
-        sort: "'new' | 'frequent' | 'first-seen'?",
+        sort: "'new' | 'frequent' | 'first-seen' | 'users'?",
         cursor: "string?",
         limit: "string.integer.parse?",
       }),

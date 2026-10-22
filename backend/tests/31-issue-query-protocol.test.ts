@@ -270,7 +270,7 @@ describe("Issue query protocol", () => {
   it("rejects an unknown key, a reserved key and an unknown sort", async () => {
     expect((await apiRequest("GET", "/api/admin/issues?query=nope%3A1")).status).toBe(400);
     expect((await apiRequest("GET", "/api/admin/issues?query=assigned%3Ax")).status).toBe(400);
-    expect((await apiRequest("GET", "/api/admin/issues?query=&sort=users")).status).toBe(400);
+    // `users` is a real sort now (synced from the issue index); `priority` stays reserved.
     expect((await apiRequest("GET", "/api/admin/issues?query=&sort=priority")).status).toBe(400);
   });
 

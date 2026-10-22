@@ -25,6 +25,9 @@ export const issues = pgTable(
     tags: text("tags").notNull().default("{}"),
     status: text("status").notNull().default("unresolved"),
     eventCount: integer("event_count").notNull().default(1),
+    // The distinct-user count, synced from the ClickHouse issue index when a
+    // `sort=users` read happens (never incremented; the sync is idempotent).
+    userCount: integer("user_count").notNull().default(0),
     firstSeen: isoTimestamp("first_seen").notNull(),
     lastSeen: isoTimestamp("last_seen").notNull(),
     // Stored event id of the most recent occurrence; the UI drills into it.

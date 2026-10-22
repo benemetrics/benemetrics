@@ -19,9 +19,9 @@ ships with `bun run typecheck` + `bun run test` green.
 ## Open questions
 
 - [x] Any-occurrence `level:`/`release:` semantics served by the CH index — `level:`, `user:` and `tag:` match any occurrence (the ClickHouse issue index carries the level, the user and the tags).
-- [ ] `sort=users` (the distinct-user count needs a CH aggregation).
+- [x] `sort=users` — the distinct-user count is aggregated over the ClickHouse issue index (`clickHouseIssueUserCounts`, `uniqIf(user, ...)`) and synced into the `issues.user_count` column (a set value, never an increment) when a `sort=users` read happens; the read then orders on it with normal cursor pagination (`backend/issues/index.ts`, `db/dao/issues.ts`, hop test in `backend/tests/42`).
 - [x] OR groups in the grammar — `a | b` (the groups are ORed, the terms inside one are ANDed; the AND binds tighter).
-- [ ] Server-side dimension aggregation for the issue metrics panel (browser/OS/release breakdowns over the CH index).
+- [ ] Server-side dimension aggregation for the issue metrics panel (browser/OS/release breakdowns over the CH index). **Held**: the issue index carries `tags` (JSON) but the SDKs do not consistently send browser/OS as tags, so honest aggregates would mean widening the index with new parsed columns and re-reading history — put on hold until a real breakdown is needed. `release:` filtering and the per-release summary already read the index.
 - [x] Release summary from the CH index (replaces the event scan in `backend/releases/metrics.ts`) — the summary reads the issue index (the occurrences, the first appearance and the first release of every issue).
 - [x] Whether `clear` should keep or drop the message-id guard semantics for `event_count` reconciliation — there is no `clear` surface to reconcile: the guard stays (the `event_count` increments once per message).
 
@@ -35,4 +35,4 @@ ships with `bun run typecheck` + `bun run test` green.
 - [x] 6. Detail reads: `/:id/events`, `/:id/stats` routes; extend `SCOPED_READ_PATHS`; scope checks; hop test 4.
 - [x] 7. Frontend + cleanup: Issues page tokens/sort, sidebar count, EventDetail server reads; delete `payloadFingerprint` mirror and window-matching code; remove the consumer's envelope-parse fallback; refresh `BACKEND_API.md` §5.11 and the `AGENTS.md` landmine note; e2e 26/30 updates.
   - The event page is reached with its issue (`?issue=<id>`); the envelope-parse fallback in the consumer stays until every publisher sends digests.
-- [ ] 8. Optional follow-ups from the open questions above.
+- [x] 8. Optional follow-ups from the open questions above — `sort=users` landed; the dimension aggregation is held with its reason recorded above (batch 7 removed the consumer fallback).

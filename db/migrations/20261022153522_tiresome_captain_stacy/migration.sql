@@ -1,0 +1,1 @@
+ALTER TABLE "issues" ADD COLUMN "user_count" integer DEFAULT 0 NOT NULL;

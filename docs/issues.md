@@ -154,6 +154,7 @@ One row per fingerprint, unique `(app_id, fingerprint)`.
 | `title` | text | Latest occurrence's title |
 | `status` | text | `unresolved` (default) / `resolved` |
 | `event_count` | integer | Increments per occurrence, guarded by NATS message id |
+| `user_count` | integer | Distinct users, synced from the issue index on a `sort=users` read |
 | `first_seen` / `last_seen` | timestamptz | ISO-8601 UTC strings, written at ingestion |
 | `latest_event_id` | text | NATS message id of the latest occurrence; enables UI drill-down |
 | `culprit` | text | Nullable |
@@ -285,7 +286,7 @@ Reserved for later (parsed keys that answer `400 Unsupported term`): `assigned:`
 
 ### 9.4 Sort & Pagination
 
-- `sort=new` (default): `last_seen DESC, id`. `sort=frequent`: `event_count DESC, last_seen DESC`. `sort=first-seen`: `first_seen DESC`. Reserved `users`/`priority` answer `400`.
+- `sort=new` (default): `last_seen DESC, id`. `sort=frequent`: `event_count DESC, last_seen DESC`. `sort=first-seen`: `first_seen DESC`. `sort=users`: `user_count DESC, last_seen DESC` — the distinct-user count is read from the ClickHouse issue index and synced into the rows (a set value, never an increment) before the read orders on them. Reserved `priority` answers `400`.
 - `cursor` (the id of the last row seen; omitted on the first page) and `limit` (default 20, max 100); the response is just `{ data }`.
 
 ### 9.5 Response Shapes
@@ -335,7 +336,7 @@ Reserved for later (parsed keys that answer `400 Unsupported term`): `assigned:`
 
 ```
 Route handler (backend/issues/index.ts)
-  ├─ Schema: { query? string, sort? 'new'|'frequent'|'first-seen', cursor? string, limit? int }
+  ├─ Schema: { query? string, sort? 'new'|'frequent'|'first-seen'|'users', cursor? string, limit? int }
   ├─ parseIssueQuery(query) → pure, no I/O (backend/issues/query.ts)
   │     Tokenizer → terms → typed AST; throws badRequest on the offending term
   ├─ resolveQueryTerms(terms, view) → handler-side

@@ -1035,6 +1035,29 @@ export async function clickHouseIssueFingerprintsByTag(options: {
   return rows.map((row) => row.fingerprint);
 }
 
+// The distinct-user count per (app, fingerprint) over the issue index —
+// the read side of `sort=users`; the caller syncs it into the issues table.
+export async function clickHouseIssueUserCounts(options: {
+  appIds: string[];
+}): Promise<Array<{ appId: string; fingerprint: string; userCount: number }>> {
+  if (options.appIds.length === 0) return [];
+  const rows = await queryRows<{
+    appId: string;
+    fingerprint: string;
+    userCount: number;
+  }>(sql`
+    SELECT appId, fingerprint, uniqIf(user, user != '') AS userCount
+    FROM ${ISSUE_EVENTS_TABLE} FINAL
+    WHERE appId IN ${options.appIds}
+    GROUP BY appId, fingerprint
+  `);
+  return rows.map((row) => ({
+    appId: row.appId,
+    fingerprint: row.fingerprint,
+    userCount: Number(row.userCount),
+  }));
+}
+
 // The issue metrics of a release, read from the issue index: the
 // occurrences of the release, plus the first appearance of the issue (the
 // release it was first seen in decides whether it is new).
@@ -1219,6 +1242,7 @@ export async function countClickHouseMetricSamples(options: {
   appId: string;
   metric: string;
   since: string;
+  until?: string;
   tags?: Record<string, string>;
 }): Promise<number> {
   const conditions = withTags(
@@ -1226,6 +1250,7 @@ export async function countClickHouseMetricSamples(options: {
       sql`appId = ${options.appId}`,
       sql`metric = ${options.metric}`,
       atOrAfter(options.since),
+      ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
     ],
     options.tags,
   );
@@ -1244,6 +1269,7 @@ export async function quantileClickHouseMetricSamples(options: {
   metric: string;
   quantile: number;
   since: string;
+  until?: string;
   tags?: Record<string, string>;
 }): Promise<number> {
   const conditions = withTags(
@@ -1251,6 +1277,7 @@ export async function quantileClickHouseMetricSamples(options: {
       sql`appId = ${options.appId}`,
       sql`metric = ${options.metric}`,
       atOrAfter(options.since),
+      ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
     ],
     options.tags,
   );
@@ -1269,6 +1296,7 @@ export async function countClickHouseMetricSamplesByProject(options: {
   projectId: string;
   metric: string;
   since: string;
+  until?: string;
   tags?: Record<string, string>;
 }): Promise<number> {
   const conditions = withTags(
@@ -1276,6 +1304,7 @@ export async function countClickHouseMetricSamplesByProject(options: {
       sql`projectId = ${options.projectId}`,
       sql`metric = ${options.metric}`,
       atOrAfter(options.since),
+      ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
     ],
     options.tags,
   );
@@ -1291,6 +1320,7 @@ export async function quantileClickHouseMetricSamplesByProject(options: {
   metric: string;
   quantile: number;
   since: string;
+  until?: string;
   tags?: Record<string, string>;
 }): Promise<number> {
   const conditions = withTags(
@@ -1298,6 +1328,7 @@ export async function quantileClickHouseMetricSamplesByProject(options: {
       sql`projectId = ${options.projectId}`,
       sql`metric = ${options.metric}`,
       atOrAfter(options.since),
+      ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
     ],
     options.tags,
   );

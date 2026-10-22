@@ -205,10 +205,77 @@ describe("Hop 3: NATS -> Postgres", () => {
     );
 
     // A distinct message for the same fingerprint is a real occurrence.
-    await publish();    const issues = await waitFor(
+    await publish();
+    const issues = await waitFor(
       () => listIssues(app.appId),
       (data) => data.length === 1 && data[0]!.eventCount === 2,
     );
     expect(issues[0]!.eventCount).toBe(2);
+  });
+
+  it("sorts the issues by the distinct-user count synced from the index", async () => {
+    const app = await startTestApp();
+    const base = crypto.randomUUID();
+    const publish = async (fingerprint: string, user: string | null) => {
+      const eventId = crypto.randomUUID();
+      await publishEventMessage({
+        id: eventId,
+        projectId: app.projectId,
+        appId: app.appId,
+        envelopeHeader: JSON.stringify({ event_id: eventId }),
+        envelopeItems: JSON.stringify([]),
+        issueEvents: JSON.stringify([
+          {
+            eventId,
+            fingerprint,
+            title: `Error ${base}`,
+            culprit: "app.js:1",
+            level: "error",
+            type: "error",
+            release: "1.0.0",
+            environment: "test",
+            user,
+          },
+        ]),
+        receivedAt: new Date().toISOString(),
+        type: "store",
+      });
+    };
+
+    // Fingerprint A sees three distinct users; B one; C none.
+    const fingerprintA = `usersA ${base}`;
+    const fingerprintB = `usersB ${base}`;
+    const userless = `usersC ${base}`;
+    for (const user of ["u-1", "u-2", "u-3"]) await publish(fingerprintA, user);
+    await publish(fingerprintB, "u-1");
+    await publish(userless, null);
+
+    const page = await waitFor(
+      async () => {
+        const response = await fetch(
+          `${TEST_ORIGIN}/api/admin/issues?sort=users&query=${encodeURIComponent(`app:${app.appId}`)}`,
+          { headers: ADMIN_HEADERS },
+        );
+        return (await response.json()) as {
+          meta: { sort: string };
+          data: Array<{ fingerprint: string; userCount: number }>;
+        };
+      },
+      // The read syncs the counts and then orders on them; the sync is a
+      // set value, so a repeat read converges even if the index lags.
+      (result) => {
+        if (result.meta.sort !== "users") return false;
+        if (result.data.length < 3) return false;
+        return result.data.some((row) => row.fingerprint === fingerprintA && row.userCount === 3);
+      },
+      20000,
+    );
+    expect(page.meta.sort).toBe("users");
+    const byFingerprint = new Map(page.data.map((row) => [row.fingerprint, row.userCount]));
+    expect(byFingerprint.get(fingerprintA)).toBe(3);
+    expect(byFingerprint.get(fingerprintB)).toBe(1);
+    expect(byFingerprint.get(userless)).toBe(0);
+    // The most-users issue comes first.
+    expect(page.data[0]!.fingerprint).toBe(fingerprintA);
   });
 });

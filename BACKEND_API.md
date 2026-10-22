@@ -400,7 +400,7 @@ Prefix: `/api/admin/issues` — `backend/issues/index.ts` → `issueRoutes`
 
 | Method | Path | Body/Query | Description |
 |--------|------|------------|-------------|
-| `GET` | `/` | `?query&sort&cursor&limit` | The search grammar (`is:unresolved app:checkout lastSeen:-24h`); `sort` = `new`\|`frequent`\|`first-seen`; returns `{ data, meta: { terms, sort } }` |
+| `GET` | `/` | `?query&sort&cursor&limit` | The search grammar (`is:unresolved app:checkout lastSeen:-24h`); `sort` = `new`\|`frequent`\|`first-seen`\|`users`; returns `{ data, meta: { terms, sort } }` |
 | `GET` | `/:id` | `id` (uuid) | Get one |
 | `GET` | `/:id/events` | `?cursor&limit` | The issue's occurrences (ClickHouse issue index), newest first |
 | `GET` | `/:id/stats` | `?from&to&stepSeconds` | Bucketed event/user counts (ClickHouse issue index) |

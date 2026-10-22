@@ -33,6 +33,7 @@ const issueFields = {
   tags: issues.tags,
   status: issues.status,
   eventCount: issues.eventCount,
+  userCount: issues.userCount,
   firstSeen: issues.firstSeen,
   lastSeen: issues.lastSeen,
   latestEventId: issues.latestEventId,
@@ -239,17 +240,21 @@ export const issueDAO = {
     const sortColumn =
       sort === "frequent"
         ? issues.eventCount
-        : sort === "first-seen"
-          ? issues.firstSeen
-          : issues.lastSeen;
+        : sort === "users"
+          ? issues.userCount
+          : sort === "first-seen"
+            ? issues.firstSeen
+            : issues.lastSeen;
     const tieBreak =
-      sort === "frequent" ? issues.lastSeen : issues.id;
+      sort === "frequent" || sort === "users" ? issues.lastSeen : issues.id;
     const order =
       sort === "frequent"
         ? [desc(issues.eventCount), desc(issues.lastSeen), desc(issues.id)]
-        : sort === "first-seen"
-          ? [desc(issues.firstSeen), desc(issues.id)]
-          : [desc(issues.lastSeen), desc(issues.id)];
+        : sort === "users"
+          ? [desc(issues.userCount), desc(issues.lastSeen), desc(issues.id)]
+          : sort === "first-seen"
+            ? [desc(issues.firstSeen), desc(issues.id)]
+            : [desc(issues.lastSeen), desc(issues.id)];
 
     const { condition, empty } = await cursorAfter(
       issues,
@@ -284,6 +289,27 @@ export const issueDAO = {
       .limit(limit);
 
     return { data };
+  },
+
+  // `sort=users` syncs the distinct-user counts of the issue index into the
+  // rows before it orders on them: the sync is a set value, never an
+  // increment, so redeliveries cannot inflate it.
+  syncUserCounts: async (
+    counts: Array<{ appId: string; fingerprint: string; userCount: number }>,
+    appIds: string[],
+  ): Promise<void> => {
+    if (counts.length === 0 || appIds.length === 0) return;
+    const fragments = counts.map(
+      (row) => sql`(${row.appId}, ${row.fingerprint}, ${row.userCount}::int)`,
+    );
+    await db.execute(sql`
+      UPDATE ${issues} SET user_count = v.user_count
+      FROM (VALUES ${sql.join(fragments, sql`, `)}) AS v(app_id, fingerprint, user_count)
+      WHERE ${issues.appId} = v.app_id
+        AND ${issues.fingerprint} = v.fingerprint
+        AND ${issues.userCount} <> v.user_count
+        AND ${inArray(issues.appId, appIds)}
+    `);
   },
 
   updateOrThrow: async (id: string, data: Partial<IssueInsert>) => {

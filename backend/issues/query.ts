@@ -228,9 +228,9 @@ function parsePair(
   }
 }
 
-export type IssueSort = "new" | "frequent" | "first-seen";
+export type IssueSort = "new" | "frequent" | "first-seen" | "users";
 
-const SORTS: IssueSort[] = ["new", "frequent", "first-seen"];
+const SORTS: IssueSort[] = ["new", "frequent", "first-seen", "users"];
 
 export function parseIssueSort(value: string | undefined): IssueSort {
   if (value === undefined) return "new";

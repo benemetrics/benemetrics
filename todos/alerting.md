@@ -42,5 +42,5 @@
 
 ## Observability
 
-- [ ] Alerting metrics (rules evaluated, incidents fired, delivery success/failure rates)
-- [ ] Structured logging for evaluation decisions (breach/no-breach, cooldown skip)
+- [x] Alerting metrics (rules evaluated, incidents fired, delivery success/failure rates) — `GET /api/admin/alerting/stats` (the rules evaluated, the incidents fired and resolved, the deliveries succeeded and failed, the cooldowns skipped)
+- [x] Structured logging for evaluation decisions (breach/no-breach, cooldown skip) — one JSON line per decision (`component: "alerting"`)

@@ -470,6 +470,8 @@ Enforced at database level via unique indexes on `(project_id, name)` and `(proj
 
 10. **Webhook signing**: a webhook channel with a `secret` signs the body (HMAC-SHA256 over `<timestamp>.<body>`, the Sentry scheme) and sends `X-Sentry-Hook-Signature` + `X-Sentry-Hook-Timestamp`; `backend/alerting/webhook-signature.ts` also exposes the verification side for receivers.
 
+11. **Observability**: every evaluation decision is one JSON log line (`component: "alerting"`, the rule, the scope, the metric, the value, the threshold, the outcome: `no_breach` / `cooldown` / `fired`); the counters (the rules evaluated, the incidents fired and resolved, the deliveries succeeded and failed, the cooldowns skipped) are read through `GET /api/admin/alerting/stats`.
+
 **Not built:** the environment scope (dropped from the model).
 
 ---

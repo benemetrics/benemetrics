@@ -15,6 +15,7 @@ import {
   TIMESTAMP_HEADER,
   signWebhook,
 } from "./webhook-signature";
+import { countDelivery } from "./stats";
 
 export interface Notifier {
   readonly type: AlertChannelType;
@@ -543,9 +544,11 @@ export async function deliverAlertToChannels(
       }
       try {
         await notifier.send(notification, channel.config);
+        countDelivery(true);
         return { ...base, ok: true };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        countDelivery(false);
         console.error(
           `[alerting] delivery failed via ${channel.type} channel "${channel.name}": ${message}`,
         );

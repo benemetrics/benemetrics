@@ -718,6 +718,35 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(incidents.data[0]!.value).toBe(2);
     });
 
+    it("reports the alerting counters", async () => {
+      const before = await json<{ rulesEvaluated: number }>(
+        await apiRequest("GET", "/api/admin/alerting/stats"),
+      );
+      const appRecord = await makeApp();
+
+      await apiRequest("POST", "/api/admin/alerting/rules", {
+        name: `counted ${uniq()}`,
+        metric: "error_count",
+        operator: "gt",
+        threshold: 10,
+        windowSeconds: 3600,
+        cooldownSeconds: 60,
+        appId: appRecord.id,
+      });
+
+      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "counted"));
+
+      // The evaluation is queued behind the ingestion.
+      const after = await waitFor(
+        async () =>
+          json<{ rulesEvaluated: number }>(
+            await apiRequest("GET", "/api/admin/alerting/stats"),
+          ),
+        (body) => body.rulesEvaluated > before.rulesEvaluated,
+      );
+      expect(after.rulesEvaluated).toBeGreaterThan(before.rulesEvaluated);
+    });
+
     it("counts only the new issues carrying the filtered tag (new_issue_count)", async () => {
       const appRecord = await makeApp();
 

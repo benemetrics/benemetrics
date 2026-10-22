@@ -8,6 +8,7 @@ import { badRequest } from "../errors";
 import { resolveEffectiveAlertConfig } from "./resolver";
 import { buildTestNotification, deliverAlertToChannels } from "./notifiers";
 import { resolveAdminId } from "../auth";
+import { readAlertingStats } from "./stats";
 
 const channelType =
   "'email' | 'webhook' | 'slack' | 'rocketchat' | 'pagerduty' | 'opsgenie' | 'msteams' | 'victorops'";
@@ -28,6 +29,7 @@ const optionalAlertTrigger = "'threshold' | 'new_issue' | 'regression'?";
 // ── oidc surface: the admin reads and writes ─────────────
 export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
   .resolve(resolveAdminId)
+  .get("/stats", () => readAlertingStats())
   .get(
     "/channels",
     async ({ query: { appId, projectId, cursor, limit } }) => {

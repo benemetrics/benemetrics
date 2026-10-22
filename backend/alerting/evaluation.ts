@@ -14,6 +14,12 @@ import { trackIssuesForEvent, type TrackedIssue } from "../issues/tracking";
 import type { IssueDigest } from "../issues/grouping";
 import { resolveEffectiveAlertConfig, resolveScopedRules } from "./resolver";
 import {
+  countCooldownSkipped,
+  countIncidentFired,
+  countIncidentResolved,
+  countRuleEvaluated,
+} from "./stats";
+import {
   buildAlertNotification,
   buildIssueAlertNotification,
   deliverAlertToChannels,
@@ -25,6 +31,12 @@ import type {
 } from "../protocol/alerting";
 
 const DEFAULT_MEASUREMENT = "duration";
+
+// The evaluation decisions are logged as one JSON line each — the rule,
+// the scope, the value and the outcome.
+function logDecision(decision: Record<string, unknown>): void {
+  console.log(JSON.stringify({ component: "alerting", ...decision }));
+}
 
 async function computeRuleValue(
   scope: { appId?: string; projectId?: string },
@@ -97,16 +109,39 @@ async function evaluateRules(scope: {
         rule.filters,
       );
       const breached = operator === "gt" ? value > threshold : value < threshold;
+      countRuleEvaluated();
 
       if (!breached) {
         await alertIncidentDAO.resolveOpen(rule.id);
+        countIncidentResolved();
+        logDecision({
+          event: "evaluated",
+          rule: rule.name,
+          scope: scope.projectId ? { projectId: scope.projectId } : { appId },
+          metric,
+          value,
+          threshold,
+          outcome: "no_breach",
+        });
         return null;
       }
 
       const now = new Date().toISOString();
       if (rule.lastTriggeredAt !== null) {
         const elapsed = Date.now() - new Date(rule.lastTriggeredAt).getTime();
-        if (elapsed < rule.cooldownSeconds * 1000) return null;
+        if (elapsed < rule.cooldownSeconds * 1000) {
+          countCooldownSkipped();
+          logDecision({
+            event: "evaluated",
+            rule: rule.name,
+            scope: scope.projectId ? { projectId: scope.projectId } : { appId },
+            metric,
+            value,
+            threshold,
+            outcome: "cooldown",
+          });
+          return null;
+        }
       }
 
       const targets =
@@ -123,6 +158,16 @@ async function evaluateRules(scope: {
         now,
       );
       await deliverAlertToChannels(selected, notification);
+      countIncidentFired();
+      logDecision({
+        event: "evaluated",
+        rule: rule.name,
+        scope: scope.projectId ? { projectId: scope.projectId } : { appId },
+        metric,
+        value,
+        threshold,
+        outcome: "fired",
+      });
 
       // The incident and the cooldown stamp are one unit: a crash between
       // them would re-notify and duplicate the incident on the next tick.
@@ -206,6 +251,14 @@ async function fireIssueTriggerRules(
               now,
             );
             await deliverAlertToChannels(selected, notification);
+            countIncidentFired();
+            logDecision({
+              event: "issue_trigger",
+              rule: rule.name,
+              trigger,
+              issue: issue.fingerprint,
+              outcome: "fired",
+            });
             await alertIncidentDAO.create({
               ruleId: rule.id,
               appId: scope.appId,

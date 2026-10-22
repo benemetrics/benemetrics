@@ -1,4 +1,4 @@
-# Default values for the benedebug chart.
+# Default values for the benemetrics chart.
 # Every value below can be overridden with `-f my-values.yaml` or `--set`.
 
 nameOverride: ""
@@ -7,10 +7,10 @@ fullnameOverride: ""
 # The image built from the repository Dockerfile.
 # The CI workflow (.github/workflows/distroless-image.yml) publishes it as
 # `git.valerio.pw/<repository>`:
-#   docker build -t git.valerio.pw/benedebug/app:0.1.0 .
-#   docker push git.valerio.pw/benedebug/app:0.1.0
+#   docker build -t git.valerio.pw/benemetrics/app:0.1.0 .
+#   docker push git.valerio.pw/benemetrics/app:0.1.0
 image:
-  repository: git.valerio.pw/benedebug/app
+  repository: git.valerio.pw/benemetrics/app
   # Defaults to the chart appVersion when empty.
   tag: ""
   pullPolicy: IfNotPresent
@@ -113,7 +113,7 @@ ingress:
   className: ""
   annotations: {}
   hosts:
-    - host: benedebug.local
+    - host: benemetrics.local
       paths:
         - path: /
           pathType: Prefix
@@ -133,9 +133,9 @@ database:
   existingSecret: ""
   existingSecretKey: "url"
   # The bundled instance.
-  user: benedebug
+  user: benemetrics
   password: ""
-  database: benedebug
+  database: benemetrics
   port: 5432
   sslMode: ""
 
@@ -145,7 +145,7 @@ database:
 clickhouse:
   host: ""
   port: 8123
-  database: benedebug
+  database: benemetrics
   user: default
   password: ""
   existingSecret: ""
@@ -171,7 +171,7 @@ nats:
 # The object store is S3-required: there is no local-disk fallback.
 objectStorage:
   endpoint: ""
-  bucket: benedebug-replays
+  bucket: benemetrics-replays
   region: us-east-1
   accessKeyId: ""
   secretAccessKey: ""

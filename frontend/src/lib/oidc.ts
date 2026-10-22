@@ -16,10 +16,10 @@ import { getAdminToken, setAdminToken } from "./api";
 // A failed exchange falls back to the admin-token prompt for the session
 // instead of retrying in a loop.
 
-const STATE_KEY = "benedebug.oidc.state";
-const VERIFIER_KEY = "benedebug.oidc.verifier";
-const NONCE_KEY = "benedebug.oidc.nonce";
-const FAILED_KEY = "benedebug.oidc.failed";
+const STATE_KEY = "benemetrics.oidc.state";
+const VERIFIER_KEY = "benemetrics.oidc.verifier";
+const NONCE_KEY = "benemetrics.oidc.nonce";
+const FAILED_KEY = "benemetrics.oidc.failed";
 
 const ISSUER = (authEnv.OIDC_ISSUER ?? authEnv.OAUTH_ISSUER)?.replace(
   /\/+$/,

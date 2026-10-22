@@ -88,6 +88,9 @@ export interface AlertIncident {
   status: AlertIncidentStatus;
   triggeredAt: string;
   resolvedAt: string | null;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  assignee: string | null;
 }
 
 export interface AlertNotification {

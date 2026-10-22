@@ -22,7 +22,7 @@
 
 ## Incident Management
 
-- [ ] Incident acknowledgment / assignment workflow
+- [x] Incident acknowledgment / assignment workflow — `POST /api/admin/alerting/incidents/:id/acknowledge` (the admin id is recorded) and `POST /api/admin/alerting/incidents/:id/assign`; the alerts page lists the incidents with both actions
 - [ ] Alert rule versioning / audit log
 - [ ] Correlation: group related incidents under one parent
 - [ ] Silencing / maintenance windows

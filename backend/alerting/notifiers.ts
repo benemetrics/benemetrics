@@ -398,7 +398,7 @@ export const victorOpsNotifier: Notifier = {
           entity_id: notification.issue?.fingerprint ?? notification.ruleName,
           ...(messageType ? { message_type: messageType } : {}),
           state_message: notification.message,
-          monitoring_tool: "Benedebug",
+          monitoring_tool: "Benemetrics",
           severity: notification.severity,
           timestamp: notification.occurredAt,
         }),

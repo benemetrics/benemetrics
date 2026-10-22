@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "benedebug.fullname" . }}-backend
+  name: {{ include "benemetrics.fullname" . }}-backend
   labels:
-    {{- include "benedebug.labels" . | nindent 4 }}
+    {{- include "benemetrics.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 spec:
   {{- if not .Values.backend.autoscaling.enabled }}
@@ -11,12 +11,12 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "benedebug.selectorLabels" . | nindent 6 }}
+      {{- include "benemetrics.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: backend
   template:
     metadata:
       labels:
-        {{- include "benedebug.selectorLabels" . | nindent 8 }}
+        {{- include "benemetrics.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: backend
         {{- with .Values.backend.podLabels }}
         {{- toYaml . | nindent 8 }}
@@ -27,7 +27,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      serviceAccountName: {{ include "benedebug.serviceAccountName" . }}
+      serviceAccountName: {{ include "benemetrics.serviceAccountName" . }}
       automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -58,19 +58,19 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "benedebug.secretName" . }}
+                  name: {{ include "benemetrics.secretName" . }}
                   key: database-url
             - name: ADMIN_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "benedebug.secretName" . }}
+                  name: {{ include "benemetrics.secretName" . }}
                   key: admin-token
             - name: NATS_SERVERS
-              value: {{ include "benedebug.natsServers" . | quote }}
+              value: {{ include "benemetrics.natsServers" . | quote }}
             - name: NATS_STREAM_MAX_BYTES
               value: {{ .Values.nats.streamMaxBytes | int64 | quote }}
             - name: CLICKHOUSE_HOST
-              value: {{ include "benedebug.clickhouseHost" . | quote }}
+              value: {{ include "benemetrics.clickhouseHost" . | quote }}
             - name: CLICKHOUSE_PORT
               value: {{ .Values.clickhouse.port | quote }}
             - name: CLICKHOUSE_DATABASE
@@ -80,12 +80,12 @@ spec:
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "benedebug.secretName" . }}
+                  name: {{ include "benemetrics.secretName" . }}
                   key: clickhouse-password
             - name: CLICKHOUSE_NATS_URL
-              value: {{ include "benedebug.clickhouseNatsUrl" . | quote }}
+              value: {{ include "benemetrics.clickhouseNatsUrl" . | quote }}
             - name: S3_ENDPOINT
-              value: {{ include "benedebug.objectStorageEndpoint" . | quote }}
+              value: {{ include "benemetrics.objectStorageEndpoint" . | quote }}
             - name: S3_BUCKET
               value: {{ .Values.objectStorage.bucket | quote }}
             - name: S3_REGION
@@ -93,12 +93,12 @@ spec:
             - name: S3_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "benedebug.secretName" . }}
+                  name: {{ include "benemetrics.secretName" . }}
                   key: object-storage-access-key-id
             - name: S3_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "benedebug.secretName" . }}
+                  name: {{ include "benemetrics.secretName" . }}
                   key: object-storage-secret-access-key
             - name: ALERT_EVALUATION_INTERVAL_MS
               value: {{ .Values.config.alertEvaluationIntervalMs | quote }}
@@ -118,7 +118,7 @@ spec:
             - name: OIDC_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "benedebug.secretName" $ }}
+                  name: {{ include "benemetrics.secretName" $ }}
                   key: oidc-client-secret
             {{- end }}
             {{- if .Values.oidc.issuer }}

@@ -204,7 +204,7 @@ describe("Backend parity — admin UI surfaces", () => {
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${baseUrl}/ui/overview`);
     await view.evaluate(
-      `localStorage.setItem("benedebug.adminToken", "e2e-admin-token")`,
+      `localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`,
     );
     await view.navigate(`${baseUrl}/ui/overview`);
     // Wait until the workspace resolved the project before visiting

@@ -1,6 +1,6 @@
 apiVersion: v2
-name: benedebug
-description: Benedebug — a lightweight Sentry alternative (errors, performance, feature flags, alerting) on Bun, NATS, ClickHouse and Postgres.
+name: benemetrics
+description: Benemetrics — a lightweight Sentry alternative (errors, performance, feature flags, alerting) on Bun, NATS, ClickHouse and Postgres.
 type: application
 
 # The chart version. Bump it on every template change.
@@ -17,9 +17,9 @@ keywords:
   - feature-flags
   - alerting
 
-home: https://github.com/acme/benedebug
+home: https://github.com/acme/benemetrics
 sources:
-  - https://github.com/acme/benedebug
+  - https://github.com/acme/benemetrics
 
 annotations:
   category: Monitoring

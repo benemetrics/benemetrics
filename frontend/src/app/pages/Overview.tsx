@@ -638,7 +638,7 @@ export function Overview() {
           <Icon name="spark" size={20} />
         </div>
         <div className="insight-copy">
-          <strong>Benedebug Insight</strong>
+          <strong>Benemetrics Insight</strong>
           <span>
             <b>{errorEvents.length}</b> error events and <b>{transactionCount}</b> transactions stored
             across <b>{enabledRules.length}</b> active alert rules.

@@ -214,7 +214,7 @@ describe("OIDC login from startup", () => {
 
   it("stores the ID token as the bearer credential", async () => {
     const stored = await view.evaluate(
-      `localStorage.getItem("benedebug.adminToken")`,
+      `localStorage.getItem("benemetrics.adminToken")`,
     );
     expect(typeof stored).toBe("string");
     expect(String(stored).split(".")).toHaveLength(3);

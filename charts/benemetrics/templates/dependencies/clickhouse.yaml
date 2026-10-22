@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "benedebug.fullname" . }}-clickhouse
+  name: {{ include "benemetrics.fullname" . }}-clickhouse
   labels:
-    {{- include "benedebug.labels" . | nindent 4 }}
+    {{- include "benemetrics.labels" . | nindent 4 }}
     app.kubernetes.io/component: clickhouse
 spec:
   type: ClusterIP
@@ -16,27 +16,27 @@ spec:
       port: 9000
       targetPort: native
   selector:
-    {{- include "benedebug.selectorLabels" . | nindent 4 }}
+    {{- include "benemetrics.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: clickhouse
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "benedebug.fullname" . }}-clickhouse
+  name: {{ include "benemetrics.fullname" . }}-clickhouse
   labels:
-    {{- include "benedebug.labels" . | nindent 4 }}
+    {{- include "benemetrics.labels" . | nindent 4 }}
     app.kubernetes.io/component: clickhouse
 spec:
-  serviceName: {{ include "benedebug.fullname" . }}-clickhouse
+  serviceName: {{ include "benemetrics.fullname" . }}-clickhouse
   replicas: 1
   selector:
     matchLabels:
-      {{- include "benedebug.selectorLabels" . | nindent 6 }}
+      {{- include "benemetrics.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: clickhouse
   template:
     metadata:
       labels:
-        {{- include "benedebug.selectorLabels" . | nindent 8 }}
+        {{- include "benemetrics.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: clickhouse
     spec:
       containers:
@@ -74,7 +74,7 @@ spec:
         - name: data
           {{- if .Values.dependencies.clickhouse.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "benedebug.fullname" . }}-clickhouse
+            claimName: {{ include "benemetrics.fullname" . }}-clickhouse
           {{- else }}
           emptyDir: {}
           {{- end }}

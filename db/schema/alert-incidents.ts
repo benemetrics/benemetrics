@@ -23,6 +23,11 @@ export const alertIncidents = pgTable(
     status: text("status").notNull().default("firing"),
     triggeredAt: isoTimestamp("triggered_at").notNull(),
     resolvedAt: isoTimestamp("resolved_at"),
+    // The acknowledgment: who took the incident and when.
+    acknowledgedAt: isoTimestamp("acknowledged_at"),
+    acknowledgedBy: text("acknowledged_by"),
+    // The assignee (free text — the backend has no member directory).
+    assignee: text("assignee"),
   },
   (table) => ({
     ruleIdIdx: index("alert_incidents_rule_id_idx").on(table.ruleId),

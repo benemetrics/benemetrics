@@ -27,6 +27,14 @@ const TRIGGER_LABELS: Record<string, string> = {
 const triggerLabel = (trigger: string) => TRIGGER_LABELS[trigger] ?? trigger;
 
 // The tag dimensions a rule matches on, e.g. "tier=gold, region=eu".
+// The Eden response wraps the payload in `data`.
+function unwrapOne<T>(response: unknown): T | null {
+  if (!response || typeof response !== "object") return null;
+  const candidate = response as { data?: T | null; error?: unknown };
+  if (candidate.error) return null;
+  return candidate.data ?? null;
+}
+
 function filterLabel(filters: { tags?: Record<string, string> } | undefined): string {
   const entries = Object.entries(filters?.tags ?? {});
   if (entries.length === 0) return "";
@@ -107,6 +115,7 @@ export function Alerts() {
   }, [application]);
 
   const channelById = new Map(channels.map((channel) => [channel.id, channel]));
+  const ruleById = new Map(rules.map((rule) => [rule.id, rule]));
   const firing = incidents.filter((incident) => incident.status === "firing");
   const enabled = rules.filter((rule) => rule.isEnabled);
   const lastTriggered = rules
@@ -133,6 +142,38 @@ export function Alerts() {
     } finally {
       setTesting(null);
     }
+  };
+
+  const acknowledgeIncident = async (incident: AlertIncidentDto) => {
+    const result = await api.api.admin.alerting.incidents[
+      incident.id
+    ].acknowledge.post();
+    const updated = unwrapOne<AlertIncidentDto>(result);
+    if (!updated) {
+      notify("Could not acknowledge the incident.");
+      return;
+    }
+    setIncidents((current) =>
+      current.map((item) => (item.id === incident.id ? updated : item)),
+    );
+    notify("Incident acknowledged");
+  };
+
+  const assignIncident = async (incident: AlertIncidentDto) => {
+    const assignee = window.prompt("Assign the incident to");
+    if (!assignee || !assignee.trim()) return;
+    const result = await api.api.admin.alerting.incidents[incident.id].assign.post({
+      assignee: assignee.trim(),
+    });
+    const updated = unwrapOne<AlertIncidentDto>(result);
+    if (!updated) {
+      notify("Could not assign the incident.");
+      return;
+    }
+    setIncidents((current) =>
+      current.map((item) => (item.id === incident.id ? updated : item)),
+    );
+    notify(`Incident assigned to ${assignee.trim()}`);
   };
 
   const toggleRule = async (rule: AlertRuleDto) => {
@@ -302,6 +343,60 @@ export function Alerts() {
         {status === "ready" && rules.length === 0 && (
           <div className="list-screen-row">
             <strong>No alert rules</strong>
+            <span>—</span>
+            <span>—</span>
+            <span className="table-status draft">
+              <i></i>—
+            </span>
+          </div>
+        )}
+      </article>
+      <article className="panel list-screen alerts">
+        <div className="list-screen-head">
+          <strong>Incident</strong>
+          <span>Rule</span>
+          <span>Status</span>
+          <span>Actions</span>
+        </div>
+        {incidents.map((incident) => (
+          <div className="list-screen-row" key={incident.id}>
+            <strong>{incident.metric ?? incident.trigger}</strong>
+            <span>{ruleById.get(incident.ruleId)?.name ?? incident.ruleId}</span>
+            <span>
+              {incident.status}
+              {incident.assignee ? ` · ${incident.assignee}` : ""}
+            </span>
+            <span className="row-actions">
+              {incident.acknowledgedAt ? (
+                <span className="row-action">Acknowledged</span>
+              ) : (
+                <span
+                  className="row-action"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => acknowledgeIncident(incident)}
+                  onKeyDown={(event) =>
+                    event.key === "Enter" && acknowledgeIncident(incident)
+                  }
+                >
+                  Acknowledge
+                </span>
+              )}
+              <span
+                className="row-action"
+                role="button"
+                tabIndex={0}
+                onClick={() => assignIncident(incident)}
+                onKeyDown={(event) => event.key === "Enter" && assignIncident(incident)}
+              >
+                Assign
+              </span>
+            </span>
+          </div>
+        ))}
+        {incidents.length === 0 && (
+          <div className="list-screen-row">
+            <strong>No incidents</strong>
             <span>—</span>
             <span>—</span>
             <span className="table-status draft">

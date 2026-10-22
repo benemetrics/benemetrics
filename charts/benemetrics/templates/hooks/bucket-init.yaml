@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "benedebug.fullname" . }}-bucket-init
+  name: {{ include "benemetrics.fullname" . }}-bucket-init
   labels:
-    {{- include "benedebug.labels" . | nindent 4 }}
+    {{- include "benemetrics.labels" . | nindent 4 }}
     app.kubernetes.io/component: objectstorage
   annotations:
     "helm.sh/hook": post-install,post-upgrade
@@ -15,7 +15,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "benedebug.selectorLabels" . | nindent 8 }}
+        {{- include "benemetrics.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: objectstorage
     spec:
       restartPolicy: OnFailure
@@ -28,16 +28,16 @@ spec:
           image: rustfs/rc:latest
           env:
             - name: ENDPOINT
-              value: {{ printf "http://%s-objectstorage:9000" (include "benedebug.fullname" .) | quote }}
+              value: {{ printf "http://%s-objectstorage:9000" (include "benemetrics.fullname" .) | quote }}
             - name: ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "benedebug.secretName" . }}
+                  name: {{ include "benemetrics.secretName" . }}
                   key: object-storage-access-key-id
             - name: SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "benedebug.secretName" . }}
+                  name: {{ include "benemetrics.secretName" . }}
                   key: object-storage-secret-access-key
             - name: BUCKET
               value: {{ .Values.objectStorage.bucket | quote }}

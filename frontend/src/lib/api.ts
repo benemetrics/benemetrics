@@ -7,11 +7,13 @@ import type { App } from '../../../backend/index';
 //
 // The first 401 opens the admin-token prompt (`AuthPrompt`), which is how the
 // UI recovers when neither a stored token nor a provider identity is present.
-export const AUTH_REQUIRED_EVENT = 'benedebug:auth-required';
+export const AUTH_REQUIRED_EVENT = 'benemetrics:auth-required';
 
-const ADMIN_TOKEN_KEY = 'benedebug.adminToken';
-const LEGACY_ADMIN_TOKEN_KEY = 'benemetrics.adminToken';
-const ADMIN_TOKEN_KIND_KEY = 'benedebug.adminTokenKind';
+const ADMIN_TOKEN_KEY = 'benemetrics.adminToken';
+// The name the UI was renamed from: a token stored under the old key is
+// still read, and the old key is dropped once a token is written.
+const LEGACY_ADMIN_TOKEN_KEY = 'benedebug.adminToken';
+const ADMIN_TOKEN_KIND_KEY = 'benemetrics.adminTokenKind';
 
 /** The admin token is an API key, a provider identity is a bearer token. */
 export type AdminTokenKind = 'admin' | 'oidc';
@@ -285,6 +287,9 @@ export interface AlertIncidentDto {
   status: string;
   triggeredAt: string;
   resolvedAt: string | null;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  assignee: string | null;
 }
 
 // Experiments (admin) — statistical analysis of a flag's experiment:

@@ -25,17 +25,17 @@ jobs:
           version: v3.16.3
 
       - name: Lint the chart
-        run: helm lint charts/benedebug
+        run: helm lint charts/benemetrics
 
       - name: Render the chart
         run: |
-          helm template benedebug charts/benedebug > /tmp/rendered.yaml
-          helm template benedebug charts/benedebug \
+          helm template benemetrics charts/benemetrics > /tmp/rendered.yaml
+          helm template benemetrics charts/benemetrics \
             --set dependencies.postgres.enabled=false \
             --set dependencies.clickhouse.enabled=false \
             --set dependencies.nats.enabled=false \
             --set dependencies.objectStorage.enabled=false \
-            --set database.url=postgres://user:pass@postgres:5432/benedebug \
+            --set database.url=postgres://user:pass@postgres:5432/benemetrics \
             --set clickhouse.host=clickhouse \
             --set clickhouse.natsUrl=nats:4222 \
             --set nats.servers=nats://nats:4222 \

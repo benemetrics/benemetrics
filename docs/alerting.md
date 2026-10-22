@@ -474,6 +474,8 @@ Enforced at database level via unique indexes on `(project_id, name)` and `(proj
 
 12. **Message templates**: a rule can carry a `message` template — plain text with `{{variable}}` placeholders (`rule.name`, `metric`, `value`, `threshold`, `operator`, `windowSeconds`, `appId`). Without a template the default message is used; an unknown placeholder is left as it is.
 
+13. **Incident acknowledgment / assignment**: an incident carries `acknowledgedAt` + `acknowledgedBy` and an `assignee`. `POST /api/admin/alerting/incidents/:id/acknowledge` takes the incident over (the admin id is recorded), `POST /api/admin/alerting/incidents/:id/assign` sets the assignee.
+
 **Not built:** the environment scope (dropped from the model).
 
 ---

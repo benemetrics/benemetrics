@@ -236,7 +236,7 @@ describe("Event detail stack trace — symbolication in the real UI", () => {
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${baseUrl}/ui/overview`);
     await view.evaluate(
-      `localStorage.setItem("benedebug.adminToken", "e2e-admin-token")`,
+      `localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`,
     );
     await view.navigate(`${baseUrl}/ui/overview`);
     await waitForTextInUI(`Symbolicated UI`, 20000);

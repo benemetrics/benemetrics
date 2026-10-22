@@ -718,6 +718,47 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(incidents.data[0]!.value).toBe(2);
     });
 
+    it("acknowledges and assigns an incident", async () => {
+      const appRecord = await makeApp();
+
+      await apiRequest("POST", "/api/admin/alerting/rules", {
+        name: `acked ${uniq()}`,
+        metric: "error_count",
+        operator: "gt",
+        threshold: 0,
+        windowSeconds: 3600,
+        cooldownSeconds: 60,
+        appId: appRecord.id,
+      });
+
+      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "acked"));
+
+      const incidents = await waitFor(
+        async () =>
+          json<{ data: Array<{ id: string }> }>(
+            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+          ),
+        (body) => body.data.length > 0,
+      );
+      const incidentId = incidents.data[0]!.id;
+
+      const acknowledged = await json<{
+        acknowledgedAt: string | null;
+        acknowledgedBy: string | null;
+      }>(
+        await apiRequest("POST", `/api/admin/alerting/incidents/${incidentId}/acknowledge`),
+      );
+      expect(acknowledged.acknowledgedAt).toBeTruthy();
+      expect(acknowledged.acknowledgedBy).toBeTruthy();
+
+      const assigned = await json<{ assignee: string | null }>(
+        await apiRequest("POST", `/api/admin/alerting/incidents/${incidentId}/assign`, {
+          assignee: "oncall",
+        }),
+      );
+      expect(assigned.assignee).toBe("oncall");
+    });
+
     it("renders the rule's message template", async () => {
       const appRecord = await makeApp();
 

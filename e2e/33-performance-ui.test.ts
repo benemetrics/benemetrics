@@ -154,7 +154,7 @@ describe("Performance metrics UI", () => {
     await view.navigate(`${baseUrl}/ui/overview`);
     // The UI has no built-in token fallback: log in by storing the admin
     // token in localStorage, then reload so the SPA picks it up.
-    await view.evaluate(`localStorage.setItem("benedebug.adminToken", "e2e-admin-token")`);
+    await view.evaluate(`localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`);
     await view.navigate(`${baseUrl}/ui/overview`);
     // The workspace auto-selects the first project; scope the fixture.
     await selectProjectInUI(PROJECT_NAME);

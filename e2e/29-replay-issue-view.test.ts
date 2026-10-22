@@ -274,7 +274,7 @@ describe("Session replay on the issue details page", () => {
 
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
-    await view.evaluate(`localStorage.setItem("benedebug.adminToken", "e2e-admin-token")`);
+    await view.evaluate(`localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`);
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
   }, 30000);
 

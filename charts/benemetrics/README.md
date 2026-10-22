@@ -1,13 +1,13 @@
-# Benedebug Helm chart
+# Benemetrics Helm chart
 
-Installs the Benedebug API, the side-effects consumer and — unless you point
+Installs the Benemetrics API, the side-effects consumer and — unless you point
 them at managed services — PostgreSQL, ClickHouse, NATS JetStream and an
 S3-compatible object store.
 
 ```bash
-helm install benedebug charts/benedebug \
-  --namespace benedebug --create-namespace \
-  --set image.repository=git.valerio.pw/benedebug/app \
+helm install benemetrics charts/benemetrics \
+  --namespace benemetrics --create-namespace \
+  --set image.repository=git.valerio.pw/benemetrics/app \
   --set image.tag=0.1.0 \
   --set adminToken="$(openssl rand -hex 24)"
 ```
@@ -38,7 +38,7 @@ walkthrough.
 
 | Key | Default | Description |
 |---|---|---|
-| `image.repository` | `git.valerio.pw/benedebug/app` | The image built from the Dockerfile |
+| `image.repository` | `git.valerio.pw/benemetrics/app` | The image built from the Dockerfile |
 | `image.tag` | `""` | Defaults to the chart `appVersion` |
 | `image.pullPolicy` | `IfNotPresent` | |
 | `imagePullSecrets` | `[]` | |
@@ -83,7 +83,7 @@ walkthrough.
 | `ingress.enabled` | `true` | |
 | `ingress.className` | `""` | |
 | `ingress.annotations` | `{}` | |
-| `ingress.hosts` | `benedebug.local` | The hosts and their paths |
+| `ingress.hosts` | `benemetrics.local` | The hosts and their paths |
 | `ingress.tls` | `[]` | |
 
 ### The bundled services

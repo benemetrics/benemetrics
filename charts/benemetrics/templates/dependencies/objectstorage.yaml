@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "benedebug.fullname" . }}-objectstorage
+  name: {{ include "benemetrics.fullname" . }}-objectstorage
   labels:
-    {{- include "benedebug.labels" . | nindent 4 }}
+    {{- include "benemetrics.labels" . | nindent 4 }}
     app.kubernetes.io/component: objectstorage
 spec:
   type: ClusterIP
@@ -16,27 +16,27 @@ spec:
       port: 9001
       targetPort: console
   selector:
-    {{- include "benedebug.selectorLabels" . | nindent 4 }}
+    {{- include "benemetrics.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: objectstorage
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "benedebug.fullname" . }}-objectstorage
+  name: {{ include "benemetrics.fullname" . }}-objectstorage
   labels:
-    {{- include "benedebug.labels" . | nindent 4 }}
+    {{- include "benemetrics.labels" . | nindent 4 }}
     app.kubernetes.io/component: objectstorage
 spec:
-  serviceName: {{ include "benedebug.fullname" . }}-objectstorage
+  serviceName: {{ include "benemetrics.fullname" . }}-objectstorage
   replicas: 1
   selector:
     matchLabels:
-      {{- include "benedebug.selectorLabels" . | nindent 6 }}
+      {{- include "benemetrics.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: objectstorage
   template:
     metadata:
       labels:
-        {{- include "benedebug.selectorLabels" . | nindent 8 }}
+        {{- include "benemetrics.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: objectstorage
     spec:
       containers:
@@ -54,12 +54,12 @@ spec:
             - name: RUSTFS_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "benedebug.secretName" . }}
+                  name: {{ include "benemetrics.secretName" . }}
                   key: object-storage-access-key-id
             - name: RUSTFS_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "benedebug.secretName" . }}
+                  name: {{ include "benemetrics.secretName" . }}
                   key: object-storage-secret-access-key
             - name: RUSTFS_CONSOLE_ENABLE
               value: "true"
@@ -82,7 +82,7 @@ spec:
         - name: data
           {{- if .Values.dependencies.objectStorage.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "benedebug.fullname" . }}-objectstorage
+            claimName: {{ include "benemetrics.fullname" . }}-objectstorage
           {{- else }}
           emptyDir: {}
           {{- end }}

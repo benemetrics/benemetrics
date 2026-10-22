@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="docs/screenshots/overview.png" alt="Benedebug overview" width="900" />
+<img src="docs/screenshots/overview.png" alt="Benemetrics overview" width="900" />
 
-# Benedebug
+# Benemetrics
 
 **A lightweight Sentry alternative — error tracking, performance monitoring, feature flags and alerting in one Bun binary.**
 
@@ -14,7 +14,7 @@
 
 ---
 
-Benedebug is a self-hosted error tracker and observability backend you can run
+Benemetrics is a self-hosted error tracker and observability backend you can run
 in one container. It speaks the **Sentry SDK protocol**, so the official SDKs
 for JavaScript, Python, Go, Rust and friends work unchanged — point a DSN at
 it and events start flowing.
@@ -161,7 +161,7 @@ change lands in the audit trail.
 
 ## Architecture
 
-Benedebug is **NATS-first**: ingestion is a publish, never a write path.
+Benemetrics is **NATS-first**: ingestion is a publish, never a write path.
 
 ```
         SDK
@@ -209,23 +209,21 @@ duplicate rows collapse in ClickHouse.
 ### Docker Compose
 
 ```bash
-git clone https://github.com/your-org/benedebug.git
-cd benedebug
+git clone https://github.com/your-org/benemetrics.git
+cd benemetrics
 
-# Postgres, ClickHouse, NATS (JetStream) and RustFS
+# The whole stack: Postgres, ClickHouse, NATS (JetStream), RustFS,
+# the API and the side-effects consumer
 docker compose up -d
-
-# The API (Bun loads .env automatically)
-cp .env.example .env
-bun run dev
-
-# The side-effects consumer, in a second terminal
-bun run consumer
 ```
 
-Open <http://localhost:31337/ui> and paste the admin token from `.env` when
-the prompt appears. The API serves the UI and the ingestion endpoints from
-the same origin.
+Open <http://localhost:31337/ui> and paste the admin token
+(`dev-admin-token`, or the `ADMIN_TOKEN` you set) when the prompt appears.
+The API serves the UI and the ingestion endpoints from the same origin.
+
+Every setting the API needs lives in `docker-compose.yml` — the database
+URL, the NATS servers, the ClickHouse endpoint, the object store and the
+admin token.
 
 Create a project, then an app inside it:
 
@@ -246,6 +244,21 @@ curl -H "Authorization: API-Key dev-admin-token" \
 The DSN is `http://<publicKey>@<host>/<number>` — the API returns the
 ingredients, the caller composes the DSN for the origin it reached.
 
+### Local development
+
+For the hot-reload workflow, run the services in compose and the API on the
+host:
+
+```bash
+docker compose up -d postgres clickhouse nats rustfs
+
+bun run dev                   # the API, hot reload
+bun run consumer              # the side-effects consumer, in a second terminal
+```
+
+The environment of the host processes is the `x-app-environment` block of
+`docker-compose.yml`, with the service names pointed at `localhost`.
+
 ### With the Sentry SDK
 
 ```ts
@@ -262,21 +275,21 @@ Sentry.init({
 
 ## Deploy on Kubernetes
 
-The chart in [`charts/benedebug`](charts/benedebug) installs the API, the
+The chart in [`charts/benemetrics`](charts/benemetrics) installs the API, the
 side-effects consumer and — unless you point them at managed services —
 Postgres, ClickHouse, NATS JetStream and an S3-compatible object store.
 
 ```bash
 # 1. Build and push the image
-docker build -t git.valerio.pw/benedebug/app:0.1.0 .
-docker push git.valerio.pw/benedebug/app:0.1.0
+docker build -t git.valerio.pw/benemetrics/app:0.1.0 .
+docker push git.valerio.pw/benemetrics/app:0.1.0
 
 # 2. Install
-helm install benedebug charts/benedebug \
-  --namespace benedebug --create-namespace \
-  --set image.repository=git.valerio.pw/benedebug/app \
+helm install benemetrics charts/benemetrics \
+  --namespace benemetrics --create-namespace \
+  --set image.repository=git.valerio.pw/benemetrics/app \
   --set image.tag=0.1.0 \
-  --set ingress.hosts[0].host=benedebug.example.com \
+  --set ingress.hosts[0].host=benemetrics.example.com \
   --set ingress.hosts[0].paths[0].path=/ \
   --set ingress.hosts[0].paths[0].pathType=Prefix \
   --set ingress.className=nginx \
@@ -286,8 +299,8 @@ helm install benedebug charts/benedebug \
 Then:
 
 ```bash
-helm -n benedebug test benedebug          # smoke test
-kubectl -n benedebug get pods
+helm -n benemetrics test benemetrics          # smoke test
+kubectl -n benemetrics get pods
 ```
 
 ### Using managed services
@@ -302,7 +315,7 @@ dependencies:
   objectStorage: { enabled: false }
 
 database:
-  url: postgres://benedebug:secret@postgres.acme.svc:5432/benedebug
+  url: postgres://benemetrics:secret@postgres.acme.svc:5432/benemetrics
 clickhouse:
   host: clickhouse.acme.svc
   natsUrl: nats.acme.svc:4222
@@ -310,7 +323,7 @@ nats:
   servers: nats://nats.acme.svc:4222
 objectStorage:
   endpoint: https://s3.acme.svc
-  bucket: benedebug-replays
+  bucket: benemetrics-replays
 ```
 
 > `clickhouse.natsUrl` is resolved from **ClickHouse's** point of view: the
@@ -328,7 +341,7 @@ that port (`dependencies.nats.websocket.service.type`) or inject your own
 
 | Key | Default | Description |
 |---|---|---|
-| `image.repository` | `git.valerio.pw/benedebug/app` | The image built from the Dockerfile |
+| `image.repository` | `git.valerio.pw/benemetrics/app` | The image built from the Dockerfile |
 | `adminToken` | generated | The master credential (`API-Key`) |
 | `backend.replicaCount` | `2` | API replicas |
 | `backend.autoscaling.enabled` | `false` | HPA on the API |
@@ -337,7 +350,7 @@ that port (`dependencies.nats.websocket.service.type`) or inject your own
 | `ingress.enabled` | `true` | Ingress for the UI and the API |
 | `oidc.issuer` / `oidc.clientId` | `""` | An OIDC provider (optional) |
 | `nats.websocketPort` | `9222` | The live feed listener |
-| `objectStorage.bucket` | `benedebug-replays` | The replay bucket |
+| `objectStorage.bucket` | `benemetrics-replays` | The replay bucket |
 | `dependencies.*.enabled` | `true` | The bundled services |
 
 ---
@@ -400,9 +413,9 @@ bun run test                  # the whole suite (needs the docker services)
 ### The local identity provider
 
 `docker compose up -d keycloak` starts Keycloak on <https://localhost:8443>
-(the admin console: `admin` / `admin`). The realm `benedebug` is imported from
-`infra/keycloak/realm.json`: the public SPA client `benedebug`, the bearer
-client `benedebug-backend`, the groups `backend-team` / `frontend-team` and the
+(the admin console: `admin` / `admin`). The realm `benemetrics` is imported from
+`infra/keycloak/realm.json`: the public SPA client `benemetrics`, the bearer
+client `benemetrics-backend`, the groups `backend-team` / `frontend-team` and the
 user `sso@example.com` (password `sentry`).
 
 The provider serves TLS with a self-signed certificate the compose generates
@@ -411,7 +424,7 @@ into `infra/keycloak/tls/`. The backend trusts it through `NODE_EXTRA_CA_CERTS`:
 ```bash
 export NODE_EXTRA_CA_CERTS="$PWD/infra/keycloak/tls/tls.crt"
 export OIDC_ISSUER="https://localhost:8443"
-export OIDC_CLIENT_ID="benedebug-backend"
+export OIDC_CLIENT_ID="benemetrics-backend"
 bun run dev
 ```
 
@@ -423,7 +436,7 @@ backend/          the API — one directory per domain, one Elysia router each
 db/              the Drizzle schema, the migrations and the DAOs
 frontend/        the React SPA, served by the backend
 docs/            the architectural reference (the source of truth)
-charts/benedebug/ the Helm chart
+charts/benemetrics/ the Helm chart
 e2e/             the end-to-end suites
 ```
 

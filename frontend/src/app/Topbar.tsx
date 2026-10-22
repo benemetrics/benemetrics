@@ -58,7 +58,7 @@ export function Topbar() {
         )}
       </div>
       <div className="breadcrumb">
-        Benedebug <span>/</span> {crumb}
+        Benemetrics <span>/</span> {crumb}
       </div>
       <div className="top-actions">
         <ApplicationSwitcher />

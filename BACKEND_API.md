@@ -90,7 +90,7 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 
 **Container image** (`Dockerfile`): the API (`bun index.js`) and the side-effects consumer (`bun consumer.js`) are two entry points of the same image; the production bundle is built by `scripts/build.ts` (the bunfig plugins are not applied by `bun build`, so the virtual OIDC module is registered there).
 
-**Helm chart** (`charts/benedebug`): the API and the consumer as Deployments, the bundled Postgres/ClickHouse/NATS/object store as StatefulSets, the Ingress, the Secret and the bucket-init hook. Every dependency can be turned off (`dependencies.*.enabled`) in favour of a managed service; `clickhouse.natsUrl` is resolved from ClickHouse's point of view.
+**Helm chart** (`charts/benemetrics`): the API and the consumer as Deployments, the bundled Postgres/ClickHouse/NATS/object store as StatefulSets, the Ingress, the Secret and the bucket-init hook. Every dependency can be turned off (`dependencies.*.enabled`) in favour of a managed service; `clickhouse.natsUrl` is resolved from ClickHouse's point of view.
 
 **Package Scripts:**
 ```bash
@@ -151,7 +151,7 @@ backend/
   protocol/                # Type-only interfaces (source of truth)
 scripts/
   build.ts                 # The production bundle (the bunfig plugins are not applied by `bun build`)
-charts/benedebug/          # The Helm chart: the API, the consumer and the bundled services
+charts/benemetrics/          # The Helm chart: the API, the consumer and the bundled services
 ```
 
 ---

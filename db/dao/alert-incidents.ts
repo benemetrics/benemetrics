@@ -31,6 +31,9 @@ const incidentFields = {
   status: sql<AlertIncidentStatus>`${alertIncidents.status}`,
   triggeredAt: alertIncidents.triggeredAt,
   resolvedAt: alertIncidents.resolvedAt,
+  acknowledgedAt: alertIncidents.acknowledgedAt,
+  acknowledgedBy: alertIncidents.acknowledgedBy,
+  assignee: alertIncidents.assignee,
 };
 
 export const alertIncidentDAO = {

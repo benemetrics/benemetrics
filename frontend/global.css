@@ -440,7 +440,7 @@ a.action { text-decoration: none; }
   .service-table { overflow-x: auto; }.service-table .list-screen-head, .service-table .list-screen-row { min-width: 590px; }
 }
 
-/* --- benedebug app additions (frontend/src/app) --- */
+/* --- benemetrics app additions (frontend/src/app) --- */
 .toolbar-input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--ink); font-size: 10px; }
 .app-select { height: 35px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-size: 11px; outline: none; }
 .setup-output { color: var(--ink-muted); font-size: 10px; }

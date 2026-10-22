@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "benedebug.fullname" . }}
+  name: {{ include "benemetrics.fullname" . }}
   labels:
-    {{- include "benedebug.labels" . | nindent 4 }}
+    {{- include "benemetrics.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -27,7 +27,7 @@ spec:
             pathType: {{ .pathType | default "Prefix" }}
             backend:
               service:
-                name: {{ include "benedebug.fullname" $ }}-backend
+                name: {{ include "benemetrics.fullname" $ }}-backend
                 port:
                   name: http
           {{- end }}

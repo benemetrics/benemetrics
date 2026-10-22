@@ -565,7 +565,7 @@ export function NewFeatureFlag() {
             <Icon name="code" />
             <span>Use this key in your application</span>
           </div>
-          <code>benedebug.flags.isEnabled("{effectiveKey || "flag-key"}")</code>
+          <code>benemetrics.flags.isEnabled("{effectiveKey || "flag-key"}")</code>
         </div>
         <div className="builder-actions">
           <Action variant="soft" onClick={() => navigate("/feature-flags")}>

@@ -94,7 +94,7 @@ export function AppSidebar() {
         <div className="brand-mark">
           <Icon name="activity" size={20} />
         </div>
-        <div className="brand-name">Benedebug</div>
+        <div className="brand-name">Benemetrics</div>
       </div>
 
       <ProjectSwitcher />

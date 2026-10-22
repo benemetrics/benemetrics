@@ -252,4 +252,29 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
         limit: "string.integer.parse?",
       }),
     },
+  )
+  .post(
+    "/incidents/:id/acknowledge",
+    async ({ params: { id }, adminId }) => {
+      const incident = await alertIncidentDAO.findByIdOrThrow(id);
+      // The acknowledgment is one unit: the timestamp and who took it.
+      return alertIncidentDAO.updateOrThrow(id, {
+        acknowledgedAt: new Date().toISOString(),
+        acknowledgedBy: adminId,
+      });
+    },
+    { params: arktype({ id: "string.uuid" }) },
+  )
+  .post(
+    "/incidents/:id/assign",
+    async ({ params: { id }, body }) => {
+      const assignee = body.assignee.trim();
+      if (assignee.length === 0) throw badRequest("The assignee cannot be empty");
+      await alertIncidentDAO.findByIdOrThrow(id);
+      return alertIncidentDAO.updateOrThrow(id, { assignee });
+    },
+    {
+      params: arktype({ id: "string.uuid" }),
+      body: arktype({ assignee: "string" }),
+    },
   );

@@ -1,4 +1,4 @@
-Benedebug is installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+Benemetrics is installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
 
 {{- if .Values.ingress.enabled }}
 
@@ -19,7 +19,7 @@ Benedebug is installed as release "{{ .Release.Name }}" in namespace "{{ .Releas
 {{- if .Values.adminToken }}
    {{ .Values.adminToken }}
 {{- else }}
-   kubectl --namespace {{ .Release.Namespace }} get secret {{ include "benedebug.secretName" . }} \
+   kubectl --namespace {{ .Release.Namespace }} get secret {{ include "benemetrics.secretName" . }} \
      -o jsonpath='{.data.admin-token}' | base64 -d; echo
 {{- end }}
 {{- if .Values.oidc.issuer }}
@@ -31,7 +31,7 @@ Benedebug is installed as release "{{ .Release.Name }}" in namespace "{{ .Releas
 
 1. The API is reachable in-cluster:
 
-   kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "benedebug.fullname" . }}-backend {{ .Values.backend.service.port }}:{{ .Values.backend.service.port }}
+   kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "benemetrics.fullname" . }}-backend {{ .Values.backend.service.port }}:{{ .Values.backend.service.port }}
    curl -H "Authorization: API-Key <admin-token>" http://127.0.0.1:{{ .Values.backend.service.port }}/api/admin/projects
 {{- end }}
 
@@ -48,7 +48,7 @@ ws://<ui-host>:{{ .Values.nats.websocketPort }}, so publish that port
 The side-effects consumer applies the Postgres transitions (issues, alerts,
 releases). Check it with:
 
-   kubectl --namespace {{ .Release.Namespace }} logs deploy/{{ include "benedebug.fullname" . }}-consumer
+   kubectl --namespace {{ .Release.Namespace }} logs deploy/{{ include "benemetrics.fullname" . }}-consumer
 {{- end }}
 
 Run the smoke test:

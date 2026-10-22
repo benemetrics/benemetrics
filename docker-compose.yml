@@ -1,3 +1,24 @@
+name: benemetrics
+
+# The environment of the API and of the side-effects consumer. The host
+# development server (bun run dev) uses the same values — the service names
+# become localhost when the server runs outside compose.
+x-app-environment: &app-environment
+  NODE_ENV: production
+  ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
+  DATABASE_URL: postgres://postgres:mysecretpassword@postgres:5432/sentry
+  NATS_SERVERS: nats://nats:4222
+  NATS_STREAM_MAX_BYTES: "1073741824"
+  CLICKHOUSE_HOST: clickhouse
+  CLICKHOUSE_PORT: "8123"
+  CLICKHOUSE_DATABASE: default
+  CLICKHOUSE_NATS_URL: nats:4222
+  S3_ENDPOINT: http://rustfs:9000
+  S3_BUCKET: sentry-replays
+  S3_REGION: us-east-1
+  S3_ACCESS_KEY_ID: rustfsadmin
+  S3_SECRET_ACCESS_KEY: rustfsadmin
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -29,15 +50,26 @@ services:
         soft: 262144
         hard: 262144
 
+  # JetStream buffers the ingested events until ClickHouse consumes them by
+  # configuration (NATS table engine + durable pull consumer + MV); the
+  # WebSocket listener is what the UI live feed subscribes to directly.
   nats:
     image: nats:latest
-    command: ["-c", "/etc/nats/nats-server.conf"]
+    environment:
+      NATS_CLIENT_PORT: "4222"
+      NATS_MONITOR_PORT: "8222"
+      NATS_WEBSOCKET_PORT: "9222"
+      NATS_STORE_DIR: /data
+      NATS_MAX_FILE_STORE: 4GB
+    configs:
+      - source: nats-server
+        target: /etc/nats/nats-server.conf
+    command: ["--config", "/etc/nats/nats-server.conf"]
     ports:
       - "4222:4222" # clients
       - "8222:8222" # monitoring
       - "9222:9222" # WebSocket (UI live feed)
     volumes:
-      - ./infra/nats-server.conf:/etc/nats/nats-server.conf:ro
       - nats_data:/data
 
   rustfs:
@@ -82,11 +114,10 @@ services:
       "
 
   # Keycloak: the local identity provider. The realm (the clients, the
-  # groups and the test user) is imported from infra/keycloak/realm.json.
+  # groups and the test user) is imported from the config below.
   #
   # openid-client refuses plain-HTTP issuers, so Keycloak serves TLS with a
-  # self-signed certificate the backend trusts through NODE_EXTRA_CA_CERTS
-  # (infra/keycloak/tls/tls.crt). The issuer is https://localhost:8443.
+  # self-signed certificate. The issuer is https://localhost:8443.
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
     depends_on:
@@ -101,14 +132,17 @@ services:
       KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/tls/tls.crt
       KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/tls/tls.key
       KC_HOSTNAME_STRICT: "false"
+    configs:
+      - source: keycloak-realm
+        target: /opt/keycloak/data/import/realm.json
     ports:
       - "8443:8443"
     volumes:
-      - ./infra/keycloak/tls:/opt/keycloak/conf/tls:ro
-      - ./infra/keycloak/realm.json:/opt/keycloak/data/import/realm.json:ro
+      - keycloak_tls:/opt/keycloak/conf/tls:ro
 
-  # Generates the self-signed certificate Keycloak serves (the backend
-  # trusts it through NODE_EXTRA_CA_CERTS).
+  # Generates the self-signed certificate Keycloak serves. It keeps the
+  # certificate it generated, so the CA bundle the backend trusts stays
+  # valid across restarts.
   keycloak-cert:
     image: alpine:3
     command:
@@ -116,12 +150,48 @@ services:
       - -c
       - >
         apk add --no-cache openssl &&
-        openssl req -x509 -newkey rsa:2048 -nodes
-        -keyout /tls/tls.key -out /tls/tls.crt
-        -days 3650 -subj "/CN=localhost"
-        -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+        if [ ! -f /tls/tls.crt ]; then
+          openssl req -x509 -newkey rsa:2048 -nodes
+          -keyout /tls/tls.key -out /tls/tls.crt
+          -days 3650 -subj "/CN=localhost"
+          -addext "subjectAltName=DNS:localhost,IP:127.0.0.1";
+        fi
     volumes:
-      - ./infra/keycloak/tls:/tls
+      - keycloak_tls:/tls
+
+  # The API and the UI. `docker compose up -d` serves them on
+  # http://localhost:31337/ui.
+  backend:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_started
+      clickhouse:
+        condition: service_started
+      nats:
+        condition: service_started
+      rustfs-init:
+        condition: service_completed_successfully
+    environment:
+      <<: *app-environment
+      PORT: "31337"
+    ports:
+      - "31337:31337"
+
+  # The side-effects consumer: it applies the Postgres transitions (issues,
+  # alerts, releases) from the durable JetStream pull consumer.
+  consumer:
+    build: .
+    depends_on:
+      backend:
+        condition: service_started
+      postgres:
+        condition: service_started
+      nats:
+        condition: service_started
+    environment:
+      <<: *app-environment
+    command: ["bun", "consumer.js"]
 
 volumes:
   postgres_data:
@@ -130,3 +200,121 @@ volumes:
   nats_data:
   rustfs_data:
   rustfs_logs:
+  keycloak_tls:
+
+configs:
+  # The NATS server configuration. The values come from the environment of
+  # the service, so the ports live in one place.
+  nats-server:
+    content: |
+      port: $$NATS_CLIENT_PORT
+      http: $$NATS_MONITOR_PORT
+
+      jetstream {
+        store_dir: $$NATS_STORE_DIR
+        max_file_store: $$NATS_MAX_FILE_STORE
+      }
+
+      websocket {
+        port: $$NATS_WEBSOCKET_PORT
+        no_tls: true
+      }
+
+  # The Keycloak realm: the SPA client, the backend client, the groups and
+  # the test user.
+  keycloak-realm:
+    content: |
+      {
+        "realm": "benemetrics",
+        "enabled": true,
+        "sslRequired": "none",
+        "registrationAllowed": false,
+        "loginWithEmailAllowed": true,
+        "duplicateEmailsAllowed": false,
+        "resetPasswordAllowed": true,
+        "clients": [
+          {
+            "clientId": "benemetrics",
+            "name": "Benemetrics SPA",
+            "enabled": true,
+            "publicClient": true,
+            "standardFlowEnabled": true,
+            "directAccessGrantsEnabled": false,
+            "serviceAccountsEnabled": false,
+            "redirectUris": ["http://localhost:*/*", "http://127.0.0.1:*/*"],
+            "webOrigins": ["*"],
+            "attributes": {
+              "pkce.code.challenge.method": "S256",
+              "post.logout.redirect.uris": "http://localhost:*/*"
+            },
+            "defaultClientScopes": ["profile", "email", "roles", "web-origins"],
+            "optionalClientScopes": ["groups"]
+          },
+          {
+            "clientId": "benemetrics-backend",
+            "name": "Benemetrics backend",
+            "enabled": true,
+            "publicClient": false,
+            "bearerOnly": true,
+            "standardFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "serviceAccountsEnabled": false,
+            "defaultClientScopes": ["groups"]
+          }
+        ],
+        "roles": {
+          "realm": [
+            { "name": "backend-team" },
+            { "name": "frontend-team" }
+          ]
+        },
+        "groups": [
+          {
+            "name": "backend-team",
+            "attributes": { "group": ["backend-team"] },
+            "realmRoles": ["backend-team"]
+          },
+          {
+            "name": "frontend-team",
+            "attributes": { "group": ["frontend-team"] },
+            "realmRoles": ["frontend-team"]
+          }
+        ],
+        "users": [
+          {
+            "username": "sso@example.com",
+            "email": "sso@example.com",
+            "emailVerified": true,
+            "enabled": true,
+            "firstName": "SSO",
+            "lastName": "User",
+            "credentials": [{ "type": "password", "value": "sentry", "temporary": false }],
+            "groups": ["/backend-team"]
+          }
+        ],
+        "clientScopes": [
+          {
+            "name": "groups",
+            "protocol": "openid-connect",
+            "attributes": {
+              "include.in.token.scope": "true",
+              "display.on.consent.screen": "false"
+            },
+            "protocolMappers": [
+              {
+                "name": "groups",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-group-membership-mapper",
+                "consentRequired": false,
+                "config": {
+                  "claim.name": "groups",
+                  "full.path": "false",
+                  "id.token.claim": "true",
+                  "access.token.claim": "true",
+                  "userinfo.token.claim": "true"
+                }
+              }
+            ]
+          }
+        ]
+      }

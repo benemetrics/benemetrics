@@ -2,9 +2,9 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "benedebug.fullname" . }}-backend
+  name: {{ include "benemetrics.fullname" . }}-backend
   labels:
-    {{- include "benedebug.labels" . | nindent 4 }}
+    {{- include "benemetrics.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 spec:
   {{- if .Values.backend.podDisruptionBudget.maxUnavailable }}
@@ -14,6 +14,6 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "benedebug.selectorLabels" . | nindent 6 }}
+      {{- include "benemetrics.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: backend
 {{- end }}

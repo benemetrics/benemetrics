@@ -32,16 +32,14 @@ items below are documented in `docs/` (`docs/rate-limiting.md`,
 - [ ] Organization-level admin concept (only the global `ADMIN_TOKEN` today).
 - [ ] Zero-downtime `ADMIN_TOKEN` rotation (today: rotate the env var and restart).
 - [ ] JWKS cache invalidation beyond the single re-fetch; scope expansion caching for large deployments.
-- [ ] Clock-skew strategy beyond ±60 s; WebCrypto ES512 (P-521) runtime support; token introspection (RFC 7662) for immediate revocation.
+- [ ] Clock-skew strategy beyond ±60 s; token introspection (RFC 7662) for immediate revocation.
 - [ ] Whitelist revocation UX — distinguish a "read nothing" grant from "no grant" in the UI.
 
-## Rate limiting — backlog (mostly the reverse proxy's job)
+## Rate limiting — backlog
 
 The app owns only the per-request hygiene (caps, not quotas) — `docs/rate-limiting.md`
-documents the split and why the rest is deliberately unbuilt:
+documents why the quota/blocks/notifications stack is deliberately unbuilt:
 
-- [ ] Reverse-proxy rate limits — per-IP request rate, connection limits,
-      TLS termination (what terminates TLS decides `TRUST_PROXY`; see below).
 - [ ] Per-app events/s **quota** + exceedance notifications — needs
       `rate_limit_settings` (seeded single source), the per-app override, the
       admin API and the panel. A quota, not a DoS guard; only then are
@@ -52,13 +50,11 @@ documents the split and why the rest is deliberately unbuilt:
 - [ ] Shared bucket state if we ever run multiple replicas (Postgres or
       NATS KV) — document the switch.
 
-Open questions carried from the design: the proxy topology decides
-`TRUST_PROXY` (the wrong config silently shares one IP between every client
-or trusts a spoofable value); the limiter is always on — announce the seeded
-defaults before deploying (the emergency off is `eventsPerSecond = 0`); blocks
-scope to ingestion only (admin UI and `/events/*` reads are never limited);
-replay/attachment-heavy envelopes may deserve their own lower quota;
-project/org-level limits later, if ever.
+Open questions carried from the design: the limiter is always on — announce
+the seeded defaults before deploying (the emergency off is
+`eventsPerSecond = 0`); blocks scope to ingestion only (admin UI and
+`/events/*` reads are never limited); replay/attachment-heavy envelopes may
+deserve their own lower quota; project/org-level limits later, if ever.
 
 ## Environment notes
 

@@ -23,6 +23,10 @@ export const alertIncidents = pgTable(
     status: text("status").notNull().default("firing"),
     triggeredAt: isoTimestamp("triggered_at").notNull(),
     resolvedAt: isoTimestamp("resolved_at"),
+    // The root cause the incident belongs to: the scope and the metric.
+    correlationKey: text("correlation_key"),
+    // The first incident of the group; an incident points at it.
+    parentId: text("parent_id"),
     // The acknowledgment: who took the incident and when.
     acknowledgedAt: isoTimestamp("acknowledged_at"),
     acknowledgedBy: text("acknowledged_by"),

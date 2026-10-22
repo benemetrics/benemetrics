@@ -38,6 +38,25 @@ import type {
 
 const DEFAULT_MEASUREMENT = "duration";
 
+// The root cause of an alert: the scope and the metric. The incidents
+// that share it belong to one group, and a rule does not report the same
+// root cause twice in a row.
+function correlationKey(
+  scope: { appId?: string | null; projectId?: string | null },
+  metric: string | null,
+): string {
+  const scopeKey = scope.appId
+    ? `app:${scope.appId}`
+    : scope.projectId
+      ? `project:${scope.projectId}`
+      : "global";
+  return `${scopeKey}|${metric ?? "trigger"}`;
+}
+
+// The deduplication window: the same root cause is reported once.
+const DEDUP_WINDOW_MS =
+  Number(process.env.ALERT_DEDUP_WINDOW_MS) || 5 * 60_000;
+
 // The silence that covers the scope right now, if any.
 async function activeSilence(scope: {
   appId?: string | null;
@@ -142,8 +161,12 @@ async function evaluateRules(scope: {
     (rule) => rule.isEnabled && rule.trigger === "threshold",
   );
 
-  const incidents = await Promise.all(
-    enabled.map(async (rule): Promise<AlertIncident | null> => {
+  // The rules are evaluated one after the other: the deduplication
+  // compares a rule against the incidents the previous rules fired.
+  const incidents: Array<AlertIncident | null> = [];
+  for (const rule of enabled) {
+    incidents.push(
+      await (async (): Promise<AlertIncident | null> => {
       const { metric, operator, threshold, windowSeconds } = rule;
       if (
         metric === null ||
@@ -211,6 +234,27 @@ async function evaluateRules(scope: {
         }
       }
 
+      // The same root cause (the scope and the metric) is reported once in
+      // the deduplication window, whichever rule noticed it.
+      const key = correlationKey(scope, metric);
+      const reported = await alertIncidentDAO.findLastByCorrelationKey(key);
+      if (reported) {
+        const elapsed = Date.now() - new Date(reported.triggeredAt).getTime();
+        if (elapsed < DEDUP_WINDOW_MS) {
+          logDecision({
+            event: "evaluated",
+            rule: rule.name,
+            scope: scope.projectId ? { projectId: scope.projectId } : { appId },
+            metric,
+            value,
+            threshold,
+            outcome: "deduplicated",
+            correlationKey: key,
+          });
+          return null;
+        }
+      }
+
       const targets =
         rule.channelIds.length > 0
           ? rule.channelIds
@@ -244,6 +288,9 @@ async function evaluateRules(scope: {
         outcome: "fired",
       });
 
+      // The group's parent: the first incident of the same root cause.
+      const parent = await alertIncidentDAO.findFirstByCorrelationKey(key);
+
       // The incident and the cooldown stamp are one unit: a crash between
       // them would re-notify and duplicate the incident on the next tick.
       const incident = await db.transaction(async (tx) => {
@@ -259,6 +306,8 @@ async function evaluateRules(scope: {
               value,
               threshold,
               triggeredAt: now,
+              correlationKey: key,
+              parentId: parent?.id ?? null,
             },
             tx,
           ));
@@ -266,8 +315,9 @@ async function evaluateRules(scope: {
         return created;
       });
       return incident;
-    }),
-  );
+      })(),
+    );
+  }
   return incidents.filter((incident): incident is AlertIncident => incident !== null);
 }
 

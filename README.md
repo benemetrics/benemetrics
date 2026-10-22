@@ -440,7 +440,7 @@ generates into the `keycloak_tls` volume. The backend trusts it through
 ```bash
 docker compose cp keycloak-cert:/tls/tls.crt /tmp/benemetrics-ca.crt
 export NODE_EXTRA_CA_CERTS=/tmp/benemetrics-ca.crt
-export OIDC_ISSUER="https://localhost:8443"
+export OIDC_ISSUER="https://localhost:8443/realms/benemetrics"
 export OIDC_CLIENT_ID="benemetrics-backend"
 bun run dev
 ```

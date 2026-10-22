@@ -15,6 +15,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { evaluateRulesForApp } from "../alerting/evaluation";
 import { listClickHouseMetricSamplesForEvent } from "../clickhouse";
+import { issueDAO } from "db/dao/issues";
 import { handleFetch as fetch, TEST_ORIGIN, waitForStoredEvent } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
@@ -92,6 +93,19 @@ async function ingestEvent(app: AlertApp, event: Record<string, unknown>): Promi
     evaluateRulesForApp(app.id);
   }
   return response;
+}
+
+// The issue tracking is the consumer's work, so the tests wait for the
+// issues to be tracked before they evaluate the rules.
+async function waitForTrackedIssues(
+  appId: string,
+  count: number,
+): Promise<void> {
+  const since = new Date(Date.now() - 3600_000).toISOString();
+  await waitFor(
+    async () => issueDAO.countNewSince(appId, since),
+    (total) => total >= count,
+  );
 }
 
 async function waitFor<T>(
@@ -706,6 +720,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "distinct problem A"));
       await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "distinct problem B"));
 
+      // The issues are tracked by the consumer; the rule counts them.
+      await waitForTrackedIssues(appRecord.id, 2);
+      evaluateRulesForApp(appRecord.id);
+
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<Record<string, unknown>> }>(
@@ -716,6 +734,81 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
 
       expect(incidents.data[0]!.metric).toBe("new_issue_count");
       expect(incidents.data[0]!.value).toBe(2);
+    });
+
+    it("records the rule changes in its history", async () => {
+      const appRecord = await makeApp();
+
+      const created = await json<{ id: string }>(
+        await apiRequest("POST", "/api/admin/alerting/rules", {
+          name: `history ${uniq()}`,
+          metric: "error_count",
+          operator: "gt",
+          threshold: 1,
+          windowSeconds: 3600,
+          appId: appRecord.id,
+        }),
+      );
+
+      await apiRequest("PATCH", `/api/admin/alerting/rules/${created.id}`, {
+        name: `renamed ${uniq()}`,
+      });
+
+      const history = await json<{
+        data: Array<{ action: string; actor: string | null }>;
+      }>(
+        await apiRequest(
+          "GET",
+          `/api/admin/alerting/rules/${created.id}/history`,
+        ),
+      );
+      expect(history.data.length).toBe(2);
+      expect(history.data.map((entry) => entry.action).sort()).toEqual([
+        "created",
+        "updated",
+      ]);
+      expect(history.data[0]!.actor).toBeTruthy();
+    });
+
+    it("reports the same root cause once across the rules", async () => {
+      const appRecord = await makeApp();
+
+      // Two rules on the same metric in the same app: the same root cause.
+      for (const suffix of ["a", "b"]) {
+        await apiRequest("POST", "/api/admin/alerting/rules", {
+          name: `duplicate ${suffix} ${uniq()}`,
+          metric: "error_count",
+          operator: "gt",
+          threshold: 0,
+          windowSeconds: 3600,
+          cooldownSeconds: 60,
+          appId: appRecord.id,
+        });
+      }
+
+      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "duplicate"));
+
+      const incidents = await waitFor(
+        async () =>
+          json<{ data: Array<Record<string, unknown>> }>(
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
+          ),
+        (body) => body.data.length > 0,
+      );
+      expect(incidents.data[0]!.correlationKey).toContain("error_count");
+
+      // The second rule is deduplicated: one incident for the root cause.
+      await Bun.sleep(300);
+      const after = await json<{ data: Array<Record<string, unknown>> }>(
+        await apiRequest(
+          "GET",
+          `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+        ),
+      );
+      expect(after.data.length).toBe(1);
     });
 
     it("does not fire while the scope is silenced", async () => {
@@ -1064,6 +1157,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         ...errorEvent(crypto.randomUUID(), "silver problem"),
         tags: { tier: "silver" },
       });
+
+      // The issues are tracked by the consumer; the rule counts them.
+      await waitForTrackedIssues(appRecord.id, 2);
+      evaluateRulesForApp(appRecord.id);
 
       const incidents = await waitFor(
         async () =>

@@ -149,14 +149,18 @@ services:
     command:
       - sh
       - -c
-      - >
-        apk add --no-cache openssl &&
+      - |
+        apk add --no-cache openssl
         if [ ! -f /tls/tls.crt ]; then
-          openssl req -x509 -newkey rsa:2048 -nodes
-          -keyout /tls/tls.key -out /tls/tls.crt
-          -days 3650 -subj "/CN=localhost"
-          -addext "subjectAltName=DNS:localhost,IP:127.0.0.1";
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout /tls/tls.key \
+            -out /tls/tls.crt \
+            -days 3650 \
+            -subj "/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
         fi
+        # Keycloak runs as a non-root user and has to read the key.
+        chmod 644 /tls/tls.key /tls/tls.crt
     volumes:
       - keycloak_tls:/tls
 
@@ -198,6 +202,9 @@ services:
     environment:
       <<: *app-environment
     command: ["bun", "consumer.js"]
+    # The consumer serves no HTTP: the image healthcheck probes the API.
+    healthcheck:
+      disable: true
 
 volumes:
   postgres_data:

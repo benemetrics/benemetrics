@@ -483,6 +483,9 @@ Enforced at database level via unique indexes on `(project_id, name)` and `(proj
 
 18. **Silences**: a silence (`alert_silences`) covers a scope — global, a project or an app (the alerting model has no environment scope) — between `startsAt` and `endsAt` (a silence without an end is open-ended). While a silence covers the scope, the rules in it do not fire and the decision is logged with the outcome `silenced`. `GET /api/admin/alerting/silences` lists them, `POST /api/admin/alerting/silences` creates one and `DELETE /api/admin/alerting/silences/:id` removes it.
 
+19. **Rule history**: every rule change is recorded (`alert_rule_history`) with the actor, the action (`created` / `updated` / `deleted`) and the rule's state. `GET /api/admin/alerting/rules/:id/history` reads it.
+20. **Correlation and deduplication**: an incident carries a `correlationKey` (the scope and the metric — the root cause) and the `parentId` of the group's first incident. A rule does not report a root cause that was reported in the last `ALERT_DEDUP_WINDOW_MS` (5 minutes): the decision is logged with the outcome `deduplicated` and no incident is created. The rules of a scope are evaluated one after the other, so the deduplication compares them with each other.
+
 **Not built:** the environment scope (dropped from the model).
 
 ---

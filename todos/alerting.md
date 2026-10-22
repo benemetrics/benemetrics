@@ -23,10 +23,10 @@
 ## Incident Management
 
 - [x] Incident acknowledgment / assignment workflow — `POST /api/admin/alerting/incidents/:id/acknowledge` (the admin id is recorded) and `POST /api/admin/alerting/incidents/:id/assign`; the alerts page lists the incidents with both actions
-- [ ] Alert rule versioning / audit log
-- [ ] Correlation: group related incidents under one parent
+- [x] Alert rule versioning / audit log — every change is recorded in `alert_rule_history` (the actor, the action, the state) and read through `GET /api/admin/alerting/rules/:id/history`
+- [x] Correlation: group related incidents under one parent — an incident carries the `correlationKey` (the scope and the metric) and the `parentId` of the group's first incident
 - [x] Silencing / maintenance windows — a silence covers a scope (global, a project or an app) for a window; the rules in it do not fire while it is active
-- [ ] Notification deduplication across rules (same root cause)
+- [x] Notification deduplication across rules (same root cause) — a root cause reported in the last `ALERT_DEDUP_WINDOW_MS` is not reported again, whichever rule noticed it
 
 ## UI / Organization
 

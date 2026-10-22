@@ -3,7 +3,7 @@ import {
   alertIncidents,
   type AlertIncidentInsert,
 } from "db/schema/alert-incidents";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
 import type {
   AlertIncident,
@@ -31,6 +31,8 @@ const incidentFields = {
   status: sql<AlertIncidentStatus>`${alertIncidents.status}`,
   triggeredAt: alertIncidents.triggeredAt,
   resolvedAt: alertIncidents.resolvedAt,
+  correlationKey: alertIncidents.correlationKey,
+  parentId: alertIncidents.parentId,
   acknowledgedAt: alertIncidents.acknowledgedAt,
   acknowledgedBy: alertIncidents.acknowledgedBy,
   assignee: alertIncidents.assignee,
@@ -174,6 +176,33 @@ export const alertIncidentDAO = {
           ),
         )
         .orderBy(desc(alertIncidents.triggeredAt))
+        .limit(1)
+    )[0],
+
+  // The last incident of a correlation group — the deduplication looks at
+  // it to decide whether the root cause was already reported.
+  findLastByCorrelationKey: async (
+    correlationKey: string,
+  ): Promise<AlertIncident | undefined> =>
+    (
+      await db
+        .select(incidentFields)
+        .from(alertIncidents)
+        .where(eq(alertIncidents.correlationKey, correlationKey))
+        .orderBy(desc(alertIncidents.triggeredAt))
+        .limit(1)
+    )[0],
+
+  // The first incident of a correlation group — the group parent.
+  findFirstByCorrelationKey: async (
+    correlationKey: string,
+  ): Promise<AlertIncident | undefined> =>
+    (
+      await db
+        .select(incidentFields)
+        .from(alertIncidents)
+        .where(eq(alertIncidents.correlationKey, correlationKey))
+        .orderBy(asc(alertIncidents.triggeredAt))
         .limit(1)
     )[0],
 

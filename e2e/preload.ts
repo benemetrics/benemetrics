@@ -11,18 +11,15 @@ import { afterAll, beforeAll } from "bun:test";
 import { readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+// The test environment comes first: the backend reads the settings at
+// import time.
+import "./test-env";
 // The identity provider stub configures OIDC_* at import time: the backend
 // discovers the provider when it boots, so it must come before any backend
 // module is loaded.
 import "./oidc-provider";
 import { closeDb } from "db";
 import { closeClickHouse, initClickHouse } from "../backend/clickhouse";
-// The suite gets its own side-effects and flags consumers: a deployment
-// that runs against the same NATS would otherwise split the messages with
-// the suite, and the side effects would land in the other database.
-process.env.NATS_SIDE_EFFECTS_CONSUMER ??= "side-effects-test";
-process.env.NATS_FLAGS_CONSUMER ??= "flags-consumer-test";
-
 // Importing the consumer starts its `sentry.events` subscription in this
 // process, so the side effects land in this file's in-memory PGlite.
 import "../backend/consumer";

@@ -6,6 +6,7 @@ import { alertRuleDAO } from "db/dao/alert-rules";
 import { alertIncidentDAO } from "db/dao/alert-incidents";
 import { alertDeadLetterDAO } from "db/dao/alert-dead-letters";
 import { alertSilenceDAO } from "db/dao/alert-silences";
+import { alertRuleHistoryDAO } from "db/dao/alert-rule-history";
 import { badRequest } from "../errors";
 import { resolveEffectiveAlertConfig } from "./resolver";
 import { buildTestNotification, deliverAlertToChannels } from "./notifiers";
@@ -28,6 +29,29 @@ const ruleFiltersSchema = arktype({
   tags: arktype({ "[string]": "string" }).optional(),
 });
 const optionalAlertTrigger = "'threshold' | 'new_issue' | 'regression'?";
+
+// The rule's change is recorded with the actor and the state after it.
+async function recordRuleChange(
+  rule: { id: string; name: string },
+  action: "created" | "updated" | "deleted",
+  actor: string,
+): Promise<void> {
+  try {
+    await alertRuleHistoryDAO.create({
+      ruleId: rule.id,
+      name: rule.name,
+      action,
+      snapshot: JSON.stringify({ name: rule.name }),
+      actor,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error(
+      "[alerting] the rule change could not be recorded:",
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
@@ -56,7 +80,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
   )
   .post(
     "/channels",
-    async ({ body }) => {
+    async ({ body, adminId }) => {
       const appId = body.appId ?? null;
       const projectId = body.projectId ?? null;
       if (appId) await appDAO.findByIdOrThrow(appId);
@@ -138,13 +162,15 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
   )
   .post(
     "/rules",
-    async ({ body }) => {
+    async ({ body, adminId }) => {
       const appId = body.appId ?? null;
       const projectId = body.projectId ?? null;
       if (appId) await appDAO.findByIdOrThrow(appId);
       if (projectId) await projectDAO.findByIdOrThrow(projectId);
       const base = { name: body.name, trigger: body.trigger ?? "threshold", cooldownSeconds: body.cooldownSeconds ?? 3600, channelIds: JSON.stringify(body.channelIds ?? []), appId, projectId, filters: JSON.stringify(body.filters ?? {}), message: body.message ?? null };
-      return alertRuleDAO.create("metric" in body ? { ...base, metric: body.metric, operator: body.operator, threshold: body.threshold, windowSeconds: body.windowSeconds, measurement: body.measurement ?? null } : base);
+      const rule = await alertRuleDAO.create("metric" in body ? { ...base, metric: body.metric, operator: body.operator, threshold: body.threshold, windowSeconds: body.windowSeconds, measurement: body.measurement ?? null } : base);
+      await recordRuleChange(rule, "created", adminId);
+      return rule;
     },
     {
       body: arktype({
@@ -176,19 +202,35 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
     },
   )
   .get(
+    "/rules/:id/history",
+    async ({ params: { id }, query }) => {
+      await alertRuleDAO.findByIdOrThrow(id);
+      return alertRuleHistoryDAO.list({ ruleId: id, cursor: query.cursor, limit: query.limit });
+    },
+    {
+      params: arktype({ id: "string.uuid" }),
+      query: arktype({
+        cursor: "string?",
+        limit: "string.integer.parse?",
+      }),
+    },
+  )
+  .get(
     "/rules/:id",
     async ({ params: { id } }) => alertRuleDAO.findByIdOrThrow(id),
     { params: arktype({ id: "string.uuid" }) },
   )
   .patch(
     "/rules/:id",
-    async ({ params: { id }, body }) => {
+    async ({ params: { id }, body, adminId }) => {
       const current = await alertRuleDAO.findByIdOrThrow(id);
       const trigger = body.trigger ?? current.trigger;
       const next = { metric: body.metric ?? current.metric, operator: body.operator ?? current.operator, threshold: body.threshold ?? current.threshold, windowSeconds: body.windowSeconds ?? current.windowSeconds };
       if (trigger === "threshold" && Object.values(next).some((value) => value == null)) throw badRequest("threshold rules require metric, operator, threshold and windowSeconds");
       if (trigger !== "threshold" && [body.metric, body.operator, body.threshold, body.windowSeconds].some((value) => value !== undefined)) throw badRequest("issue triggers do not accept metric, operator, threshold or windowSeconds");
-      return alertRuleDAO.updateOrThrow(id, { ...body, ...(trigger === "threshold" ? { ...next, measurement: body.measurement ?? current.measurement } : { metric: null, operator: null, threshold: null, windowSeconds: null, measurement: null }), channelIds: JSON.stringify(body.channelIds ?? current.channelIds), isEnabled: (body.isEnabled ?? current.isEnabled) ? 1 : 0 });
+      const updated = await alertRuleDAO.updateOrThrow(id, { ...body, ...(trigger === "threshold" ? { ...next, measurement: body.measurement ?? current.measurement } : { metric: null, operator: null, threshold: null, windowSeconds: null, measurement: null }), channelIds: JSON.stringify(body.channelIds ?? current.channelIds), isEnabled: (body.isEnabled ?? current.isEnabled) ? 1 : 0 });
+      await recordRuleChange(updated, "updated", adminId);
+      return updated;
     },
     {
       params: arktype({ id: "string.uuid" }),
@@ -209,9 +251,11 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
   )
   .delete(
     "/rules/:id",
-    async ({ params: { id } }) => {
+    async ({ params: { id }, adminId }) => {
+      const current = await alertRuleDAO.findById(id);
       await alertIncidentDAO.deleteByRule(id);
       await alertRuleDAO.delete(id);
+      if (current) await recordRuleChange(current, "deleted", adminId);
       return { success: true };
     },
     { params: arktype({ id: "string.uuid" }) },

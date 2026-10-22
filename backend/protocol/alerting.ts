@@ -79,6 +79,17 @@ export interface AlertRule {
 // The scope of a silence: global, a project or an app.
 export type AlertSilenceScope = "global" | "project" | "app";
 
+// The recorded change of an alert rule.
+export interface AlertRuleHistory {
+  id: string;
+  ruleId: string;
+  name: string;
+  action: "created" | "updated" | "deleted";
+  snapshot: Record<string, unknown>;
+  actor: string | null;
+  createdAt: string;
+}
+
 // A silence: while it is active the rules in its scope do not fire.
 export interface AlertSilence {
   id: string;
@@ -122,6 +133,8 @@ export interface AlertIncident {
   status: AlertIncidentStatus;
   triggeredAt: string;
   resolvedAt: string | null;
+  correlationKey: string | null;
+  parentId: string | null;
   acknowledgedAt: string | null;
   acknowledgedBy: string | null;
   assignee: string | null;

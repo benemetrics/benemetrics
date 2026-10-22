@@ -26,6 +26,13 @@ const TRIGGER_LABELS: Record<string, string> = {
 
 const triggerLabel = (trigger: string) => TRIGGER_LABELS[trigger] ?? trigger;
 
+// The tag dimensions a rule matches on, e.g. "tier=gold, region=eu".
+function filterLabel(filters: { tags?: Record<string, string> } | undefined): string {
+  const entries = Object.entries(filters?.tags ?? {});
+  if (entries.length === 0) return "";
+  return entries.map(([key, value]) => `${key}=${value}`).join(", ");
+}
+
 export function Alerts() {
   const navigate = useNavigate();
   const { application } = useWorkspace();
@@ -218,6 +225,7 @@ export function Alerts() {
               <strong>{rule.name}</strong>
               <span>
                 {triggerLabel(rule.trigger)} · {rule.appId ? "App scope" : "Global"}
+                {filterLabel(rule.filters) ? ` · ${filterLabel(rule.filters)}` : ""}
               </span>
               <span>{destination}</span>
               <span className="row-status">
@@ -323,6 +331,7 @@ export function Alerts() {
                       <span>{rule.name}</span>
                       <strong>
                         {triggerLabel(rule.trigger)} · {rule.appId ? "App override" : "Global"}
+                        {filterLabel(rule.filters) ? ` · ${filterLabel(rule.filters)}` : ""}
                       </strong>
                     </div>
                   ))}

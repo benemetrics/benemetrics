@@ -718,6 +718,95 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(incidents.data[0]!.value).toBe(2);
     });
 
+    it("counts only the new issues carrying the filtered tag (new_issue_count)", async () => {
+      const appRecord = await makeApp();
+
+      const channel = await json<{ id: string }>(
+        await apiRequest("POST", "/api/admin/alerting/channels", {
+          name: `tagged-issues-${uniq()}`,
+          type: "webhook",
+          config: { url: webhookUrl },
+          appId: appRecord.id,
+        }),
+      );
+
+      await apiRequest("POST", "/api/admin/alerting/rules", {
+        name: `tagged issues ${uniq()}`,
+        metric: "new_issue_count",
+        operator: "gt",
+        threshold: 0,
+        windowSeconds: 3600,
+        cooldownSeconds: 60,
+        channelIds: [channel.id],
+        appId: appRecord.id,
+        filters: { tags: { tier: "gold" } },
+      });
+
+      await ingestEvent(appRecord, {
+        ...errorEvent(crypto.randomUUID(), "gold problem"),
+        tags: { tier: "gold" },
+      });
+      await ingestEvent(appRecord, {
+        ...errorEvent(crypto.randomUUID(), "silver problem"),
+        tags: { tier: "silver" },
+      });
+
+      const incidents = await waitFor(
+        async () =>
+          json<{ data: Array<Record<string, unknown>> }>(
+            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+          ),
+        (body) => body.data.length > 0,
+      );
+
+      expect(incidents.data[0]!.metric).toBe("new_issue_count");
+      expect(incidents.data[0]!.value).toBe(1);
+    });
+
+    it("fires an issue trigger only for the issues carrying the filtered tag", async () => {
+      const appRecord = await makeApp();
+
+      const channel = await json<{ id: string }>(
+        await apiRequest("POST", "/api/admin/alerting/channels", {
+          name: `tagged-trigger-${uniq()}`,
+          type: "webhook",
+          config: { url: webhookUrl },
+          appId: appRecord.id,
+        }),
+      );
+
+      await apiRequest("POST", "/api/admin/alerting/rules", {
+        name: `tagged trigger ${uniq()}`,
+        trigger: "new_issue",
+        cooldownSeconds: 60,
+        channelIds: [channel.id],
+        appId: appRecord.id,
+        filters: { tags: { tier: "gold" } },
+      });
+
+      // The silver issue does not match the filter; the gold one does.
+      await ingestEvent(appRecord, {
+        ...errorEvent(crypto.randomUUID(), "silver trigger problem"),
+        tags: { tier: "silver" },
+      });
+      await ingestEvent(appRecord, {
+        ...errorEvent(crypto.randomUUID(), "gold trigger problem"),
+        tags: { tier: "gold" },
+      });
+
+      const incidents = await waitFor(
+        async () =>
+          json<{ data: Array<Record<string, unknown>> }>(
+            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+          ),
+        (body) => body.data.length > 0,
+      );
+
+      expect(incidents.data.length).toBe(1);
+      expect(incidents.data[0]!.trigger).toBe("new_issue");
+      expect(incidents.data[0]!.issueFingerprint).toBeDefined();
+    });
+
     it("evaluates latency percentiles from transaction measurements (latency_p95)", async () => {
       const appRecord = await makeApp();
 

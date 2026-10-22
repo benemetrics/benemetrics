@@ -10,6 +10,8 @@ export interface TrackedIssue {
   id: string;
   fingerprint: string;
   title: string;
+  /** The occurrence's tags — the dimensions an alert rule filters on. */
+  tags: Record<string, string>;
 }
 
 export interface IssueTrackingResult {
@@ -67,6 +69,7 @@ export async function trackIssuesForEvent(
           level: digest.level,
           type: digest.type,
           release: digest.release,
+          tags: digest.tags,
         };
         const created = await issueDAO.createIfNew({
           appId,
@@ -77,13 +80,21 @@ export async function trackIssuesForEvent(
           type: digest.type,
           firstRelease: digest.release,
           lastRelease: digest.release,
+          tags: JSON.stringify(digest.tags ?? {}),
           eventCount: count,
           firstSeen: receivedAt,
           lastSeen: receivedAt,
           latestEventId,
         });
         if (created) {
-          return { newIssue: { id: created.id, fingerprint: created.fingerprint, title: created.title } };
+          return {
+            newIssue: {
+              id: created.id,
+              fingerprint: created.fingerprint,
+              title: created.title,
+              tags: digest.tags ?? {},
+            },
+          };
         }
 
         const regressed = await issueDAO.regressIfResolved(
@@ -92,7 +103,14 @@ export async function trackIssuesForEvent(
           occurrence,
         );
         if (regressed) {
-          return { regression: { id: regressed.id, fingerprint: regressed.fingerprint, title: regressed.title } };
+          return {
+            regression: {
+              id: regressed.id,
+              fingerprint: regressed.fingerprint,
+              title: regressed.title,
+              tags: digest.tags ?? {},
+            },
+          };
         }
 
         await issueDAO.markSeen(appId, fingerprint, occurrence);

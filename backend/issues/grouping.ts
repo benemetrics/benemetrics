@@ -22,6 +22,8 @@ export interface IssueDigest {
   release: string | null;
   environment: string | null;
   user: string | null;
+  /** The event's tags — the dimensions an alert rule filters on. */
+  tags: Record<string, string>;
 }
 
 const ISSUE_LEVELS = new Set([
@@ -138,6 +140,20 @@ export function issueUser(payload: Record<string, unknown>): string | null {
   return null;
 }
 
+// The event's tags; only the string values are kept.
+export function issueTags(payload: Record<string, unknown>): Record<string, string> {
+  const tags = payload.tags;
+  if (!tags || typeof tags !== "object" || Array.isArray(tags)) return {};
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(tags as Record<string, unknown>)) {
+    if (typeof value === "string") result[key] = value;
+    else if (typeof value === "number" || typeof value === "boolean") {
+      result[key] = String(value);
+    }
+  }
+  return result;
+}
+
 export function issueRelease(payload: Record<string, unknown>): string | null {
   const release = payload.release;
   return typeof release === "string" && release ? release : null;
@@ -194,6 +210,7 @@ export function issueDigest(
     release: issueRelease(payload),
     environment: issueEnvironment(payload),
     user: issueUser(payload),
+    tags: issueTags(payload),
   };
 }
 

@@ -466,7 +466,9 @@ Enforced at database level via unique indexes on `(project_id, name)` and `(proj
 
 8. **Rule filters**: `alert_rules.filters` is a JSON object — `{ "tags": { "<key>": "<value>" } }`. The metric samples carry the event's tags (`sentry_metrics.tags`, a JSON string), and a threshold rule only counts the samples whose event carries the filtered tag with that value. The samples are published with their tags (`sentry.metrics`) and the ClickHouse store gained the column.
 
-**Not built:** the environment scope (dropped from the model); the tag filters on the issue triggers (the digests do not carry the tags yet) and the rule filters in the UI (the API only).
+9. **Rule filters**: `alert_rules.filters` holds the tag dimensions (`{ "tags": { "<key>": "<value>" } }`). The metric samples carry the event's tags (`sentry_metrics.tags`) and the issue digests carry them too (`IssueDigest.tags`), so a threshold rule counts only the matching samples, a `new_issue`/`regression` rule fires only for the matching issues, and `new_issue_count` counts only the issues whose latest occurrence carries the tag. The rule builder and the rules list show the filters.
+
+**Not built:** the environment scope (dropped from the model).
 
 ---
 

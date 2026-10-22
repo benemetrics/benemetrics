@@ -477,6 +477,7 @@ a.action { text-decoration: none; }
 /* Forms & builders */
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .form-field { display: flex; flex-direction: column; gap: 6px; }
+.filter-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 7px; align-items: center; }
 .form-field.full { grid-column: 1 / -1; }
 .form-field > span { color: var(--ink-muted); font-size: 9px; font-weight: 600; }
 .form-field > small { color: var(--ink-faint); font-size: 8px; }

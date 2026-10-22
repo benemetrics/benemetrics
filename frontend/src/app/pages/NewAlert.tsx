@@ -75,6 +75,8 @@ export function NewAlert() {
   // be chosen without switching the workspace.
   const [scopeAppId, setScopeAppId] = useState<string | null>(application?.id ?? null);
   const [cooldown, setCooldown] = useState(3600);
+  // The tag dimensions the rule matches on; an empty list matches everything.
+  const [tagFilters, setTagFilters] = useState<Array<{ key: string; value: string }>>([]);
   const [channelIds, setChannelIds] = useState<string[]>([]);
   const [channels, setChannels] = useState<AlertChannelDto[]>([]);
   const [creating, setCreating] = useState(false);
@@ -142,11 +144,17 @@ export function NewAlert() {
     const ruleName = name.trim();
     setCreating(true);
     try {
+      const tags = Object.fromEntries(
+        tagFilters
+          .map((filter) => [filter.key.trim(), filter.value.trim()] as const)
+          .filter(([key, value]) => key.length > 0 && value.length > 0),
+      );
       const shared = {
         name: ruleName,
         cooldownSeconds: cooldown,
         channelIds,
         ...(scopeAppId ? { appId: scopeAppId } : {}),
+        ...(Object.keys(tags).length > 0 ? { filters: { tags } } : {}),
       };
       const result =
         trigger === "threshold"
@@ -333,6 +341,68 @@ export function NewAlert() {
                   ))}
                 </select>
                 <small>App-scoped rules override a global rule with the same name.</small>
+              </div>
+              <div className="form-field full">
+                <span>Tag filters</span>
+                {tagFilters.length === 0 ? (
+                  <small>
+                    Without filters the rule counts every event. Add a tag to
+                    match only the events that carry it.
+                  </small>
+                ) : (
+                  tagFilters.map((filter, index) => (
+                    <div className="filter-row" key={index}>
+                      <input
+                        className="field-control"
+                        placeholder="tag"
+                        aria-label="Filter tag"
+                        value={filter.key}
+                        onChange={(event) =>
+                          setTagFilters((current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, key: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                      <input
+                        className="field-control"
+                        placeholder="value"
+                        aria-label="Filter value"
+                        value={filter.value}
+                        onChange={(event) =>
+                          setTagFilters((current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? { ...item, value: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                      <Action
+                        variant="soft"
+                        onClick={() =>
+                          setTagFilters((current) =>
+                            current.filter((_, itemIndex) => itemIndex !== index),
+                          )
+                        }
+                      >
+                        Remove
+                      </Action>
+                    </div>
+                  ))
+                )}
+                <Action
+                  variant="soft"
+                  onClick={() =>
+                    setTagFilters((current) => [...current, { key: "", value: "" }])
+                  }
+                >
+                  Add tag filter
+                </Action>
               </div>
               <div className="form-field">
                 <span>Repeat interval</span>

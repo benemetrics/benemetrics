@@ -265,6 +265,8 @@ export interface AlertRuleDto {
   channelIds: string[];
   measurement: string | null;
   appId: string | null;
+  /** The tag dimensions the rule matches on. */
+  filters: { tags?: Record<string, string> };
   isEnabled: boolean;
   lastTriggeredAt: string | null;
   createdAt: string;

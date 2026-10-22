@@ -30,6 +30,7 @@ const issueFields = {
   type: issues.type,
   firstRelease: issues.firstRelease,
   lastRelease: issues.lastRelease,
+  tags: issues.tags,
   status: issues.status,
   eventCount: issues.eventCount,
   firstSeen: issues.firstSeen,
@@ -53,6 +54,8 @@ export interface IssueOccurrence {
   latestEventId: string;
   occurrences: number;
   title: string;
+  /** The occurrence's tags — the dimensions an alert rule filters on. */
+  tags?: Record<string, string>;
   culprit: string | null;
   level: string;
   type: string;
@@ -163,6 +166,7 @@ export const issueDAO = {
         type: occurrence.type,
         lastRelease: sql`COALESCE(${occurrence.release}, ${issues.lastRelease})`,
         firstRelease: sql`COALESCE(${issues.firstRelease}, ${occurrence.release})`,
+        tags: occurrence.tags ? JSON.stringify(occurrence.tags) : issues.tags,
         updatedAt: new Date().toISOString(),
       })
       .where(
@@ -296,11 +300,19 @@ export const issueDAO = {
 
   // Issues whose first-ever occurrence falls inside the window — the
   // `new_issue_count` alert metric, which stays on the control plane.
-  countNewSince: async (appId: string, since: string): Promise<number> => {
-    const total = await db.$count(
-      issues,
-      and(eq(issues.appId, appId), gte(issues.firstSeen, since)),
-    );
+  countNewSince: async (
+    appId: string,
+    since: string,
+    tags?: Record<string, string>,
+  ): Promise<number> => {
+    const conditions = [eq(issues.appId, appId), gte(issues.firstSeen, since)];
+    // A filtered tag must be on the issue's latest occurrence.
+    for (const [key, value] of Object.entries(tags ?? {})) {
+      conditions.push(
+        sql`${issues.tags}::jsonb @> ${JSON.stringify({ [key]: value })}::jsonb`,
+      );
+    }
+    const total = await db.$count(issues, and(...conditions));
     return Number(total);
   },
 

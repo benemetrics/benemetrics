@@ -49,11 +49,11 @@ async function computeRuleValue(
         // The issues are app-scoped; the project's count is the sum of its apps.
         const apps = await appDAO.listRawByProject(projectId);
         const counts = await Promise.all(
-          apps.map((app) => issueDAO.countNewSince(app.id, since)),
+          apps.map((app) => issueDAO.countNewSince(app.id, since, filters?.tags)),
         );
         return counts.reduce((total, count) => total + count, 0);
       }
-      return issueDAO.countNewSince(appId!, since);
+      return issueDAO.countNewSince(appId!, since, filters?.tags);
     case "latency_p95":
     case "latency_p99": {
       const quantile = metric === "latency_p95" ? 95 : 99;
@@ -151,6 +151,19 @@ async function evaluateRules(scope: {
   return incidents.filter((incident): incident is AlertIncident => incident !== null);
 }
 
+// A rule's tag filters: every filtered tag must be on the occurrence.
+function matchesTagFilters(
+  tags: Record<string, string> | undefined,
+  filters: AlertRuleFilters | undefined,
+): boolean {
+  const wanted = filters?.tags;
+  if (!wanted) return true;
+  for (const [key, value] of Object.entries(wanted)) {
+    if (!tags || tags[key] !== value) return false;
+  }
+  return true;
+}
+
 async function fireIssueTriggerRules(
   scope: { appId: string; projectId?: string | null },
   trigger: "new_issue" | "regression",
@@ -172,123 +185,125 @@ async function fireIssueTriggerRules(
       );
 
       const fired = await Promise.all(
-        issues.map(async (issue): Promise<boolean> => {
-          const last = await alertIncidentDAO.findLastForIssue(
-            rule.id,
-            issue.fingerprint,
-          );
-          if (last !== undefined) {
-            const elapsed = Date.now() - new Date(last.triggeredAt).getTime();
-            if (elapsed < rule.cooldownSeconds * 1000) return false;
-          }
+        issues
+          .filter((issue) => matchesTagFilters(issue.tags, rule.filters))
+          .map(async (issue): Promise<boolean> => {
+            const last = await alertIncidentDAO.findLastForIssue(
+              rule.id,
+              issue.fingerprint,
+            );
+            if (last !== undefined) {
+              const elapsed = Date.now() - new Date(last.triggeredAt).getTime();
+              if (elapsed < rule.cooldownSeconds * 1000) return false;
+            }
 
-          const now = new Date().toISOString();
-          const notification = buildIssueAlertNotification(
-            rule,
-            trigger,
-            { fingerprint: issue.fingerprint, title: issue.title },
-            scope.appId,
-            now,
-          );
-          await deliverAlertToChannels(selected, notification);
-          await alertIncidentDAO.create({
-            ruleId: rule.id,
-            appId: scope.appId,
-            trigger,
-            issueFingerprint: issue.fingerprint,
-            status: "resolved",
-            triggeredAt: now,
-            resolvedAt: now,
-          });
-          return true;
-        }),
-      );
-
-      if (fired.some(Boolean)) await alertRuleDAO.touchTriggered(rule.id, new Date().toISOString());
-    }),
-  );
-}
-
-const evaluationChains = new Map<string, Promise<unknown>>();
-
-function enqueueAppWork(
-  appId: string,
-  label: string,
-  run: () => Promise<unknown>,
-): void {
-  const guarded = () =>
-    run().catch((error: unknown) => {
-      console.error(
-        `[alerting] ${label} for app ${appId}:`,
-        error instanceof Error ? error.message : error,
-      );
-    });
-  const next = (evaluationChains.get(appId) ?? Promise.resolve()).then(
-    guarded,
-    guarded,
-  );
-  evaluationChains.set(appId, next);
-}
-
-export function evaluateProjectRules(projectId: string): void {
-  enqueueAppWork(
-    `project:${projectId}`,
-    "project rule evaluation failed",
-    () => evaluateRules({ projectId }),
-  );
-}
-
-export function evaluateRulesForApp(appId: string): void {
-  enqueueAppWork(appId, "rule evaluation failed", () => evaluateRules({ appId }));
-}
-
-// Threshold rules belong to the sweeper: the ingestion path would read a
-// ClickHouse window that does not contain the event yet.
-export function processIngestedEvent(
-  appId: string,
-  digests: IssueDigest[],
-  receivedAt: string,
-  eventId: string,
-  projectId?: string | null,
-): void {
-  enqueueAppWork(appId, "ingested event processing failed", async () => {
-    const { newIssues, regressions } = await trackIssuesForEvent(
-      appId,
-      digests,
-      receivedAt,
-      eventId,
-    );
-    const scope = { appId, projectId: projectId ?? null };
-    await Promise.all([
-      newIssues.length > 0 ? fireIssueTriggerRules(scope, "new_issue", newIssues) : Promise.resolve(),
-      regressions.length > 0 ? fireIssueTriggerRules(scope, "regression", regressions) : Promise.resolve(),
-    ]);
-  });
-}
-
-let sweeperTimer: ReturnType<typeof setInterval> | null = null;
-
-export function startAlertSweeper(): void {
-  if (sweeperTimer !== null) return;
-  const intervalMs = Number(process.env.ALERT_EVALUATION_INTERVAL_MS) || 60_000;
-  sweeperTimer = setInterval(() => {
-    void Promise.all([appDAO.listAll(), alertRuleDAO.listProjectScoped()])
-      .then(([apps, projectRules]) => {
-        for (const app of apps) evaluateRulesForApp(app.id);
-        // The project-scoped rules are evaluated per project.
-        const projectIds = new Set(
-          projectRules
-            .map((rule) => rule.projectId)
-            .filter((id): id is string => Boolean(id)),
+            const now = new Date().toISOString();
+            const notification = buildIssueAlertNotification(
+              rule,
+              trigger,
+              { fingerprint: issue.fingerprint, title: issue.title },
+              scope.appId,
+              now,
+            );
+            await deliverAlertToChannels(selected, notification);
+            await alertIncidentDAO.create({
+              ruleId: rule.id,
+              appId: scope.appId,
+              trigger,
+              issueFingerprint: issue.fingerprint,
+              status: "resolved",
+              triggeredAt: now,
+              resolvedAt: now,
+            });
+            return true;
+          }),
         );
-        for (const projectId of projectIds) evaluateProjectRules(projectId);
-      })
-      .catch((error: unknown) => {
+
+        if (fired.some(Boolean)) await alertRuleDAO.touchTriggered(rule.id, new Date().toISOString());
+      }),
+    );
+  }
+
+  const evaluationChains = new Map<string, Promise<unknown>>();
+
+  function enqueueAppWork(
+    appId: string,
+    label: string,
+    run: () => Promise<unknown>,
+  ): void {
+    const guarded = () =>
+      run().catch((error: unknown) => {
         console.error(
-          "[alerting] sweeper failed to list apps:",
+          `[alerting] ${label} for app ${appId}:`,
           error instanceof Error ? error.message : error,
         );
       });
-  }, intervalMs);
-  sweeperTimer.unref();
-}
+    const next = (evaluationChains.get(appId) ?? Promise.resolve()).then(
+      guarded,
+      guarded,
+    );
+    evaluationChains.set(appId, next);
+  }
+
+  export function evaluateProjectRules(projectId: string): void {
+    enqueueAppWork(
+      `project:${projectId}`,
+      "project rule evaluation failed",
+      () => evaluateRules({ projectId }),
+    );
+  }
+
+  export function evaluateRulesForApp(appId: string): void {
+    enqueueAppWork(appId, "rule evaluation failed", () => evaluateRules({ appId }));
+  }
+
+  // Threshold rules belong to the sweeper: the ingestion path would read a
+  // ClickHouse window that does not contain the event yet.
+  export function processIngestedEvent(
+    appId: string,
+    digests: IssueDigest[],
+    receivedAt: string,
+    eventId: string,
+    projectId?: string | null,
+  ): void {
+    enqueueAppWork(appId, "ingested event processing failed", async () => {
+      const { newIssues, regressions } = await trackIssuesForEvent(
+        appId,
+        digests,
+        receivedAt,
+        eventId,
+      );
+      const scope = { appId, projectId: projectId ?? null };
+      await Promise.all([
+        newIssues.length > 0 ? fireIssueTriggerRules(scope, "new_issue", newIssues) : Promise.resolve(),
+        regressions.length > 0 ? fireIssueTriggerRules(scope, "regression", regressions) : Promise.resolve(),
+      ]);
+    });
+  }
+
+  let sweeperTimer: ReturnType<typeof setInterval> | null = null;
+
+  export function startAlertSweeper(): void {
+    if (sweeperTimer !== null) return;
+    const intervalMs = Number(process.env.ALERT_EVALUATION_INTERVAL_MS) || 60_000;
+    sweeperTimer = setInterval(() => {
+      void Promise.all([appDAO.listAll(), alertRuleDAO.listProjectScoped()])
+        .then(([apps, projectRules]) => {
+          for (const app of apps) evaluateRulesForApp(app.id);
+          // The project-scoped rules are evaluated per project.
+          const projectIds = new Set(
+            projectRules
+              .map((rule) => rule.projectId)
+              .filter((id): id is string => Boolean(id)),
+          );
+          for (const projectId of projectIds) evaluateProjectRules(projectId);
+        })
+        .catch((error: unknown) => {
+          console.error(
+            "[alerting] sweeper failed to list apps:",
+            error instanceof Error ? error.message : error,
+          );
+        });
+    }, intervalMs);
+    sweeperTimer.unref();
+  }

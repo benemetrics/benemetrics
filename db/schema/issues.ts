@@ -20,6 +20,9 @@ export const issues = pgTable(
     type: text("type").notNull().default("message"),
     firstRelease: text("first_release"),
     lastRelease: text("last_release"),
+    // The tags of the latest occurrence — the dimensions an alert rule
+    // filters on.
+    tags: text("tags").notNull().default("{}"),
     status: text("status").notNull().default("unresolved"),
     eventCount: integer("event_count").notNull().default(1),
     firstSeen: isoTimestamp("first_seen").notNull(),

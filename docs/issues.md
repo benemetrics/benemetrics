@@ -1,6 +1,6 @@
 # Issues — Architecture
 
-**Status:** Design paper — how error issues are derived from ingested events, where every fact lives, how state changes, and how clients query them. Implementation status and order live in [`todos/issues.md`](../todos/issues.md).
+**Status:** Design paper — how error issues are derived from ingested events, where every fact lives, how state changes, and how clients query them. Open items live in [`TODO.md`](../TODO.md).
 
 ---
 
@@ -209,6 +209,8 @@ Extracts `issueEvents` from the NATS engine table using `JSONExtractArrayRaw` + 
 - `DISTINCT fingerprint` from `sentry_issue_events` for visible apps matching the release.
 
 **Retention**: The index is created with the same TTL as `sentry_events`. A Settings → Event retention change applies the new TTL to the index via `ALTER TABLE sentry_issue_events MODIFY TTL ...` — drill-down never outlives the raw events.
+
+**Dimension breakdowns — non-goal for now**: the index carries the occurrence's `level`, `user` and `tags` (JSON text) and nothing more. Browser/OS-style server-side breakdowns are deliberately not built: the SDKs do not consistently send them as tags, so an honest aggregate would mean adding parsed columns to the index (schema + MV + read). Add one only when a real breakdown needs it; `tag:` filtering (`JSONExtractString(tags, key)`) already covers whatever the SDKs *do* send.
 
 ---
 
@@ -434,7 +436,8 @@ Issue reads inherit the admin guard and the scoped-read allowlist:
 
 ## 16. Open Questions
 
-All open items moved to [`todos/issues.md`](../todos/issues.md); nothing there is started.
+All open items live in [`TODO.md`](../TODO.md) — the dimension breakdowns are
+documented as a non-goal in §8; everything else is decided.
 
 ---
 

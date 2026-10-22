@@ -1,6 +1,6 @@
 # Permissions — Architecture
 
-**Status:** Design paper — the admin authorization model (admin token + OIDC scoped reads). Open items live in [`todos/permission.md`](../todos/permission.md).
+**Status:** Design paper — the admin authorization model (admin token + OIDC scoped reads). Open items live in [`TODO.md`](../TODO.md).
 
 ---
 
@@ -200,6 +200,8 @@ An admin (holding the admin token) grants read access to OIDC users through two 
 
 3. Group rules are the primary mechanism for team-based access. A user in multiple groups receives the union of all matching rules.
 
+4. **Non-goal — no teams/members entity.** There is no Team or Member table anywhere in the model; "membership" is exactly the permission system: the group rules (matched by the token's `groups` claim) plus the per-identity grants. A Team page can therefore only display groups, rules and grants — anything else would be fabricated.
+
 ### Identity Grants (Overrides for Individuals)
 
 1. Admin creates a **grant** for a specific identity id (the id the token resolves to):
@@ -354,23 +356,12 @@ Startup never prints secrets.
 
 ## 12. Open Items
 
-All open items (gaps, open decisions, possible follow-ups) moved to [`todos/permission.md`](../todos/permission.md); nothing there is started.
-
-**Current open items include:**
-
-- Rename collision handling for group rules and identity grants (conflict error mapping)
-- Pagination for management API GET / endpoint (implemented: paginated envelope)
-- Short-lived one-shot ticket design for WebSocket upgrades with periodic re-validation
-- Organization-level admin concept (currently only global admin token)
-- JWKS cache invalidation strategy beyond single re-fetch
-- Clock skew handling beyond ±60s (provider clock significantly off)
-- Exact group claim split regex standardization across IdPs (implemented: `/[\s,;|]+/`)
-- Whitelist key behavior when only `sub` claim is available (resolved: token rejected if only `sub`)
-- Zero-downtime admin token rotation mechanism
-- WebCrypto ES512 (P-521) runtime support dependency
-- Scope expansion caching for large deployments
-- Token introspection (RFC 7662) for immediate OIDC token revocation
-- Dev-open mode safeguards (prevent accidental exposure on shared hosts)
-- Whitelist revocation UX (distinguish "read nothing" grant from "no grant" in UI)
-- Scoped user session lifetime tied to JWT `exp` (no server-side revocation check)
-- The identity id is compared exactly (no normalization): the issuer and subject are opaque
+The implemented contract keeps `exp` required (`§2`, `§11`) — **the verifier does not
+enforce it yet** (`requiredClaims` is not passed; the case is `it.todo` in
+`e2e/35-oidc.test.ts`); it is an open item in [`TODO.md`](../TODO.md). The other
+still-open design follow-ups live there too. By-design limitations carried here
+instead of in code: the master `ADMIN_TOKEN` never expires (rotate the env var and
+restart; `§2`), identity lifetime is the JWT lifetime (no server-side session), and
+the live feed is the NATS subject — no WebSocket upgrade tickets to design. The
+rename conflicts, the whitelist only-`sub` case and the claim-split regex are
+decided in the sections above.

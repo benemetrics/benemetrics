@@ -221,6 +221,14 @@ Response: { data: [{ dimension, count, mean, p50, p95 }] }
 - **Latency table** from `breakdown` instead of a fixed event window
 - Issue detail unchanged
 
+### Overview (known limit)
+
+The Overview's event-window charts evaluate the raw items client-side over the configured window (`AGGREGATE_EVENT_LIMIT`, 200); only the issue counters are read from the backend. Moving the charts to the metrics series API is deferred.
+
+### Logs (non-goal)
+
+There is **no log store**: the Logs page is an honest placeholder and never fabricates log lines.
+
 ---
 
 ## 9. Infra Preconditions

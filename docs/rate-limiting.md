@@ -23,15 +23,18 @@ Two app-side brakes sit between the caps and the proxy's rates, and neither is a
 
 The per-app events/s quota, the per-source bucket, the device fingerprints, the auto-blocks and the
 exceedance notifications of the original design are **not implemented in the application** — they
-are quotas and attribution, and the proxy plus the per-request caps cover the DoS goal. The design
-below is kept as the rationale for that split; the parts that are implemented are marked.
+are quotas and attribution, and the proxy plus the per-request caps cover the DoS goal (a
+fingerprint is attribution, not a cap: the tuple is client-controlled; a "recovered"/warning
+notification would live with the quota if it is ever built; the shared bucket state for multiple
+replicas would need Postgres or NATS KV and a documented switch). The design below is kept as the
+rationale for that split; the parts that are implemented are marked.
 
-**Status:** design paper — how the ingest rate limiter is designed to work; the implementation
-order, open questions and current status live in
-[`todos/rate-limiting.md`](../todos/rate-limiting.md). Problem being solved: the DSN public key is
-the only credential (`backend/events/ingestion.ts` → `resolveAuthorizedApp`), so **anyone holding
-a copied DSN can write unlimited events for that app** (`TODO.md` §"Ingest protocol gaps"). The
-design adds the Sentry-style model: cap per key, throttle the source, fingerprint suspicious
+**Status:** design paper — the implemented part is the per-request hygiene plus the two brakes
+above; every quota/blocked/notification item below is deliberately unbuilt and tracked as the
+backlog in [`TODO.md`](../TODO.md). Problem being solved: the DSN public key is the only
+credential (`backend/events/ingestion.ts` → `resolveAuthorizedApp`), so **anyone holding a copied
+DSN can write unlimited events for that app** (`TODO.md` §"Ingest protocol gaps"). The design adds
+the Sentry-style model: cap per key, throttle the source, fingerprint suspicious
 clients, notify on exceedance, and keep a recovery path (rotate / block).
 
 **Touchpoints:** `backend/events/ingestion.ts` (`resolveAuthorizedApp`, `readBody`),
@@ -211,7 +214,7 @@ ingestion (same best-effort rule as NATS/ClickHouse/object storage).
 
 Algorithm: token bucket at **events/second**, monotonic counters. State is **in-process** (bounded
 `Map` with LRU + TTL eviction, e.g. 50k entries) for v1 — single container, and the limiter must
-not depend on NATS/Postgres being reachable. Shared state is a later phase (`todos/rate-limiting.md`, batch 7).
+not depend on NATS/Postgres being reachable. Shared state is a later phase (`TODO.md`, backlog).
 
 Deliberately simple for v1: no per-category buckets (Sentry's `error` / `transaction` separation) —
 the header still announces `default`; finer per-item-type categories are a later refinement.
@@ -363,7 +366,7 @@ a short-TTL cache (§8).
   alert plus the global alert system, deduplicated, each with its cooldown; a source block spanning
   N apps notifies all N (bounded) + global. Per-source/per-fingerprint *bucket overflow alone* does
   not notify (too noisy); it surfaces in the overview counters.
-- Optional "recovered" follow-up when the app drops back under its limit — see [`todos/rate-limiting.md`](../todos/rate-limiting.md).
+- Optional "recovered" follow-up when the app drops back under its limit — see the backlog in [`TODO.md`](../TODO.md).
 
 ### Panel (Settings → Rate limits)
 
@@ -466,8 +469,10 @@ through the same lazy cache (short TTL, invalidated on PATCH / test reset).
 
 ## 10. Implementation batches
 
-Moved to [`todos/rate-limiting.md`](../todos/rate-limiting.md).
+Folded into [`TODO.md`](../TODO.md) — the current state is "the per-request hygiene is
+implemented; the rate limits are the reverse proxy's job".
 
 ## 11. Open questions
 
-Moved to [`todos/rate-limiting.md`](../todos/rate-limiting.md).
+Carried into [`TODO.md`](../TODO.md) (the topology, the rollout and the notification
+questions).

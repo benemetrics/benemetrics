@@ -237,12 +237,7 @@ export const sourceMapTokenRoutes = new Elysia({ prefix: "/api/admin/source-map-
   .get(
     "/",
     async ({ query }) => {
-      return sourceMapTokenDAO.list({
-        projectId: query.projectId,
-        environmentId: query.environmentId,
-        cursor: query.cursor,
-        limit: query.limit,
-      });
+      return sourceMapTokenDAO.list({ ...query });
     },
     {
       query: arktype({

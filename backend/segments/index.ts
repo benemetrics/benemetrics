@@ -25,7 +25,7 @@ export const segmentRoutes = new Elysia({ prefix: "/api/admin/segments" })
   )
   .get(
     "/",
-    async ({ query }) => segmentDAO.list({ cursor: query.cursor, limit: query.limit }),
+    async ({ query }) => segmentDAO.list({ ...query }),
     {
       query: arktype({
         cursor: "string?",

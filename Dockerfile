@@ -18,9 +18,8 @@ COPY tsconfig.json bunfig.toml ./
 RUN bunx @tailwindcss/cli -i frontend/global.css -o frontend/global.compiled.css --minify
 RUN sed -i 's|href="./global.css"|href="./global.compiled.css"|' frontend/index.html
 
-# Bundle the application (backend + frontend HTML import) — inline because
-# `bun build` does not apply the bunfig plugins, so the virtual OIDC module
-# is registered here (the crypto builtin stays external)
+# Bundle the application (backend + frontend HTML import) — the virtual OIDC
+# module must be registered here because `bun build` skips bunfig plugins
 # https://bun.com/docs/bundler/fullstack#ahead-of-time-bundling
 RUN bun -e "import authEnvPlugin from './frontend/auth-env-plugin'; \
   const result = await Bun.build({ entrypoints: ['./backend/index.ts'], outdir: 'dist', target: 'bun', minify: true, plugins: [authEnvPlugin], external: ['crypto'] }); \

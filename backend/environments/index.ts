@@ -21,7 +21,7 @@ export const environmentRoutes = new Elysia({ prefix: "/api/admin/environments" 
       const total = await environmentDAO.countByProject(project.id);
       const makeDefault = body.isDefault === true || total === 0;
       // Insert before demoting: a slug conflict must not drop the default.
-      const created = await environmentDAO.create({ projectId: project.id, name: body.name, slug, isDefault: 0 });
+      const created = await environmentDAO.create({ ...body, projectId: project.id, slug, isDefault: 0 });
       if (makeDefault) {
         await environmentDAO.clearDefault(project.id);
         await environmentDAO.markDefault(created.id);

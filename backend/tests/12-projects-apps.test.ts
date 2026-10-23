@@ -635,6 +635,7 @@ describe("Projects & Apps Management", () => {
             await apiRequest("GET", `/api/admin/releases?appId=${app.id}`),
           ),
         (body) => body.data.length === 1,
+        10000,
       );
       const releaseId = releases.data[0]!.id;
 
@@ -644,12 +645,15 @@ describe("Projects & Apps Management", () => {
       await waitForStoredEvent(eventId);
       evaluateRulesForApp(app.id);
 
+      // Match the rule's incident, not the whole list: the count assertions
+      // belong to the cooldown tests; this one only needs a target to cascade.
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<{ id: string; ruleId: string }> }>(
             await apiRequest("GET", `/api/admin/alerting/incidents?appId=${app.id}`),
           ),
-        (body) => body.data.length === 1,
+        (body) => body.data.some((incident) => incident.ruleId === rule.id),
+        10000,
       );
       const incidentId = incidents.data[0]!.id;
 

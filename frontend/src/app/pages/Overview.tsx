@@ -104,8 +104,7 @@ export function Overview() {
 
   useEffect(() => {
     let cancelled = false;
-    // The window is the range selection: every event inside it is fetched
-    // (the `since` filter bounds the query in time, not by item count).
+    // The fetching window is the range selection, not a count cap.
     const load = async () => {
       try {
         const since = new Date(Date.now() - rangeSpanMs(range)).toISOString();
@@ -161,9 +160,8 @@ export function Overview() {
     };
   }, [projectId, environmentId, applicationId, range]);
 
-  // Live feed: the page subscribes to NATS directly (there is no backend
-  // fan-out) and prepends events as they are ingested, keeping the ring
-  // bounded by the range in time.
+  // Live feed: NATS WebSocket, no backend fan-out; the ring is bounded by
+  // the range in time.
   useEffect(() => {
     const close = subscribeLiveFeed({
       onItem: (item) => {

@@ -1,10 +1,16 @@
 import { Outlet } from "react-router-dom";
-import { WorkspaceProvider } from "./WorkspaceContext";
+import { WorkspaceProvider, useWorkspace } from "./WorkspaceContext";
 import { AppSidebar } from "./AppSidebar";
 import { Topbar } from "./Topbar";
 import { MobileNavBar } from "./MobileNavBar";
 import { Toaster } from "./Toaster";
 import { AuthPrompt } from "./AuthPrompt";
+import { NoAccess } from "./NoAccess";
+
+function AppContent() {
+  const { noAccess } = useWorkspace();
+  return noAccess ? <NoAccess /> : <Outlet />;
+}
 
 export function AppChrome() {
   return (
@@ -14,7 +20,7 @@ export function AppChrome() {
         <div className="main">
           <Topbar />
           <div className="page">
-            <Outlet />
+            <AppContent />
           </div>
         </div>
         <MobileNavBar />

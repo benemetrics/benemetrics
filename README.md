@@ -40,6 +40,7 @@ story.
 ## Contents
 
 - [Screenshots](#screenshots)
+- [Sponsor](#sponsor)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Quick start](#quick-start)
@@ -114,6 +115,13 @@ in a group, an identity grant overrides the groups for one identity. Every
 change lands in the audit trail.
 
 ![Permissions](docs/screenshots/permissions.png)
+
+---
+
+## Sponsor
+
+**SpicySquid** is generously deploying a demo of Benemetrics — head over to
+their demo deployment to try the project before you self-host.
 
 ---
 

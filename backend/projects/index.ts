@@ -13,11 +13,24 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
   .post(
     "/",
     async ({ body }) => {
-      const slug = (body.slug || body.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const slug = (body.slug || body.name)
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
       if (!slug) throw badRequest("Project slug could not be derived");
-      const project = await projectDAO.createUnique({ name: body.name, slug, description: body.description || "" });
+      const project = await projectDAO.createUnique({
+        name: body.name,
+        slug,
+        description: body.description || "",
+      });
       try {
-        await environmentDAO.create({ projectId: project.id, name: "Testing", slug: "testing", isDefault: 1 });
+        await environmentDAO.create({
+          projectId: project.id,
+          name: "Testing",
+          slug: "testing",
+          isDefault: 1,
+        });
       } catch (err) {
         // A project without its default environment breaks the invariant.
         await projectDAO.delete(project.id);
@@ -70,7 +83,12 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
     "/:id",
     async ({ params: { id } }) => {
       const apps = await appDAO.listRawByProject(id);
-      await Promise.all(apps.map(async (app) => { await issueDAO.deleteByApp(app.id); await appDAO.delete(app.id); }));
+      await Promise.all(
+        apps.map(async (app) => {
+          await issueDAO.deleteByApp(app.id);
+          await appDAO.delete(app.id);
+        }),
+      );
       await environmentDAO.deleteByProject(id);
       await projectDAO.delete(id);
       return { success: true };
@@ -125,7 +143,15 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
         async ({ params: { id }, body }) => {
           const project = await projectDAO.findByIdOrThrow(id);
           const environment = await environmentDAO.resolveForApp(id, body.environment);
-          const app = await appDAO.create({ id: crypto.randomUUID(), projectId: id, environmentId: environment.id, name: body.name, platform: body.platform || "javascript", ingestKey: `${project.slug}-${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`, publicKey: crypto.randomUUID().replace(/-/g, "").slice(0, 32) });
+          const app = await appDAO.create({
+            id: crypto.randomUUID(),
+            projectId: id,
+            environmentId: environment.id,
+            name: body.name,
+            platform: body.platform || "javascript",
+            ingestKey: `${project.slug}-${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`,
+            publicKey: crypto.randomUUID().replace(/-/g, "").slice(0, 32),
+          });
           return { ...app, environment };
         },
         {

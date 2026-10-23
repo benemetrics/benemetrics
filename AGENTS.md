@@ -22,6 +22,11 @@ Agent operating rules for this repository. `docs/BACKEND_API.md` is the long-for
 
 Lightweight Sentry backend. Bun + Elysia (HTTP) + ArkType (validation) + Drizzle ORM + NATS JetStream + ClickHouse + S3-compatible object store. Frontend consumes the exported `App` type via Eden Treaty. Entry point: `backend/index.ts`.
 
+## Working flow
+
+- NEVER commit directly to `master`. Work on a branch (`type/short-topic`), push it, open a PR, and let the maintainer merge — always. Commit messages imperative, one logical change per PR where practical.
+- Bundle related changes in one pass and run the checks once at the end (`bun run typecheck` + `bun run test`) — not after every tweak.
+
 ## Business rules
 
 The domain hierarchy is strictly **Project → Environment (shared by apps)**. Do not flatten it.

@@ -47,7 +47,14 @@ export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags"
   .post(
     "/",
     async ({ body }) => {
-      const variants = body.variants?.length ? body.variants : body.type === "boolean" ? [{ key: "control", name: "Control", value: false, weight: 50 }, { key: "treatment", name: "Treatment", value: true, weight: 50 }] : [{ key: "default", name: "Default", value: body.defaultValue, weight: 100 }];
+      const variants = body.variants?.length
+        ? body.variants
+        : body.type === "boolean"
+          ? [
+              { key: "control", name: "Control", value: false, weight: 50 },
+              { key: "treatment", name: "Treatment", value: true, weight: 50 },
+            ]
+          : [{ key: "default", name: "Default", value: body.defaultValue, weight: 100 }];
       assertVariants(variants);
       assertRuleAttributes(body.targetingRules ?? []);
       // The flag belongs to a project, optionally narrowed to one of its apps.
@@ -58,7 +65,21 @@ export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags"
           throw badRequest("The app does not belong to the project");
         }
       }
-      const created = await featureFlagDAO.create({ key: body.key, name: body.name, description: body.description ?? "", type: body.type, defaultValue: String(body.defaultValue), variants: JSON.stringify(variants), targetingRules: JSON.stringify(body.targetingRules ?? []), segments: JSON.stringify(body.segments ?? []), status: "draft", rolloutPercentage: body.rolloutPercentage ?? 100, experiment: body.experiment != null ? JSON.stringify(body.experiment) : null, projectId: body.projectId, appId: body.appId ?? null });
+      const created = await featureFlagDAO.create({
+        key: body.key,
+        name: body.name,
+        description: body.description ?? "",
+        type: body.type,
+        defaultValue: String(body.defaultValue),
+        variants: JSON.stringify(variants),
+        targetingRules: JSON.stringify(body.targetingRules ?? []),
+        segments: JSON.stringify(body.segments ?? []),
+        status: "draft",
+        rolloutPercentage: body.rolloutPercentage ?? 100,
+        experiment: body.experiment != null ? JSON.stringify(body.experiment) : null,
+        projectId: body.projectId,
+        appId: body.appId ?? null,
+      });
       await publishFlagChange({ type: "create", flagKey: created.key, flag: created });
       return created;
     },
@@ -84,7 +105,15 @@ export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags"
     async ({ query }) => {
       if (query.projectId) await projectDAO.findByIdOrThrow(query.projectId);
       if (query.appId) await appDAO.findByIdOrThrow(query.appId);
-      return featureFlagDAO.list({ cursor: query.cursor, limit: query.limit, status: query.status, type: query.type, search: query.search, projectId: query.projectId ?? null, appId: query.appId ?? null });
+      return featureFlagDAO.list({
+        cursor: query.cursor,
+        limit: query.limit,
+        status: query.status,
+        type: query.type,
+        search: query.search,
+        projectId: query.projectId ?? null,
+        appId: query.appId ?? null,
+      });
     },
     {
       query: arktype({
@@ -114,22 +143,15 @@ export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags"
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...(body.description !== undefined ? { description: body.description } : {}),
         ...(body.type !== undefined ? { type: body.type } : {}),
-        ...(body.defaultValue !== undefined
-          ? { defaultValue: String(body.defaultValue) }
-          : {}),
-        ...(body.variants !== undefined
-          ? { variants: JSON.stringify(body.variants) }
-          : {}),
+        ...(body.defaultValue !== undefined ? { defaultValue: String(body.defaultValue) } : {}),
+        ...(body.variants !== undefined ? { variants: JSON.stringify(body.variants) } : {}),
         ...(body.targetingRules !== undefined
           ? { targetingRules: JSON.stringify(body.targetingRules) }
           : {}),
-        ...(body.segments !== undefined
-          ? { segments: JSON.stringify(body.segments) }
-          : {}),
+        ...(body.segments !== undefined ? { segments: JSON.stringify(body.segments) } : {}),
         ...(body.experiment !== undefined
           ? {
-              experiment:
-                body.experiment == null ? null : JSON.stringify(body.experiment),
+              experiment: body.experiment == null ? null : JSON.stringify(body.experiment),
             }
           : {}),
         ...(body.rolloutPercentage !== undefined
@@ -163,7 +185,10 @@ export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags"
       if (current.status === "archived" && body.status !== "archived") {
         throw badRequest("Archived flags cannot change status");
       }
-      const updated = await featureFlagDAO.updateOrThrow(id, { status: body.status, updatedAt: new Date().toISOString() });
+      const updated = await featureFlagDAO.updateOrThrow(id, {
+        status: body.status,
+        updatedAt: new Date().toISOString(),
+      });
       await publishFlagChange({ type: "status", flagKey: updated.key, flag: updated });
       return updated;
     },

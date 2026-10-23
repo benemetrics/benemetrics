@@ -98,6 +98,20 @@ jobs:
             -e CLICKHOUSE_SKIP_USER_SETUP=1 \
             clickhouse/clickhouse-server:latest
 
+      # e2e/preload.ts defaults the replay segment store here; the init
+      # container mirrors the compose rustfs-init (entrypoint override included).
+      - name: Start RustFS (replay segment object store)
+        run: |
+          docker run -d --name rustfs --network benemetrics-test -p 9100:9000 \
+            -e RUSTFS_ACCESS_KEY=rustfsadmin -e RUSTFS_SECRET_KEY=rustfsadmin \
+            rustfs/rustfs:latest
+          docker run --rm --network benemetrics-test --entrypoint /bin/sh rustfs/rc:latest -c "
+            until rc alias set local http://rustfs:9000 rustfsadmin rustfsadmin; do sleep 1; done;
+            until rc ls local/ >/dev/null 2>&1; do sleep 1; done;
+            rc ls local/sentry-replays >/dev/null 2>&1 || rc mb local/sentry-replays;
+            printf '%s' '{\"rules\":[{\"allowedOrigins\":[\"*\"],\"allowedMethods\":[\"GET\",\"HEAD\"],\"allowedHeaders\":[\"*\"],\"exposeHeaders\":[\"ETag\",\"Content-Length\",\"Content-Type\"],\"maxAgeSeconds\":3000}]}' | rc bucket cors set local/sentry-replays -;
+            "
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v1
         with:

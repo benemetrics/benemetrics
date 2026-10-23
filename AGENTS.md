@@ -88,6 +88,9 @@ Ingest Handler → NATS (sentry.events, sentry.metrics)
 ## Validation
 
 - MUST declare a schema for every route input (`body`, `query`, `params`).
+- Undeclared keys are dropped by the global ArkType config (`backend/arktype-config.ts`, imported first by
+  `backend/index.ts`) — a validated body's undeclared keys can never reach a DAO, so spreading the body
+  into DAO args is safe. Do not declare per-route `onUndeclaredKey`; the global config owns the behavior.
 - MUST import consistently: `import { type as arktype } from "arktype"` (do not mix with Elysia's `t`/`type`).
 - MUST validate UUIDs as `"string.uuid"` and enums as literals (e.g. `"'draft' | 'active'"`).
 - NEVER trust unvalidated client input; do not replace schema validation with ad-hoc `if` checks.

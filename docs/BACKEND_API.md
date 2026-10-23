@@ -160,7 +160,7 @@ helm/benemetrics/            # The Helm chart: the API, the consumer and the bun
 1. Bun starts `backend/index.ts`.
 2. `new Elysia()` registers the root redirect, then `.use(...)` of the route modules (`backend/routes.ts`).
 3. Route handler receives Elysia context (`{ body, query, params, request, set, status }`).
-4. Input validated by route's `body` / `query` / `params` schema (ArkType).
+4. Input validated by route's `body` / `query` / `params` schema (ArkType); undeclared keys are dropped (`backend/arktype-config.ts`), so a `...body` spread into a DAO carries only declared fields.
 5. Handler calls **DAO** from `db/dao/*` — handlers **never** touch Drizzle directly.
 6. DAO runs Drizzle query, returns row (or throws `ApiError` from `backend/errors.ts`).
 7. Handler shapes HTTP response; errors bubble to global `onError` → maps `ApiError` to HTTP status + `{ error }`, falls back to 500.

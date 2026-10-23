@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import "./arktype-config";
 import { ApiError } from "./errors";
 import ui from "../frontend/index.html";
 import { apiRoutes } from "./routes";

@@ -1,12 +1,7 @@
 /**
- * Input hardening — the global ArkType config (`backend/arktype-config.ts`)
- * drops undeclared keys from every schema's output.
- *
- * Two prongs:
- * 1. unit: a plain schema's output carries only the declared keys;
- * 2. endpoint: `...body` spreads (the source-map token create spreads the
- *    validated body straight into the INSERT) cannot carry injected state —
- *    an attacker-supplied `id`/`revokedAt` must not survive.
+ * The global ArkType config drops undeclared keys — unit proof, plus the
+ * spread-of-body route (the source-map token create) proving injected row
+ * state cannot survive it.
  */
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import "../arktype-config";
@@ -81,8 +76,7 @@ describe("Undeclared keys are dropped", () => {
           projectId,
           appId,
           environmentId,
-          // all of these are undeclared and must be dropped, not carried
-          // into the INSERT by the `...body` spread
+          // undeclared: must not survive the `...body` spread
           id: "attacker-supplied-id",
           tokenHash: "attacker-hash",
           revokedAt: "9999-01-01T00:00:00.000Z",
@@ -91,8 +85,6 @@ describe("Undeclared keys are dropped", () => {
       });
       expect(response.status).toBe(200);
 
-      // The response is `{ ...record, token }`, so the injected column
-      // values would end up top-level if the spread carried them.
       const created = (await response.json()) as {
         id: string;
         revokedAt: string | null;

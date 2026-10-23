@@ -83,10 +83,10 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
     async ({ body, isAdmin, adminId }) => {
       requireAdmin({ isAdmin });
       const created = await permissionRuleDAO.create({
+        ...body, // isEnabled passes through
         name: normalizeName(body.name),
         environments: normalizeScopeList(body.environments, "environments"),
         appPrefixes: normalizeScopeList(body.appPrefixes, "appPrefixes"),
-        ...(body.isEnabled !== undefined ? { isEnabled: body.isEnabled } : {}),
       });
       await audit(adminId, "rule", created.id, "create", null, created);
       return created;
@@ -102,15 +102,16 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
         const clash = await permissionRuleDAO.findByName(body.name);
         if (clash) throw badRequest(`Permission rule already exists: ${body.name}`);
       }
+      const { name, environments, appPrefixes, ...passthrough } = body;
       const updated = await permissionRuleDAO.updateOrThrow(id, {
-        ...(body.name !== undefined ? { name: normalizeName(body.name) } : {}),
-        ...(body.environments !== undefined
-          ? { environments: normalizeScopeList(body.environments, "environments") }
+        ...passthrough, // isEnabled passes through
+        ...(name !== undefined ? { name: normalizeName(name) } : {}),
+        ...(environments !== undefined
+          ? { environments: normalizeScopeList(environments, "environments") }
           : {}),
-        ...(body.appPrefixes !== undefined
-          ? { appPrefixes: normalizeScopeList(body.appPrefixes, "appPrefixes") }
+        ...(appPrefixes !== undefined
+          ? { appPrefixes: normalizeScopeList(appPrefixes, "appPrefixes") }
           : {}),
-        ...(body.isEnabled !== undefined ? { isEnabled: body.isEnabled } : {}),
       });
       await audit(adminId, "rule", id, "update", current, updated);
       return updated;
@@ -133,12 +134,11 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
     async ({ body, isAdmin, adminId }) => {
       requireAdmin({ isAdmin });
       const created = await permissionGrantDAO.create({
+        ...body, // isEnabled/canWrite pass through
         identityId: body.identityId.trim(),
         label: body.label?.trim() ?? null,
         environments: normalizeScopeList(body.environments, "environments"),
         appPrefixes: normalizeScopeList(body.appPrefixes, "appPrefixes"),
-        ...(body.isEnabled !== undefined ? { isEnabled: body.isEnabled } : {}),
-        ...(body.canWrite !== undefined ? { canWrite: body.canWrite } : {}),
       });
       await audit(adminId, "grant", created.id, "create", null, created);
       return created;
@@ -154,19 +154,17 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
         const clash = await permissionGrantDAO.findByIdentityId(body.identityId.trim());
         if (clash) throw badRequest(`Permission grant already exists: ${body.identityId}`);
       }
+      const { identityId, label, environments, appPrefixes, ...passthrough } = body;
       const updated = await permissionGrantDAO.updateOrThrow(id, {
-        ...(body.identityId !== undefined
-          ? { identityId: body.identityId.trim() }
+        ...passthrough, // isEnabled/canWrite pass through
+        ...(identityId !== undefined ? { identityId: identityId.trim() } : {}),
+        ...(label !== undefined ? { label: label?.trim() ?? null } : {}),
+        ...(environments !== undefined
+          ? { environments: normalizeScopeList(environments, "environments") }
           : {}),
-        ...(body.label !== undefined ? { label: body.label?.trim() ?? null } : {}),
-        ...(body.environments !== undefined
-          ? { environments: normalizeScopeList(body.environments, "environments") }
+        ...(appPrefixes !== undefined
+          ? { appPrefixes: normalizeScopeList(appPrefixes, "appPrefixes") }
           : {}),
-        ...(body.appPrefixes !== undefined
-          ? { appPrefixes: normalizeScopeList(body.appPrefixes, "appPrefixes") }
-          : {}),
-        ...(body.isEnabled !== undefined ? { isEnabled: body.isEnabled } : {}),
-        ...(body.canWrite !== undefined ? { canWrite: body.canWrite } : {}),
       });
       await audit(adminId, "grant", id, "update", current, updated);
       return updated;

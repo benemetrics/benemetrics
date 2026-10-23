@@ -72,7 +72,7 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
         const visible = [...view.appIds];
         appIds = appIds ? appIds.filter((id) => visible.includes(id)) : visible;
       }
-      const { data } = await listStoredEvents({ cursor: query.cursor, limit: query.limit, projectId: query.projectId, appIds, since: query.since });
+      const { data } = await listStoredEvents({ ...query, appIds });
       return { data: await Promise.all(data.map(async (stored) => { const parsed = parseStoredEnvelope(stored); const items = parsed ? parsed.items.map((item) => (item.header.type === "span" ? convertSpanToTransaction(item.header, item.payload) : item)) : []; const pick = (type: string) => items.find((item) => item.header.type === type); const event = pick("event") ? normalizeTransactionPayload(pick("event")!.payload) : null; const transaction = pick("transaction") ? normalizeTransactionPayload(pick("transaction")!.payload) : null; await Promise.all([symbolicateBestEffort(stored.projectId, event), symbolicateBestEffort(stored.projectId, transaction)]); return { id: stored.id, receivedAt: stored.receivedAt, itemTypes: items.map((item) => item.header.type), event, transaction, feedback: items.find((item) => item.header.type === "feedback" || item.header.type === "user_feedback")?.payload ?? null }; })) };
     },
     {

@@ -109,31 +109,19 @@ export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags"
       // Only user-facing configuration is patchable; internal columns
       // (id, createdAt, updatedAt) cannot be set by the client. Status
       // changes go through /:id/status.
+      const { variants, targetingRules, segments, experiment, defaultValue, ...passthrough } = body;
       const updated = await featureFlagDAO.updateOrThrow(id, {
-        ...(body.key !== undefined ? { key: body.key } : {}),
-        ...(body.name !== undefined ? { name: body.name } : {}),
-        ...(body.description !== undefined ? { description: body.description } : {}),
-        ...(body.type !== undefined ? { type: body.type } : {}),
-        ...(body.defaultValue !== undefined
-          ? { defaultValue: String(body.defaultValue) }
+        ...passthrough,
+        ...(defaultValue !== undefined
+          ? { defaultValue: String(defaultValue) }
           : {}),
-        ...(body.variants !== undefined
-          ? { variants: JSON.stringify(body.variants) }
+        ...(variants !== undefined ? { variants: JSON.stringify(variants) } : {}),
+        ...(targetingRules !== undefined
+          ? { targetingRules: JSON.stringify(targetingRules) }
           : {}),
-        ...(body.targetingRules !== undefined
-          ? { targetingRules: JSON.stringify(body.targetingRules) }
-          : {}),
-        ...(body.segments !== undefined
-          ? { segments: JSON.stringify(body.segments) }
-          : {}),
-        ...(body.experiment !== undefined
-          ? {
-              experiment:
-                body.experiment == null ? null : JSON.stringify(body.experiment),
-            }
-          : {}),
-        ...(body.rolloutPercentage !== undefined
-          ? { rolloutPercentage: body.rolloutPercentage }
+        ...(segments !== undefined ? { segments: JSON.stringify(segments) } : {}),
+        ...(experiment !== undefined
+          ? { experiment: experiment == null ? null : JSON.stringify(experiment) }
           : {}),
         updatedAt: new Date().toISOString(),
       });

@@ -109,8 +109,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       if (appId) await appDAO.findByIdOrThrow(appId);
       if (projectId) await projectDAO.findByIdOrThrow(projectId);
       const created = await alertChannelDAO.create({
-        name: body.name,
-        type: body.type,
+        ...body,
         config: JSON.stringify(body.config ?? {}),
         appId,
         projectId,
@@ -135,12 +134,11 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
   .patch(
     "/channels/:id",
     async ({ params: { id }, body }) => {
+      // name/type pass through; config is the stringified JSON column
+      const { config, ...passthrough } = body;
       const updated = await alertChannelDAO.updateOrThrow(id, {
-        ...(body.name !== undefined ? { name: body.name } : {}),
-        ...(body.type !== undefined ? { type: body.type } : {}),
-        ...(body.config !== undefined
-          ? { config: JSON.stringify(body.config) }
-          : {}),
+        ...passthrough,
+        ...(config !== undefined ? { config: JSON.stringify(config) } : {}),
       });
       return updated;
     },
@@ -190,7 +188,17 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       const projectId = body.projectId ?? null;
       if (appId) await appDAO.findByIdOrThrow(appId);
       if (projectId) await projectDAO.findByIdOrThrow(projectId);
-      const base = { name: body.name, trigger: body.trigger ?? "threshold", cooldownSeconds: body.cooldownSeconds ?? 3600, channelIds: JSON.stringify(body.channelIds ?? []), appId, projectId, filters: JSON.stringify(body.filters ?? {}), message: body.message ?? null, folder: body.folder ?? null };
+      const base = {
+        ...body,
+        trigger: body.trigger ?? "threshold",
+        cooldownSeconds: body.cooldownSeconds ?? 3600,
+        channelIds: JSON.stringify(body.channelIds ?? []),
+        appId,
+        projectId,
+        filters: JSON.stringify(body.filters ?? {}),
+        message: body.message ?? null,
+        folder: body.folder ?? null,
+      };
       if (
         "metric" in body &&
         base.trigger === "threshold" &&
@@ -199,7 +207,18 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       ) {
         throw badRequest("threshold rules require a static threshold or a thresholdFactor");
       }
-      const rule = await alertRuleDAO.create("metric" in body ? { ...base, metric: body.metric, operator: body.operator, threshold: body.threshold ?? null, thresholdFactor: body.thresholdFactor ?? null, windowSeconds: body.windowSeconds, measurement: body.measurement ?? null } : { ...base, thresholdFactor: null });
+      const rule = await alertRuleDAO.create(
+        "metric" in body
+          ? {
+              ...base,
+              metric: body.metric,
+              operator: body.operator,
+              threshold: body.threshold ?? null,
+              thresholdFactor: body.thresholdFactor ?? null,
+              measurement: body.measurement ?? null,
+            }
+          : { ...base, thresholdFactor: null },
+      );
       await recordRuleChange(rule, "created", adminId);
       return rule;
     },
@@ -239,7 +258,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
     "/rules/:id/history",
     async ({ params: { id }, query }) => {
       await alertRuleDAO.findByIdOrThrow(id);
-      return alertRuleHistoryDAO.list({ ruleId: id, cursor: query.cursor, limit: query.limit });
+      return alertRuleHistoryDAO.list({ ruleId: id, ...query });
     },
     {
       params: arktype({ id: "string.uuid" }),

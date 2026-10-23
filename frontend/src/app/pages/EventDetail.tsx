@@ -442,8 +442,8 @@ export function EventDetail() {
   }, [issueId]);
 
   // The stored window supplies the payloads the panels aggregate; the
-  // occurrences decide which of them belong to this issue. The window is the
-  // last 24 hours, matching the stats above — time-bounded, not item-capped.
+  // occurrences decide which of them belong to this issue (last 24 h,
+  // matching the stats above).
   useEffect(() => {
     if (!issueId) return;
     let cancelled = false;

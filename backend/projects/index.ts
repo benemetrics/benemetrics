@@ -15,7 +15,7 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
     async ({ body }) => {
       const slug = (body.slug || body.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
       if (!slug) throw badRequest("Project slug could not be derived");
-      const project = await projectDAO.createUnique({ name: body.name, slug, description: body.description || "" });
+      const project = await projectDAO.createUnique({ ...body, slug, description: body.description || "" });
       try {
         await environmentDAO.create({ projectId: project.id, name: "Testing", slug: "testing", isDefault: 1 });
       } catch (err) {

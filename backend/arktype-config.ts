@@ -1,6 +1,5 @@
-// Must be imported before anything creates an ArkType schema (it is loaded
-// first by backend/index.ts): undeclared keys are dropped, so spreading a
-// validated body into a DAO can never carry client junk.
+// Dropping undeclared keys globally is what keeps `...body` spreads in DAOs
+// free of client junk; this module must load before the first schema.
 import { configure } from "arktype/config";
 
 configure({ onUndeclaredKey: "delete" });

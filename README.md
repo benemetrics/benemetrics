@@ -120,8 +120,7 @@ change lands in the audit trail.
 
 ## Sponsor
 
-**SpicySquid** is generously deploying a demo of Benemetrics — head over to
-their demo deployment to try the project before you self-host.
+<a href="https://spicysquid.tech"><img src="docs/screenshots/sponsor-spicysquid.svg" alt="SpicySquid" width="96" align="top" /></a> &nbsp; [SpicySquid](https://spicysquid.tech) is generously deploying a demo of Benemetrics — head over to [the demo deployment](https://benemetrics.spicysquid.tech) to try the project before you self-host.
 
 ---
 

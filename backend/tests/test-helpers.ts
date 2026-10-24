@@ -8,23 +8,17 @@
  * listener, only the NATS broker.)
  */
 
-import { mock } from "bun:test";
 import app from "../index";
 import { findStoredEventById } from "../events-store";
 import type { StoredEvent } from "../protocol/events";
 import { connect, type NatsConnection } from "@nats-io/transport-node";
 import { jetstreamManager } from "@nats-io/jetstream";
-import * as realAdminToken from "../admin-token";
-
-// Pin the in-memory admin token across the suite; no test hook exists in
-// the production module.
-mock.module("../admin-token", () => ({
-  ...realAdminToken,
-  currentAdminToken: () => "e2e-admin-token",
-}));
 
 /** Canonical origin for in-process requests; DSN hosts derive from it. */
 export const TEST_ORIGIN = "http://test.local";
+
+// The credential lives in global Elysia state; pin it for the suite.
+app.store.adminToken = "e2e-admin-token";
 
 export const ADMIN_TOKEN = "API-Key e2e-admin-token";
 

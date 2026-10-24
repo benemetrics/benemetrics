@@ -25,11 +25,9 @@ items below are documented in `docs/` (`docs/rate-limiting.md`,
 
 ## Permissions — design follow-ups
 
-- [ ] Organization-level admin concept (only the global `ADMIN_TOKEN` today).
-- [ ] Zero-downtime `ADMIN_TOKEN` rotation (today: rotate the env var and restart).
-- [ ] JWKS cache invalidation beyond the single re-fetch; scope expansion caching for large deployments.
-- [ ] Clock-skew strategy beyond ±60 s; token introspection (RFC 7662) for immediate revocation.
-- [ ] Whitelist revocation UX — distinguish a "read nothing" grant from "no grant" in the UI.
+- [ ] Organization-level admin concept (only the global admin token today).
+- [ ] Token introspection (RFC 7662) for immediate revocation of provider JWTs.
+- [ ] Scope expansion caching for large deployments.
 
 ## Rate limiting — reverse-proxy owned
 
@@ -46,7 +44,7 @@ hygiene; §4+ is retained as a design archive only.
   full suite (CI + local).
 - Local dev Postgres runs on host port **5433**
   (`DATABASE_URL=postgres://postgres:mysecretpassword@localhost:5433/sentry`).
-- Dev server: `PORT=31338 ADMIN_TOKEN=dev-admin-token bun run dev`; UI at
+- Dev server: `PORT=31338 bun run dev`; UI at
   `http://localhost:31338/ui`. The side-effects consumer is a separate
   binary (`bun run consumer`) — issue/release/alert side effects only run there.
 - The frontend bundle is built at server start, so OIDC env changes need a restart.

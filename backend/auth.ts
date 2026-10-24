@@ -1,8 +1,7 @@
 import { env } from "bun";
 import { sourceMapTokenDAO, hashUploadToken } from "db/dao/source-map-tokens";
 import type { SourceMapTokenAuthRecord } from "db/dao/source-map-tokens";
-import { forbidden, serviceUnavailable, unauthorized } from "backend/errors";
-import { currentAdminToken } from "./admin-token";
+import { forbidden, internalError, serviceUnavailable, unauthorized } from "backend/errors";
 import * as jose from "jose";
 import * as client from 'openid-client';
 import {
@@ -110,7 +109,13 @@ export interface Identity {
   admin: boolean;
 }
 
-export async function resolveIdentity({ request }: { request: Request }): Promise<Identity> {
+export async function resolveIdentity({
+  request,
+  adminToken,
+}: {
+  request: Request;
+  adminToken: string;
+}): Promise<Identity> {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) throw unauthorized();
 
@@ -119,7 +124,7 @@ export async function resolveIdentity({ request }: { request: Request }): Promis
 
   switch (type) {
     case "API-Key": {
-      const expected = Buffer.from(currentAdminToken());
+      const expected = Buffer.from(adminToken);
       const given = Buffer.from(token);
       // The length check keeps a wrong-length credential a 401: the
       // constant-time compare throws on a mismatch.
@@ -139,14 +144,24 @@ export async function resolveIdentity({ request }: { request: Request }): Promis
 
 // Elysia merges a resolve's return value into the context, so the identity
 // travels as `adminId` / `adminGroups` / `isAdmin` / `adminScope` / `canWrite`.
-export async function resolveAdminId({ request }: { request: Request }): Promise<{
+export async function resolveAdminId({
+  request,
+  store,
+}: {
+  request: Request;
+  // apiRoutes composes adminTokenStore first, so the merged store carries
+  // the credential at runtime even though group-local types do not.
+  store: { adminToken?: string };
+}): Promise<{
   adminId: string;
   adminGroups: string[];
   isAdmin: boolean;
   adminScope: PermissionScope | null;
   canWrite: boolean;
 }> {
-  const identity = await resolveIdentity({ request });
+  const adminToken = store.adminToken;
+  if (typeof adminToken !== "string") throw internalError("admin token state is not mounted");
+  const identity = await resolveIdentity({ request, adminToken });
   if (identity.admin) {
     return {
       adminId: identity.id,

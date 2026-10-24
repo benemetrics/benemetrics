@@ -1,14 +1,8 @@
-// The admin credential: in-memory only, generated on first use, rotated
-// daily by the Elysia cron in backend/index.ts. Fetched on every request so
-// an in-flight rotation never serves a stale value.
-let adminToken: string | undefined;
+import { Elysia } from "elysia";
 
-export function currentAdminToken(): string {
-  if (!adminToken) adminToken = crypto.randomUUID();
-  return adminToken;
-}
-
-export function rotateAdminToken(): string {
-  adminToken = crypto.randomUUID();
-  return adminToken;
-}
+// The admin credential as global Elysia state: generated at boot, mutated
+// in place per request, rotated daily by the cron in backend/index.ts.
+export const adminTokenStore = new Elysia({ name: "admin-token" }).state(
+  "adminToken",
+  crypto.randomUUID() as string,
+);

@@ -10,6 +10,9 @@
 
 import app from "../backend/index";
 
+// The credential lives in global Elysia state; pin it for the suite.
+app.store.adminToken = "e2e-admin-token";
+
 export const ADMIN_HEADERS = {
   "Content-Type": "application/json",
   Authorization: "API-Key e2e-admin-token",

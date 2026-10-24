@@ -33,7 +33,7 @@ Implementation: `resolveIdentity` (`backend/auth.ts`) checks the credentials —
 
 The admin token is the master credential. It is compared in constant time (no timing attacks, no prefix/length bypass). It yields the unrestricted id `local-admin` — the master identity, exempt from the scoped-read model. The token remains valid and accepted even when an identity provider is configured — it is never disabled by the presence of a provider.
 
-**Revocation:** Rotate by updating `ADMIN_TOKEN` environment variable and restarting the server. No hot-reload; active sessions terminate on next request. **Open item:** Zero-downtime token rotation mechanism (token versioning or key rotation).
+**Revocation:** The token is generated at boot and held only in memory (`backend/admin-token.ts`); it rotates daily at 00:00 UTC (Elysia cron in `backend/index.ts`), and a presented old token fails from the next request.
 
 **Lifecycle (known limitation):** the token never expires, is not bound to a person, and the UI keeps it in `localStorage`. There is no rotation, revocation or sign-out story beyond replacing the environment variable and restarting; the audit trail records the rule/grant changes, not the token's use. Deployments that need a short-lived credential should use the provider identities (a scoped grant) and keep the admin token for the administrative writes.
 
@@ -310,7 +310,7 @@ Same shape as rules, with the identity id (unique) instead of the group name, pl
 
 | Setting | Effect |
 |---------|--------|
-| `ADMIN_TOKEN` | Master credential; always accepted. Unset with no provider configured ⇒ every surface is 401 |
+| Admin token | Master credential; always accepted. Generated at boot, held only in memory (`backend/admin-token.ts`), rotated daily at 00:00 UTC (Elysia cron in `backend/index.ts`) — no env var, no file |
 | `OIDC_ISSUER` / `OAUTH_ISSUER` | Issuer + discovery base; provider considered configured. **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
 | `OIDC_JWKS_URL` | JWKS override (skips discovery). **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
 | `OIDC_ALLOW_INSECURE_HTTP` | `true` allows a plain-HTTP issuer (local providers only). The signature, audience, issuer and `azp` checks are unchanged. |
@@ -323,7 +323,7 @@ Startup never prints secrets.
 **Misconfiguration footguns:**
 
 - Audience without issuer (or issuer without audience) means every provider JWT fails — only the admin token works
-- Neither credential configured (no `ADMIN_TOKEN`, no provider) locks every surface in every environment
+- No credential presented (no admin token, no provider) locks every surface at 401
 - Issuer/JWKS URLs must be HTTPS in any real deployment (whoever controls the fetch controls signing keys) — a plain-HTTP issuer needs the explicit `OIDC_ALLOW_INSECURE_HTTP=true` opt-in
 - No audience configured + issuer configured = accepts tokens for any client from that issuer
 - Browser login requires a public SPA client, the exact redirect URI allowlisted, and CORS on discovery/token/JWKS — without them startup falls back to the admin-token prompt

@@ -46,6 +46,9 @@ interface WorkspaceValue {
   isAdmin: boolean;
   /** The scope the server granted; null for the unrestricted admin token. */
   scope: SessionDto["scope"];
+  /** True when the identity has an enabled grant but its scope is empty
+   *  (explicit "read nothing"). Distinct from "no grant" which yields 401. */
+  noAccess: boolean;
   query: string;
   setQuery: (value: string) => void;
 }
@@ -69,6 +72,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [adminUser] = useState<AdminProfileDto | null>(() => viewerProfile());
   const [isAdmin, setIsAdmin] = useState(true);
   const [scope, setScope] = useState<SessionDto["scope"]>(null);
+  const [noAccess, setNoAccess] = useState(false);
   const [query, setQuery] = useState("");
 
   // The server decides whether the identity is the admin or a scoped
@@ -81,6 +85,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         setIsAdmin(session?.isAdmin ?? true);
         setScope(session?.scope ?? null);
+        // An enabled grant with empty scope = explicit "read nothing".
+        // Distinct from "no grant" (401). Show a dedicated screen.
+        const s = session?.scope;
+        setNoAccess(
+          session?.isAdmin === false &&
+            s != null &&
+            s.environments.length === 0 &&
+            s.appPrefixes.length === 0,
+        );
       } catch {
         if (!cancelled) setIsAdmin(true);
       }
@@ -287,6 +300,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         adminUser,
         isAdmin,
         scope,
+        noAccess,
         query,
         setQuery,
       }}

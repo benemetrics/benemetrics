@@ -1,5 +1,4 @@
 import { Elysia } from "elysia";
-import { adminTokenStore } from "./admin-token";
 import { appsRoutes } from "./apps";
 import { environmentRoutes } from "./environments";
 import { issueRoutes } from "./issues";
@@ -29,7 +28,6 @@ import {
 // own credential surface (public, dsn or oidc) and guards the groups that
 // need one; the oidc groups resolve the identity through `oidcGuard`.
 export const apiRoutes = new Elysia()
-  .use(adminTokenStore)
   .use(appsRoutes)
   .use(environmentRoutes)
   .use(issueRoutes)

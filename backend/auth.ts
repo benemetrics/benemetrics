@@ -149,7 +149,7 @@ export async function resolveAdminId({
   store,
 }: {
   request: Request;
-  // apiRoutes composes adminTokenStore first, so the merged store carries
+  // The app composes the admin-token state first, so the merged store carries
   // the credential at runtime even though group-local types do not.
   store: { adminToken?: string };
 }): Promise<{

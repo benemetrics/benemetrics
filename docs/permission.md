@@ -33,7 +33,7 @@ Implementation: `resolveIdentity` (`backend/auth.ts`) checks the credentials —
 
 The admin token is the master credential. It is compared in constant time (no timing attacks, no prefix/length bypass). It yields the unrestricted id `local-admin` — the master identity, exempt from the scoped-read model. The token remains valid and accepted even when an identity provider is configured — it is never disabled by the presence of a provider.
 
-**Revocation:** The token is generated at boot and held only in memory (`backend/admin-token.ts`); it rotates daily at 00:00 UTC (Elysia cron in `backend/index.ts`), and a presented old token fails from the next request.
+**Revocation:** The token is generated at boot and held only in memory; it rotates daily at 00:00 UTC (Elysia cron in `backend/index.ts`), and a presented old token fails from the next request.
 
 **Lifecycle (known limitation):** the token never expires, is not bound to a person, and the UI keeps it in `localStorage`. There is no rotation, revocation or sign-out story beyond replacing the environment variable and restarting; the audit trail records the rule/grant changes, not the token's use. Deployments that need a short-lived credential should use the provider identities (a scoped grant) and keep the admin token for the administrative writes.
 
@@ -310,7 +310,7 @@ Same shape as rules, with the identity id (unique) instead of the group name, pl
 
 | Setting | Effect |
 |---------|--------|
-| Admin token | Master credential; always accepted. Generated at boot, held only in memory (`backend/admin-token.ts`), rotated daily at 00:00 UTC (Elysia cron in `backend/index.ts`) — no env var, no file |
+| Admin token | Master credential; always accepted. Generated at boot, held only in memory, rotated daily at 00:00 UTC (Elysia cron in `backend/index.ts`) — no env var, no file |
 | `OIDC_ISSUER` / `OAUTH_ISSUER` | Issuer + discovery base; provider considered configured. **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
 | `OIDC_JWKS_URL` | JWKS override (skips discovery). **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
 | `OIDC_ALLOW_INSECURE_HTTP` | `true` allows a plain-HTTP issuer (local providers only). The signature, audience, issuer and `azp` checks are unchanged. |

@@ -8,7 +8,6 @@ import { startAlertSweeper } from "./alerting/evaluation";
 import { startDeadLetterWorker } from "./alerting/dead-letters";
 import { initClickHouse } from "./clickhouse";
 import { assertStorageConfigured } from "./storage";
-import { adminTokenStore } from "./admin-token";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 
@@ -21,7 +20,7 @@ const app = new Elysia({
     },
   },
 })
-  .use(adminTokenStore)
+  .state("adminToken", crypto.randomUUID() as string) // global mutable state: the daily cron rotates it in place
   .use(cron({
     name: "admin-token-rotation",
     pattern: "0 0 * * *",

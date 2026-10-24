@@ -12,6 +12,20 @@ import {
 } from './permissions/engine';
 import type { PermissionScope } from './protocol/permissions';
 
+// Read ADMIN_TOKEN from file (for zero-downtime rotation) or env var.
+// File takes precedence if set and readable; otherwise falls back to env.
+async function readAdminToken(): Promise<string | undefined> {
+  const file = env.ADMIN_TOKEN_FILE;
+  if (file) {
+    try {
+      return (await Bun.file(file).text()).trim();
+    } catch {
+      // fall through to env
+    }
+  }
+  return env.ADMIN_TOKEN;
+}
+
 
 export interface SentryAuthTarget {
   publicKey: string;
@@ -65,9 +79,8 @@ const verifyWithIdP = async (token: string) => {
   try {
     const { payload } = await jose.jwtVerify(token, jwks, {
       audience: clientId,
-      requiredClaims: ["exp"], // fail closed: no expiry, no identity
-      // The issuer must be the configured one; the trailing slash is
-      // normalized, the way the providers write it.
+      requiredClaims: ["exp"],
+      clockTolerance: 5, // max 5 s clock skew (default is 60 s)
       ...(issuer
         ? { issuer: [issuer, issuer.replace(/\/+$/, "")] }
         : {}),
@@ -120,7 +133,8 @@ export async function resolveIdentity({ request }: { request: Request }): Promis
 
   switch (type) {
     case "API-Key": {
-      const expected = env.ADMIN_TOKEN ? Buffer.from(env.ADMIN_TOKEN) : null;
+      const tokenValue = await readAdminToken();
+      const expected = tokenValue ? Buffer.from(tokenValue) : null;
       const given = Buffer.from(token);
       // The length check keeps a wrong-length credential a 401: the
       // constant-time compare throws on a mismatch.

@@ -8,6 +8,7 @@ import { startAlertSweeper } from "./alerting/evaluation";
 import { startDeadLetterWorker } from "./alerting/dead-letters";
 import { initClickHouse } from "./clickhouse";
 import { assertStorageConfigured } from "./storage";
+import { generateAdminToken } from "./auth";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 
@@ -20,12 +21,12 @@ const app = new Elysia({
     },
   },
 })
-  .state("adminToken", crypto.randomUUID() as string)
+  .state("adminToken", generateAdminToken())
   .use(cron({
     name: "admin-token-rotation",
     pattern: "0 0 * * *",
     run: () => {
-      app.store.adminToken = crypto.randomUUID();
+      app.store.adminToken = generateAdminToken();
     },
   }))
   .onError(({ code, error, set }) => {

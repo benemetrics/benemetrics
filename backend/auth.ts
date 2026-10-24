@@ -100,6 +100,16 @@ function isProviderOutage(error: unknown): boolean {
 // Every oidc route group resolves the identity through `resolveIdentity`,
 // so the credential check lives in one place and fails closed before any handler runs.
 
+const TOKEN_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+export function generateAdminToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  const chars = Array.from(bytes, (b) => TOKEN_ALPHABET[b & 31]);
+  const groups = [];
+  for (let i = 0; i < chars.length; i += 6) groups.push(chars.slice(i, i + 6).join(""));
+  return `bnm_${groups.join("-")}`;
+}
+
 export interface Identity {
   /** The id every grant keys on: `local-admin` or `<issuer>-<subject>`. */
   id: string;

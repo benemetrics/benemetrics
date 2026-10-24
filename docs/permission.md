@@ -310,7 +310,7 @@ Same shape as rules, with the identity id (unique) instead of the group name, pl
 
 | Setting | Effect |
 |---------|--------|
-| Admin token | Master credential; always accepted. Generated at boot, held only in memory, rotated daily at 00:00 UTC (Elysia cron in `backend/index.ts`) — no env var, no file |
+| Admin token | Master credential; always accepted. Generated at boot, held only in memory, rotated daily at 00:00 UTC (Elysia cron in `backend/index.ts`) — `bnm_`-prefixed base32 groups, no env var, no file |
 | `OIDC_ISSUER` / `OAUTH_ISSUER` | Issuer + discovery base; provider considered configured. **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
 | `OIDC_JWKS_URL` | JWKS override (skips discovery). **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
 | `OIDC_ALLOW_INSECURE_HTTP` | `true` allows a plain-HTTP issuer (local providers only). The signature, audience, issuer and `azp` checks are unchanged. |

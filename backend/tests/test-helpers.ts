@@ -17,8 +17,6 @@ import { jetstreamManager } from "@nats-io/jetstream";
 /** Canonical origin for in-process requests; DSN hosts derive from it. */
 export const TEST_ORIGIN = "http://test.local";
 
-app.store.adminTokenHash = await Bun.password.hash("e2e-admin-token");
-
 export const ADMIN_TOKEN = "API-Key e2e-admin-token";
 
 export const ADMIN_HEADERS: Record<string, string> = {

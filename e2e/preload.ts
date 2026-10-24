@@ -34,6 +34,11 @@ process.env.S3_ACCESS_KEY_ID ??= "rustfsadmin";
 process.env.S3_SECRET_ACCESS_KEY ??= "rustfsadmin";
 process.env.S3_REGION ??= "us-east-1";
 
+// The backend accepts only the ADMIN_TOKEN configured in the environment,
+// so the suite configures one for every test file. Tests that need the
+// unconfigured state unset it temporarily and restore it.
+process.env.ADMIN_TOKEN = "e2e-admin-token";
+
 // Bun's WebView leaves its Chrome profile in the temp directory; a suite
 // leaves hundreds behind, and a full temp filesystem makes Chrome abort on
 // start. The profiles are per-run scratch space, so they are cleared

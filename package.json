@@ -24,7 +24,6 @@
   "dependencies": {
     "@clickhouse/client": "^1.24.1",
     "@electric-sql/pglite": "^0.5.10",
-    "@elysiajs/cron": "^1.4.2",
     "@elysiajs/eden": "^1.4.9",
     "@nats-io/jetstream": "^3.4.0",
     "@nats-io/transport-node": "^3.4.0",

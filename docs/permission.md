@@ -33,7 +33,7 @@ Implementation: `resolveIdentity` (`backend/auth.ts`) checks the credentials —
 
 The admin token is the master credential. It is compared in constant time (no timing attacks, no prefix/length bypass). It yields the unrestricted id `local-admin` — the master identity, exempt from the scoped-read model. The token remains valid and accepted even when an identity provider is configured — it is never disabled by the presence of a provider.
 
-**Revocation:** The token is generated at boot; only its `Bun.password` hash is kept in memory (`backend/index.ts`), and it rotates daily at 00:00 UTC (Elysia cron in the same file) — a presented old token fails from the next request.
+**Revocation:** Rotate by updating `ADMIN_TOKEN` environment variable and restarting the server. No hot-reload; active sessions terminate on next request. **Open item:** Zero-downtime token rotation mechanism (token versioning or key rotation).
 
 **Lifecycle (known limitation):** the token never expires, is not bound to a person, and the UI keeps it in `localStorage`. There is no rotation, revocation or sign-out story beyond replacing the environment variable and restarting; the audit trail records the rule/grant changes, not the token's use. Deployments that need a short-lived credential should use the provider identities (a scoped grant) and keep the admin token for the administrative writes.
 
@@ -71,8 +71,6 @@ Failures are silent (no token logging) and result in an unauthenticated request.
 
 **An outage is not an invalid credential:** a token the provider rejects (a bad signature, a wrong audience) is an unauthenticated request (401), but a provider that cannot be reached (the JWKS fetch failed or timed out) answers **503** — the operator can tell the two apart.
 
-**Revocation (optional):** without introspection, a verified JWT stays accepted until `exp`. With `OIDC_INTROSPECTION=true` the deployment opts into RFC 7662 introspection: the provider must expose an introspection endpoint, and every verified JWT is re-checked per request — `active !== true` answers `401` immediately (responses are never cached, so revocation lands on the next request), and an unreachable endpoint is a provider outage (`503`).
-
 **Production requirement:** Issuer and JWKS URLs **must use HTTPS** — whoever controls the fetch can substitute signing keys. A plain-HTTP issuer is refused by the OIDC client unless the deployment opts in with `OIDC_ALLOW_INSECURE_HTTP=true` (for a local provider only — the tokens would travel in the clear). The opt-in relaxes the discovery only: the signature, the audience, the issuer and the `azp` checks stay in force.
 
 ---
@@ -98,7 +96,7 @@ For a given identity (an id), the effective scope is determined in order:
 
 ### Scope Expansion to Visibility Sets
 
-The scope (environment names + app prefixes) expands into concrete visibility sets at request time. The queries filter on the names and the prefixes in SQL (the whole topology is not loaded). The expansion is cached per process, keyed by the scope value — a grant or rule change produces a new key without invalidation wiring, and the entry TTL bounds a topology change's staleness to 10 s (a new app with a matching name takes at most that long to appear in the scoped view).
+The scope (environment names + app prefixes) expands into concrete visibility sets at request time. The queries filter on the names and the prefixes in SQL (the whole topology is not loaded), and the expansion still runs per request — for large deployments, consider caching the visibility sets (open item).
 
 - **App visible** when its name starts with a permitted prefix **OR** its environment's name is permitted.
   > **⚠ Security implication:** Granting an environment name (e.g., `production`) grants access to **ALL apps in that environment**, regardless of app prefixes. This includes future apps added to that environment. Use app prefixes for fine-grained control.
@@ -312,11 +310,10 @@ Same shape as rules, with the identity id (unique) instead of the group name, pl
 
 | Setting | Effect |
 |---------|--------|
-| Admin token | Master credential; always accepted. Generated at boot, held only as its `Bun.password` hash, rotated daily at 00:00 UTC (Elysia cron in `backend/index.ts`) — `bnm_`-prefixed mixed-case groups, no env var, no file |
+| `ADMIN_TOKEN` | Master credential; always accepted. Unset with no provider configured ⇒ every surface is 401 |
 | `OIDC_ISSUER` / `OAUTH_ISSUER` | Issuer + discovery base; provider considered configured. **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
 | `OIDC_JWKS_URL` | JWKS override (skips discovery). **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
 | `OIDC_ALLOW_INSECURE_HTTP` | `true` allows a plain-HTTP issuer (local providers only). The signature, audience, issuer and `azp` checks are unchanged. |
-| `OIDC_INTROSPECTION` | `true` enables RFC 7662 immediate revocation: every verified JWT is re-checked per request against the provider's introspection endpoint; never cached. |
 | `OIDC_AUDIENCE` / `OIDC_CLIENT_ID` / `OAUTH_CLIENT_ID` | Expected audience. **Critical:** Without this, any token from the configured issuer is accepted. `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID` also enable the browser login flow. |
 | `OIDC_SCOPES` | Scopes requested by the browser login flow (default `openid email profile`). |
 | `OIDC_EMAIL_CLAIM` / `OIDC_GROUPS_CLAIM` / `OIDC_NAME_CLAIM` | Claim mapping (defaults: email, groups, name). Groups claim split on `/[\s,;|]+/`. |
@@ -326,7 +323,7 @@ Startup never prints secrets.
 **Misconfiguration footguns:**
 
 - Audience without issuer (or issuer without audience) means every provider JWT fails — only the admin token works
-- No credential presented (no admin token, no provider) locks every surface at 401
+- Neither credential configured (no `ADMIN_TOKEN`, no provider) locks every surface in every environment
 - Issuer/JWKS URLs must be HTTPS in any real deployment (whoever controls the fetch controls signing keys) — a plain-HTTP issuer needs the explicit `OIDC_ALLOW_INSECURE_HTTP=true` opt-in
 - No audience configured + issuer configured = accepts tokens for any client from that issuer
 - Browser login requires a public SPA client, the exact redirect URI allowlisted, and CORS on discovery/token/JWKS — without them startup falls back to the admin-token prompt

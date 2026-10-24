@@ -12,6 +12,8 @@ import { generateAdminToken } from "./auth";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 
+const adminTokenHash = await Bun.password.hash(generateAdminToken());
+
 const app = new Elysia({
   serve: {
     maxRequestBodySize: 12 * 1024 * 1024,
@@ -21,12 +23,12 @@ const app = new Elysia({
     },
   },
 })
-  .state("adminToken", generateAdminToken())
+  .state("adminTokenHash", adminTokenHash)
   .use(cron({
     name: "admin-token-rotation",
     pattern: "0 0 * * *",
-    run: () => {
-      app.store.adminToken = generateAdminToken();
+    run: async () => {
+      app.store.adminTokenHash = await Bun.password.hash(generateAdminToken());
     },
   }))
   .onError(({ code, error, set }) => {

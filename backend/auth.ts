@@ -126,10 +126,10 @@ export interface Identity {
 
 export async function resolveIdentity({
   request,
-  adminToken,
+  adminTokenHash,
 }: {
   request: Request;
-  adminToken: string;
+  adminTokenHash: string;
 }): Promise<Identity> {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) throw unauthorized();
@@ -139,14 +139,9 @@ export async function resolveIdentity({
 
   switch (type) {
     case "API-Key": {
-      const expected = Buffer.from(adminToken);
-      const given = Buffer.from(token);
-      // The length check keeps a wrong-length credential a 401: the
-      // constant-time compare throws on a mismatch.
-      if (given.length === expected.length && crypto.timingSafeEqual(given, expected)) {
-        return { id: "local-admin", groups: [], admin: true };
-      }
-      throw unauthorized();
+      if (!adminTokenHash) throw internalError("admin token hash is not mounted");
+      if (!(await Bun.password.verify(token, adminTokenHash))) throw unauthorized();
+      return { id: "local-admin", groups: [], admin: true };
     }
     case "Bearer": {
       const identity = await verifyWithIdP(token);
@@ -164,7 +159,7 @@ export async function resolveAdminId({
   store,
 }: {
   request: Request;
-  store: { adminToken?: string };
+  store: { adminTokenHash?: string };
 }): Promise<{
   adminId: string;
   adminGroups: string[];
@@ -172,9 +167,9 @@ export async function resolveAdminId({
   adminScope: PermissionScope | null;
   canWrite: boolean;
 }> {
-  const adminToken = store.adminToken;
-  if (typeof adminToken !== "string") throw internalError("admin token state is not mounted");
-  const identity = await resolveIdentity({ request, adminToken });
+  const adminTokenHash = store.adminTokenHash;
+  if (!adminTokenHash) throw internalError("admin token hash is not mounted");
+  const identity = await resolveIdentity({ request, adminTokenHash });
   if (identity.admin) {
     return {
       adminId: identity.id,

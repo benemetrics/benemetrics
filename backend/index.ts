@@ -1,5 +1,4 @@
 import { Elysia } from "elysia";
-import { cron } from "@elysiajs/cron";
 import "./arktype-config";
 import { ApiError } from "./errors";
 import ui from "../frontend/index.html";
@@ -8,14 +7,13 @@ import { startAlertSweeper } from "./alerting/evaluation";
 import { startDeadLetterWorker } from "./alerting/dead-letters";
 import { initClickHouse } from "./clickhouse";
 import { assertStorageConfigured } from "./storage";
-import { generateAdminToken } from "./auth";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 
-const adminTokenHash = await Bun.password.hash(generateAdminToken());
-
 const app = new Elysia({
   serve: {
+    // The server-wide body bound: generous enough for the 10 MB source-map
+    // upload, small enough that no request can exhaust the process.
     maxRequestBodySize: 12 * 1024 * 1024,
     routes: {
       "/ui": ui,
@@ -23,17 +21,11 @@ const app = new Elysia({
     },
   },
 })
-  .state("adminTokenHash", adminTokenHash)
-  .use(cron({
-    name: "admin-token-rotation",
-    pattern: "0 0 * * *",
-    run: async () => {
-      app.store.adminTokenHash = await Bun.password.hash(generateAdminToken());
-    },
-  }))
   .onError(({ code, error, set }) => {
     if (error instanceof ApiError) {
       set.status = error.httpStatus;
+      // A rate-limited answer carries the Sentry-compatible headers so the
+      // SDKs' own client limiter backs off.
       if (error.rateLimit) {
         set.headers["Retry-After"] = String(error.rateLimit.retryAfter);
         set.headers["X-Sentry-Rate-Limits"] = `${error.rateLimit.retryAfter}:${error.rateLimit.categories}:${error.rateLimit.scope}`;
@@ -59,6 +51,9 @@ if (import.meta.main) {
   app.listen(SERVER_PORT, async () => {
     console.log(`[Server] Sentry backend listening on port ${SERVER_PORT}`);
     try {
+      // NATS is connected when `./nats` is imported (publish side). The
+      // stream and its durable consumers belong to `backend/consumer.ts`;
+      // ClickHouse attaches its engine tables to those durables here.
       assertStorageConfigured();
       await initClickHouse();
     } catch (err) {

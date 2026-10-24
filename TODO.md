@@ -25,16 +25,32 @@ items below are documented in `docs/` (`docs/rate-limiting.md`,
 
 ## Permissions — design follow-ups
 
-- [ ] Organization-level admin concept (only the global admin token today).
+- [ ] Organization-level admin concept (only the global `ADMIN_TOKEN` today).
+- [ ] Zero-downtime `ADMIN_TOKEN` rotation (today: rotate the env var and restart).
+- [ ] JWKS cache invalidation beyond the single re-fetch; scope expansion caching for large deployments.
+- [ ] Clock-skew strategy beyond ±60 s; token introspection (RFC 7662) for immediate revocation.
+- [ ] Whitelist revocation UX — distinguish a "read nothing" grant from "no grant" in the UI.
 
-## Rate limiting — reverse-proxy owned
+## Rate limiting — backlog
 
-Per `AGENTS.md` (Hygiene landmine): the app owns only the **per-request hygiene
-layer** (caps — `413` for oversized bodies, gzip bombs, item/span counts in
-`backend/ratelimit/hygiene.ts` and `backend/ratelimit/config.ts`). Quotas,
-blocks, notifications, and the Settings panel are **not built**; they are the
-reverse proxy's job. `docs/rate-limiting.md` §1–§3 records the implemented
-hygiene; §4+ is retained as a design archive only.
+The app owns only the per-request hygiene (caps, not quotas) — `docs/rate-limiting.md`
+documents why the quota/blocks/notifications stack is deliberately unbuilt:
+
+- [ ] Per-app events/s **quota** + exceedance notifications — needs
+      `rate_limit_settings` (seeded single source), the per-app override, the
+      admin API and the panel. A quota, not a DoS guard; only then are
+      fingerprints/auto-blocks (attribution, not a cap) worth building.
+- [ ] Persistence + admin hardening — `ingest_blocks` +
+      `rate_limit_notifications`, rotate-key, the manual blocks, the overview.
+- [ ] Settings UI (Settings → Rate limits).
+- [ ] Shared bucket state if we ever run multiple replicas (Postgres or
+      NATS KV) — document the switch.
+
+Open questions carried from the design: the limiter is always on — announce
+the seeded defaults before deploying (the emergency off is
+`eventsPerSecond = 0`); blocks scope to ingestion only (admin UI and
+`/events/*` reads are never limited); replay/attachment-heavy envelopes may
+deserve their own lower quota; project/org-level limits later, if ever.
 
 ## Environment notes
 
@@ -42,7 +58,7 @@ hygiene; §4+ is retained as a design archive only.
   full suite (CI + local).
 - Local dev Postgres runs on host port **5433**
   (`DATABASE_URL=postgres://postgres:mysecretpassword@localhost:5433/sentry`).
-- Dev server: `PORT=31338 bun run dev`; UI at
+- Dev server: `PORT=31338 ADMIN_TOKEN=dev-admin-token bun run dev`; UI at
   `http://localhost:31338/ui`. The side-effects consumer is a separate
   binary (`bun run consumer`) — issue/release/alert side effects only run there.
 - The frontend bundle is built at server start, so OIDC env changes need a restart.

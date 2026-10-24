@@ -7,8 +7,12 @@ import { startAlertSweeper } from "./alerting/evaluation";
 import { startDeadLetterWorker } from "./alerting/dead-letters";
 import { initClickHouse } from "./clickhouse";
 import { assertStorageConfigured } from "./storage";
+import { cron } from "@elysiajs/cron";
+import { generateAdminToken } from "./auth";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
+
+const adminTokenHash = await Bun.password.hash(generateAdminToken());
 
 const app = new Elysia({
   serve: {
@@ -21,6 +25,14 @@ const app = new Elysia({
     },
   },
 })
+  .state("adminTokenHash", adminTokenHash)
+  .use(cron({
+    name: "admin-token-rotation",
+    pattern: "0 0 * * *",
+    run: async () => {
+      app.store.adminTokenHash = await Bun.password.hash(generateAdminToken());
+    },
+  }))
   .onError(({ code, error, set }) => {
     if (error instanceof ApiError) {
       set.status = error.httpStatus;

@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { cron } from "@elysiajs/cron";
 import "./arktype-config";
 import { ApiError } from "./errors";
 import ui from "../frontend/index.html";
@@ -13,8 +14,6 @@ const SERVER_PORT = Number(process.env.PORT) || 31337;
 
 const app = new Elysia({
   serve: {
-    // The server-wide body bound: generous enough for the 10 MB source-map
-    // upload, small enough that no request can exhaust the process.
     maxRequestBodySize: 12 * 1024 * 1024,
     routes: {
       "/ui": ui,
@@ -22,11 +21,16 @@ const app = new Elysia({
     },
   },
 })
+  .use(cron({
+    name: "admin-token-rotation",
+    pattern: "0 0 * * *",
+    run: () => {
+      rotateAdminToken();
+    },
+  }))
   .onError(({ code, error, set }) => {
     if (error instanceof ApiError) {
       set.status = error.httpStatus;
-      // A rate-limited answer carries the Sentry-compatible headers so the
-      // SDKs' own client limiter backs off.
       if (error.rateLimit) {
         set.headers["Retry-After"] = String(error.rateLimit.retryAfter);
         set.headers["X-Sentry-Rate-Limits"] = `${error.rateLimit.retryAfter}:${error.rateLimit.categories}:${error.rateLimit.scope}`;
@@ -52,9 +56,6 @@ if (import.meta.main) {
   app.listen(SERVER_PORT, async () => {
     console.log(`[Server] Sentry backend listening on port ${SERVER_PORT}`);
     try {
-      // NATS is connected when `./nats` is imported (publish side). The
-      // stream and its durable consumers belong to `backend/consumer.ts`;
-      // ClickHouse attaches its engine tables to those durables here.
       assertStorageConfigured();
       await initClickHouse();
     } catch (err) {
@@ -66,16 +67,6 @@ if (import.meta.main) {
     }
     startAlertSweeper();
     startDeadLetterWorker();
-
-    // Rotate the admin token daily (24h interval). The new token is
-    // generated in memory and replaces the previous one immediately.
-    // ADMIN_TOKEN env var is only used at boot; after that the token
-    // lives purely in memory and rotates on this schedule.
-    const rotationMs = Number(process.env.ADMIN_TOKEN_ROTATION_MS) || 24 * 60 * 60 * 1000;
-    setInterval(() => {
-      const newToken = rotateAdminToken();
-      console.log(`[Admin] Rotated admin token (next rotation in ${rotationMs / 1000 / 60} min)`);
-    }, rotationMs);
   });
 }
 

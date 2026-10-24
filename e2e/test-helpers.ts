@@ -10,6 +10,8 @@
 
 import app from "../backend/index";
 
+app.store.adminTokenHash = await Bun.password.hash("e2e-admin-token");
+
 export const ADMIN_HEADERS = {
   "Content-Type": "application/json",
   Authorization: "API-Key e2e-admin-token",

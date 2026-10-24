@@ -77,13 +77,13 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 | `S3_REGION` | `us-east-1` | S3 region (`AWS_REGION` fallback) |
 | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_SESSION_TOKEN` | – | S3 credentials (`AWS_*` fallbacks honored) |
 | `ALERT_EVALUATION_INTERVAL_MS` | `60000` | Alert rule sweeper interval |
-| `ADMIN_TOKEN` | – | Master admin bearer token — always accepted; fails closed when unset and no provider configured |
 | `OIDC_ISSUER`, `OAUTH_ISSUER` | – | Identity provider issuer (discovery base): enables JWT verification |
 | `OIDC_JWKS_URL` | – | Optional JWKS override (skips OIDC discovery) |
 | `OIDC_AUDIENCE`, `OIDC_CLIENT_ID`, `OAUTH_CLIENT_ID` | – | Expected `aud` claim (checked when set); `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID` also enable the browser login flow |
 | `OIDC_SCOPES` | `openid email profile` | Scopes requested by the browser login flow |
 | `OIDC_EMAIL_CLAIM`, `OIDC_GROUPS_CLAIM`, `OIDC_NAME_CLAIM` | `email`, `groups`, `name` | Claim mapping for verified identity |
 | `OIDC_ALLOW_INSECURE_HTTP` | – | `true` lets the discovery read a plain-HTTP issuer (a local provider). **HTTPS is the recommendation** — the tokens would travel in the clear otherwise |
+| `OIDC_INTROSPECTION` | – | `true` enables immediate revocation (RFC 7662): every verified JWT is re-checked per request against the provider's introspection endpoint (no cache; an outage is a `503`) |
 
 **DB Selection Logic** (`db/index.ts`): `NODE_ENV=test` → in-memory PGlite; else `DATABASE_URL` present → Postgres (Bun SQL); else file-backed PGlite in `./.pglite`. Committed migrations in `db/migrations` applied at startup (idempotent, tracked in `drizzle.__drizzle_migrations`).
 
@@ -502,11 +502,11 @@ Prefix: `/api/admin/events/:eventId/replay` — `backend/events/index.ts` → `e
 - Valid only when extracted key matches resolved app's `publicKey`.
 - Returns `{ valid, publicKey }`; callers throw `unauthorized("Unauthorized - Invalid DSN")` on failure (no DB writes).
 
-### 6.2 Admin Auth (ADMIN_TOKEN + OIDC/OAuth2)
+### 6.2 Admin Auth (Admin Token + OIDC/OAuth2)
 The credentials are checked in one place — `resolveIdentity` (`backend/auth.ts`). Every oidc route group of a domain file resolves the id in its own `.resolve` hook (`resolveAdminId` → `adminId`); the public and dsn groups carry no admin check:
-- Two credentials, never mixed: `Authorization: API-Key <ADMIN_TOKEN>` (the master credential, constant-time compare) or `Authorization: Bearer <provider JWT>` (verified with `jose` against the provider's JWKS). Either way the request resolves to an id.
-- **`ADMIN_TOKEN` is master credential** — always accepted, provider configured or not (UI prompts for it when no grant applies). Without `ADMIN_TOKEN` and no provider ⇒ admin API fails closed (401). No built-in dev/test tokens.
-- OIDC/OAuth2: JWT verified with `jose` against the provider's JWKS (the issuer's discovery document; cached) + `jwtVerify` (audience `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID`). Failures ⇒ `401` (never token logging).
+- Two credentials, never mixed: `Authorization: API-Key <token>` (the master credential, constant-time compare) or `Authorization: Bearer <provider JWT>` (verified with `jose` against the provider's JWKS). Either way the request resolves to an id.
+- **The admin token is the master credential** — always accepted, provider configured or not (UI prompts for it when no grant applies). It is generated at boot and held **only as its `Bun.password` hash** (argon2id) in global Elysia state on the app (`backend/index.ts`) — the plaintext never persists, requests are checked with `Bun.password.verify` against the registered hash. It rotates daily at 00:00 UTC by the Elysia cron in the same file; there is no env var, no file, and no HTTP surface for it. Format: `bnm_` + 4 groups of 6 mixed-case alphanumerics (`bnm_NjQcwY-nHp8JU-7CRKG5-CVdSez`, no `0`/`1`/`I`/`L`/`O`). Tests pin it by writing the fixture hash to `app.store.adminTokenHash`. No built-in dev/test tokens.
+- OIDC/OAuth2: JWT verified with `jose` against the provider's JWKS (the issuer's discovery document; cached) + `jwtVerify` (audience `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID`). Failures ⇒ `401` (never token logging). Immediate revocation is opt-in via `OIDC_INTROSPECTION=true`: the provider must expose an RFC 7662 introspection endpoint, and every verified JWT is re-checked against it per request (`active !== true` ⇒ `401`; an unreachable endpoint is a provider outage ⇒ `503`).
 - Verified identity: **an id** — `local-admin` for the admin token, `<issuer>-<subject>` for a provider JWT. An id is all the admin surface needs; every oidc route group carries it as `adminId`.
 
 ### 6.3 Read Permissions (Scoped Identities)
@@ -514,7 +514,7 @@ The credentials are checked in one place — `resolveIdentity` (`backend/auth.ts
 - **Identity grant** (by id) replaces the group assignment entirely.
 - Else **union of enabled group rules** matching identity's `groups` (case-insensitive, split on `/[\s,;|]+/`).
 - No match ⇒ `401` with `NO_READ_PERMISSION_MESSAGE` (UI shows admin-token prompt).
-- **Scope → Visibility:** apps matching prefix OR living in matching environment name; environments matching name OR holding visible app; projects holding any visible app/env. Empty scope = valid "read nothing" grant.
+- **Scope → Visibility:** apps matching prefix OR living in matching environment name; environments matching name OR holding visible app; projects holding any visible app/env. Empty scope = valid "read nothing" grant. The expansion is cached per process (key = the scope value; a TTL serves a stale topology for at most 10 s), so a large deployment does not re-query the topology per request.
 - **Scoped = Read-Only:** Allowlisted GETs only (`/api/admin/projects*`, `/api/admin/environments*`, `/api/admin/issues*` + details). All writes ⇒ `403`. Allowlisted reads filtered by `scopedViewFor(...)`; out-of-scope details ⇒ `404` (never leak).
 
 **Guard Wiring:**

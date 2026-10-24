@@ -35,6 +35,7 @@ export interface OidcProvider {
   /** The published JWK set (the stub's `/jwks`). */
   jwks: { keys: Record<string, unknown>[] };
   sign(options?: SignOptions): Promise<string>;
+  revoke(token: string): void;
 }
 
 const shared = globalThis as {
@@ -49,13 +50,22 @@ async function startProvider(): Promise<OidcProvider> {
   const jwks = { keys: [readPublicJwk()] };
 
   let port = resolvePort();
-  const handler = (request: Request): Response => {
+  const revoked = new Set<string>();
+  const handler = async (request: Request): Promise<Response> => {
     const { pathname } = new URL(request.url);
     const issuer = `http://localhost:${port}/`;
     if (pathname === "/.well-known/openid-configuration") {
-      return Response.json({ issuer, jwks_uri: `${issuer}jwks` });
+      return Response.json({
+        issuer,
+        jwks_uri: `${issuer}jwks`,
+        introspection_endpoint: `${issuer}introspect`,
+      });
     }
     if (pathname === "/jwks") return Response.json(jwks);
+    if (pathname === "/introspect") {
+      const form = new URLSearchParams(await request.text());
+      return Response.json({ active: !revoked.has(form.get("token") ?? "") });
+    }
     return new Response("not found", { status: 404 });
   };
 
@@ -90,6 +100,9 @@ async function startProvider(): Promise<OidcProvider> {
       }
       return jwt.sign(privateKey);
     },
+    revoke(token: string): void {
+      revoked.add(token);
+    },
   };
 
   // The backend discovers the provider when it boots and fails closed when
@@ -122,6 +135,8 @@ if (shared.__sentryOidcTrusted) {
   // The stub speaks plain HTTP, so the OIDC client has to be told that the
   // insecure issuer is allowed.
   process.env.OIDC_ALLOW_INSECURE_HTTP = "true";
+  // The stub exposes an introspection endpoint: exercise RFC 7662 revocation.
+  process.env.OIDC_INTROSPECTION = "true";
 }
 
 /** The identity id the backend derives from a verified token. */

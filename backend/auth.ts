@@ -1,7 +1,7 @@
 import { env } from "bun";
 import { sourceMapTokenDAO, hashUploadToken } from "db/dao/source-map-tokens";
 import type { SourceMapTokenAuthRecord } from "db/dao/source-map-tokens";
-import { forbidden, serviceUnavailable, unauthorized } from "backend/errors";
+import { ApiError, forbidden, internalError, serviceUnavailable, unauthorized } from "backend/errors";
 import * as jose from "jose";
 import * as client from 'openid-client';
 import {
@@ -11,7 +11,6 @@ import {
   resolveAccessForIdentity,
 } from './permissions/engine';
 import type { PermissionScope } from './protocol/permissions';
-
 
 export interface SentryAuthTarget {
   publicKey: string;
@@ -44,6 +43,16 @@ const config = env.OIDC_ISSUER && env.OIDC_CLIENT_ID
 const jwksURI = config?.serverMetadata().jwks_uri;
 const jwks = jwksURI ? jose.createRemoteJWKSet(new URL(jwksURI), { timeoutDuration: 5_000, cacheMaxAge: 600_000 }) : null;
 
+const introspectionOn = env.OIDC_INTROSPECTION === "true";
+const introspectionEndpoint = config?.serverMetadata().introspection_endpoint;
+if (introspectionOn && !introspectionEndpoint) {
+  throw new Error("OIDC_INTROSPECTION requires a provider with an introspection endpoint (OIDC_ISSUER + OIDC_CLIENT_ID)");
+}
+
+async function isActive(token: string): Promise<boolean> {
+  return (await client.tokenIntrospection(config!, token)).active === true;
+}
+
 // The groups claim, split on the delimiters the common IdPs use.
 function readGroups(payload: jose.JWTPayload): string[] {
   const claim = env.OIDC_GROUPS_CLAIM ?? "groups";
@@ -65,19 +74,27 @@ const verifyWithIdP = async (token: string) => {
   try {
     const { payload } = await jose.jwtVerify(token, jwks, {
       audience: clientId,
-      requiredClaims: ["exp"], // fail closed: no expiry, no identity
-      // The issuer must be the configured one; the trailing slash is
-      // normalized, the way the providers write it.
+      requiredClaims: ["exp"],
+      clockTolerance: 5,
       ...(issuer
         ? { issuer: [issuer, issuer.replace(/\/+$/, "")] }
         : {}),
     });
     // The authorized party must be this client.
     if (payload.azp !== undefined && payload.azp !== clientId) return null;
+    try {
+      if (introspectionOn && !(await isActive(token))) return null;
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw serviceUnavailable(
+        "the identity provider could not be reached — the token was not verified",
+      );
+    }
     return { id: `${payload.iss}-${payload.sub}`, groups: readGroups(payload) };
   } catch (error) {
     // A rejected token is an invalid credential; a provider that cannot be
     // reached is an outage — the two must not look the same.
+    if (error instanceof ApiError) throw error;
     if (isProviderOutage(error)) {
       throw serviceUnavailable(
         "the identity provider could not be reached — the token was not verified",
@@ -102,6 +119,21 @@ function isProviderOutage(error: unknown): boolean {
 // Every oidc route group resolves the identity through `resolveIdentity`,
 // so the credential check lives in one place and fails closed before any handler runs.
 
+const TOKEN_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ";
+
+export function generateAdminToken(): string {
+  const limit = 256 - (256 % TOKEN_ALPHABET.length);
+  let out = "";
+  while (out.length < 24) {
+    for (const b of crypto.getRandomValues(new Uint8Array(48))) {
+      if (out.length === 24) break;
+      if (b >= limit) continue;
+      out += TOKEN_ALPHABET[b % TOKEN_ALPHABET.length];
+    }
+  }
+  return `bnm_${out.slice(0, 6)}-${out.slice(6, 12)}-${out.slice(12, 18)}-${out.slice(18, 24)}`;
+}
+
 export interface Identity {
   /** The id every grant keys on: `local-admin` or `<issuer>-<subject>`. */
   id: string;
@@ -111,7 +143,13 @@ export interface Identity {
   admin: boolean;
 }
 
-export async function resolveIdentity({ request }: { request: Request }): Promise<Identity> {
+export async function resolveIdentity({
+  request,
+  adminTokenHash,
+}: {
+  request: Request;
+  adminTokenHash: string;
+}): Promise<Identity> {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) throw unauthorized();
 
@@ -120,14 +158,9 @@ export async function resolveIdentity({ request }: { request: Request }): Promis
 
   switch (type) {
     case "API-Key": {
-      const expected = env.ADMIN_TOKEN ? Buffer.from(env.ADMIN_TOKEN) : null;
-      const given = Buffer.from(token);
-      // The length check keeps a wrong-length credential a 401: the
-      // constant-time compare throws on a mismatch.
-      if (expected && given.length === expected.length && crypto.timingSafeEqual(given, expected)) {
-        return { id: "local-admin", groups: [], admin: true };
-      }
-      throw unauthorized();
+      if (!adminTokenHash) throw internalError("admin token hash is not mounted");
+      if (!(await Bun.password.verify(token, adminTokenHash))) throw unauthorized();
+      return { id: "local-admin", groups: [], admin: true };
     }
     case "Bearer": {
       const identity = await verifyWithIdP(token);
@@ -140,14 +173,22 @@ export async function resolveIdentity({ request }: { request: Request }): Promis
 
 // Elysia merges a resolve's return value into the context, so the identity
 // travels as `adminId` / `adminGroups` / `isAdmin` / `adminScope` / `canWrite`.
-export async function resolveAdminId({ request }: { request: Request }): Promise<{
+export async function resolveAdminId({
+  request,
+  store,
+}: {
+  request: Request;
+  store: { adminTokenHash?: string };
+}): Promise<{
   adminId: string;
   adminGroups: string[];
   isAdmin: boolean;
   adminScope: PermissionScope | null;
   canWrite: boolean;
 }> {
-  const identity = await resolveIdentity({ request });
+  const adminTokenHash = store.adminTokenHash;
+  if (!adminTokenHash) throw internalError("admin token hash is not mounted");
+  const identity = await resolveIdentity({ request, adminTokenHash });
   if (identity.admin) {
     return {
       adminId: identity.id,

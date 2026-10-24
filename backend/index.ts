@@ -20,7 +20,7 @@ const app = new Elysia({
     },
   },
 })
-  .state("adminToken", crypto.randomUUID() as string) // global mutable state: the daily cron rotates it in place
+  .state("adminToken", crypto.randomUUID() as string)
   .use(cron({
     name: "admin-token-rotation",
     pattern: "0 0 * * *",

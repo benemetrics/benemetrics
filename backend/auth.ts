@@ -65,7 +65,7 @@ const verifyWithIdP = async (token: string) => {
     const { payload } = await jose.jwtVerify(token, jwks, {
       audience: clientId,
       requiredClaims: ["exp"],
-      clockTolerance: 5, // max 5 s clock skew (default is 60 s)
+      clockTolerance: 5,
       ...(issuer
         ? { issuer: [issuer, issuer.replace(/\/+$/, "")] }
         : {}),
@@ -149,8 +149,6 @@ export async function resolveAdminId({
   store,
 }: {
   request: Request;
-  // The app composes the admin-token state first, so the merged store carries
-  // the credential at runtime even though group-local types do not.
   store: { adminToken?: string };
 }): Promise<{
   adminId: string;

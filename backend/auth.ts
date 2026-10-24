@@ -2,6 +2,7 @@ import { env } from "bun";
 import { sourceMapTokenDAO, hashUploadToken } from "db/dao/source-map-tokens";
 import type { SourceMapTokenAuthRecord } from "db/dao/source-map-tokens";
 import { forbidden, serviceUnavailable, unauthorized } from "backend/errors";
+import { currentAdminToken } from "./admin-token";
 import * as jose from "jose";
 import * as client from 'openid-client';
 import {
@@ -11,29 +12,6 @@ import {
   resolveAccessForIdentity,
 } from './permissions/engine';
 import type { PermissionScope } from './protocol/permissions';
-
-// In-memory admin token — generated at boot if not set, rotated daily by cron.
-// No env var, no file, no HTTP endpoint.
-// Test-only: tests may set `globalThis.__ADMIN_TOKEN_FOR_TEST` before
-// importing the backend to pin a deterministic value.
-const TEST_TOKEN_KEY = Symbol.for("benemetrics.adminToken.test");
-let adminToken: string | undefined = (globalThis as Record<symbol, string | undefined>)[TEST_TOKEN_KEY];
-
-function ensureAdminToken(): void {
-  if (!adminToken) adminToken = crypto.randomUUID();
-}
-
-export function getAdminToken(): string {
-  ensureAdminToken();
-  return adminToken!;
-}
-
-export function rotateAdminToken(): string {
-  const newToken = crypto.randomUUID();
-  adminToken = newToken;
-  return newToken;
-}
-
 
 export interface SentryAuthTarget {
   publicKey: string;
@@ -141,12 +119,11 @@ export async function resolveIdentity({ request }: { request: Request }): Promis
 
   switch (type) {
     case "API-Key": {
-      const tokenValue = getAdminToken();
-      const expected = tokenValue ? Buffer.from(tokenValue) : null;
+      const expected = Buffer.from(currentAdminToken());
       const given = Buffer.from(token);
       // The length check keeps a wrong-length credential a 401: the
       // constant-time compare throws on a mismatch.
-      if (expected && given.length === expected.length && crypto.timingSafeEqual(given, expected)) {
+      if (given.length === expected.length && crypto.timingSafeEqual(given, expected)) {
         return { id: "local-admin", groups: [], admin: true };
       }
       throw unauthorized();

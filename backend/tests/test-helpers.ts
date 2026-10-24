@@ -8,17 +8,23 @@
  * listener, only the NATS broker.)
  */
 
+import { mock } from "bun:test";
 import app from "../index";
 import { findStoredEventById } from "../events-store";
 import type { StoredEvent } from "../protocol/events";
 import { connect, type NatsConnection } from "@nats-io/transport-node";
 import { jetstreamManager } from "@nats-io/jetstream";
+import * as realAdminToken from "../admin-token";
+
+// Pin the in-memory admin token across the suite; no test hook exists in
+// the production module.
+mock.module("../admin-token", () => ({
+  ...realAdminToken,
+  currentAdminToken: () => "e2e-admin-token",
+}));
 
 /** Canonical origin for in-process requests; DSN hosts derive from it. */
 export const TEST_ORIGIN = "http://test.local";
-
-const TEST_TOKEN_KEY = Symbol.for("benemetrics.adminToken.test");
-(globalThis as Record<symbol, string | undefined>)[TEST_TOKEN_KEY] = "e2e-admin-token";
 
 export const ADMIN_TOKEN = "API-Key e2e-admin-token";
 

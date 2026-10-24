@@ -8,7 +8,7 @@ import { startAlertSweeper } from "./alerting/evaluation";
 import { startDeadLetterWorker } from "./alerting/dead-letters";
 import { initClickHouse } from "./clickhouse";
 import { assertStorageConfigured } from "./storage";
-import { rotateAdminToken } from "./auth";
+import { rotateAdminToken } from "./admin-token";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 

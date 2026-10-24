@@ -4,7 +4,7 @@ import { permissionGrantDAO } from "db/dao/permission-grants";
 import { permissionAuditDAO } from "db/dao/permission-audit";
 import { permissionRuleDAO } from "db/dao/permission-rules";
 import { badRequest } from "backend/errors";
-import { resolveAdminId, getAdminToken, rotateAdminToken } from "../auth";
+import { resolveAdminId } from "../auth";
 import { requireAdmin } from "./engine";
 import {
   normalizeScopeList,

@@ -26,7 +26,6 @@ items below are documented in `docs/` (`docs/rate-limiting.md`,
 ## Permissions — design follow-ups
 
 - [ ] Organization-level admin concept (only the global admin token today).
-- [ ] Token introspection (RFC 7662) for immediate revocation of provider JWTs.
 - [ ] Scope expansion caching for large deployments.
 
 ## Rate limiting — reverse-proxy owned

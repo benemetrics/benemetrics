@@ -71,6 +71,8 @@ Failures are silent (no token logging) and result in an unauthenticated request.
 
 **An outage is not an invalid credential:** a token the provider rejects (a bad signature, a wrong audience) is an unauthenticated request (401), but a provider that cannot be reached (the JWKS fetch failed or timed out) answers **503** — the operator can tell the two apart.
 
+**Revocation (optional):** without introspection, a verified JWT stays accepted until `exp`. With `OIDC_INTROSPECTION=true` the deployment opts into RFC 7662 introspection: the provider must expose an introspection endpoint, and every verified JWT is re-checked per request — `active !== true` answers `401` immediately (responses are never cached, so revocation lands on the next request), and an unreachable endpoint is a provider outage (`503`).
+
 **Production requirement:** Issuer and JWKS URLs **must use HTTPS** — whoever controls the fetch can substitute signing keys. A plain-HTTP issuer is refused by the OIDC client unless the deployment opts in with `OIDC_ALLOW_INSECURE_HTTP=true` (for a local provider only — the tokens would travel in the clear). The opt-in relaxes the discovery only: the signature, the audience, the issuer and the `azp` checks stay in force.
 
 ---
@@ -314,6 +316,7 @@ Same shape as rules, with the identity id (unique) instead of the group name, pl
 | `OIDC_ISSUER` / `OAUTH_ISSUER` | Issuer + discovery base; provider considered configured. **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
 | `OIDC_JWKS_URL` | JWKS override (skips discovery). **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
 | `OIDC_ALLOW_INSECURE_HTTP` | `true` allows a plain-HTTP issuer (local providers only). The signature, audience, issuer and `azp` checks are unchanged. |
+| `OIDC_INTROSPECTION` | `true` enables RFC 7662 immediate revocation: every verified JWT is re-checked per request against the provider's introspection endpoint; never cached. |
 | `OIDC_AUDIENCE` / `OIDC_CLIENT_ID` / `OAUTH_CLIENT_ID` | Expected audience. **Critical:** Without this, any token from the configured issuer is accepted. `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID` also enable the browser login flow. |
 | `OIDC_SCOPES` | Scopes requested by the browser login flow (default `openid email profile`). |
 | `OIDC_EMAIL_CLAIM` / `OIDC_GROUPS_CLAIM` / `OIDC_NAME_CLAIM` | Claim mapping (defaults: email, groups, name). Groups claim split on `/[\s,;|]+/`. |

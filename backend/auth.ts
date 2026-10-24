@@ -1,7 +1,7 @@
 import { env } from "bun";
 import { sourceMapTokenDAO, hashUploadToken } from "db/dao/source-map-tokens";
 import type { SourceMapTokenAuthRecord } from "db/dao/source-map-tokens";
-import { forbidden, internalError, serviceUnavailable, unauthorized } from "backend/errors";
+import { ApiError, forbidden, internalError, serviceUnavailable, unauthorized } from "backend/errors";
 import * as jose from "jose";
 import * as client from 'openid-client';
 import {
@@ -43,6 +43,16 @@ const config = env.OIDC_ISSUER && env.OIDC_CLIENT_ID
 const jwksURI = config?.serverMetadata().jwks_uri;
 const jwks = jwksURI ? jose.createRemoteJWKSet(new URL(jwksURI), { timeoutDuration: 5_000, cacheMaxAge: 600_000 }) : null;
 
+const introspectionOn = env.OIDC_INTROSPECTION === "true";
+const introspectionEndpoint = config?.serverMetadata().introspection_endpoint;
+if (introspectionOn && !introspectionEndpoint) {
+  throw new Error("OIDC_INTROSPECTION requires a provider with an introspection endpoint (OIDC_ISSUER + OIDC_CLIENT_ID)");
+}
+
+async function isActive(token: string): Promise<boolean> {
+  return (await client.tokenIntrospection(config!, token)).active === true;
+}
+
 // The groups claim, split on the delimiters the common IdPs use.
 function readGroups(payload: jose.JWTPayload): string[] {
   const claim = env.OIDC_GROUPS_CLAIM ?? "groups";
@@ -72,10 +82,19 @@ const verifyWithIdP = async (token: string) => {
     });
     // The authorized party must be this client.
     if (payload.azp !== undefined && payload.azp !== clientId) return null;
+    try {
+      if (introspectionOn && !(await isActive(token))) return null;
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw serviceUnavailable(
+        "the identity provider could not be reached — the token was not verified",
+      );
+    }
     return { id: `${payload.iss}-${payload.sub}`, groups: readGroups(payload) };
   } catch (error) {
     // A rejected token is an invalid credential; a provider that cannot be
     // reached is an outage — the two must not look the same.
+    if (error instanceof ApiError) throw error;
     if (isProviderOutage(error)) {
       throw serviceUnavailable(
         "the identity provider could not be reached — the token was not verified",

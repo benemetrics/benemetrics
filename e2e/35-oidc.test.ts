@@ -132,6 +132,14 @@ describe("OIDC authentication", () => {
     expect(await adminStatus(token)).toBe(401);
   });
 
+  it("rejects a revoked token immediately through introspection", async () => {
+    const token = await sign({ claims: { sub: SUBJECT } });
+    expect(await adminStatus(token)).toBe(200);
+
+    oidcProvider.revoke(token);
+    expect(await adminStatus(token)).toBe(401);
+  });
+
   it("rejects a token from another issuer", async () => {
     const token = await sign({
       issuer: `${oidcProvider.issuer}/`,

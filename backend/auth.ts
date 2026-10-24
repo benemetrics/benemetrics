@@ -14,7 +14,10 @@ import type { PermissionScope } from './protocol/permissions';
 
 // In-memory admin token — generated at boot if not set, rotated daily by cron.
 // No env var, no file, no HTTP endpoint.
-let adminToken: string | undefined;
+// Test-only: tests may set `globalThis.__ADMIN_TOKEN_FOR_TEST` before
+// importing the backend to pin a deterministic value.
+const TEST_TOKEN_KEY = Symbol.for("benemetrics.adminToken.test");
+let adminToken: string | undefined = (globalThis as Record<symbol, string | undefined>)[TEST_TOKEN_KEY];
 
 function ensureAdminToken(): void {
   if (!adminToken) adminToken = crypto.randomUUID();
@@ -29,11 +32,6 @@ export function rotateAdminToken(): string {
   const newToken = crypto.randomUUID();
   adminToken = newToken;
   return newToken;
-}
-
-// Test-only: set a fixed admin token for deterministic testing.
-export function __setAdminTokenForTest(token: string): void {
-  adminToken = token;
 }
 
 

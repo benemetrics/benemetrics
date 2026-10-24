@@ -91,13 +91,31 @@ export async function resolveScopeForIdentity(identity: {
   return access?.scope ?? null;
 }
 
+const VIEW_TTL_MS = 10_000;
+const viewCache = new Map<string, { view: ScopedView; at: number }>();
+
+function viewCacheKey(scope: PermissionScope): string {
+  return JSON.stringify({
+    e: scope.environments.map((name) => name.toLowerCase()).sort(),
+    a: scope.appPrefixes.map((prefix) => prefix.toLowerCase()).sort(),
+  });
+}
+
 /**
  * The visible topology for a scope: an app is visible when its name
  * starts with a permitted prefix or its environment name is permitted; an
  * environment is visible when its name is permitted or it holds a visible
  * app; a project is visible when it holds a visible app or environment.
+ * Expanded once per process per scope — the scope value is the key, so a
+ * grant or rule change starts a fresh entry without invalidation wiring;
+ * only topology changes (new app, renamed slug) can serve a stale entry
+ * for the TTL.
  */
 export async function computeScopedView(scope: PermissionScope): Promise<ScopedView> {
+  const key = viewCacheKey(scope);
+  const cached = viewCache.get(key);
+  if (cached && cached.at + VIEW_TTL_MS >= Date.now()) return cached.view;
+
   // The scope names the environments and the app-name prefixes, so the
   // queries filter on them instead of loading the whole topology.
   const environmentNames = scope.environments.map((name) => name.toLowerCase());
@@ -130,7 +148,9 @@ export async function computeScopedView(scope: PermissionScope): Promise<ScopedV
     projectIds.add(environment.projectId);
   }
 
-  return { appIds, environmentIds, projectIds };
+  const view = { appIds, environmentIds, projectIds };
+  viewCache.set(key, { view, at: Date.now() });
+  return view;
 }
 
 const views = new WeakMap<Request, ScopedView>();

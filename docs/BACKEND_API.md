@@ -514,7 +514,7 @@ The credentials are checked in one place — `resolveIdentity` (`backend/auth.ts
 - **Identity grant** (by id) replaces the group assignment entirely.
 - Else **union of enabled group rules** matching identity's `groups` (case-insensitive, split on `/[\s,;|]+/`).
 - No match ⇒ `401` with `NO_READ_PERMISSION_MESSAGE` (UI shows admin-token prompt).
-- **Scope → Visibility:** apps matching prefix OR living in matching environment name; environments matching name OR holding visible app; projects holding any visible app/env. Empty scope = valid "read nothing" grant.
+- **Scope → Visibility:** apps matching prefix OR living in matching environment name; environments matching name OR holding visible app; projects holding any visible app/env. Empty scope = valid "read nothing" grant. The expansion is cached per process (key = the scope value; a TTL serves a stale topology for at most 10 s), so a large deployment does not re-query the topology per request.
 - **Scoped = Read-Only:** Allowlisted GETs only (`/api/admin/projects*`, `/api/admin/environments*`, `/api/admin/issues*` + details). All writes ⇒ `403`. Allowlisted reads filtered by `scopedViewFor(...)`; out-of-scope details ⇒ `404` (never leak).
 
 **Guard Wiring:**

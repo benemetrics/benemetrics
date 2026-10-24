@@ -98,7 +98,7 @@ For a given identity (an id), the effective scope is determined in order:
 
 ### Scope Expansion to Visibility Sets
 
-The scope (environment names + app prefixes) expands into concrete visibility sets at request time. The queries filter on the names and the prefixes in SQL (the whole topology is not loaded), and the expansion still runs per request — for large deployments, consider caching the visibility sets (open item).
+The scope (environment names + app prefixes) expands into concrete visibility sets at request time. The queries filter on the names and the prefixes in SQL (the whole topology is not loaded). The expansion is cached per process, keyed by the scope value — a grant or rule change produces a new key without invalidation wiring, and the entry TTL bounds a topology change's staleness to 10 s (a new app with a matching name takes at most that long to appear in the scoped view).
 
 - **App visible** when its name starts with a permitted prefix **OR** its environment's name is permitted.
   > **⚠ Security implication:** Granting an environment name (e.g., `production`) grants access to **ALL apps in that environment**, regardless of app prefixes. This includes future apps added to that environment. Use app prefixes for fine-grained control.

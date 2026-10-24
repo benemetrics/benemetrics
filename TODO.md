@@ -31,26 +31,14 @@ items below are documented in `docs/` (`docs/rate-limiting.md`,
 - [ ] Clock-skew strategy beyond ±60 s; token introspection (RFC 7662) for immediate revocation.
 - [ ] Whitelist revocation UX — distinguish a "read nothing" grant from "no grant" in the UI.
 
-## Rate limiting — backlog
+## Rate limiting — reverse-proxy owned
 
-The app owns only the per-request hygiene (caps, not quotas) — `docs/rate-limiting.md`
-documents why the quota/blocks/notifications stack is deliberately unbuilt:
-
-- [ ] Per-app events/s **quota** + exceedance notifications — needs
-      `rate_limit_settings` (seeded single source), the per-app override, the
-      admin API and the panel. A quota, not a DoS guard; only then are
-      fingerprints/auto-blocks (attribution, not a cap) worth building.
-- [ ] Persistence + admin hardening — `ingest_blocks` +
-      `rate_limit_notifications`, rotate-key, the manual blocks, the overview.
-- [ ] Settings UI (Settings → Rate limits).
-- [ ] Shared bucket state if we ever run multiple replicas (Postgres or
-      NATS KV) — document the switch.
-
-Open questions carried from the design: the limiter is always on — announce
-the seeded defaults before deploying (the emergency off is
-`eventsPerSecond = 0`); blocks scope to ingestion only (admin UI and
-`/events/*` reads are never limited); replay/attachment-heavy envelopes may
-deserve their own lower quota; project/org-level limits later, if ever.
+Per `AGENTS.md` (Hygiene landmine): the app owns only the **per-request hygiene
+layer** (caps — `413` for oversized bodies, gzip bombs, item/span counts in
+`backend/ratelimit/hygiene.ts` and `backend/ratelimit/config.ts`). Quotas,
+blocks, notifications, and the Settings panel are **not built**; they are the
+reverse proxy's job. `docs/rate-limiting.md` §1–§3 records the implemented
+hygiene; §4+ is retained as a design archive only.
 
 ## Environment notes
 

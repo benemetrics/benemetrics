@@ -7,6 +7,7 @@ import { startAlertSweeper } from "./alerting/evaluation";
 import { startDeadLetterWorker } from "./alerting/dead-letters";
 import { initClickHouse } from "./clickhouse";
 import { assertStorageConfigured } from "./storage";
+import { rotateAdminToken } from "./auth";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 
@@ -65,6 +66,16 @@ if (import.meta.main) {
     }
     startAlertSweeper();
     startDeadLetterWorker();
+
+    // Rotate the admin token daily (24h interval). The new token is
+    // generated in memory and replaces the previous one immediately.
+    // ADMIN_TOKEN env var is only used at boot; after that the token
+    // lives purely in memory and rotates on this schedule.
+    const rotationMs = Number(process.env.ADMIN_TOKEN_ROTATION_MS) || 24 * 60 * 60 * 1000;
+    setInterval(() => {
+      const newToken = rotateAdminToken();
+      console.log(`[Admin] Rotated admin token (next rotation in ${rotationMs / 1000 / 60} min)`);
+    }, rotationMs);
   });
 }
 

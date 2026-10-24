@@ -12,18 +12,19 @@ import {
 } from './permissions/engine';
 import type { PermissionScope } from './protocol/permissions';
 
-// Read ADMIN_TOKEN from file (for zero-downtime rotation) or env var.
-// File takes precedence if set and readable; otherwise falls back to env.
-async function readAdminToken(): Promise<string | undefined> {
-  const file = env.ADMIN_TOKEN_FILE;
-  if (file) {
-    try {
-      return (await Bun.file(file).text()).trim();
-    } catch {
-      // fall through to env
-    }
-  }
-  return env.ADMIN_TOKEN;
+// In-memory admin token — initialized from env at boot, rotatable via
+// POST /api/admin/rotate-token (admin-token-only). No file, no env
+// re-read; the current value lives only in memory.
+let adminToken: string | undefined = env.ADMIN_TOKEN;
+
+export function getAdminToken(): string | undefined {
+  return adminToken;
+}
+
+export function rotateAdminToken(): string {
+  const newToken = crypto.randomUUID();
+  adminToken = newToken;
+  return newToken;
 }
 
 
@@ -133,7 +134,7 @@ export async function resolveIdentity({ request }: { request: Request }): Promis
 
   switch (type) {
     case "API-Key": {
-      const tokenValue = await readAdminToken();
+      const tokenValue = getAdminToken();
       const expected = tokenValue ? Buffer.from(tokenValue) : null;
       const given = Buffer.from(token);
       // The length check keeps a wrong-length credential a 401: the

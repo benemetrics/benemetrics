@@ -12,19 +12,28 @@ import {
 } from './permissions/engine';
 import type { PermissionScope } from './protocol/permissions';
 
-// In-memory admin token — initialized from env at boot, rotatable via
-// POST /api/admin/rotate-token (admin-token-only). No file, no env
-// re-read; the current value lives only in memory.
-let adminToken: string | undefined = env.ADMIN_TOKEN;
+// In-memory admin token — generated at boot if not set, rotated daily by cron.
+// No env var, no file, no HTTP endpoint.
+let adminToken: string | undefined;
 
-export function getAdminToken(): string | undefined {
-  return adminToken;
+function ensureAdminToken(): void {
+  if (!adminToken) adminToken = crypto.randomUUID();
+}
+
+export function getAdminToken(): string {
+  ensureAdminToken();
+  return adminToken!;
 }
 
 export function rotateAdminToken(): string {
   const newToken = crypto.randomUUID();
   adminToken = newToken;
   return newToken;
+}
+
+// Test-only: set a fixed admin token for deterministic testing.
+export function __setAdminTokenForTest(token: string): void {
+  adminToken = token;
 }
 
 

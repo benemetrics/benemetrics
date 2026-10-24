@@ -13,9 +13,13 @@ import { findStoredEventById } from "../events-store";
 import type { StoredEvent } from "../protocol/events";
 import { connect, type NatsConnection } from "@nats-io/transport-node";
 import { jetstreamManager } from "@nats-io/jetstream";
+import { __setAdminTokenForTest } from "../auth";
 
 /** Canonical origin for in-process requests; DSN hosts derive from it. */
 export const TEST_ORIGIN = "http://test.local";
+
+// Configure the in-memory admin token for deterministic testing.
+__setAdminTokenForTest("e2e-admin-token");
 
 export const ADMIN_TOKEN = "API-Key e2e-admin-token";
 

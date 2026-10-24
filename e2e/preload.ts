@@ -23,6 +23,7 @@ import { closeClickHouse, initClickHouse } from "../backend/clickhouse";
 // Importing the consumer starts its `sentry.events` subscription in this
 // process, so the side effects land in this file's in-memory PGlite.
 import "../backend/consumer";
+import { __setAdminTokenForTest } from "../backend/auth";
 
 // The object store is S3-required. The suite runs against the compose
 // RustFS (`docker compose up -d rustfs rustfs-init`); these defaults are
@@ -34,10 +35,8 @@ process.env.S3_ACCESS_KEY_ID ??= "rustfsadmin";
 process.env.S3_SECRET_ACCESS_KEY ??= "rustfsadmin";
 process.env.S3_REGION ??= "us-east-1";
 
-// The backend accepts only the ADMIN_TOKEN configured in the environment,
-// so the suite configures one for every test file. Tests that need the
-// unconfigured state unset it temporarily and restore it.
-process.env.ADMIN_TOKEN = "e2e-admin-token";
+// Configure the in-memory admin token for deterministic e2e testing.
+__setAdminTokenForTest("e2e-admin-token");
 
 // Bun's WebView leaves its Chrome profile in the temp directory; a suite
 // leaves hundreds behind, and a full temp filesystem makes Chrome abort on

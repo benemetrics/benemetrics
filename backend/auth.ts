@@ -35,7 +35,7 @@ const jwksURI = config?.serverMetadata().jwks_uri;
 const jwks = jwksURI ? jose.createRemoteJWKSet(new URL(jwksURI), { timeoutDuration: 5_000, cacheMaxAge: 600_000 }) : null;
 
 // The groups claim, split on the delimiters the common IdPs use.
-function readGroups(payload: jose.JWTPayload): string[] {
+function readGroups(payload: jose.JWTPayload) {
   const claim = env.OIDC_GROUPS_CLAIM ?? "groups";
   const raw = payload[claim];
   const list = Array.isArray(raw)
@@ -43,9 +43,9 @@ function readGroups(payload: jose.JWTPayload): string[] {
     : typeof raw === "string"
       ? raw.split(/[\s,;|]+/)
       : [];
-  return list
+  return new Set(list
     .map((group) => String(group).trim().toLowerCase())
-    .filter((group) => group.length > 0);
+    .filter((group) => group.length > 0));
 }
 
 const verifyWithIdP = async (token: string) => {
@@ -69,17 +69,17 @@ const verifyWithIdP = async (token: string) => {
   }
 }
 
-export const resolveIdentity = async ({ request }: { request: Request }) => {
+export const resolveIdentity = async ({ request, store }: { request: Request, store: { allowedGroups?: Set<string> } }) => {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) throw unauthorized();
-
+  const allowedGroups = store.allowedGroups ?? new Set();
   const [type, token] = authHeader.split(" ");
   if (!type || !token) throw unauthorized();
 
   switch (type) {
     case "Bearer": {
       const identity = await verifyWithIdP(token);
-      if (identity) return { user: identity };
+      if (identity && allowedGroups.intersection(identity.groups).size > 0) return { user: identity };
       throw unauthorized();
     }
     default: throw unauthorized();

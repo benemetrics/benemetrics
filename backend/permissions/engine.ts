@@ -4,7 +4,7 @@ import { env } from "bun";
 
 
 export const projectsAndAppsPermissions = async ({ user, store }: Awaited<ReturnType<typeof resolveIdentity>> & { store: any }) => {
-  if (user.groups.includes(env.OIDC_ADMIN_GROUP ?? 'admin')) return { projectIds: [], appsIds: [] };
+  if (user.groups.has(env.OIDC_ADMIN_GROUP ?? 'admin')) return { perms: { projectIds: [] as string[], appIds: [] as string[] } };
   store[user.id] ??= await permissionGrantDAO.getUserGrantWithPermissions(user.id);
-  return store[user.id] as { projectIds: number[]; appIds: number[] };
+  return { perms: store[user.id] } as { perms: { projectIds: string[]; appIds: string[] } };
 }

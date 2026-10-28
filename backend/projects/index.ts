@@ -4,7 +4,6 @@ import { type as arktype } from "arktype";
 import { projectDAO, appDAO } from "db/dao/project";
 import { resolveIdentity } from "../auth";
 import { projectsAndAppsPermissions } from "../permissions/engine";
-import { issueDAO } from "db/dao/issues";
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
@@ -28,12 +27,11 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
   )
   .get(
     "/",
-    async ({ query, request }) => {
-      const view = await scopedViewFor({ request, isAdmin, adminScope });
+    async ({ query, perms: { projectIds } }) => {
       return projectDAO.list({
         cursor: query.cursor,
         limit: query.limit,
-        ...(view ? { projectIds: [...view.projectIds] } : {}),
+        ...(projectIds.length && { projectIds }),
       });
     },
     {
@@ -43,86 +41,52 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
       }),
     },
   )
-  .get(
-    "/:id",
-    async ({ params: { id }, request }) => {
-      const view = await scopedViewFor({ request, isAdmin, adminScope });
-      if (view && !view.projectIds.has(id)) throw notFound("Project", id);
-      const project = await projectDAO.findByIdOrThrow(id);
-      const { data: apps } = await appDAO.listByProject(id, {
-        limit: 100,
-        ...(view ? { appIds: [...view.appIds] } : {}),
-      });
-      return { ...project, apps };
-    },
-    {
-      params: arktype({ id: "string.uuid" }),
-    },
-  )
-  .delete(
-    "/:id",
-    async ({ params: { id } }) => {
-      const apps = await appDAO.listRawByProject(id);
-      await Promise.all(apps.map(async (app) => { await issueDAO.deleteByApp(app.id); await appDAO.delete(app.id); }));
-      await projectDAO.delete(id);
-      return { success: true };
-    },
-    {
-      params: arktype({ id: "string.uuid" }),
-    },
-  )
-  .post(
-    "/:id/duplicate",
-    async ({ params: { id }, body }) => {
-      const { project, apps } = await projectDAO.duplicate(id, body);
-      return {
-        id: project.id,
-        name: project.name,
-        slug: project.slug,
-        description: project.description,
-        appCount: apps.length,
-        createdAt: project.createdAt,
-        apps,
-      };
-    },
-    {
-      params: arktype({ id: "string.uuid" }),
-      body: arktype({
-        name: "string?",
-        slug: "string?",
-        description: "string?",
-      }),
-    },
-  )
-  .group("/:id/apps", (apps) =>
-    apps
+  .group('/:id', 
+    { params: arktype({ id: "string.uuid" }) }, 
+    (project) => project
       .get(
-        "",
-        async ({ params: { id }, query }) => {
-          await projectDAO.findByIdOrThrow(id);
-          return appDAO.listByProject(id, { cursor: query.cursor, limit: query.limit });
+        "/",
+        async ({ params: { id }, perms: { projectIds } }) => {
+          if (!projectIds.includes(id)) throw notFound("Project", id);
+          return projectDAO.findByIdOrThrow(id);
+        },
+      )
+      .delete("/", async ({ params: { id } }) => projectDAO.delete(id))
+      .post(
+        "/duplicate",
+        async ({ params: { id }, body }) => {
+          const { project, apps } = await projectDAO.duplicate(id, body);
+          return { ...project, apps };
         },
         {
-          params: arktype({ id: "string.uuid" }),
-          query: arktype({
-            cursor: "string?",
-            limit: "string.integer.parse?",
+          body: arktype({
+            name: "string?",
+            slug: "string?",
+            description: "string?",
           }),
         },
       )
-      .post(
-        "",
-        async ({ params: { id }, body }) => {
-          const project = await projectDAO.findByIdOrThrow(id);
-          const app = await appDAO.create({ id: crypto.randomUUID(), projectId: id, name: body.name, platform: body.platform || "javascript", ingestKey: `${project.slug}-${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`, publicKey: crypto.randomUUID().replace(/-/g, "").slice(0, 32) });
-          return app;
-        },
-        {
-          params: arktype({ id: "string.uuid" }),
-          body: arktype({
-            name: "string",
-            platform: "string?",
-          }),
-        },
+      .group("/apps", (apps) =>
+        apps
+          .get(
+            "",
+            async ({ params: { id }, perms: { appIds }, query }) => appDAO.listByProject(id, { ...query, ...(appIds.length && { appIds }) }),
+            {
+              query: arktype({
+                cursor: "string?",
+                limit: "string.integer.parse?",
+              }),
+            },
+          )
+          .post(
+            "",
+            async ({ params: { id }, body }) => appDAO.create({ ...body, projectId: id, publicKey: crypto.randomUUID().replace(/-/g, "").slice(0, 32) }),
+            {
+              body: arktype({
+                name: "string",
+                platform: "string?",
+              }),
+            },
+          ),
       ),
-  );
+  )

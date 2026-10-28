@@ -1,5 +1,5 @@
 import { db } from "db";
-import { permissionGrants, permissionsProjectApp } from "db/schema/permissions";
+import { permissionGrants, permissionRules, permissionsProjectApp } from "db/schema/permissions";
 import { desc, eq } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
 import { cursorAfter, cursorLimit } from "./cursor";
@@ -95,6 +95,11 @@ export const permissionGrantDAO = {
       .rightJoin(permissionsProjectApp, eq(permissionsProjectApp.permissionGrant, permissionGrants.id))
 
     return { projectIds: x.map(({ projectId }) => projectId), appsIds: x.map(({ appId }) => appId) }
+  },
+
+  getAllowedGroups: async () => {
+    const groups = await db.select({ group: permissionRules.group }).from(permissionRules);
+    return new Set(groups.map(({ group }) => group));
   },
 
   delete: async (id: string) => db

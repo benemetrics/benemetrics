@@ -12,6 +12,7 @@ import { generateAdminToken } from "./auth";
 import { startAuthCallout } from "./nats-auth-callout";
 import { nats } from "./nats";
 import { join } from "node:path";
+import { permissionGrantDAO } from "db/dao/permission-grants";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 
@@ -24,6 +25,7 @@ const app = new Elysia({
     },
   },
 })
+  .state('allowedGroups', await permissionGrantDAO.getAllowedGroups())
   .onError(({ code, error, set }) => {
     if (error instanceof ApiError) {
       set.status = error.httpStatus;

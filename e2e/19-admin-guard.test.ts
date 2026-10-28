@@ -10,15 +10,10 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { connect } from "node:net";
-import app from "../backend/index";
+import { app, ADMIN_HEADERS } from "./test-helpers";
 
 let baseUrl = "";
 let server: any;
-
-const adminHeaders = {
-  "Content-Type": "application/json",
-  Authorization: "API-Key e2e-admin-token",
-};
 
 beforeAll(() => {
   app.listen(0);
@@ -40,7 +35,7 @@ describe("Admin guard enforcement", () => {
     });
     expect(response.status).toBe(401);
 
-    const list = await fetch(`${baseUrl}/api/admin/projects`, { headers: adminHeaders });
+    const list = await fetch(`${baseUrl}/api/admin/projects`, { headers: ADMIN_HEADERS });
     const body = (await list.json()) as { data: Array<{ name: string }> };
     expect(body.data.some((project) => project.name === "Unauth")).toBe(false);
   });
@@ -88,7 +83,7 @@ describe("Admin guard enforcement", () => {
   it("accepts the configured admin token", async () => {
     const response = await fetch(`${baseUrl}/api/admin/projects`, {
       method: "POST",
-      headers: adminHeaders,
+      headers: ADMIN_HEADERS,
       body: JSON.stringify({ name: `Guarded-${Date.now()}` }),
     });
     expect(response.status).toBe(200);
@@ -114,7 +109,7 @@ describe("Admin guard enforcement", () => {
     expect(events.status).toBe(401);
 
     // The same surface accepts the configured admin token.
-    const authed = await fetch(`${baseUrl}/events`, { headers: adminHeaders });
+    const authed = await fetch(`${baseUrl}/events`, { headers: ADMIN_HEADERS });
     expect(authed.status).toBe(200);
   });
 
@@ -127,9 +122,9 @@ describe("Admin guard enforcement", () => {
       const events = await fetch(`${baseUrl}/events`);
       expect(events.status).toBe(401);
 
-      const withToken = await fetch(`${baseUrl}/events`, { headers: adminHeaders });
+      const withToken = await fetch(`${baseUrl}/events`, { headers: ADMIN_HEADERS });
       expect(withToken.status).toBe(200);
-      const admin = await fetch(`${baseUrl}/api/admin/projects`, { headers: adminHeaders });
+      const admin = await fetch(`${baseUrl}/api/admin/projects`, { headers: ADMIN_HEADERS });
       expect(admin.status).toBe(200);
     } finally {
       delete process.env.OIDC_ISSUER;

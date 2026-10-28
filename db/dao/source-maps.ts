@@ -22,7 +22,6 @@ const artifactFields = {
   id: sourceMaps.id,
   projectId: sourceMaps.projectId,
   appId: sourceMaps.appId,
-  environmentId: sourceMaps.environmentId,
   release: sourceMaps.release,
   dist: sourceMaps.dist,
   name: sourceMaps.filename,
@@ -45,7 +44,6 @@ export const sourceMapDAO = {
         target: [sourceMaps.projectId, sourceMaps.release, sourceMaps.filename],
         set: {
           appId: data.appId,
-          environmentId: data.environmentId,
           dist: data.dist ?? null,
           mapJson: data.mapJson,
           createdAt: now,
@@ -106,7 +104,6 @@ export const sourceMapDAO = {
   list: async (options: {
     projectId?: string;
     appId?: string;
-    environmentId?: string;
     release?: string;
     cursor?: string;
     limit?: number;
@@ -117,9 +114,6 @@ export const sourceMapDAO = {
         ? [eq(sourceMaps.projectId, options.projectId)]
         : []),
       ...(options.appId ? [eq(sourceMaps.appId, options.appId)] : []),
-      ...(options.environmentId
-        ? [eq(sourceMaps.environmentId, options.environmentId)]
-        : []),
       ...(options.release ? [eq(sourceMaps.release, options.release)] : []),
     ];
     const { condition, empty } = await cursorAfter(

@@ -46,3 +46,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # design mockups (local only)
 stitch_benemetrics_lightweight_sentry_alternative
+
+# separate repo — tracked independently, not part of this repo
+harbor-signal-watch/

@@ -1,16 +1,9 @@
 import { env } from "bun";
 import { sourceMapTokenDAO, hashUploadToken } from "db/dao/source-map-tokens";
 import type { SourceMapTokenAuthRecord } from "db/dao/source-map-tokens";
-import { forbidden, internalError, serviceUnavailable, unauthorized } from "backend/errors";
+import { unauthorized } from "backend/errors";
 import * as jose from "jose";
 import * as client from 'openid-client';
-import {
-  NO_READ_PERMISSION_MESSAGE,
-  isScopedReadPath,
-  requireScopedRead,
-  resolveAccessForIdentity,
-} from './permissions/engine';
-import type { PermissionScope } from './protocol/permissions';
 
 export interface SentryAuthTarget {
   publicKey: string;
@@ -27,9 +20,7 @@ export interface UploadAuthResult {
   token?: SourceMapTokenAuthRecord;
 }
 
-// A plain-HTTP issuer is refused by the OIDC client unless the deployment
-// opts in: the tokens would travel in the clear. HTTPS is the
-// recommendation; the opt-in exists for a local provider.
+
 const allowInsecure = env.OIDC_ALLOW_INSECURE_HTTP === "true";
 const config = env.OIDC_ISSUER && env.OIDC_CLIENT_ID
   ? await client.discovery(
@@ -66,57 +57,19 @@ const verifyWithIdP = async (token: string) => {
       audience: clientId,
       requiredClaims: ["exp"],
       clockTolerance: 5,
-      ...(issuer
-        ? { issuer: [issuer, issuer.replace(/\/+$/, "")] }
-        : {}),
+      issuer,
     });
+
     // The authorized party must be this client.
     if (payload.azp !== undefined && payload.azp !== clientId) return null;
     return { id: `${payload.iss}-${payload.sub}`, groups: readGroups(payload) };
   } catch (error) {
+    console.log(error);
     return null;
   }
 }
 
-// The three credential surfaces of the API:
-// - public: no credential (the UI bundle, the root redirect)
-// - dsn: the SDK public key (ingestion, the flag evaluation)
-// - oidc: the admin token (the master credential) or a verified provider identity (the admin surface)
-//
-// Every oidc route group resolves the identity through `resolveIdentity`,
-// so the credential check lives in one place and fails closed before any handler runs.
-
-const TOKEN_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ";
-
-export function generateAdminToken(): string {
-  const limit = 256 - (256 % TOKEN_ALPHABET.length);
-  let out = "";
-  while (out.length < 24) {
-    for (const b of crypto.getRandomValues(new Uint8Array(48))) {
-      if (out.length === 24) break;
-      if (b >= limit) continue;
-      out += TOKEN_ALPHABET[b % TOKEN_ALPHABET.length];
-    }
-  }
-  return `bnm_${out.slice(0, 6)}-${out.slice(6, 12)}-${out.slice(12, 18)}-${out.slice(18, 24)}`;
-}
-
-export interface Identity {
-  /** The id every grant keys on: `local-admin` or `<issuer>-<subject>`. */
-  id: string;
-  /** The token's groups claim, lowercased. */
-  groups: string[];
-  /** The master admin token — unrestricted, never scoped. */
-  admin: boolean;
-}
-
-export async function resolveIdentity({
-  request,
-  adminTokenHash,
-}: {
-  request: Request;
-  adminTokenHash: string;
-}): Promise<Identity> {
+export const resolveIdentity = async ({ request }: { request: Request }) => {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) throw unauthorized();
 
@@ -124,65 +77,13 @@ export async function resolveIdentity({
   if (!type || !token) throw unauthorized();
 
   switch (type) {
-    case "API-Key": {
-      if (!adminTokenHash) throw internalError("admin token hash is not mounted");
-      if (!(await Bun.password.verify(token, adminTokenHash))) throw unauthorized();
-      return { id: "local-admin", groups: [], admin: true };
-    }
     case "Bearer": {
       const identity = await verifyWithIdP(token);
-      if (identity) return { ...identity, admin: false };
+      if (identity) return { user: identity };
       throw unauthorized();
     }
     default: throw unauthorized();
   }
-}
-
-// Elysia merges a resolve's return value into the context, so the identity
-// travels as `adminId` / `adminGroups` / `isAdmin` / `adminScope` / `canWrite`.
-export async function resolveAdminId({
-  request,
-  store,
-}: {
-  request: Request;
-  store: { adminTokenHash?: string };
-}): Promise<{
-  adminId: string;
-  adminGroups: string[];
-  isAdmin: boolean;
-  adminScope: PermissionScope | null;
-  canWrite: boolean;
-}> {
-  const adminTokenHash = store.adminTokenHash;
-  if (!adminTokenHash) throw internalError("admin token hash is not mounted");
-  const identity = await resolveIdentity({ request, adminTokenHash });
-  if (identity.admin) {
-    return {
-      adminId: identity.id,
-      adminGroups: identity.groups,
-      isAdmin: true,
-      adminScope: null,
-      canWrite: true,
-    };
-  }
-  const access = await resolveAccessForIdentity(identity);
-  if (!access) throw unauthorized(NO_READ_PERMISSION_MESSAGE);
-  // The reads are allowlisted; a writer may also perform the writes.
-  if (access.canWrite) {
-    const isRead = request.method === "GET" || request.method === "HEAD";
-    if (isRead && !isScopedReadPath(new URL(request.url).pathname)) {
-      throw forbidden("Scoped identities are read-only");
-    }
-  } else {
-    requireScopedRead(request);
-  }
-  return {
-    adminId: identity.id,
-    adminGroups: identity.groups,
-    isAdmin: false,
-    adminScope: access.scope,
-    canWrite: access.canWrite,
-  };
 }
 
 // Sentry SDK authentication: the DSN public key is sent either as the
@@ -199,11 +100,9 @@ export function validateAuth(request: Request, target: SentryAuthTarget): Sentry
   return { valid: sentryKey === target.publicKey, publicKey: sentryKey };
 }
 
-// Tokens are scoped to one project + environment and stored hashed;
+// Tokens are scoped to one project and stored hashed;
 // only the bearer (SENTRY_AUTH_TOKEN) or X-Upload-Token header is accepted.
-export async function validateUploadAuth(
-  request: Request,
-): Promise<UploadAuthResult> {
+export async function validateUploadAuth(request: Request): Promise<UploadAuthResult> {
   const bearer = request.headers.get("Authorization");
   const raw =
     (bearer?.startsWith("Bearer ") ? bearer.slice(7) : undefined) ??

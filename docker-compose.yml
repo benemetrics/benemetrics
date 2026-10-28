@@ -6,10 +6,16 @@
 # become localhost when the server runs outside compose.
 x-app-environment: &app-environment
   NODE_ENV: production
-  ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
   DATABASE_URL: postgres://postgres:mysecretpassword@postgres:5432/sentry
   NATS_SERVERS: nats://nats:4222
   NATS_STREAM_MAX_BYTES: "1073741824"
+  # The backend's NATS config user (AUTH account; also the auth-callout
+  # service) and the issuer seed that signs the admission verdicts.
+  NATS_AUTH_USER: ${NATS_AUTH_USER:-sentries-auth}
+  NATS_AUTH_PASSWORD: ${NATS_AUTH_PASSWORD:-sentries-dev-auth-pass}
+  NATS_AUTH_KEY_SEED: ${NATS_AUTH_KEY_SEED:-SAAICRLV2CKHUW4DJ4UWKWWZOXS7K4AZ7F3DWLXHXA5FUVBM2OUZ3O3ITM}
+  CLICKHOUSE_NATS_USER: ${CLICKHOUSE_NATS_USER:-sentries-internal}
+  CLICKHOUSE_NATS_PASSWORD: ${CLICKHOUSE_NATS_PASSWORD:-sentries-dev-internal-pass}
   CLICKHOUSE_HOST: clickhouse
   CLICKHOUSE_PORT: "8123"
   CLICKHOUSE_DATABASE: default
@@ -19,6 +25,20 @@ x-app-environment: &app-environment
   S3_REGION: us-east-1
   S3_ACCESS_KEY_ID: rustfsadmin
   S3_SECRET_ACCESS_KEY: rustfsadmin
+  # Ingest rate limits (can be overridden per test)
+  INGEST_RATE_LIMIT_PER_IP_PER_SEC: ${INGEST_RATE_LIMIT_PER_IP_PER_SEC:-10}
+  INGEST_RATE_LIMIT_PER_FP_PER_SEC: ${INGEST_RATE_LIMIT_PER_FP_PER_SEC:-5}
+  INGEST_RATE_LIMIT_GLOBAL_PER_SEC: ${INGEST_RATE_LIMIT_GLOBAL_PER_SEC:-200}
+  INGEST_RATE_LIMIT_BURST_SECONDS: ${INGEST_RATE_LIMIT_BURST_SECONDS:-2}
+  INGEST_MAX_ENVELOPE_BYTES: ${INGEST_MAX_ENVELOPE_BYTES:-1048576}
+  INGEST_MAX_DECOMPRESSED_BYTES: ${INGEST_MAX_DECOMPRESSED_BYTES:-4194304}
+  INGEST_MAX_LARGE_ENVELOPE_BYTES: ${INGEST_MAX_LARGE_ENVELOPE_BYTES:-20971520}
+  INGEST_MAX_OTLP_BYTES: ${INGEST_MAX_OTLP_BYTES:-4194304}
+  INGEST_MAX_ENVELOPE_ITEMS: ${INGEST_MAX_ENVELOPE_ITEMS:-100}
+  INGEST_MAX_REPLAY_ITEMS: ${INGEST_MAX_REPLAY_ITEMS:-500}
+  INGEST_MAX_OTLP_SPANS: ${INGEST_MAX_OTLP_SPANS:-1000}
+  TRUST_PROXY: ${TRUST_PROXY:-false}
+  INGEST_BLOCK_TTL_HOURS: ${INGEST_BLOCK_TTL_HOURS:-24}
 
 services:
   postgres:
@@ -31,6 +51,14 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
@@ -50,6 +78,14 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
 
   # JetStream buffers the ingested events until ClickHouse consumes them by
   # configuration (NATS table engine + durable pull consumer + MV); the
@@ -62,6 +98,14 @@ services:
       NATS_WEBSOCKET_PORT: "9222"
       NATS_STORE_DIR: /data
       NATS_MAX_FILE_STORE: 4GB
+      # Auth callout: the backend answers every non-config-user connection
+      # (see docs/nats.md). The issuer keypair is dev material; production
+      # generates its own pair.
+      NATS_AUTH_USER: ${NATS_AUTH_USER:-sentries-auth}
+      NATS_AUTH_PASSWORD: ${NATS_AUTH_PASSWORD:-sentries-dev-auth-pass}
+      NATS_INTERNAL_USER: ${CLICKHOUSE_NATS_USER:-sentries-internal}
+      NATS_INTERNAL_PASSWORD: ${CLICKHOUSE_NATS_PASSWORD:-sentries-dev-internal-pass}
+      NATS_AUTH_ISSUER: ${NATS_AUTH_ISSUER:-ABXKA3OBISZQTV5R2PFJ32RIYZAWKGFEKODJ76RMD7JGMGVGL6D6HT3W}
     configs:
       - source: nats-server
         target: /etc/nats/nats-server.conf
@@ -72,6 +116,14 @@ services:
       - "9222:9222" # WebSocket (UI live feed)
     volumes:
       - nats_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
 
   rustfs:
     image: rustfs/rustfs:latest
@@ -90,6 +142,14 @@ services:
     volumes:
       - rustfs_data:/data
       - rustfs_logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
 
   # RustFS runs as UID 10001; the named volumes need matching ownership.
   rustfs-perms:
@@ -111,7 +171,13 @@ services:
       until rc alias set local http://rustfs:9000 rustfsadmin rustfsadmin; do sleep 1; done;
       until rc ls local/ >/dev/null 2>&1; do sleep 1; done;
       rc ls local/sentry-replays >/dev/null 2>&1 || rc mb local/sentry-replays;
-      printf '%s' '{\"rules\":[{\"allowedOrigins\":[\"*\"],\"allowedMethods\":[\"GET\",\"HEAD\"],\"allowedHeaders\":[\"*\"],\"exposeHeaders\":[\"ETag\",\"Content-Length\",\"Content-Type\"],\"maxAgeSeconds\":3000}]}' | rc bucket cors set local/sentry-replays -;
+      tries=0;
+      until rc bucket cors list local/sentry-replays 2>/dev/null | grep -q 'Allowed origins'; do
+        tries=$((tries+1));
+        if [ $tries -gt 3 ]; then echo 'CORS rule did not persist'; exit 1; fi;
+        printf '%s' '{\"rules\":[{\"allowedOrigins\":[\"*\"],\"allowedMethods\":[\"GET\",\"HEAD\"],\"allowedHeaders\":[\"*\"],\"exposeHeaders\":[\"ETag\",\"Content-Length\",\"Content-Type\"],\"maxAgeSeconds\":3000}]}' | rc bucket cors set local/sentry-replays -;
+        sleep 1;
+      done;
       "
 
   # Keycloak: the local identity provider. The realm (the clients, the
@@ -135,13 +201,8 @@ services:
     ports:
       - "8080:8080"
 
-  # The API and the UI. `docker compose --profile app up -d` serves them on
-  # http://localhost:31337/ui.
-  #
-  # The app lives behind the `app` profile: the test suite pulls from the
-  # same JetStream durable, so the services it needs are enough to run it.
+  # The API and the UI. Serves them on http://localhost:31337/ui.
   backend:
-    profiles: ["app"]
     build: .
     depends_on:
       postgres:
@@ -157,6 +218,14 @@ services:
       PORT: "31337"
     ports:
       - "31337:31337"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
 
   # The side-effects consumer: it applies the Postgres transitions (issues,
   # alerts, releases) from the durable JetStream pull consumer.
@@ -164,7 +233,6 @@ services:
   # It waits for the API to be healthy: both apply the Postgres migrations at
   # boot, and two concurrent migrators collide.
   consumer:
-    profiles: ["app"]
     build: .
     depends_on:
       backend:
@@ -176,6 +244,14 @@ services:
     # The consumer serves no HTTP: the image healthcheck probes the API.
     healthcheck:
       disable: true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
 volumes:
   postgres_data:
@@ -201,6 +277,21 @@ configs:
       websocket {
         port: $$NATS_WEBSOCKET_PORT
         no_tls: true
+      }
+
+      # Everything shares the global account; the isolation is the callout's
+      # per-user claim (sub-only, app shards) — docs/nats.md. The config
+      # users bypass the callout: the backend is the auth service itself and
+      # the ClickHouse engine is a deployment-internal consumer.
+      authorization {
+        users: [
+          { user: $$NATS_AUTH_USER, password: $$NATS_AUTH_PASSWORD }
+          { user: $$NATS_INTERNAL_USER, password: $$NATS_INTERNAL_PASSWORD }
+        ]
+        auth_callout {
+          issuer: $$NATS_AUTH_ISSUER
+          auth_users: [ $$NATS_AUTH_USER, $$NATS_INTERNAL_USER ]
+        }
       }
 
   # The Keycloak realm: the SPA client, the backend client, the groups and

@@ -1,33 +1,42 @@
 /**
  * Hop 5 — live feed (browser -> NATS WebSocket).
  *
- * The browser subscribes to `sentry.events` itself: the backend does not
+ * The browser subscribes to the app's shard itself: the backend does not
  * fan events out anymore. This test drives the same client module the UI
- * uses (`frontend/src/lib/live-events.ts`) over the WebSocket listener
- * and asserts that a published envelope arrives in the events-API item
- * shape. Nothing downstream is asserted.
+ * uses (`frontend/src/lib/live-events.ts`) over the WebSocket listener,
+ * authenticates through the auth callout (the test runs the callout
+ * service on its own connection) and asserts that a published envelope
+ * arrives in the events-API item shape. Nothing downstream is asserted.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import type { NatsConnection } from "@nats-io/transport-node";
 import {
-  parseLiveMessage,
+  parseLiveMessages,
   subscribeLiveFeed,
   type LiveEventItem,
 } from "../../frontend/src/lib/live-events";
+import { startAuthCallout } from "../nats-auth-callout";
 import {
+  ADMIN_TOKEN,
+  app,
   connectTestNats,
   startTestApp,
-  TEST_EVENTS_SUBJECT,
   waitFor,
 } from "./test-helpers";
 
 const NATS_WS_URL = process.env.NATS_WS_URL || "ws://localhost:9222";
+// The dev issuer keypair is committed (docker-compose nats config); tests
+// sign verdicts with the same key the broker trusts.
+process.env.NATS_AUTH_KEY_SEED ||= "SAAICRLV2CKHUW4DJ4UWKWWZOXS7K4AZ7F3DWLXHXA5FUVBM2OUZ3O3ITM";
 
 let nats: NatsConnection;
 
 beforeAll(async () => {
   nats = await connectTestNats();
+  // The browser-style connection needs a verdict: run the callout service
+  // on this (config-user) connection, like the backend process does.
+  startAuthCallout(nats, () => app.store.adminTokenHash as string);
 });
 
 afterAll(async () => {
@@ -41,6 +50,7 @@ function publish(subject: string, message: Record<string, unknown>) {
 /** Starts the browser client and resolves once its subscription is live. */
 function startFeed(handlers: {
   onItem: (item: LiveEventItem) => void;
+  appNumber: number;
 }): Promise<() => void> {
   return new Promise((resolve) => {
     const close = subscribeLiveFeed(
@@ -50,7 +60,7 @@ function startFeed(handlers: {
           if (status === "connected") resolve(close);
         },
       },
-      { url: NATS_WS_URL },
+      { url: NATS_WS_URL, appNumber: handlers.appNumber, authToken: ADMIN_TOKEN },
     );
   });
 }
@@ -60,9 +70,12 @@ describe("Hop 5: live feed over the NATS WebSocket", () => {
     const app = await startTestApp();
     const eventId = crypto.randomUUID();
     const items: LiveEventItem[] = [];
-    const close = await startFeed({ onItem: (item) => items.push(item) });
+    const close = await startFeed({ onItem: (item) => items.push(item), appNumber: app.appNumber });
+    // "connected" is the socket's open event; the SUB registers only after
+    // the auth callout admits the connection, so give it a beat.
+    await Bun.sleep(300);
     try {
-      await publish(TEST_EVENTS_SUBJECT, {
+      await publish(`sentry.events.${app.appNumber}`, {
         id: eventId,
         projectId: app.projectId,
         appId: app.appId,
@@ -92,7 +105,13 @@ describe("Hop 5: live feed over the NATS WebSocket", () => {
   });
 
   it("ignores messages that are not envelopes", () => {
-    expect(parseLiveMessage("not json")).toBeNull();
-    expect(parseLiveMessage("[]")).toBeNull();
+    expect(parseLiveMessages("not json")).toEqual([]);
+    expect(parseLiveMessages("[]")).toEqual([]);
+  });
+
+  it("parses a newline-batched payload into one item per envelope", () => {
+    const envelope = (id: string) => JSON.stringify({ id, envelopeHeader: "{}", envelopeItems: "[]" });
+    const parsed = parseLiveMessages(`${envelope("a")}\n${envelope("b")}\n`);
+    expect(parsed.map((m) => m.id)).toEqual(["a", "b"]);
   });
 });

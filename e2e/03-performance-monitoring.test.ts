@@ -7,7 +7,7 @@
 
 import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { startTestServer, waitForEventListItem, type TestServer } from "./test-helpers";
+import { startTestServer, waitForEventListItem, ADMIN_TOKEN, type TestServer } from "./test-helpers";
 
 let SERVER_URL = "";
 let testServer: TestServer | null = null;
@@ -32,7 +32,7 @@ async function apiRequest(
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: "API-Key e2e-admin-token",
+      Authorization: ADMIN_TOKEN,
     },
   };
   if (body !== undefined) {

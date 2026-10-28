@@ -60,13 +60,10 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
   .get(
     "/",
     async ({ query, request, isAdmin, adminScope }) => {
-      // The filter belongs in the query: an unknown app or environment
-      // yields an empty list, not a lookup and a 404.
+      // The filter belongs in the query: an unknown app yields an empty
+      // list, not a lookup and a 404.
       let appIds: string[] | undefined;
       if (query.appId) appIds = [query.appId];
-      else if (query.environmentId) {
-        appIds = (await appDAO.listByEnvironment(query.environmentId)).map((app) => app.id);
-      }
       const view = await scopedViewFor({ request, isAdmin, adminScope });
       if (view) {
         const visible = [...view.appIds];
@@ -81,7 +78,6 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
         limit: "string.integer.parse?",
         since: "string?",
         projectId: "string?",
-        environmentId: "string.uuid?",
         appId: "string.uuid?",
       }),
     },
@@ -182,7 +178,7 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
       // the publish: the id is the idempotency key.
       if (wasRecentlyIngested(eventId)) return { id: eventId };
       const message: SentryEventMessage = { id: eventId, projectId: app.projectId, appId: app.id, envelopeHeader: JSON.stringify(parsed.header), envelopeItems: JSON.stringify(await offloadReplayItems(items, { projectId: app.projectId, appId: app.id, messageId: eventId })), issueEvents: JSON.stringify(extractIssueDigests(items)), receivedAt: new Date().toISOString(), type: "envelope" };
-      await dispatchIngestedEvent(message, extractMetricSamples({ projectId: app.projectId, appId: app.id, eventId, items, receivedAt: message.receivedAt }));
+      await dispatchIngestedEvent(app, message, extractMetricSamples({ projectId: app.projectId, appId: app.id, eventId, items, receivedAt: message.receivedAt }));
       markIngested(eventId);
       return { id: eventId };
     },
@@ -200,7 +196,7 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
       const items = [{ header: { type: "event" as const, content_type: "application/json", length: rawBody.length }, payload: event }];
       if (wasRecentlyIngested(eventId)) return { id: eventId };
       const message: SentryEventMessage = { id: eventId, projectId: app.projectId, appId: app.id, envelopeHeader: JSON.stringify({ event_id: eventId, sent_at: new Date().toISOString() }), envelopeItems: JSON.stringify(items), issueEvents: JSON.stringify(extractIssueDigests(items)), receivedAt: new Date().toISOString(), type: "store" };
-      await dispatchIngestedEvent(message, extractMetricSamples({ projectId: app.projectId, appId: app.id, eventId, items, receivedAt: message.receivedAt }));
+      await dispatchIngestedEvent(app, message, extractMetricSamples({ projectId: app.projectId, appId: app.id, eventId, items, receivedAt: message.receivedAt }));
       markIngested(eventId);
       return { id: eventId };
     },

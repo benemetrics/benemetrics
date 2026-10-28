@@ -13,11 +13,9 @@
 
 import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
+import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
 
 const PROJECT_NAME = `E2E UI Project ${Date.now()}`;
-
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
 
 let baseUrl = "";
 let dsn = "";
@@ -119,7 +117,7 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
     // The UI has no built-in token fallback: log in by storing the admin
     // token in localStorage, then reload so the SPA picks it up.
     await view.evaluate(
-      `localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
     );
     await view.navigate(`${baseUrl}/ui/issues`);
   });

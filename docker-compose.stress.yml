@@ -1,0 +1,125 @@
+# Stress test overrides - compile the code, run the API, and run the full test suite.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.stress.yml up -d
+#     # builds the image, starts infra + API (+ consumer) on http://localhost:31337
+#
+#   docker compose -f docker-compose.yml -f docker-compose.stress.yml run test-runner
+#     # runs `bun test --parallel=1 backend/tests/ e2e/` against the stack
+#
+# Notes:
+#   - `build: .` compiles the TypeScript bundle (Dockerfile runs `bun build`).
+#   - The admin token is generated randomly at boot (printed to the backend's
+#     stdout) and is NOT configurable via env var (see AGENTS.md auth section).
+#     The `ADMIN_TOKEN` env var is intentionally absent: it is a no-op.
+#   - The test suite boots its own backend instances in-process and captures the
+#     printed token via `console.log` interception, so it needs no external token.
+
+services:
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  clickhouse:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  nats:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  rustfs:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # The API server: runs the compiled production bundle. No `app` profile so it
+  # starts by default with `up -d`.
+  backend:
+    profiles: []
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://postgres:mysecretpassword@postgres:5432/sentry
+      NATS_SERVERS: nats://nats:4222
+      NATS_STREAM_MAX_BYTES: "1073741824"
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_DATABASE: default
+      CLICKHOUSE_NATS_URL: nats:4222
+      S3_ENDPOINT: http://rustfs:9000
+      S3_BUCKET: sentry-replays
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: rustfsadmin
+      S3_SECRET_ACCESS_KEY: rustfsadmin
+      PORT: "31337"
+      # Stress test rate limits - high enough for baseline
+      INGEST_RATE_LIMIT_GLOBAL_PER_SEC: "10000"
+      INGEST_RATE_LIMIT_PER_IP_PER_SEC: "5000"
+      INGEST_RATE_LIMIT_PER_FP_PER_SEC: "1000"
+      INGEST_RATE_LIMIT_BURST_SECONDS: "5"
+      INGEST_MAX_ENVELOPE_BYTES: "1048576"
+      INGEST_MAX_DECOMPRESSED_BYTES: "4194304"
+      INGEST_MAX_LARGE_ENVELOPE_BYTES: "20971520"
+    ports:
+      - "31337:31337"
+
+  # The side-effects consumer: applies Postgres side effects from JetStream.
+  consumer:
+    profiles: []
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://postgres:mysecretpassword@postgres:5432/sentry
+      NATS_SERVERS: nats://nats:4222
+      NATS_STREAM_MAX_BYTES: "1073741824"
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_DATABASE: default
+      CLICKHOUSE_NATS_URL: nats:4222
+      S3_ENDPOINT: http://rustfs:9000
+      S3_BUCKET: sentry-replays
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: rustfsadmin
+      S3_SECRET_ACCESS_KEY: rustfsadmin
+    command: ["bun", "consumer.js"]
+    # The consumer serves no HTTP: the image healthcheck probes the API.
+    healthcheck:
+      disable: true

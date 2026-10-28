@@ -15,9 +15,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
-
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
+import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
 const PROJECT_NAME = `Issues UI ${Date.now()}`;
 const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
@@ -168,7 +166,7 @@ describe("Issues page — resolve/reopen in the real UI", () => {
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${baseUrl}/ui/overview`);
     await view.evaluate(
-      `localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
     );
     await view.navigate(`${baseUrl}/ui/overview`);
     // Wait until the workspace resolved the project before visiting

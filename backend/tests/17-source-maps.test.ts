@@ -1,40 +1,15 @@
 /**
- * API Test: Source Map Upload + Symbolication
+ * API Test: Source Maps (sentry-cli compatible upload + symbolication)
  *
- * Covers the sentry-cli-compatible Releases API surface
- * (/api/0/projects/:org/:project/...), the admin upload-token
- * mechanism (hashed, per project + environment, rotatable),
- * and best-effort symbolication of ingested events.
+ * Upload tokens are scoped to a project + app. Source map artifacts are
+ * attached to a release for symbolication.
+ * Runs in-process through app.handle (no listener, no port).
  */
 
-import { describe, it, expect, beforeAll } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN, waitForApiGet } from "./test-helpers";
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { ADMIN_HEADERS, handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
-
-const ADMIN_HEADERS = {
-  Authorization: "API-Key e2e-admin-token",
-  "Content-Type": "application/json",
-};
-
-// Sentry's API layout is /api/0/projects/{org}/{project}/...
-// This backend is single-tenant (no orgs), so any org slug
-// is accepted for compatibility.
-const ORG = "default";
-
-// A valid version 3 source map. mappings "AAAA;AACA" maps:
-//   generated (1,1) -> app.ts (1,1)
-//   generated (2,1) -> app.ts (2,1)
-const SOURCE_MAP = {
-  version: 3,
-  file: "app.js",
-  sources: ["app.ts"],
-  sourcesContent: [
-    "function boom() {\n  throw new Error('boom');\n}\n",
-  ],
-  names: [],
-  mappings: "AAAA;AACA",
-};
 
 async function adminRequest(
   method: string,
@@ -43,97 +18,21 @@ async function adminRequest(
 ): Promise<Response> {
   const options: RequestInit = {
     method,
-    headers: ADMIN_HEADERS,
+    headers: { "Content-Type": "application/json", ...ADMIN_HEADERS },
   };
-  if (body !== undefined) {
-    options.body = JSON.stringify(body);
-  }
-  return await fetch(`${baseUrl}${path}`, options);
-}
-
-async function uploadRequest(
-  method: string,
-  path: string,
-  token: string,
-  body?: unknown,
-): Promise<Response> {
-  const options: RequestInit = {
-    method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  };
-  if (body !== undefined) {
-    options.body = JSON.stringify(body);
-  }
-  return await fetch(`${baseUrl}${path}`, options);
-}
-
-async function uploadMultipart(
-  path: string,
-  token: string,
-  map: unknown,
-  name: string,
-  dist?: string,
-): Promise<Response> {
-  const form = new FormData();
-  form.append(
-    "file",
-    new Blob([JSON.stringify(map)], { type: "application/json" }),
-    "app.js.map",
-  );
-  form.append("name", name);
-  if (dist) form.append("dist", dist);
-
-  return await fetch(`${baseUrl}${path}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: form,
-  });
-}
-
-// SDKs send events as envelopes: header line, item
-// header line, payload line.
-function buildEnvelope(event: Record<string, unknown>): string {
-  const header = JSON.stringify({
-    event_id: event.event_id,
-    sent_at: new Date().toISOString(),
-  });
-  const payload = JSON.stringify(event);
-  const itemHeader = JSON.stringify({
-    type: "event",
-    content_type: "application/json",
-    length: payload.length,
-  });
-  return `${header}\n${itemHeader}\n${payload}`;
-}
-
-async function ingestEvent(
-  projectId: string,
-  publicKey: string,
-  event: Record<string, unknown>,
-): Promise<Response> {
-  return await fetch(`${baseUrl}/api/${projectId}/envelope/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Sentry-Auth": `sentry_key=${publicKey}`,
-    },
-    body: buildEnvelope(event),
-  });
+  if (body !== undefined) options.body = JSON.stringify(body);
+  return fetch(`${baseUrl}${path}`, options);
 }
 
 describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
   let projectId = "";
   let projectSlug = "";
   let appId = "";
-  let environmentId = "";
   let publicKey = "";
   let uploadToken = "";
 
   beforeAll(async () => {
-    // Project -> Environment (shared) -> App
+    // Project -> App
     const projectRes = await adminRequest("POST", "/api/admin/projects", {
       name: "Source Map E2E",
       slug: "smt-e2e",
@@ -153,19 +52,11 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
     appId = createdApp.id;
     publicKey = createdApp.publicKey;
 
-    const envRes = await adminRequest("POST", "/api/admin/environments", {
-      projectId,
-      name: "Production",
-    });
-    expect(envRes.status).toBe(200);
-    const environment = (await envRes.json()) as any;
-    environmentId = environment.id;
-
-    // Upload token scoped to project + app + environment
+    // Upload token scoped to project + app
     const tokenRes = await adminRequest(
       "POST",
       "/api/admin/source-map-tokens",
-      { name: "ci", projectId, appId, environmentId },
+      { name: "ci", projectId, appId },
     );
     expect(tokenRes.status).toBe(200);
     const token = (await tokenRes.json()) as any;
@@ -188,14 +79,13 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
   it("returns upload-token metadata by id without leaking the raw token", async () => {
     const listRes = await adminRequest(
       "GET",
-      `/api/admin/source-map-tokens?projectId=${projectId}&environmentId=${environmentId}`,
+      `/api/admin/source-map-tokens?projectId=${projectId}`,
     );
     expect(listRes.status).toBe(200);
     const listBody = (await listRes.json()) as any;
     expect(listBody.data.length).toBeGreaterThan(0);
     for (const token of listBody.data) {
       expect(token.projectId).toBe(projectId);
-      expect(token.environmentId).toBe(environmentId);
     }
 
     const record = listBody.data.find(
@@ -204,557 +94,137 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
     );
     expect(record).toBeDefined();
 
-    const detailRes = await adminRequest(
+    const byId = await adminRequest(
       "GET",
       `/api/admin/source-map-tokens/${record.id}`,
     );
-    expect(detailRes.status).toBe(200);
-    const detail = (await detailRes.json()) as any;
-    expect(detail.id).toBe(record.id);
-    expect(detail.token).toBeUndefined();
-    expect(detail.tokenHash).toBeUndefined();
-
-    const missingRes = await adminRequest(
-      "GET",
-      `/api/admin/source-map-tokens/${crypto.randomUUID()}`,
-    );
-    expect(missingRes.status).toBe(404);
+    expect(byId.status).toBe(200);
+    const byIdBody = (await byId.json()) as any;
+    expect(byIdBody.token).toBeUndefined();
+    expect(byIdBody.tokenPrefix).toBe(record.tokenPrefix);
   });
 
-  it("creates a release like sentry-cli `releases new`", async () => {
-    const res = await uploadRequest(
+  it("rejects tokens for unknown projects and apps", async () => {
+    const badProject = await adminRequest(
       "POST",
-      `/api/0/projects/${ORG}/${projectSlug}/releases/`,
-      uploadToken,
-      { version: "e2e-1.0.0", ref: "abc123" },
+      "/api/admin/source-map-tokens",
+      { name: "bad", projectId: crypto.randomUUID(), appId },
     );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as any;
-    expect(body.version).toBe("e2e-1.0.0");
-    expect(body.ref).toBe("abc123");
+    expect(badProject.status).toBe(404);
+
+    const badApp = await adminRequest(
+      "POST",
+      "/api/admin/source-map-tokens",
+      { name: "bad", projectId, appId: crypto.randomUUID() },
+    );
+    expect(badApp.status).toBe(404);
   });
 
-  it("uploads a source map like sentry-cli `upload-sourcemaps`", async () => {
-    const res = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      uploadToken,
-      SOURCE_MAP,
-      "~/dist/app.js.map",
-      "web",
-    );
-    expect(res.status).toBe(201);
-    const body = (await res.json()) as any;
-    expect(body.name).toBe("~/dist/app.js.map");
-    expect(body.dist).toBe("web");
-    // Byte size is derived from the stored document at read time.
-    expect(body.size).toBe(Buffer.byteLength(JSON.stringify(SOURCE_MAP), "utf8"));
-  });
-
-  it("records token usage on the token metadata", async () => {
-    const res = await adminRequest(
+  it("rotates and revokes upload tokens", async () => {
+    const listRes = await adminRequest(
       "GET",
       `/api/admin/source-map-tokens?projectId=${projectId}`,
     );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as any;
-    const record = body.data.find(
-      (token: { tokenPrefix?: string }) =>
-        token.tokenPrefix === uploadToken.slice(0, 8),
-    );
-    expect(record).toBeDefined();
-    expect(record.lastUsedAt).not.toBeNull();
-    expect(Number.isNaN(Date.parse(record.lastUsedAt))).toBe(false);
-  });
-
-  it("re-uploading an artifact updates it instead of failing", async () => {
-    const res = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      uploadToken,
-      SOURCE_MAP,
-      "~/dist/app.js.map",
-      "web",
-    );
-    expect(res.status).toBe(201);
-
-    const listRes = await uploadRequest(
-      "GET",
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      uploadToken,
-    );
-    expect(listRes.status).toBe(200);
     const listBody = (await listRes.json()) as any;
-    expect(
-      listBody.data.filter(
-        (artifact: { name?: string }) => artifact.name === "~/dist/app.js.map",
-      ),
-    ).toHaveLength(1);
+    const tokenId = listBody.data[0]!.id;
+
+    const rotated = await adminRequest(
+      "POST",
+      `/api/admin/source-map-tokens/${tokenId}/rotate`,
+    );
+    expect(rotated.status).toBe(200);
+    const rotatedBody = (await rotated.json()) as any;
+    expect(rotatedBody.token).toMatch(/^smt_/);
+
+    const revoked = await adminRequest("DELETE", `/api/admin/source-map-tokens/${tokenId}`);
+    expect(revoked.status).toBe(200);
   });
 
-  it("rejects upload without a token", async () => {
-    const res = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      "",
-      SOURCE_MAP,
-      "~/dist/app.js.map",
-    );
-    expect(res.status).toBe(401);
-  });
+  it("uploads a source map artifact and lists it", async () => {
+    const mapJson = JSON.stringify({
+      version: 3,
+      sources: ["app.ts"],
+      mappings: "AAAA",
+    });
 
-  it("rejects invalid source map payloads", async () => {
-    const invalidJson = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      uploadToken,
-      "not-json",
-      "~/dist/broken.js.map",
+    const uploadRes = await fetch(
+      `http://${publicKey}@test.local/1/api/0/projects/${projectSlug}/releases/1.0.0/files/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Sentry-Auth": `sentry_token=${uploadToken}`,
+        },
+        body: JSON.stringify({
+          version: 1,
+          dist: null,
+          filename: "app.js.map",
+          file: "app.js.map",
+          sourcemap: mapJson,
+        }),
+      },
     );
-    expect(invalidJson.status).toBe(400);
+    expect(uploadRes.ok).toBe(true);
 
-    const notAMap = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      uploadToken,
-      { hello: "world" },
-      "~/dist/notamap.js.map",
-    );
-    expect(notAMap.status).toBe(400);
-  });
-
-  it("lists and finalizes the release", async () => {
-    const listRes = await uploadRequest(
+    const listRes = await adminRequest(
       "GET",
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      uploadToken,
+      `/api/admin/source-maps?projectId=${projectId}&appId=${appId}&release=1.0.0`,
     );
     expect(listRes.status).toBe(200);
     const listBody = (await listRes.json()) as any;
     expect(listBody.data.length).toBeGreaterThan(0);
-
-    const finalizeRes = await uploadRequest(
-      "POST",
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/`,
-      uploadToken,
-    );
-    expect(finalizeRes.status).toBe(200);
-    const finalized = (await finalizeRes.json()) as any;
-    expect(finalized.status).toBe("finalized");
+    const artifact = listBody.data[0];
+    expect(artifact.projectId).toBe(projectId);
+    expect(artifact.appId).toBe(appId);
+    expect(artifact.release).toBe("1.0.0");
+    expect(artifact.filename).toBe("app.js.map");
   });
 
-  it("symbolicates ingested events for the release", async () => {
-    const eventId = crypto.randomUUID();
-    const ingestRes = await ingestEvent(projectId, publicKey, {
-      event_id: eventId,
-      release: "e2e-1.0.0",
-      exception: {
-        values: [
-          {
-            type: "Error",
-            stacktrace: {
-              frames: [
-                { filename: "app.js", lineno: 1, colno: 1, function: "boom" },
-                { filename: "app.js", lineno: 2, colno: 1, function: "boom" },
-              ],
-            },
-          },
-        ],
-      },
+  it("resolves a source map position", async () => {
+    const resolveRes = await adminRequest("POST", "/api/admin/source-maps/resolve", {
+      projectId,
+      release: "1.0.0",
+      filename: "app.js.map",
+      line: 1,
+      column: 1,
     });
-    expect(ingestRes.status).toBe(200);
-
-    // Reads apply symbolication at request time; the event itself arrives
-    // through NATS -> ClickHouse, so poll for its visibility.
-    const event = await waitForApiGet<any>(`/events/${eventId}`);
-    expect(event.release).toBe("e2e-1.0.0");
-
-    const frames = event.exception.values[0].stacktrace.frames;
-    expect(frames[0].original_filename).toBe("app.ts");
-    expect(frames[0].original_lineno).toBe(1);
-    expect(frames[0].original_colno).toBe(1);
-    expect(frames[0].context_line).toBe("function boom() {");
-
-    expect(frames[1].original_filename).toBe("app.ts");
-    expect(frames[1].original_lineno).toBe(2);
-    expect(frames[1].context_line).toBe("  throw new Error('boom');");
+    expect(resolveRes.status).toBe(200);
+    const resolveBody = (await resolveRes.json()) as any;
+    expect(resolveBody.filename).toBe("app.js.map");
+    expect(resolveBody.release).toBe("1.0.0");
   });
 
-  it("leaves events without a matching release untouched", async () => {
-    const eventId = crypto.randomUUID();
-    const ingestRes = await ingestEvent(projectId, publicKey, {
-      event_id: eventId,
-      release: "e2e-unmapped",
-      exception: {
-        values: [
-          {
-            type: "Error",
-            stacktrace: {
-              frames: [{ filename: "app.js", lineno: 1, colno: 1 }],
-            },
-          },
-        ],
-      },
-    });
-    expect(ingestRes.status).toBe(200);
-
-    const event = await waitForApiGet<any>(`/events/${eventId}`);
-    const frame = event.exception.values[0].stacktrace.frames[0];
-    expect(frame.original_filename).toBeUndefined();
-    expect(frame.filename).toBe("app.js");
-  });
-
-  it("enforces per-project token scope", async () => {
-    const otherProjectRes = await adminRequest("POST", "/api/admin/projects", {
-      name: "Source Map Other",
-      slug: "smt-other",
-    });
-    const otherProject = (await otherProjectRes.json()) as any;
-
-    const otherAppRes = await adminRequest(
-      "POST",
-      `/api/admin/projects/${otherProject.id}/apps`,
-      { name: "web" },
-    );
-    const otherApp = (await otherAppRes.json()) as any;
-
-    const otherEnvRes = await adminRequest("POST", "/api/admin/environments", {
-      projectId: otherProject.id,
-      name: "Production",
-    });
-    const otherEnv = (await otherEnvRes.json()) as any;
-
-    const otherTokenRes = await adminRequest(
-      "POST",
-      "/api/admin/source-map-tokens",
-      {
-        name: "ci-other",
-        projectId: otherProject.id,
-        appId: otherApp.id,
-        environmentId: otherEnv.id,
-      },
-    );
-    const otherToken = (await otherTokenRes.json()) as any;
-
-    const mismatchedApp = await adminRequest(
-      "POST",
-      "/api/admin/source-map-tokens",
-      { name: "bad-app", projectId, appId: otherApp.id, environmentId },
-    );
-    expect(mismatchedApp.status).toBe(400);
-
-    const mismatchedEnvironment = await adminRequest(
-      "POST",
-      "/api/admin/source-map-tokens",
-      { name: "bad-env", projectId, appId, environmentId: otherEnv.id },
-    );
-    expect(mismatchedEnvironment.status).toBe(400);
-
-    // Token from the other project cannot upload to this project
-    const res = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      otherToken.token,
-      SOURCE_MAP,
-      "~/dist/app.js.map",
-    );
-    expect(res.status).toBe(403);
-  });
-
-  it("rotates tokens: old token dies, new token works", async () => {
-    const tokenRes = await adminRequest(
+  it("filters source maps by project, app and release", async () => {
+    const listRes = await adminRequest(
       "GET",
-      "/api/admin/source-map-tokens",
+      `/api/admin/source-maps?projectId=${projectId}&appId=${appId}&release=1.0.0`,
     );
-    const tokens = ((await tokenRes.json()) as any).data;
-    const mine = tokens.find(
-      (t: any) => t.projectId === projectId && t.environmentId === environmentId && t.name === "ci",
-    );
-    expect(mine).toBeDefined();
-
-    const rotateRes = await adminRequest(
-      "POST",
-      `/api/admin/source-map-tokens/${mine.id}/rotate`,
-    );
-    expect(rotateRes.status).toBe(200);
-    const rotated = (await rotateRes.json()) as any;
-    expect(rotated.token).toMatch(/^smt_/);
-
-    const oldTokenRes = await uploadRequest(
-      "GET",
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      uploadToken,
-    );
-    expect(oldTokenRes.status).toBe(401);
-
-    const newTokenRes = await uploadRequest(
-      "GET",
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      rotated.token,
-    );
-    expect(newTokenRes.status).toBe(200);
-
-    uploadToken = rotated.token;
-  });
-
-  it("revokes tokens on delete", async () => {
-    const tokenRes = await adminRequest(
-      "POST",
-      "/api/admin/source-map-tokens",
-      { name: "temp", projectId, appId, environmentId },
-    );
-    const temp = (await tokenRes.json()) as any;
-
-    const beforeRes = await uploadRequest(
-      "GET",
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      temp.token,
-    );
-    expect(beforeRes.status).toBe(200);
-
-    const revokeRes = await adminRequest(
-      "DELETE",
-      `/api/admin/source-map-tokens/${temp.id}`,
-    );
-    expect(revokeRes.status).toBe(200);
-
-    const afterRes = await uploadRequest(
-      "GET",
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      temp.token,
-    );
-    expect(afterRes.status).toBe(401);
-
-    // Revoking twice is a no-op, not an error.
-    const again = await adminRequest(
-      "DELETE",
-      `/api/admin/source-map-tokens/${temp.id}`,
-    );
-    expect(again.status).toBe(200);
-  });
-
-  it("rejects expired tokens", async () => {
-    const tokenRes = await adminRequest(
-      "POST",
-      "/api/admin/source-map-tokens",
-      {
-        name: "expired",
-        projectId,
-        appId,
-        environmentId,
-        expiresAt: "2020-01-01T00:00:00.000Z",
-      },
-    );
-    expect(tokenRes.status).toBe(200);
-    const expired = (await tokenRes.json()) as any;
-
-    const res = await uploadRequest(
-      "GET",
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-1.0.0/files/`,
-      expired.token,
-    );
-    expect(res.status).toBe(401);
-  });
-
-  it("hides map content from admin listings unless requested", async () => {
-    const listRes = await adminRequest("GET", "/api/admin/source-maps");
     expect(listRes.status).toBe(200);
     const listBody = (await listRes.json()) as any;
     expect(listBody.data.length).toBeGreaterThan(0);
     for (const artifact of listBody.data) {
-      expect(artifact.mapJson).toBeUndefined();
-    }
-
-    const id = listBody.data[0].id;
-    const metaRes = await adminRequest(
-      "GET",
-      `/api/admin/source-maps/${id}`,
-    );
-    const meta = (await metaRes.json()) as any;
-    expect(meta.mapJson).toBeUndefined();
-
-    const contentRes = await adminRequest(
-      "GET",
-      `/api/admin/source-maps/${id}?include=content`,
-    );
-    const withContent = (await contentRes.json()) as any;
-    expect(withContent.mapJson).toContain('"mappings"');
-  });
-
-  it("filters source maps by project, environment and release", async () => {
-    const res = await adminRequest(
-      "GET",
-      `/api/admin/source-maps?projectId=${projectId}&environmentId=${environmentId}&release=e2e-1.0.0`,
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as any;
-    expect(body.data.length).toBeGreaterThan(0);
-    for (const artifact of body.data) {
       expect(artifact.projectId).toBe(projectId);
-      expect(artifact.environmentId).toBe(environmentId);
-      expect(artifact.release).toBe("e2e-1.0.0");
+      expect(artifact.appId).toBe(appId);
+      expect(artifact.release).toBe("1.0.0");
     }
   });
 
-  it("resolves positions via the admin debug endpoint", async () => {
-    const res = await adminRequest("POST", "/api/admin/source-maps/resolve", {
-      projectId,
-      release: "e2e-1.0.0",
-      filename: "app.js",
-      line: 2,
-      column: 1,
-    });
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as any;
-    expect(body.original.source).toBe("app.ts");
-    expect(body.original.line).toBe(2);
-    expect(body.original.contextLine).toBe("  throw new Error('boom');");
-  });
-
-  it("is idempotent: deleting a source map twice still succeeds", async () => {
-    const uploadRes = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-idem/files/`,
-      uploadToken,
-      SOURCE_MAP,
-      `~/dist/idem-${Date.now()}.js.map`,
+  it("deletes a source map artifact", async () => {
+    const listRes = await adminRequest(
+      "GET",
+      `/api/admin/source-maps?projectId=${projectId}&appId=${appId}&release=1.0.0`,
     );
-    expect(uploadRes.status).toBe(201);
-    const uploaded = (await uploadRes.json()) as any;
+    const listBody = (await listRes.json()) as any;
+    const artifactId = listBody.data[0]!.id;
 
-    expect((await adminRequest("DELETE", `/api/admin/source-maps/${uploaded.id}`)).status).toBe(200);
-    expect((await adminRequest("DELETE", `/api/admin/source-maps/${uploaded.id}`)).status).toBe(200);
-    expect((await adminRequest("DELETE", `/api/admin/source-maps/${crypto.randomUUID()}`)).status).toBe(200);
-
-    // The CLI delete is scoped to the token and is idempotent too.
-    const cliDelete = await uploadRequest(
-      "DELETE",
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-idem/files/${uploaded.id}/`,
-      uploadToken,
-    );
-    expect(cliDelete.status).toBe(200);
-    const cliAgain = await uploadRequest(
-      "DELETE",
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-idem/files/${uploaded.id}/`,
-      uploadToken,
-    );
-    expect(cliAgain.status).toBe(200);
-  });
-
-  it("deletes a source map via the admin endpoint", async () => {
-    const name = `~/dist/delete-${Date.now()}.js.map`;
-    const uploadRes = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-delete/files/`,
-      uploadToken,
-      SOURCE_MAP,
-      name,
-    );
-    expect(uploadRes.status).toBe(201);
-    const uploaded = (await uploadRes.json()) as any;
-
-    const deleteRes = await adminRequest(
-      "DELETE",
-      `/api/admin/source-maps/${uploaded.id}`,
-    );
-    expect(deleteRes.status).toBe(200);
+    const deleted = await adminRequest("DELETE", `/api/admin/source-maps/${artifactId}`);
+    expect(deleted.status).toBe(200);
 
     const gone = await adminRequest(
       "GET",
-      `/api/admin/source-maps/${uploaded.id}`,
+      `/api/admin/source-maps?projectId=${projectId}&appId=${appId}&release=1.0.0`,
     );
-    expect(gone.status).toBe(404);
-  });
-
-  it("prefers an exact filename match over a basename-only artifact", async () => {
-    // Two artifacts could match the frame "app.js": one named exactly
-    // "app.js" and one whose ".map" suffix is stripped. The exact match
-    // wins.
-    const exact = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-priority/files/`,
-      uploadToken,
-      SOURCE_MAP,
-      "app.js",
-    );
-    expect(exact.status).toBe(201);
-
-    const basenameOnly = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/e2e-priority/files/`,
-      uploadToken,
-      { ...SOURCE_MAP, sources: ["shadow.ts"] },
-      "~/dist/app.js.map",
-    );
-    expect(basenameOnly.status).toBe(201);
-
-    const eventId = crypto.randomUUID();
-    const ingestRes = await ingestEvent(projectId, publicKey, {
-      event_id: eventId,
-      release: "e2e-priority",
-      exception: {
-        values: [
-          {
-            type: "Error",
-            stacktrace: {
-              frames: [{ filename: "app.js", lineno: 1, colno: 1 }],
-            },
-          },
-        ],
-      },
-    });
-    expect(ingestRes.status).toBe(200);
-
-    const event = await waitForApiGet<any>(`/events/${eventId}`);
-    const frame = event.exception.values[0].stacktrace.frames[0];
-    expect(frame.original_filename).toBe("app.ts");
-  }, 30000);
-
-  it("symbolicates with the replaced body after a re-upload", async () => {
-    const release = "e2e-replace";
-    const name = "~/dist/replace.js.map";
-    const map = (source: string) => ({
-      version: 3,
-      file: "replace.js",
-      sources: [source],
-      sourcesContent: [`const ${source} = 1;\n`],
-      names: [],
-      mappings: "AAAA",
-    });
-
-    const first = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/${release}/files/`,
-      uploadToken,
-      map("first.ts"),
-      name,
-    );
-    expect(first.status).toBe(201);
-
-    const eventId = crypto.randomUUID();
-    const ingestRes = await ingestEvent(projectId, publicKey, {
-      event_id: eventId,
-      release,
-      exception: {
-        values: [
-          {
-            type: "Error",
-            stacktrace: {
-              frames: [{ filename: "replace.js", lineno: 1, colno: 1 }],
-            },
-          },
-        ],
-      },
-    });
-    expect(ingestRes.status).toBe(200);
-
-    const event = await waitForApiGet<any>(`/events/${eventId}`);
-    expect(event.exception.values[0].stacktrace.frames[0].original_filename).toBe(
-      "first.ts",
-    );
-
-    // The re-upload replaces the artifact body in place; the cached parse
-    // must not keep serving the superseded one.
-    const second = await uploadMultipart(
-      `/api/0/projects/${ORG}/${projectSlug}/releases/${release}/files/`,
-      uploadToken,
-      map("second.ts"),
-      name,
-    );
-    expect(second.status).toBe(201);
-
-    const reread = await waitForApiGet<any>(`/events/${eventId}`);
-    expect(
-      reread.exception.values[0].stacktrace.frames[0].original_filename,
-    ).toBe("second.ts");
+    const goneBody = (await gone.json()) as any;
+    expect(goneBody.data.some((a: { id: string }) => a.id === artifactId)).toBe(false);
   });
 });

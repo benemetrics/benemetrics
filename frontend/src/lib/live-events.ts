@@ -1,182 +1,195 @@
-/**
- * Live feed: the browser subscribes to NATS directly.
- *
- * There is no backend fan-out: the UI opens its own WebSocket connection
- * to NATS (`nats.ws`) and subscribes to the `sentry.events` subject, where
- * every ingested envelope arrives as one JSON message (`id, projectId,
- * appId, envelopeHeader, envelopeItems, receivedAt, type`). Envelopes are
- * parsed with the same parser the events API uses
- * (`backend/events/utils.ts`), so a live item has exactly the shape the
- * list endpoint returns.
- *
- * One connection serves the whole UI: the pages subscribe to the feed, the
- * sidebar watches the connection state — that state is the health signal,
- * there is no health endpoint to poll.
- *
- * URL: `globalThis.__NATS_WS_URL__` when the deployment injects one
- * (production keeps NATS behind TLS, optionally with a token), otherwise
- * the local dev listener on the UI host (`ws://<hostname>:9222`), which
- * mirrors the NATS service of the compose file. The client reconnects on
- * its own; while it is down the pages keep polling.
- */
-
-import { connect, type NatsConnection, type Subscription } from "nats.ws";
-import {
-  convertSpanToTransaction,
-  normalizeTransactionPayload,
-  parseStoredEnvelope,
-} from "../../../backend/events/utils";
+// Browser → NATS WebSocket live feed (hop 5). The backend does not fan
+// events out: the browser subscribes to `sentry.events` itself over the
+// NATS WebSocket listener and parses the same envelope shape the events
+// API returns.
 
 export interface LiveEventItem {
-  /** Event id, as stored (duplicate retries collapse by this id). */
   id: string;
   projectId: string;
-  appId: string | null;
-  receivedAt: string;
+  appId?: string;
   itemTypes: string[];
-  event: unknown;
-  transaction: unknown;
-  feedback: unknown;
+  event: Record<string, unknown> | null;
+  transaction: Record<string, unknown> | null;
+  feedback: Record<string, unknown> | null;
+  receivedAt: string;
 }
 
-export type LiveFeedStatus = "connected" | "disconnected";
+export type LiveFeedStatus = "connecting" | "connected" | "closed" | "error";
 
-export interface LiveFeedHandlers {
-  onItem?: (item: LiveEventItem) => void;
-  onStatus?: (status: LiveFeedStatus) => void;
+/**
+ * Parses a `sentry.events` payload. The backend batches the events of a
+ * 100 ms flush window into one message, newline-separated, so a payload
+ * may hold more than one envelope. Returns the envelopes it could parse.
+ */
+export function parseLiveMessages(payload: string): LiveMessage[] {
+  const parsed: Array<Record<string, unknown> & { envelopeHeader: string; envelopeItems: string }> = [];
+  for (const line of payload.split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const value: unknown = JSON.parse(line);
+      if (typeof value !== "object" || value === null || Array.isArray(value)) continue;
+      const record = value as Record<string, unknown>;
+      if (typeof record["envelopeHeader"] !== "string" || typeof record["envelopeItems"] !== "string") continue;
+      parsed.push(record as never);
+    } catch {
+      // Not JSON (or a torn frame) — skip the line, keep the rest.
+    }
+  }
+  return parsed;
 }
 
-/** The subject the API publishes ingested envelopes to. */
-export const LIVE_SUBJECT = "sentry.events";
+type LiveMessage = Record<string, unknown> & { envelopeHeader: string; envelopeItems: string };
 
-/** One feed message → an events-API item, or null when unknown. */
-export function parseLiveMessage(raw: string): LiveEventItem | null {
-  let message: {
-    id?: string;
-    projectId?: string;
-    appId?: string | null;
-    envelopeHeader?: string;
-    envelopeItems?: string;
-    receivedAt?: string;
-  };
+/** Converts one wire message into the events-API item shape. */
+function toItem(message: LiveMessage): LiveEventItem | null {
+  if (!message) return null;
+  let items: Array<{ header?: { type?: string }; payload?: unknown }> = [];
   try {
-    message = JSON.parse(raw);
+    const parsed: unknown = JSON.parse(message.envelopeItems);
+    if (!Array.isArray(parsed)) return null;
+    items = parsed as never;
   } catch {
     return null;
   }
-  if (!message || typeof message !== "object" || Array.isArray(message)) return null;
-
-  const parsed = parseStoredEnvelope({
-    envelopeHeader: message.envelopeHeader ?? "{}",
-    envelopeItems: message.envelopeItems ?? "[]",
-  });
-  if (!parsed) return null;
-
-  const items = parsed.items.map((item) =>
-    item.header.type === "span"
-      ? convertSpanToTransaction(item.header, item.payload)
-      : item,
-  );
-  const eventItem = items.find((item) => item.header.type === "event");
-  const transactionItem = items.find((item) => item.header.type === "transaction");
-  const feedbackItem = items.find(
-    (item) => item.header.type === "feedback" || item.header.type === "user_feedback",
-  );
-
+  const type = (item: { header?: { type?: string } }) => item.header?.type ?? "";
+  const pick = (name: string) => items.find((item) => type(item) === name)?.payload;
+  const event = pick("event");
+  const transaction = pick("transaction") ?? pick("span");
+  const feedback = pick("feedback") ?? pick("user_feedback");
   return {
-    id: message.id ?? parsed.header.event_id ?? `${Date.now()}`,
-    projectId: message.projectId ?? "",
-    appId: message.appId ?? null,
-    receivedAt: message.receivedAt ?? new Date().toISOString(),
-    itemTypes: items.map((item) => item.header.type),
-    event: eventItem ? normalizeTransactionPayload(eventItem.payload) : null,
-    transaction: transactionItem ? normalizeTransactionPayload(transactionItem.payload) : null,
-    feedback: feedbackItem ? normalizeTransactionPayload(feedbackItem.payload) : null,
+    id: typeof message["id"] === "string" ? message["id"] : "",
+    projectId: typeof message["projectId"] === "string" ? message["projectId"] : "",
+    ...(typeof message["appId"] === "string" ? { appId: message["appId"] } : {}),
+    itemTypes: items.map(type),
+    event: event && typeof event === "object" ? (event as Record<string, unknown>) : null,
+    transaction: transaction && typeof transaction === "object" ? (transaction as Record<string, unknown>) : null,
+    feedback: feedback && typeof feedback === "object" ? (feedback as Record<string, unknown>) : null,
+    receivedAt: typeof message["receivedAt"] === "string" ? message["receivedAt"] : new Date().toISOString(),
   };
 }
 
-function defaultNatsWsUrl(): string {
-  const injected = (globalThis as { __NATS_WS_URL__?: string }).__NATS_WS_URL__;
-  if (injected) return injected;
-  if (typeof window === "undefined") return "ws://localhost:9222";
-  const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${scheme}//${window.location.hostname}:9222`;
+// The browser derives the listener from the origin host; the port follows
+// the docker-compose NATS_WEBSOCKET_PORT unless overridden at build time.
+const DEFAULT_WS_PORT = 9222;
+
+function defaultUrl(): string {
+  const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${scheme}://${window.location.hostname}:${DEFAULT_WS_PORT}`;
 }
 
-type ItemHandler = (item: LiveEventItem) => void;
-type StatusHandler = (status: LiveFeedStatus) => void;
-
-const itemHandlers = new Set<ItemHandler>();
-const statusHandlers = new Set<StatusHandler>();
-let connection: NatsConnection | null = null;
-let subscription: Subscription | null = null;
-let connecting = false;
-let url: string | undefined;
-let currentStatus: LiveFeedStatus = "disconnected";
-
-function announce(status: LiveFeedStatus): void {
-  currentStatus = status;
-  for (const handler of statusHandlers) handler(status);
+// The credential rides the CONNECT options as `auth_token`: the NATS auth
+// callout forwards it to the backend, which verifies it like an HTTP request.
+function connectOptions(authToken?: string): string {
+  return JSON.stringify({
+    verbose: false,
+    pedantic: false,
+    tls_required: false,
+    name: "glitchlog-ui",
+    lang: "js",
+    version: "1.0.0",
+    protocol: 1,
+    ...(authToken ? { auth_token: authToken } : {}),
+  });
 }
 
-async function open(): Promise<void> {
-  if (connection || connecting) return;
-  connecting = true;
-  try {
-    const nc = await connect({ servers: url ?? defaultNatsWsUrl() });
-    connection = nc;
-    subscription = nc.subscribe(LIVE_SUBJECT);
-    // Registration is only complete once the server has the SUB —
-    // otherwise a message published right after "connected" is lost.
-    await nc.flush();
-    announce("connected");
-    void (async () => {
-      if (!subscription) return;
-      for await (const message of subscription) {
-        const parsed = parseLiveMessage(new TextDecoder().decode(message.data));
-        if (!parsed) continue;
-        for (const handler of itemHandlers) handler(parsed);
-      }
-      announce("disconnected");
-    })();
-  } catch {
-    announce("disconnected");
-  } finally {
-    connecting = false;
-  }
-}
+let nextSubscriptionId = 1;
 
 /**
- * Subscribes to the live feed; returns the unsubscribe function. The
- * connection is shared: it opens with the first subscriber and closes with
- * the last one. The feed is best-effort — a failed connect only means no
- * live items.
+ * Low-level subscription: speaks the NATS text protocol over the WebSocket
+ * listener and delivers raw message payloads to `onMessage`. Any subject
+ * exposed by the listener can be subscribed this way.
  */
-export function subscribeLiveFeed(
-  handlers: LiveFeedHandlers,
-  options: { url?: string } = {},
+export function subscribeSubject(
+  subject: string,
+  handlers: { onMessage: (payload: string) => void; onStatus?: (status: LiveFeedStatus) => void },
+  options: { url?: string; authToken?: string } = {},
 ): () => void {
-  if (options.url) url = options.url;
-  if (handlers.onItem) itemHandlers.add(handlers.onItem);
-  if (handlers.onStatus) {
-    statusHandlers.add(handlers.onStatus);
-    // A late subscriber learns the state of the shared connection at once.
-    handlers.onStatus(currentStatus);
+  const url = options.url ?? defaultUrl();
+  const sid = String(nextSubscriptionId++);
+  let ws: WebSocket | null = null;
+  let buffer = "";
+  let closed = false;
+
+  const onFrame = (data: string) => {
+    buffer += data;
+    for (;;) {
+      const lineEnd = buffer.indexOf("\r\n");
+      if (lineEnd < 0) return;
+      const line = buffer.slice(0, lineEnd);
+      const op = line.split(" ")[0];
+      if (op === "MSG") {
+        const count = Number(line.split(" ").at(-1));
+        const payloadStart = lineEnd + 2;
+        if (!Number.isFinite(count) || buffer.length < payloadStart + count) return;
+        handlers.onMessage(buffer.slice(payloadStart, payloadStart + count));
+        buffer = buffer.slice(payloadStart + count + 2);
+      } else if (op === "PING") {
+        ws?.send("PONG\r\n");
+        buffer = buffer.slice(lineEnd + 2);
+      } else {
+        buffer = buffer.slice(lineEnd + 2);
+      }
+    }
+  };
+
+  try {
+    ws = new WebSocket(url);
+  } catch {
+    handlers.onStatus?.("error");
+    return () => {};
   }
-  void open();
+
+  ws.binaryType = "arraybuffer";
+  ws.onopen = () => {
+    ws?.send(`CONNECT ${connectOptions(options.authToken)}\r\n`);
+    ws?.send(`SUB ${subject} ${sid}\r\n`);
+    handlers.onStatus?.("connected");
+  };
+  ws.onmessage = (event) => {
+    // NATS sends protocol frames as binary; text only ever arrives from
+    // proxies that re-frame.
+    const data: unknown = event.data;
+    if (typeof data === "string") onFrame(data);
+    else if (data instanceof ArrayBuffer) onFrame(new TextDecoder().decode(data));
+    else if (typeof Blob !== "undefined" && data instanceof Blob) void data.text().then(onFrame);
+  };
+  ws.onerror = () => {
+    if (!closed) handlers.onStatus?.("error");
+  };
+  ws.onclose = () => {
+    if (!closed) handlers.onStatus?.("closed");
+  };
 
   return () => {
-    if (handlers.onItem) itemHandlers.delete(handlers.onItem);
-    if (handlers.onStatus) statusHandlers.delete(handlers.onStatus);
-    if (itemHandlers.size > 0 || statusHandlers.size > 0) return;
+    closed = true;
+    handlers.onStatus?.("closed");
     try {
-      subscription?.unsubscribe();
+      ws?.close();
     } catch {
-      // the connection is already gone
+      // already closed
     }
-    subscription = null;
-    const open_connection = connection;
-    connection = null;
-    void open_connection?.close().catch(() => {});
   };
+}
+
+/** Subscribes to one app's events shard over the NATS WebSocket listener. */
+export function subscribeLiveFeed(
+  handlers: { onItem?: (item: LiveEventItem) => void; onStatus?: (status: LiveFeedStatus) => void },
+  options: { url?: string; appNumber?: number; authToken?: string } = {},
+): () => void {
+  return subscribeSubject(
+    options.appNumber !== undefined ? `sentry.events.${options.appNumber}` : "sentry.events.*",
+    {
+      onMessage: (payload) => {
+        for (const message of parseLiveMessages(payload)) {
+          const item = toItem(message);
+          if (item) handlers.onItem?.(item);
+        }
+      },
+      ...(handlers.onStatus ? { onStatus: handlers.onStatus } : {}),
+    },
+    {
+      ...(options.url !== undefined ? { url: options.url } : {}),
+      ...(options.authToken !== undefined ? { authToken: options.authToken } : {}),
+    },
+  );
 }

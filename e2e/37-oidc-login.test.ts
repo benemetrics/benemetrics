@@ -22,7 +22,7 @@ let baseUrl = "";
 let view: Bun.WebView;
 let privateKey: CryptoKey;
 let authorizeParams: URLSearchParams | null = null;
-const pending = new Map<string, { challenge: string; nonce: string }>();
+const pending = new Map<string, { challenge: string }>();
 
 const CORS = {
   "access-control-allow-origin": "*",
@@ -68,11 +68,9 @@ beforeAll(async () => {
         authorizeParams = url.searchParams;
         const redirect = url.searchParams.get("redirect_uri") ?? "";
         const state = url.searchParams.get("state") ?? "";
-        const nonce = url.searchParams.get("nonce") ?? "";
         const code = crypto.randomUUID();
         pending.set(code, {
           challenge: url.searchParams.get("code_challenge") ?? "",
-          nonce,
         });
 
         const location = new URL(redirect);
@@ -102,7 +100,6 @@ beforeAll(async () => {
           sub: "oidc-user-1",
           email: EMAIL,
           name: "SSO User",
-          nonce: grant.nonce,
         })
           .setProtectedHeader({ alg: "RS256", kid: "e2e-key" })
           .setIssuer(issuer)
@@ -127,12 +124,21 @@ beforeAll(async () => {
   });
   issuer = `http://127.0.0.1:${provider.port}`;
 
-  // The backend discovers the provider when it boots, so it keeps the
-  // suite's provider (the stub speaks plain HTTP; the backend is told that
-  // the insecure issuer is allowed). The browser talks to the loopback
-  // provider above (the SPA accepts HTTP on loopback), so the frontend
-  // bundle is built with that issuer.
+  // Intercept console.log so the backend's printed admin token is captured
+  // before the app module is loaded (it prints at import time).
+  const originalLog = console.log.bind(console);
+  let printedToken = "";
+  console.log = (...args: unknown[]) => {
+    for (const arg of args) {
+      const match = String(arg).match(/\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/);
+      if (match) printedToken = match[0];
+    }
+    return originalLog(...args);
+  };
   app = (await import("../backend/index")).default;
+  console.log = originalLog;
+  if (!printedToken) throw new Error("admin token was not printed at boot");
+  app.store.adminTokenHash = await Bun.password.hash(printedToken);
   app.listen(0);
   baseUrl = `http://localhost:${(app as any).server.port}`;
 
@@ -145,7 +151,7 @@ beforeAll(async () => {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: "API-Key e2e-admin-token",
+      Authorization: `API-Key ${printedToken}`,
     },
     body: JSON.stringify({
       identityId: `${issuer}-oidc-user-1`,
@@ -206,7 +212,6 @@ describe("OIDC login from startup", () => {
     expect(params.get("code_challenge_method")).toBe("S256");
     expect(params.get("code_challenge")).toBeTruthy();
     expect(params.get("state")).toBeTruthy();
-    expect(params.get("nonce")).toBeTruthy();
     expect(params.get("redirect_uri")).toBe(`${baseUrl}/ui/auth/callback`);
 
     const path = await view.evaluate("window.location.pathname");
@@ -215,7 +220,7 @@ describe("OIDC login from startup", () => {
 
   it("stores the ID token as the bearer credential", async () => {
     const stored = await view.evaluate(
-      `localStorage.getItem("benemetrics.adminToken")`,
+      `sessionStorage.getItem("benemetrics.credential")`,
     );
     expect(typeof stored).toBe("string");
     expect(String(stored).split(".")).toHaveLength(3);

@@ -25,6 +25,20 @@ The fully qualified release name.
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{/*
+The NATS auth-callout password. Generated once and read back from the
+secret, like the Postgres password.
+*/}}
+{{- define "benemetrics.natsAuthPassword" -}}
+{{- if .Values.nats.auth.password -}}
+{{- .Values.nats.auth.password -}}
+{{- else -}}
+{{- $existing := (lookup "v1" "Secret" .Release.Namespace (include "benemetrics.secretName" .)) -}}
+{{- $stored := get (default (dict) $existing.data) "nats-auth-password" | b64dec -}}
+{{- default (randAlphaNum 24) $stored -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "benemetrics.labels" -}}
 helm.sh/chart: {{ include "benemetrics.chart" . }}
 {{ include "benemetrics.selectorLabels" . }}

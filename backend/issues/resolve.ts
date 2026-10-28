@@ -1,6 +1,5 @@
 import { notFound } from "backend/errors";
 import { appDAO, projectDAO } from "db/dao/project";
-import { environmentDAO } from "db/dao/environments";
 import {
   clickHouseIssueFingerprintsByLevel,
   clickHouseIssueFingerprintsByTag,
@@ -166,27 +165,6 @@ async function resolveProjectAppIds(
   return (await appDAO.listRawByProject(resolved.id)).map((app) => app.id);
 }
 
-async function resolveEnvironmentAppIds(
-  value: string,
-  unknownIsEmpty: boolean,
-): Promise<string[]> {
-  const byId = await environmentDAO.findById(value);
-  const environments = byId
-    ? [byId]
-    : await environmentDAO.findByName(value);
-  if (environments.length === 0) {
-    if (unknownIsEmpty) return [];
-    throw notFound("Environment", value);
-  }
-  const appIds: string[] = [];
-  for (const environment of environments) {
-    for (const app of await appDAO.listByEnvironment(environment.id)) {
-      appIds.push(app.id);
-    }
-  }
-  return appIds;
-}
-
 // Resolves the parsed terms into the filter the DAO queries with. The
 // names are resolved to ids here; a ClickHouse failure is not caught — a
 // `release:` term fails the whole list.
@@ -291,12 +269,6 @@ export async function resolveIssueFilter(
       }
       case "project": {
         const appIds = await resolveProjectAppIds(term.value, unknownIsEmpty);
-        if (term.negated) filter.excludedAppIds = add(filter.excludedAppIds, ...appIds);
-        else filter.appIds = narrow(filter.appIds, appIds);
-        break;
-      }
-      case "environment": {
-        const appIds = await resolveEnvironmentAppIds(term.value, unknownIsEmpty);
         if (term.negated) filter.excludedAppIds = add(filter.excludedAppIds, ...appIds);
         else filter.appIds = narrow(filter.appIds, appIds);
         break;

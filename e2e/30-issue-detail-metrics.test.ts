@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { startTestServer, type TestServer } from "./test-helpers";
+import { startTestServer, ADMIN_TOKEN, ADMIN_TOKEN_RAW, type TestServer } from "./test-helpers";
 
 const REPLAY_ID = "cccccccccccccccccccccccccccccccc";
 
@@ -88,7 +88,7 @@ async function resolveIssueId(eventIds: string[], timeoutMs = 20000): Promise<st
   while (Date.now() - start < timeoutMs) {
     const response = await fetch(
       `${testServer.baseUrl}/api/admin/issues?query=${encodeURIComponent(`app:${testServer.appId}`)}&limit=100`,
-      { headers: { Authorization: "API-Key e2e-admin-token" } },
+      { headers: { Authorization: ADMIN_TOKEN } },
     );
     const body = (await response.json()) as {
       data?: Array<{ id: string; latestEventId: string | null }>;
@@ -229,7 +229,7 @@ describe("Issue details — metrics, event list and event switching", () => {
 
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
-    await view.evaluate(`localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`);
+    await view.evaluate(`sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`);
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
     await waitForTextInUI("Overview");
   }, 40000);

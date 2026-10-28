@@ -118,15 +118,6 @@ describe("Hop 4: ClickHouse -> metrics reads", () => {
         body: JSON.stringify({ name: "Hop 4 Metrics Second App" }),
       })
     ).json()) as { id: string };
-    const environments = (await (
-      await fetch(`${TEST_ORIGIN}/api/admin/environments?projectId=${app.projectId}`, {
-        headers: ADMIN_HEADERS,
-      })
-    ).json()) as { data: Array<{ id: string; isDefault: boolean }> };
-    const defaultEnvironment = environments.data.find(
-      (environment) => environment.isDefault,
-    )!;
-
     const base = Math.floor(Date.now() / 60_000) * 60_000;
     const at = (offsetMs: number) => new Date(base + offsetMs).toISOString();
     await seedSamples([
@@ -171,13 +162,6 @@ describe("Hop 4: ClickHouse -> metrics reads", () => {
     expect(byApp.data).toEqual([
       { dimension: "GET /cart", count: 1, mean: 70, p50: 70, p95: 70 },
     ]);
-
-    // Both apps were created in the project's default environment.
-    const byEnvironment = await breakdown(`environmentId=${defaultEnvironment.id}`);
-    expect(byEnvironment.data).toHaveLength(3);
-    expect(
-      byEnvironment.data.reduce((sum, row) => sum + row.count, 0),
-    ).toBe(5);
   }, 20000);
 
   it("rejects an inverted range and unknown apps", async () => {

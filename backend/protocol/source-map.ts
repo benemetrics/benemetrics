@@ -2,7 +2,6 @@ interface SourceMapArtifactResponse {
   id: string;
   projectId: string;
   appId: string;
-  environmentId: string;
   release: string;
   dist: string | null;
   name: string;
@@ -19,7 +18,6 @@ interface SourceMapTokenResponse {
   name: string;
   projectId: string;
   appId: string;
-  environmentId: string;
   tokenPrefix: string;
   createdBy: string;
   createdAt: string;

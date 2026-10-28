@@ -15,9 +15,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
-
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
+import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
 const ORG = "default";
 const RELEASE = "ui-1.0.0";
 
@@ -166,19 +164,11 @@ describe("Event detail stack trace — symbolication in the real UI", () => {
       })
     ).json()) as { id: string; ingestKey: string; publicKey: string };
 
-    const environment = (await (
-      await adminRequest("POST", "/api/admin/environments", {
-        projectId: project.id,
-        name: "Production",
-      })
-    ).json()) as { id: string };
-
     const token = (await (
       await adminRequest("POST", "/api/admin/source-map-tokens", {
         name: "ui-ci",
         projectId: project.id,
         appId: appRecord.id,
-        environmentId: environment.id,
       })
     ).json()) as { token: string };
 
@@ -236,7 +226,7 @@ describe("Event detail stack trace — symbolication in the real UI", () => {
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${baseUrl}/ui/overview`);
     await view.evaluate(
-      `localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
     );
     await view.navigate(`${baseUrl}/ui/overview`);
     await waitForTextInUI(`Symbolicated UI`, 20000);

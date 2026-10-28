@@ -7,7 +7,7 @@ import { cursorAfter, cursorLimit } from "./cursor";
 export interface PermissionRuleRecord {
   id: string;
   name: string;
-  environments: string[];
+  projectIds: string[];
   appPrefixes: string[];
   isEnabled: boolean;
   createdAt: string;
@@ -16,7 +16,7 @@ export interface PermissionRuleRecord {
 
 export interface PermissionRuleInput {
   name: string;
-  environments: string[];
+  projectIds: string[];
   appPrefixes: string[];
   isEnabled?: boolean;
 }
@@ -24,7 +24,7 @@ export interface PermissionRuleInput {
 const ruleFields = {
   id: permissionRules.id,
   name: permissionRules.name,
-  environments: permissionRules.environments,
+  projectIds: permissionRules.projectIds,
   appPrefixes: permissionRules.appPrefixes,
   isEnabled: permissionRules.isEnabled,
   createdAt: permissionRules.createdAt,
@@ -43,7 +43,7 @@ function parseList(value: string): string[] {
 function toRecord(row: {
   id: string;
   name: string;
-  environments: string;
+  projectIds: string;
   appPrefixes: string;
   isEnabled: number;
   createdAt: string;
@@ -52,7 +52,7 @@ function toRecord(row: {
   return {
     id: row.id,
     name: row.name,
-    environments: parseList(row.environments),
+    projectIds: parseList(row.projectIds),
     appPrefixes: parseList(row.appPrefixes),
     isEnabled: row.isEnabled === 1,
     createdAt: row.createdAt,
@@ -68,7 +68,7 @@ export const permissionRuleDAO = {
       .values({
         id: crypto.randomUUID(),
         name: input.name.toLowerCase(),
-        environments: JSON.stringify(input.environments),
+        projectIds: JSON.stringify(input.projectIds),
         appPrefixes: JSON.stringify(input.appPrefixes),
         isEnabled: input.isEnabled === false ? 0 : 1,
         createdAt: now,
@@ -143,8 +143,8 @@ export const permissionRuleDAO = {
       .update(permissionRules)
       .set({
         ...(data.name !== undefined ? { name: data.name.toLowerCase() } : {}),
-        ...(data.environments !== undefined
-          ? { environments: JSON.stringify(data.environments) }
+        ...(data.projectIds !== undefined
+          ? { projectIds: JSON.stringify(data.projectIds) }
           : {}),
         ...(data.appPrefixes !== undefined
           ? { appPrefixes: JSON.stringify(data.appPrefixes) }

@@ -37,18 +37,6 @@ function normalizeName(name: string): string {
   return trimmed;
 }
 
-// ── oidc surface: the caller's identity and read scope ──
-export const sessionRoutes = new Elysia({ prefix: "/api/admin/session" })
-  .resolve(resolveAdminId)
-  .get(
-    "/",
-    async ({ adminId, isAdmin, adminScope }) => ({
-      id: adminId,
-      isAdmin,
-      scope: adminScope,
-    }),
-  );
-
 // ── oidc surface: the permission administration (admin token only) ──
 export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
   .resolve(resolveAdminId)
@@ -85,8 +73,8 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
       const created = await permissionRuleDAO.create({
         ...body, // isEnabled passes through
         name: normalizeName(body.name),
-        environments: normalizeScopeList(body.environments, "environments"),
-        appPrefixes: normalizeScopeList(body.appPrefixes, "appPrefixes"),
+        projectIds: normalizeScopeList(body.projectIds ?? [], "projectIds"),
+        appPrefixes: normalizeScopeList(body.appPrefixes ?? [], "appPrefixes"),
       });
       await audit(adminId, "rule", created.id, "create", null, created);
       return created;
@@ -102,12 +90,12 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
         const clash = await permissionRuleDAO.findByName(body.name);
         if (clash) throw badRequest(`Permission rule already exists: ${body.name}`);
       }
-      const { name, environments, appPrefixes, ...passthrough } = body;
+      const { name, projectIds, appPrefixes, ...passthrough } = body;
       const updated = await permissionRuleDAO.updateOrThrow(id, {
         ...passthrough, // isEnabled passes through
         ...(name !== undefined ? { name: normalizeName(name) } : {}),
-        ...(environments !== undefined
-          ? { environments: normalizeScopeList(environments, "environments") }
+        ...(projectIds !== undefined
+          ? { projectIds: normalizeScopeList(projectIds, "projectIds") }
           : {}),
         ...(appPrefixes !== undefined
           ? { appPrefixes: normalizeScopeList(appPrefixes, "appPrefixes") }
@@ -137,8 +125,8 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
         ...body, // isEnabled/canWrite pass through
         identityId: body.identityId.trim(),
         label: body.label?.trim() ?? null,
-        environments: normalizeScopeList(body.environments, "environments"),
-        appPrefixes: normalizeScopeList(body.appPrefixes, "appPrefixes"),
+        projectIds: normalizeScopeList(body.projectIds ?? [], "projectIds"),
+        appPrefixes: normalizeScopeList(body.appPrefixes ?? [], "appPrefixes"),
       });
       await audit(adminId, "grant", created.id, "create", null, created);
       return created;
@@ -154,13 +142,13 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
         const clash = await permissionGrantDAO.findByIdentityId(body.identityId.trim());
         if (clash) throw badRequest(`Permission grant already exists: ${body.identityId}`);
       }
-      const { identityId, label, environments, appPrefixes, ...passthrough } = body;
+      const { identityId, label, projectIds, appPrefixes, ...passthrough } = body;
       const updated = await permissionGrantDAO.updateOrThrow(id, {
         ...passthrough, // isEnabled/canWrite pass through
         ...(identityId !== undefined ? { identityId: identityId.trim() } : {}),
         ...(label !== undefined ? { label: label?.trim() ?? null } : {}),
-        ...(environments !== undefined
-          ? { environments: normalizeScopeList(environments, "environments") }
+        ...(projectIds !== undefined
+          ? { projectIds: normalizeScopeList(projectIds, "projectIds") }
           : {}),
         ...(appPrefixes !== undefined
           ? { appPrefixes: normalizeScopeList(appPrefixes, "appPrefixes") }
@@ -198,5 +186,12 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
         limit: "string.integer.parse?",
         target: "'rule' | 'grant'?",
       }),
+    },
+  )
+  .get(
+    "/identities",
+    async ({ isAdmin }) => {
+      requireAdmin({ isAdmin });
+      return { data: await permissionGrantDAO.listIdentities() };
     },
   );

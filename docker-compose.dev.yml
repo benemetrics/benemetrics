@@ -1,0 +1,326 @@
+# Local development stack: every infra component plus the API running in
+# dev mode (`bun --hot`) with the source tree mounted so edits reload live.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#   # API: http://localhost:31337   UI: http://localhost:31337/ui
+#   # NATS WebSocket (live feed): ws://localhost:9222
+#   # Keycloak (OIDC provider): http://localhost:8080 (admin/admin)
+#
+# The admin token is generated at boot and printed to the backend's logs —
+# use it for the API-Key credential (see AGENTS.md auth section).
+#
+# OIDC is wired to Keycloak: OIDC_ISSUER/OIDC_CLIENT_ID/OIDC_ALLOW_INSECURE_HTTP
+# are set so the backend accepts provider JWTs issued by the local realm.
+x-app-environment: &app-environment
+  NODE_ENV: development
+  DATABASE_URL: postgres://postgres:mysecretpassword@postgres:5432/sentry
+  NATS_SERVERS: nats://nats:4222
+  NATS_STREAM_MAX_BYTES: "1073741824"
+  # The backend's NATS config user (AUTH account; also the auth-callout
+  # service) and the issuer seed that signs the admission verdicts.
+  NATS_AUTH_USER: ${NATS_AUTH_USER:-sentries-auth}
+  NATS_AUTH_PASSWORD: ${NATS_AUTH_PASSWORD:-sentries-dev-auth-pass}
+  NATS_AUTH_KEY_SEED: ${NATS_AUTH_KEY_SEED:-SAAICRLV2CKHUW4DJ4UWKWWZOXS7K4AZ7F3DWLXHXA5FUVBM2OUZ3O3ITM}
+  CLICKHOUSE_NATS_USER: ${CLICKHOUSE_NATS_USER:-sentries-internal}
+  CLICKHOUSE_NATS_PASSWORD: ${CLICKHOUSE_NATS_PASSWORD:-sentries-dev-internal-pass}
+  CLICKHOUSE_HOST: clickhouse
+  CLICKHOUSE_PORT: "8123"
+  CLICKHOUSE_DATABASE: default
+  CLICKHOUSE_NATS_URL: nats:4222
+  S3_ENDPOINT: http://rustfs:9000
+  S3_BUCKET: sentry-replays
+  S3_REGION: us-east-1
+  S3_ACCESS_KEY_ID: rustfsadmin
+  S3_SECRET_ACCESS_KEY: rustfsadmin
+  PORT: "31337"
+  # OIDC provider (Keycloak, plain HTTP — local dev only)
+  OIDC_ISSUER: http://192.168.1.176:8080/realms/benemetrics
+  OIDC_CLIENT_ID: benemetrics
+  OIDC_ALLOW_INSECURE_HTTP: "true"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: sentry
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  # JetStream buffers ingested events until ClickHouse consumes them; its
+  # WebSocket port (9222) is what the UI live feed subscribes to directly.
+  nats:
+    image: nats:latest
+    environment:
+      NATS_CLIENT_PORT: "4222"
+      NATS_MONITOR_PORT: "8222"
+      NATS_WEBSOCKET_PORT: "9222"
+      NATS_STORE_DIR: /data
+      NATS_MAX_FILE_STORE: 4GB
+      # Auth callout (docs/nats.md) — dev mirrors production.
+      NATS_AUTH_USER: ${NATS_AUTH_USER:-sentries-auth}
+      NATS_AUTH_PASSWORD: ${NATS_AUTH_PASSWORD:-sentries-dev-auth-pass}
+      NATS_INTERNAL_USER: ${CLICKHOUSE_NATS_USER:-sentries-internal}
+      NATS_INTERNAL_PASSWORD: ${CLICKHOUSE_NATS_PASSWORD:-sentries-dev-internal-pass}
+      NATS_AUTH_ISSUER: ${NATS_AUTH_ISSUER:-ABXKA3OBISZQTV5R2PFJ32RIYZAWKGFEKODJ76RMD7JGMGVGL6D6HT3W}
+    configs:
+      - source: nats-server
+        target: /etc/nats/nats-server.conf
+    command: ["--config", "/etc/nats/nats-server.conf"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "9222:9222"
+    volumes:
+      - nats_data:/data
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    depends_on:
+      rustfs-perms:
+        condition: service_completed_successfully
+    environment:
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "9100:9000" # S3 API
+      - "9101:9001" # web console
+    volumes:
+      - rustfs_data:/data
+
+  rustfs-perms:
+    image: alpine
+    command: chown -R 10001:10001 /data
+    volumes:
+      - rustfs_data:/data
+
+  rustfs-init:
+    image: rustfs/rc:latest
+    depends_on:
+      - rustfs
+    entrypoint: >
+      /bin/sh -c "
+      until rc alias set local http://rustfs:9000 rustfsadmin rustfsadmin; do sleep 1; done;
+      until rc ls local/ >/dev/null 2>&1; do sleep 1; done;
+      rc ls local/sentry-replays >/dev/null 2>&1 || rc mb local/sentry-replays;
+      "
+
+  # Local identity provider (Keycloak). Realm clients/groups/users are
+  # imported from the config below; it speaks plain HTTP for local dev.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_PORT: "8080"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HEALTH_ENABLED: "true"
+    configs:
+      - source: keycloak-realm
+        target: /opt/keycloak/data/import/realm.json
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          { printf 'HEAD /health/ready HTTP/1.0\r\n\r\n' >&0;
+          grep -q 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    
+  # The API in dev mode: `bun --hot` watches the mounted source tree and
+  # reloads on every change. The admin token is regenerated at each boot.
+  backend:
+    image: oven/bun:1
+    working_dir: /usr/src/app
+    volumes:
+      - .:/usr/src/app
+    command: bun --hot backend/index.ts
+    depends_on:
+      postgres:
+        condition: service_started
+      clickhouse:
+        condition: service_started
+      nats:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
+      rustfs-init:
+        condition: service_completed_successfully
+    environment:
+      <<: *app-environment
+    ports:
+      - "31337:31337"
+
+  # The side-effects consumer in dev mode: applies Postgres transitions
+  # (issues, alerts, releases) from the durable JetStream pull consumer.
+  consumer:
+    image: oven/bun:1
+    working_dir: /usr/src/app
+    volumes:
+      - .:/usr/src/app
+    command: bun --hot backend/consumer.ts
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      <<: *app-environment
+
+volumes:
+  postgres_data:
+  clickhouse_data:
+  nats_data:
+  rustfs_data:
+
+configs:
+  nats-server:
+    content: |
+      port: $$NATS_CLIENT_PORT
+      http: $$NATS_MONITOR_PORT
+
+      jetstream {
+        store_dir: $$NATS_STORE_DIR
+        max_file_store: $$NATS_MAX_FILE_STORE
+      }
+
+      websocket {
+        port: $$NATS_WEBSOCKET_PORT
+        no_tls: true
+      }
+
+      # Everything shares the global account; the isolation is the callout's
+      # per-user claim (sub-only, app shards) — docs/nats.md. The config
+      # users bypass the callout: the backend is the auth service itself and
+      # the ClickHouse engine is a deployment-internal consumer.
+      authorization {
+        users: [
+          { user: $$NATS_AUTH_USER, password: $$NATS_AUTH_PASSWORD }
+          { user: $$NATS_INTERNAL_USER, password: $$NATS_INTERNAL_PASSWORD }
+        ]
+        auth_callout {
+          issuer: $$NATS_AUTH_ISSUER
+          auth_users: [ $$NATS_AUTH_USER, $$NATS_INTERNAL_USER ]
+        }
+      }
+
+  keycloak-realm:
+    content: |
+      {
+        "realm": "benemetrics",
+        "enabled": true,
+        "sslRequired": "none",
+        "registrationAllowed": false,
+        "loginWithEmailAllowed": true,
+        "duplicateEmailsAllowed": false,
+        "resetPasswordAllowed": true,
+        "clients": [
+          {
+            "clientId": "benemetrics",
+            "name": "Benemetrics SPA",
+            "enabled": true,
+            "publicClient": true,
+            "standardFlowEnabled": true,
+            "directAccessGrantsEnabled": false,
+            "serviceAccountsEnabled": false,
+            "redirectUris": ["*"],
+            "webOrigins": ["*"],
+            "attributes": {
+              "pkce.code.challenge.method": "S256",
+              "post.logout.redirect.uris": "http://localhost:*/*"
+            },
+            "defaultClientScopes": ["profile", "email", "roles", "web-origins"],
+            "optionalClientScopes": ["groups"]
+          },
+          {
+            "clientId": "benemetrics-backend",
+            "name": "Benemetrics backend",
+            "enabled": true,
+            "publicClient": false,
+            "bearerOnly": true,
+            "standardFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "serviceAccountsEnabled": false,
+            "defaultClientScopes": ["groups"]
+          }
+        ],
+        "roles": {
+          "realm": [
+            { "name": "backend-team" },
+            { "name": "frontend-team" }
+          ]
+        },
+        "groups": [
+          {
+            "name": "backend-team",
+            "attributes": { "group": ["backend-team"] },
+            "realmRoles": ["backend-team"]
+          },
+          {
+            "name": "frontend-team",
+            "attributes": { "group": ["frontend-team"] },
+            "realmRoles": ["frontend-team"]
+          }
+        ],
+        "users": [
+          {
+            "username": "sso@example.com",
+            "email": "sso@example.com",
+            "emailVerified": true,
+            "enabled": true,
+            "firstName": "SSO",
+            "lastName": "User",
+            "credentials": [{ "type": "password", "value": "sentry", "temporary": false }],
+            "groups": ["/backend-team"]
+          }
+        ],
+        "clientScopes": [
+          {
+            "name": "groups",
+            "protocol": "openid-connect",
+            "attributes": {
+              "include.in.token.scope": "true",
+              "display.on.consent.screen": "false"
+            },
+            "protocolMappers": [
+              {
+                "name": "groups",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-group-membership-mapper",
+                "consentRequired": false,
+                "config": {
+                  "claim.name": "groups",
+                  "full.path": "false",
+                  "id.token.claim": "true",
+                  "access.token.claim": "true",
+                  "userinfo.token.claim": "true"
+                }
+              }
+            ]
+          }
+        ]
+      }

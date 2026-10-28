@@ -10,10 +10,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
+import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
 import { insertClickHouseMetricSamples } from "../backend/clickhouse";
-
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const PROJECT_NAME = `Perf UI Project ${Date.now()}`;
 const MARKER = `GET /perf-ui-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -154,7 +152,7 @@ describe("Performance metrics UI", () => {
     await view.navigate(`${baseUrl}/ui/overview`);
     // The UI has no built-in token fallback: log in by storing the admin
     // token in localStorage, then reload so the SPA picks it up.
-    await view.evaluate(`localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`);
+    await view.evaluate(`sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`);
     await view.navigate(`${baseUrl}/ui/overview`);
     // The workspace auto-selects the first project; scope the fixture.
     await selectProjectInUI(PROJECT_NAME);

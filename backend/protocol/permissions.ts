@@ -7,23 +7,23 @@ export const MAX_SCOPE_ENTRY_LENGTH = 128;
 
 export const permissionRuleBodySchema = arktype({
   name: "string >= 1",
-  environments: "string[]",
-  appPrefixes: "string[]",
+  projectIds: "string[]?",
+  appPrefixes: "string[]?",
   isEnabled: "boolean?",
 });
 
 export const permissionGrantBodySchema = arktype({
   identityId: "string >= 1",
   label: "string?",
-  environments: "string[]",
-  appPrefixes: "string[]",
+  projectIds: "string[]?",
+  appPrefixes: "string[]?",
   isEnabled: "boolean?",
   canWrite: "boolean?",
 });
 
 export const permissionRulePatchSchema = arktype({
   name: "string >= 1?",
-  environments: "string[]?",
+  projectIds: "string[]?",
   appPrefixes: "string[]?",
   isEnabled: "boolean?",
 });
@@ -31,15 +31,15 @@ export const permissionRulePatchSchema = arktype({
 export const permissionGrantPatchSchema = arktype({
   identityId: "string >= 1?",
   label: "string?",
-  environments: "string[]?",
+  projectIds: "string[]?",
   appPrefixes: "string[]?",
   isEnabled: "boolean?",
   canWrite: "boolean?",
 });
 
 export interface PermissionScope {
-  environments: string[];
   appPrefixes: string[];
+  projectIds: string[];
 }
 
 /**

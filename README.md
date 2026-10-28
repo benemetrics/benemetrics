@@ -192,7 +192,7 @@ Benemetrics is **NATS-first**: ingestion is a publish, never a write path.
 - **The API** resolves the app from the DSN, parses the envelope, extracts
   the metric samples, offloads the replay segments and publishes both
   subjects. A broker failure answers `503` — there is no in-process fallback.
-- **ClickHouse** ingests `sentry.events` and `sentry.metrics` *by
+- **ClickHouse** ingests `sentry.events.<appNumber>` and `sentry.metrics` *by
   configuration*: NATS engine tables + a durable pull consumer + materialized
   views. The insert is acknowledged only after the view wrote the row, so an
   acknowledged batch is durable (`fsync_after_insert`).
@@ -201,7 +201,9 @@ Benemetrics is **NATS-first**: ingestion is a publish, never a write path.
   alert triggers and release tracking. An event published while it is down is
   not lost.
 - **The live feed** is the browser → NATS WebSocket. There is no backend
-  fan-out; the connection state *is* the health signal of the UI.
+  fan-out; the connection state *is* the health signal of the UI. Every
+  connection is authorized by the backend through the NATS auth callout —
+  sub-only, scoped to the apps the identity may see (`docs/nats.md`).
 - **The object store** is S3-required: the replay segments are written
   before the publish and served to the browser as presigned URLs. The backend
   never proxies the bytes.
@@ -269,6 +271,11 @@ The environment of the host processes is the `x-app-environment` block of
 export ADMIN_TOKEN=dev-admin-token
 export DATABASE_URL=postgres://postgres:mysecretpassword@localhost:5432/sentry
 export NATS_SERVERS=nats://localhost:4222
+# The backend's NATS config user and the auth-callout issuer keypair
+# (generate a fresh pair with `bun scripts/nats-auth-keys.ts`).
+export NATS_AUTH_USER=sentries-auth
+export NATS_AUTH_PASSWORD=sentries-dev-auth-pass
+export NATS_AUTH_KEY_SEED=SAAICRLV2CKHUW4DJ4UWKWWZOXS7K4AZ7F3DWLXHXA5FUVBM2OUZ3O3ITM
 export CLICKHOUSE_HOST=localhost
 export CLICKHOUSE_NATS_URL=localhost:4222
 export S3_ENDPOINT=http://localhost:9100

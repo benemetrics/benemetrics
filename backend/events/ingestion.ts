@@ -56,9 +56,6 @@ export async function readBody(request: Request): Promise<string> {
   return await readBodyCapped(request);
 }
 
-// A client that retries the same event in a loop must not make the server
-// do the work again. The event id is the idempotency key, so a recently
-// seen id is answered without an object-store write or a publish.
 const RECENT_ID_TTL_MS = 60_000;
 const RECENT_ID_MAX = 50_000;
 const recentIds = new Map<string, number>();
@@ -81,23 +78,64 @@ export function markIngested(eventId: string): void {
   recentIds.set(eventId, Date.now());
 }
 
-// Ingestion is a publish: the side-effects consumer (Postgres) and the
-// ClickHouse engine consumer each pull the event message from JetStream
-// with their own durable consumer, and the extracted metric samples go to
-// `sentry.metrics` (the ClickHouse metrics engine inserts them). A publish
-// failure is a 503 — at-least-once delivery is JetStream's job, never a
-// second in-process write path.
+interface BufferedEvent {
+  appNumber: number;
+  event: Uint8Array;
+  samples: Uint8Array[];
+}
+
+const BATCH_FLUSH_MS = 100;
+const BATCH_MAX_SIZE = 2000;
+const eventBuffer: BufferedEvent[] = [];
+let isFlushing = false;
+const encoder = new TextEncoder();
+
+async function flushBuffer(): Promise<void> {
+  if (isFlushing || eventBuffer.length === 0) return;
+  isFlushing = true;
+  const batch = eventBuffer.splice(0, eventBuffer.length);
+
+  try {
+    const newline = encoder.encode("\n");
+    const byApp = new Map<number, { eventChunks: Uint8Array[]; sampleChunks: Uint8Array[] }>();
+    for (const b of batch) {
+      const bucket = byApp.get(b.appNumber) ?? { eventChunks: [], sampleChunks: [] };
+      bucket.eventChunks.push(b.event, newline);
+      for (const s of b.samples) bucket.sampleChunks.push(s, newline);
+      byApp.set(b.appNumber, bucket);
+    }
+
+    await Promise.all(
+      [...byApp].map(([appNumber, { eventChunks, sampleChunks }]) =>
+        Promise.all([
+          publishEvent(appNumber, eventChunks),
+          sampleChunks.length > 0 ? publishMetricSamples(sampleChunks) : Promise.resolve(),
+        ]),
+      ),
+    );
+  } catch (err) {
+    console.error(
+      "[ingestion] Flush failed:",
+      err instanceof Error ? err.message : err,
+    );
+  } finally {
+    isFlushing = false;
+  }
+}
+
+setInterval(() => flushBuffer(), BATCH_FLUSH_MS);
+
 export async function dispatchIngestedEvent(
+  app: AppResolveRecord,
   message: SentryEventMessage,
   samples: MetricSample[] = [],
 ): Promise<void> {
-  try {
-    await Promise.all([publishEvent(message), publishMetricSamples(samples)]);
-  } catch (err) {
-    console.error(
-      "[ingestion] Failed to publish event to NATS:",
-      err instanceof Error ? err.message : err,
-    );
-    throw serviceUnavailable("Event ingestion is unavailable - the message broker is not connected");
+  const event = encoder.encode(JSON.stringify(message));
+  const sampleChunks = samples.map((s) =>
+    encoder.encode(JSON.stringify({ ...s, tags: JSON.stringify(s.tags ?? {}) })),
+  );
+
+  if (eventBuffer.push({ appNumber: app.number, event, samples: sampleChunks }) >= BATCH_MAX_SIZE) {
+    await flushBuffer();
   }
 }

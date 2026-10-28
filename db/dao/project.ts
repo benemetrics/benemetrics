@@ -8,20 +8,20 @@ import { alertRules } from "db/schema/alert-rules";
 import { alertIncidents } from "db/schema/alert-incidents";
 import { eq, and, asc, desc, inArray, sql } from "drizzle-orm";
 import { ApiError, ErrorCode, conflict, internalError, notFound } from "backend/errors";
-import { environmentDAO, type EnvironmentResponse } from "./environments";
 import { cursorAfter, cursorLimit } from "./cursor";
 
-// Ingestion only needs the identity and credentials of the resolved app.
+// Ingestion only needs the identity, credentials and subject shard of the
+// resolved app.
 export interface AppResolveRecord {
   id: string;
   projectId: string;
   publicKey: string;
+  number: number;
 }
 
-// Project deletion/copying needs the app's environment and display fields;
-// ingestion additionally needs the credentials above.
+// Project deletion/copying needs the app's display fields; ingestion
+// additionally needs the credentials above.
 export interface AppProjectRecord extends AppResolveRecord {
-  environmentId: string;
   name: string;
   platform: string;
 }
@@ -39,7 +39,6 @@ const appFields = {
   id: apps.id,
   number: apps.number,
   projectId: apps.projectId,
-  environmentId: apps.environmentId,
   name: apps.name,
   platform: apps.platform,
   ingestKey: apps.ingestKey,
@@ -50,13 +49,13 @@ const appFields = {
 
 const appResolveFields = {
   id: apps.id,
+  number: apps.number,
   projectId: apps.projectId,
   publicKey: apps.publicKey,
 };
 
 const appProjectFields = {
   ...appResolveFields,
-  environmentId: apps.environmentId,
   name: apps.name,
   platform: apps.platform,
 };
@@ -100,8 +99,8 @@ export const projectDAO = {
     }
   },
 
-  // Copies the project with its environments and apps; response shaping
-  // (DSN host) stays out of the DAO.
+  // Copies the project with its apps; response shaping (DSN host) stays
+  // out of the DAO.
   duplicate: async (
     sourceId: string,
     overrides: { name?: string; slug?: string; description?: string },
@@ -116,55 +115,22 @@ export const projectDAO = {
       description: overrides.description ?? source.description,
     });
 
-    const sourceEnvironments = await environmentDAO.listAllByProject(sourceId);
-    let environments: EnvironmentResponse[] = await Promise.all(
-      sourceEnvironments.map((sourceEnvironment) =>
-        environmentDAO.create({
-          projectId: project.id,
-          name: sourceEnvironment.name,
-          slug: sourceEnvironment.slug,
-          isDefault: sourceEnvironment.isDefault ? 1 : 0,
-        }),
-      ),
-    );
-    const environmentIdMap = new Map(
-      sourceEnvironments.map((sourceEnvironment, index) => [sourceEnvironment.id, environments[index]!.id]),
-    );
-    if (environments.length === 0) {
-      environments = [
-        await environmentDAO.create({ projectId: project.id, name: "Testing", slug: "testing", isDefault: 1 }),
-      ];
-    } else if (!environments.some((environment) => environment.isDefault)) {
-      await environmentDAO.markDefault(environments[0]!.id);
-    }
-
-    const defaultEnvironmentId =
-      environments.find((environment) => environment.isDefault)?.id ??
-      environments[0]!.id;
     const duplicatedApps = await Promise.all(
       (await appDAO.listRawByProject(sourceId)).map(
-        async (sourceApp): Promise<{ app: AppRecord; environment: EnvironmentResponse }> => {
-          const environmentId =
-            environmentIdMap.get(sourceApp.environmentId) ?? defaultEnvironmentId;
-          const environment = environments.find((entry) => entry.id === environmentId);
-          if (!environment) throw internalError("Duplicated app has no environment");
-          return {
-            app: await appDAO.create({
-              id: crypto.randomUUID(),
-              projectId: project.id,
-              environmentId,
-              name: sourceApp.name,
-              platform: sourceApp.platform,
-              ingestKey: `${project.slug}-${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`,
-              publicKey: crypto.randomUUID().replace(/-/g, "").slice(0, 32),
-            }),
-            environment,
-          };
+        async (sourceApp): Promise<AppRecord> => {
+          return await appDAO.create({
+            id: crypto.randomUUID(),
+            projectId: project.id,
+            name: sourceApp.name,
+            platform: sourceApp.platform,
+            ingestKey: `${project.slug}-${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`,
+            publicKey: crypto.randomUUID().replace(/-/g, "").slice(0, 32),
+          });
         },
       ),
     );
 
-    return { project, environments, apps: duplicatedApps };
+    return { project, apps: duplicatedApps };
   },
 
   findById: async (id: string): Promise<Project | undefined> =>
@@ -401,16 +367,6 @@ export const appDAO = {
     return { data };
   },
 
-  // Environment deletes and scoped event lists only need the app ids.
-  listByEnvironment: async (
-    environmentId: string,
-  ): Promise<{ id: string }[]> =>
-    db
-      .select({ id: apps.id })
-      .from(apps)
-      .where(eq(apps.environmentId, environmentId))
-      .orderBy(asc(apps.createdAt)),
-
   // Used by ingestion resolution, project copying, and project deletion.
   listRawByProject: async (projectId: string): Promise<AppProjectRecord[]> =>
     db
@@ -419,17 +375,31 @@ export const appDAO = {
       .where(eq(apps.projectId, projectId))
       .orderBy(asc(apps.createdAt)),
 
-  // The alert sweeper only evaluates each app by id.
-  // The scope engine matches app names and environments.
-  listAll: async (): Promise<
-    Array<{ id: string; name: string; projectId: string; environmentId: string }>
-  > =>
-    db
+  // The apps that live in the given projects — the permission scope names the
+  // projects directly, so the query filters instead of loading the whole table.
+  listByProjectIds: async (
+    projectIds: string[],
+  ): Promise<Array<{ id: string; name: string; projectId: string }>> => {
+    if (projectIds.length === 0) return [];
+    return await db
       .select({
         id: apps.id,
         name: apps.name,
         projectId: apps.projectId,
-        environmentId: apps.environmentId,
+      })
+      .from(apps)
+      .where(inArray(apps.projectId, projectIds))
+      .orderBy(asc(apps.createdAt), asc(apps.id));
+  },
+
+  // The alert sweeper only evaluates each app by id.
+  listAll: async (): Promise<Array<{ id: string; number: number; name: string; projectId: string }>> =>
+    db
+      .select({
+        id: apps.id,
+        number: apps.number,
+        name: apps.name,
+        projectId: apps.projectId,
       })
       .from(apps)
       .orderBy(asc(apps.createdAt)),
@@ -439,9 +409,7 @@ export const appDAO = {
   // instead of loading the whole table.
   listByNamePrefixes: async (
     prefixes: string[],
-  ): Promise<
-    Array<{ id: string; name: string; projectId: string; environmentId: string }>
-  > => {
+  ): Promise<Array<{ id: string; name: string; projectId: string }>> => {
     if (prefixes.length === 0) return [];
     const wanted = prefixes.map((prefix) => `${prefix.toLowerCase()}%`);
     return await db
@@ -449,7 +417,6 @@ export const appDAO = {
         id: apps.id,
         name: apps.name,
         projectId: apps.projectId,
-        environmentId: apps.environmentId,
       })
       .from(apps)
       .where(
@@ -458,25 +425,6 @@ export const appDAO = {
           sql` or `,
         )})`,
       )
-      .orderBy(asc(apps.createdAt));
-  },
-
-  // The apps that live in the given environments.
-  listByEnvironmentIds: async (
-    environmentIds: string[],
-  ): Promise<
-    Array<{ id: string; name: string; projectId: string; environmentId: string }>
-  > => {
-    if (environmentIds.length === 0) return [];
-    return await db
-      .select({
-        id: apps.id,
-        name: apps.name,
-        projectId: apps.projectId,
-        environmentId: apps.environmentId,
-      })
-      .from(apps)
-      .where(inArray(apps.environmentId, environmentIds))
       .orderBy(asc(apps.createdAt));
   },
 
@@ -491,7 +439,6 @@ export const appDAO = {
     )[0],
 
   delete: async (id: string) => {
-    // Environments are project-scoped and shared, so they survive.
     purgeAppCache(id);
     await Promise.all([
       db.delete(sourceMapTokens).where(eq(sourceMapTokens.appId, id)),

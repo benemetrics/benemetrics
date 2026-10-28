@@ -22,7 +22,6 @@ export const apps = pgTable("apps", {
   id: text("id").primaryKey(),
   number: serial("number").notNull().unique(),
   projectId: text("project_id").notNull(),
-  environmentId: text("environment_id").notNull(),
   name: text("name").notNull(),
   platform: text("platform").notNull().default("javascript"),
   ingestKey: text("ingest_key").notNull().unique(),

@@ -38,6 +38,13 @@ export const issues = pgTable(
   (table) => ({
     appIdIdx: index("issues_app_id_idx").on(table.appId),
     statusIdx: index("issues_status_idx").on(table.status),
+    // Supports the default "new" sort: WHERE status = ? ORDER BY last_seen DESC, id DESC
+    // (PostgreSQL can scan this index backward, so no sort and no full table scan.)
+    statusLastSeenIdIdx: index("issues_status_last_seen_id_idx").on(
+      table.status,
+      table.lastSeen,
+      table.id,
+    ),
     appFingerprintUnique: uniqueIndex("issues_app_fingerprint_idx").on(
       table.appId,
       table.fingerprint,

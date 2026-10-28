@@ -1,7 +1,6 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { appDAO } from "db/dao/project";
-import { environmentDAO } from "db/dao/environments";
 import { badRequest } from "../errors";
 import type { MetricUnit } from "../protocol/metrics";
 import { queryMetricBreakdown, queryMetricSeries } from "../metrics-store";
@@ -72,7 +71,6 @@ function resolveRange(query: { from?: string; to?: string }): {
 const readQuery = {
   metric: "string",
   projectId: "string.uuid?",
-  environmentId: "string.uuid?",
   appId: "string.uuid?",
   from: "string.date.iso?",
   to: "string.date.iso?",
@@ -89,7 +87,6 @@ export const metricsRoutes = new Elysia({ prefix: "/api/admin/metrics" })
       if (stepSeconds < 1 || stepSeconds > MAX_STEP_SECONDS) throw badRequest(`"stepSeconds" must be between 1 and ${MAX_STEP_SECONDS}`);
       let appIds: string[] | undefined;
       if (query.appId) appIds = [(await appDAO.findByIdOrThrow(query.appId)).id];
-      else if (query.environmentId) { await environmentDAO.findByIdOrThrow(query.environmentId); appIds = (await appDAO.listByEnvironment(query.environmentId)).map((app) => app.id); }
       const points = await queryMetricSeries({ metric: query.metric, projectId: query.projectId, appIds, from, to }, stepSeconds);
       return { metric: query.metric, unit: metricUnit(query.metric), points };
     },
@@ -103,7 +100,6 @@ export const metricsRoutes = new Elysia({ prefix: "/api/admin/metrics" })
       if (limit < 1 || limit > MAX_BREAKDOWN_LIMIT) throw badRequest(`"limit" must be between 1 and ${MAX_BREAKDOWN_LIMIT}`);
       let appIds: string[] | undefined;
       if (query.appId) appIds = [(await appDAO.findByIdOrThrow(query.appId)).id];
-      else if (query.environmentId) { await environmentDAO.findByIdOrThrow(query.environmentId); appIds = (await appDAO.listByEnvironment(query.environmentId)).map((app) => app.id); }
       const data = await queryMetricBreakdown({ metric: query.metric, projectId: query.projectId, appIds, from, to }, limit);
       return { data };
     },

@@ -14,7 +14,6 @@ import {
   connectTestNats,
   handleFetch as fetch,
   startTestApp,
-  TEST_EVENTS_SUBJECT,
   TEST_METRICS_SUBJECT,
   TEST_ORIGIN,
   TEST_STREAM,
@@ -57,12 +56,17 @@ describe("Hop 1: ingest -> NATS", () => {
     expect(response.status).toBe(200);
     expect(((await response.json()) as { id: string }).id).toBe(eventId);
 
-    // The request only returns after the publish; the message is now the
-    // last one on the subject.
+    // The publish is batched (a 100ms flush), so the shard's newest message
+    // may still be a previous run's: poll until this event id shows up.
     const manager = await jetstreamManager(nats);
-    const message = await manager.streams.getMessage(TEST_STREAM, {
-      last_by_subj: TEST_EVENTS_SUBJECT,
-    });
+    const message = await waitFor(async () => {
+      const found = await manager.streams.getMessage(TEST_STREAM, {
+        last_by_subj: `sentry.events.${app.appNumber}`,
+      }).catch(() => null);
+      if (!found) return null;
+      const parsed = JSON.parse(new TextDecoder().decode(found.data)) as { id: string };
+      return parsed.id === eventId ? found : null;
+    }, (found) => found !== null);
     expect(message).not.toBeNull();
 
     const published = JSON.parse(new TextDecoder().decode(message!.data)) as {

@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";
-import app from "../backend/index";
+import { app, ADMIN_TOKEN, ADMIN_HEADERS } from "./test-helpers";
 
 // Test DSN for authentication. Apps are only created through the admin
 // API, so the DSN is provisioned before the ingestion tests run.
@@ -19,14 +19,10 @@ let TEST_PUBLIC_KEY = "";
 let TEST_DSN = "";
 
 async function bootstrapProjectAndApp(): Promise<void> {
-  const adminHeaders = {
-    "Content-Type": "application/json",
-    Authorization: "API-Key e2e-admin-token",
-  };
   const projectResponse = await app.handle(
     new Request("http://localhost:31337/api/admin/projects", {
       method: "POST",
-      headers: adminHeaders,
+      headers: ADMIN_HEADERS,
       body: JSON.stringify({ name: `Auth E2E Project ${Date.now()}` }),
     }),
   );
@@ -35,7 +31,7 @@ async function bootstrapProjectAndApp(): Promise<void> {
   const appResponse = await app.handle(
     new Request(`http://localhost:31337/api/admin/projects/${project.id}/apps`, {
       method: "POST",
-      headers: adminHeaders,
+      headers: ADMIN_HEADERS,
       body: JSON.stringify({ name: "Auth App" }),
     }),
   );
@@ -48,13 +44,6 @@ async function bootstrapProjectAndApp(): Promise<void> {
   TEST_PUBLIC_KEY = created.publicKey;
   TEST_DSN = `http://${created.publicKey}@localhost:31337/${created.number}`;
 }
-
-// The UI surfaces (/events) require the configured admin token, which the
-// e2e preload sets for the whole suite.
-const ADMIN_HEADERS = {
-  "Content-Type": "application/json",
-  Authorization: "API-Key e2e-admin-token",
-};
 
 async function adminRequest(method: string, path: string): Promise<Response> {
   return await app.handle(
@@ -365,7 +354,7 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
       method: "GET",
       headers: { 
         "Content-Type": "application/json",
-        "Authorization": "API-Key e2e-admin-token"
+        "Authorization": ADMIN_TOKEN
       }
     }));
     
@@ -377,7 +366,7 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
-        "Authorization": "API-Key e2e-admin-token"
+        "Authorization": ADMIN_TOKEN
       },
       body: JSON.stringify({ user: { id: "1" }, flags: [] })
     }));

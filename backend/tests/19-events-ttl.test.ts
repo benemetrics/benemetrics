@@ -9,12 +9,10 @@
  * Runs in-process through app.handle (no listener, no port).
  */
 
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
-import { initClickHouse, closeClickHouse, setEventsTtl } from "../clickhouse";
+import { describe, it, expect } from "bun:test";
+import { handleFetch as fetch, TEST_ORIGIN, ADMIN_TOKEN } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
 
 interface TtlResponse {
   table: string;
@@ -39,16 +37,6 @@ async function adminRequest(
 async function json<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
-
-beforeAll(async () => {
-  await initClickHouse();
-});
-
-afterAll(async () => {
-  // The TTL is shared instance state: leave the default behind.
-  await setEventsTtl(1, "month");
-  await closeClickHouse();
-});
 
 describe("Event retention TTL", () => {
   it("reads the live TTL back from the table definition", async () => {

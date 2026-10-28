@@ -21,7 +21,6 @@ export type IssueQueryTerm =
   | { kind: "status"; value: "unresolved" | "resolved"; negated: boolean }
   | { kind: "app"; value: string; negated: boolean }
   | { kind: "project"; value: string; negated: boolean }
-  | { kind: "environment"; value: string; negated: boolean }
   | { kind: "level"; value: string; negated: boolean }
   | { kind: "eventType"; value: "error" | "message"; negated: boolean }
   | { kind: "release"; value: string; negated: boolean }
@@ -38,7 +37,6 @@ const KEYS = {
   is: "status",
   app: "app",
   project: "project",
-  environment: "environment",
   level: "level",
   user: "user",
   tag: "tag",
@@ -142,7 +140,6 @@ type TermKind =
   | "status"
   | "app"
   | "project"
-  | "environment"
   | "level"
   | "user"
   | "tag"
@@ -182,9 +179,6 @@ function parsePair(
     case "project":
       if (!value) fail("empty value", term);
       return { kind: "project", value, negated: false };
-    case "environment":
-      if (!value) fail("empty value", term);
-      return { kind: "environment", value, negated: false };
     case "release":
       if (!value) fail("empty value", term);
       return { kind: "release", value, negated: false };
@@ -257,7 +251,6 @@ export function summarizeTerm(term: IssueQueryTerm): {
     case "eventType":
     case "app":
     case "project":
-    case "environment":
     case "release":
       summary.value = term.value;
       break;

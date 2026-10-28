@@ -23,10 +23,10 @@ import {
   handleFetch as appFetch,
   startTestApp,
   waitForStoredEvent,
+  ADMIN_TOKEN,
   type TestApp,
 } from "./test-helpers";
 
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const START_MS = 1_700_000_000_000;
 
 interface ReplaySegment {

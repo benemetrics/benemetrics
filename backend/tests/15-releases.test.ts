@@ -17,10 +17,14 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN, waitForStoredEvent } from "./test-helpers";
+import {
+  handleFetch as fetch,
+  TEST_ORIGIN,
+  ADMIN_TOKEN,
+  waitForStoredEvent,
+} from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

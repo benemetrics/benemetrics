@@ -20,7 +20,7 @@ import {
 } from "../clickhouse";
 import type { MetricSample } from "../protocol/metrics";
 import { issueDAO } from "db/dao/issues";
-import { handleFetch as fetch, TEST_ORIGIN, waitForStoredEvent } from "./test-helpers";
+import { handleFetch as fetch, TEST_ORIGIN, waitForStoredEvent, ADMIN_TOKEN } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
 
@@ -29,7 +29,6 @@ let webhookServer: any;
 let webhookUrl = "";
 const webhookCalls: Array<{ url: string; body: Record<string, unknown> }> = [];
 
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
 async function apiRequest(

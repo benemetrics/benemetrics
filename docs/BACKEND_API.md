@@ -29,7 +29,7 @@
 | Test DB | In-memory **PGlite** when `NODE_ENV=test` |
 | Production DB | **PostgreSQL** when `DATABASE_URL` is set (`drizzle-orm/bun-sql`) |
 | Migrations | `drizzle-kit` → `db/migrations/*`, applied at startup |
-| Messaging | **NATS JetStream** (required) — `sentry.events`, `sentry.metrics` subjects on `SENTRIES` stream |
+| Messaging | **NATS JetStream** (required) — `sentry.events.<appNumber>` (stream filter `sentry.events.*`), `sentry.metrics` subjects on `SENTRIES` stream; auth callout (`docs/nats.md`) |
 | Analytics Store | **ClickHouse** (required) — `sentry_events`, `sentry_metrics` via NATS engine tables + MVs |
 | Object Store | **S3-compatible** (required) — `S3_BUCKET` for replay segments; RustFS in dev (`:9100`) |
 | Frontend Client | Eden Treaty (`@elysiajs/eden`) consumes exported `App` type |
@@ -66,7 +66,10 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 | `NODE_ENV` | – | `test` ⇒ in-memory PGlite |
 | `DATABASE_URL` | – | If set ⇒ PostgreSQL (production) |
 | `NATS_SERVERS` | `nats://localhost:4222` | JetStream connection |
-| `NATS_STREAM` | `SENTRIES` | NATS stream name |
+| `NATS_STREAM_MAX_BYTES` | `1073741824` | JetStream stream disk bound |
+| `NATS_AUTH_USER`, `NATS_AUTH_PASSWORD` | – | The backend's own NATS config user (`AUTH` account, also the auth-callout service) |
+| `NATS_AUTH_KEY_SEED` | – | The auth-callout issuer account NKey seed (signs the admission verdicts) |
+| `NATS_INTERNAL_USER`, `NATS_INTERNAL_PASSWORD` | – | The ClickHouse NATS engine user (`INTERNAL` account) |
 | `CLICKHOUSE_HOST` | `localhost` | ClickHouse HTTP host |
 | `CLICKHOUSE_PORT` | `8123` | ClickHouse HTTP port |
 | `CLICKHOUSE_DATABASE` | `default` | ClickHouse database |
@@ -203,7 +206,7 @@ Every list endpoint is **cursor-paginated** — there is no `page`/offset and no
 
 ### 5.1 System
 
-There is no health endpoint: the UI's health signal is the live feed's NATS WebSocket connection state (the browser subscribes to `sentry.events` directly — see `frontend/src/lib/live-events.ts`).
+There is no health endpoint: the UI's health signal is the live feed's NATS WebSocket connection state (the browser subscribes to `sentry.events.<appNumber>` directly with its credential in the CONNECT `auth_token` — see `frontend/src/lib/live-events.ts` and `docs/nats.md`).
 
 ### 5.2 Events API (ClickHouse Only)
 
@@ -235,7 +238,7 @@ Prefix: `/api` — `backend/events/index.ts` → `ingestionRoutes`
 
 **Pipeline:**
 1. Parse envelope → extract metric samples (`backend/metrics/samples.ts`)
-2. Publish `sentry.events` (envelope) + `sentry.metrics` (JSONEachRow samples) to NATS
+2. Publish `sentry.events.<appNumber>` (envelope) + `sentry.metrics` (JSONEachRow samples) to NATS
 3. NATS publish failure → `503` (`serviceUnavailable`) — **no in-process fallback**
 
 ### 5.4 DSNs
@@ -352,13 +355,13 @@ Prefix: `/api/admin/environments` — `backend/environments/index.ts` → `envir
 
 ### 5.10 Admin — Segments
 
-Prefix: `/api/admin/segments` — `backend/segments/index.ts` → `segmentRoutes`
+Prefix: `/api/admin/feature-flags/segments` — `backend/feature-flags/segments.ts` → `segmentRoutes`
 
 | Method | Path | Body | Description |
 |--------|------|------|-------------|
-| `POST` | `/api/admin/segments/` | `{ name, description?, rules }` | Create segment |
-| `GET` | `/api/admin/segments/` | `?cursor&limit` | Cursor-paginated list |
-| `GET` | `/api/admin/segments/:id` | – | Get segment |
+| `POST` | `/api/admin/feature-flags/segments/` | `{ name, description?, rules }` | Create segment |
+| `GET` | `/api/admin/feature-flags/segments/` | `?cursor&limit` | Cursor-paginated list |
+| `GET` | `/api/admin/feature-flags/segments/:id` | – | Get segment |
 
 **Segment Rules:** Same targeting rule schema as flags (no `variantKey`); all rules must match (AND).
 
@@ -523,17 +526,18 @@ The credentials are checked in one place — `resolveIdentity` (`backend/auth.ts
 
 ### 6.4 SPA OIDC Login (build-time config)
 
-The SPA's public OIDC settings are compiled into the frontend bundle at startup by `frontend/auth-env-plugin.ts` as `virtual:auth-env` — there is no auth config endpoint:
+The SPA's public OIDC settings are compiled into the frontend bundle at startup by `frontend/auth-env-plugin.ts`, which replaces `frontend/src/lib/auth-env.ts` — there is no auth config endpoint:
 
 | Name | Meaning |
 |------|---------|
 | `OIDC_ISSUER` / `OAUTH_ISSUER` | Issuer used for discovery |
 | `OIDC_CLIENT_ID` / `OAUTH_CLIENT_ID` | Public SPA client id (also enables the flow) |
 | `OIDC_SCOPES` | Scopes to request (`openid email profile` default) |
+| `OIDC_ALLOW_INSECURE_HTTP` | `true` lets the browser's discovery read a plain-HTTP issuer (local providers); the signature, audience, issuer and `azp` checks are unchanged |
 
 Only these public names are exposed to the bundle; never reference secrets (`ADMIN_TOKEN`, client secrets, object-store keys) from frontend code. Restart the server after changing them so the bundle is rebuilt.
 
-When an issuer and client id are present, the SPA starts an authorization-code + PKCE flow with `openid-client` before React renders: discovery → authorization redirect (`state`, `nonce`, `S256`) → callback at `/ui/auth/callback` → code exchange at the provider's token endpoint (public client, no secret) → ID token stored as the bearer credential. A failed exchange falls back to the admin-token prompt for that session. The backend never sees the authorization code; it only verifies the resulting JWT against the provider's JWKS. Provider prerequisites: allowlist `${origin}/ui/auth/callback` and allow CORS on discovery/token/JWKS.
+When an issuer and client id are present, the SPA starts an authorization-code + PKCE flow with `openid-client` before React renders: discovery → authorization redirect (`state`, `S256` challenge) → callback at `/ui/auth/callback` → code exchange at the provider's token endpoint (public client, no secret) → ID token stored as the bearer credential. A failed exchange falls back to the admin-token prompt for that session. The backend never sees the authorization code; it only verifies the resulting JWT against the provider's JWKS. Provider prerequisites: allowlist `${origin}/ui/auth/callback` and allow CORS on discovery/token/JWKS.
 
 ---
 
@@ -615,7 +619,7 @@ Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featu
 - `extractEventId`: header `event_id` → payload `event_id` → span `trace_id` → random UUID.
 - `convertSpanToTransaction`: Sentry **span** items (`version: 2`) → transaction-shaped payloads (segment span = transaction; child spans collected; `sentry.measurement.*` → `measurements`).
 - `normalizeTransactionPayload`: hoists trace metadata from `contexts.trace`.
-- **Metric Extraction** (`backend/metrics/samples.ts`): `parseEnvelope` + `normalizeTransactionPayload` → every numeric measurement + sentinels → publish `sentry.events` + `sentry.metrics`. Level-gated sentinels: `error_count` when level = `error`, `fatal_count` when level = `fatal` (missing/unknown level ⇒ `error`). OTLP traces are extracted the same way (`backend/otlp/index.ts`).
+- **Metric Extraction** (`backend/metrics/samples.ts`): `parseEnvelope` + `normalizeTransactionPayload` → every numeric measurement + sentinels → publish `sentry.events.<appNumber>` + `sentry.metrics`. Level-gated sentinels: `error_count` when level = `error`, `fatal_count` when level = `fatal` (missing/unknown level ⇒ `error`). OTLP traces are extracted the same way (`backend/otlp/index.ts`).
 
 ### Replay Offload (`backend/events/offload.ts`)
 - `replay_recording` items → object store **before** NATS publish.
@@ -628,7 +632,7 @@ Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featu
 - **Order:** consumer binary (stream + durable pull consumers `clickhouse-events`, `clickhouse-metrics`) → API (`nats.ts` publish connection + ClickHouse engine tables/MVs) → fail fast.
 - **ClickHouse DDL** (engine tables pull via NATS engine):
   ```sql
-  CREATE TABLE nats_events (...) ENGINE = NATS SETTINGS nats_stream='SENTRIES', nats_consumer_name='clickhouse-events', nats_subjects='sentry.events', nats_format='JSONEachRow', input_format_skip_unknown_fields=1, nats_skip_broken_messages=10;
+  CREATE TABLE nats_events (...) ENGINE = NATS SETTINGS nats_stream='SENTRIES', nats_consumer_name='clickhouse-events', nats_subjects='sentry.events.*', nats_format='JSONEachRow', input_format_skip_unknown_fields=1, nats_skip_broken_messages=10;
   CREATE TABLE sentry_events (...) ENGINE = ReplacingMergeTree() ORDER BY (projectId, receivedAt, id) SETTINGS fsync_after_insert=1, fsync_part_directory=1;
   CREATE MATERIALIZED VIEW sentry_events_mv TO sentry_events AS SELECT ... FROM nats_events;
   ```
@@ -640,7 +644,7 @@ Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featu
 ### Side-Effects Consumer (`backend/consumer.ts`, `bun run consumer`)
 - Runs as its own binary; the API only publishes and ClickHouse ingests by configuration.
 - Provisions the `SENTRIES` stream and its durable pull consumers: `clickhouse-events` / `clickhouse-metrics` (ClickHouse's engine tables attach to them).
-- Subscribes to `sentry.events` over core NATS (at-most-once) for the Postgres side effects; no side-effect durable is provisioned.
+- Subscribes to `sentry.events.*` over the `side-effects` durable pull consumer for the Postgres side effects.
 - Applies: issue tracking (`createIfNew` / `regressIfResolved` / `markSeen`), alert triggers (`new_issue`/`regression`), and release tracking (`recordEvent` → first/last seen, event count, latest event id).
 - **Never inserts event/metric rows into ClickHouse** — ClickHouse's engine tables own that, so a CH outage never stalls side effects.
 
@@ -686,7 +690,7 @@ export const serviceUnavailable = (msg: string) => new ApiError(503, msg, "SERVI
 ### Hop Tests (One Stage Per Test)
 | # | Test | Assertion |
 |---|------|-----------|
-| 1 | Ingest → NATS | POST envelope → assert `sentry.events` + `sentry.metrics` in stream |
+| 1 | Ingest → NATS | POST envelope → assert `sentry.events.<appNumber>` + `sentry.metrics` in stream |
 | 2 | NATS → ClickHouse | Publish to NATS → `waitFor` row in `sentry_events`/`sentry_metrics` (`FINAL`); dup event id = 1 row |
 | 3 | NATS → Postgres | Publish → assert issue/alert side effects; republished id ≠ 2nd issue/alert |
 | 4 | ClickHouse → API | Seed CH directly → assert events/metrics endpoints |

@@ -7,7 +7,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import app from "../backend/index";
+import { app, ADMIN_TOKEN_RAW } from "./test-helpers";
 
 let baseUrl = "";
 let view: Bun.WebView;
@@ -53,30 +53,31 @@ afterAll(async () => {
 describe("Admin token prompt", () => {
   it("appears when no provider is configured and no token is stored", async () => {
     const body = await waitForUI(
-      (text) => text.includes("Sign in to continue"),
+      (text) => text.includes("Sign in to Glitchlog"),
     );
 
-    expect(body).toContain("Sign in to continue");
+    expect(body).toContain("Sign in to Glitchlog");
     expect(body.toLowerCase()).toContain("admin token");
 
-    const hasDialog = await view.evaluate(
-      `document.querySelector('[role="dialog"]') !== null`,
+    const hasPrompt = await view.evaluate(
+      `document.querySelector('input[name="token"]') !== null`,
     );
-    expect(hasDialog).toBe(true);
+    expect(hasPrompt).toBe(true);
   });
 
   it("disappears once the admin token is stored", async () => {
     await view.evaluate(
-      `localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
     );
     await view.navigate(`${baseUrl}/ui/overview`);
 
-    const body = await waitForUI((text) => text.includes("Admin User"));
-    expect(body).toContain("Admin User");
+    // The header shows the resolved identity id for the admin token.
+    const body = await waitForUI((text) => text.includes("local-admin"));
+    expect(body).toContain("local-admin");
 
-    const hasDialog = await view.evaluate(
-      `document.querySelector('[role="dialog"]') !== null`,
+    const hasPrompt = await view.evaluate(
+      `document.querySelector('input[name="token"]') !== null`,
     );
-    expect(hasDialog).toBe(false);
+    expect(hasPrompt).toBe(false);
   });
 });

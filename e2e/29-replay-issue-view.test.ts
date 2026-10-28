@@ -15,9 +15,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { startTestServer, type TestServer } from "./test-helpers";
-
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
+import { startTestServer, ADMIN_TOKEN, ADMIN_TOKEN_RAW, type TestServer } from "./test-helpers";
 const REPLAY_ID = "4f9a4f9a4f9a4f9a4f9a4f9a4f9a4f9a";
 // The later segment's message id sorts before the earlier one; only the
 // start-time prefix in the object key keeps playback order correct.
@@ -274,7 +272,7 @@ describe("Session replay on the issue details page", () => {
 
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
-    await view.evaluate(`localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`);
+    await view.evaluate(`sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`);
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
   }, 30000);
 
@@ -362,7 +360,8 @@ describe("Session replay on the issue details page", () => {
 
   it("renders the replay section with the player for a linked replay", async () => {
     await view.navigate(`${testServer.baseUrl}/ui/issues/${errorEventId}`);
-    const body = await waitForTextInUI("Session replay");
+    // Wait for the session chips so the meta request has landed.
+    const body = await waitForTextInUI(`replay ${REPLAY_ID.slice(0, 8)}`);
     expect(body).toContain("2 segments");
     expect(body).toContain("6 events");
     expect(body).toContain(`replay ${REPLAY_ID.slice(0, 8)}`);
@@ -374,7 +373,7 @@ describe("Session replay on the issue details page", () => {
 
   it("keeps the section with an empty state for events without a replay", async () => {
     await view.navigate(`${testServer.baseUrl}/ui/issues/${plainEventId}`);
-    const body = await waitForTextInUI("Session replay");
-    expect(body).toContain("No session replay is linked to this issue");
+    const body = await waitForTextInUI("No session replay is linked to this issue");
+    expect(body).toContain("Session replay");
   }, 30000);
 });

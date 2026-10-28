@@ -6,12 +6,10 @@
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
+import { handleFetch as fetch, TEST_ORIGIN, ADMIN_TOKEN } from "./test-helpers";
 import { issueDAO } from "db/dao/issues";
 import { appDAO, projectDAO } from "db/dao/project";
-import { environmentDAO } from "db/dao/environments";
 
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
 interface IssueRow {
@@ -70,8 +68,6 @@ async function list(terms = "", sort?: string): Promise<ListResponse> {
 let appId = "";
 let otherAppId = "";
 let projectId = "";
-let environmentId = "";
-let environmentName = "";
 
 beforeAll(async () => {
   const project = await projectDAO.create({
@@ -80,19 +76,10 @@ beforeAll(async () => {
     description: "",
   });
   projectId = project.id;
-  const environment = await environmentDAO.create({
-    projectId,
-    name: "Staging",
-    slug: `staging-${uniq()}`,
-    isDefault: 1,
-  });
-  environmentId = environment.id;
-  environmentName = environment.name;
 
   const app = await appDAO.create({
     id: crypto.randomUUID(),
     projectId,
-    environmentId,
     name: "Query App",
     platform: "javascript",
     ingestKey: `ingest-${uniq()}`,
@@ -103,7 +90,6 @@ beforeAll(async () => {
   const other = await appDAO.create({
     id: crypto.randomUUID(),
     projectId,
-    environmentId,
     name: "Other Query App",
     platform: "javascript",
     ingestKey: `ingest-${uniq()}`,
@@ -163,15 +149,12 @@ describe("Issue query protocol", () => {
     expect(negated.data.length).toBe(3);
   });
 
-  it("filters by app, project and environment", async () => {
+  it("filters by app and project", async () => {
     const byApp = await list(`app:${appId}`);
     expect(byApp.data.length).toBe(3);
 
     const byProject = await list();
     expect(byProject.data.length).toBe(4);
-
-    const byEnvironment = await list(`environment:${environmentName}`);
-    expect(byEnvironment.data.length).toBe(4);
   });
 
   it("filters by the event type", async () => {

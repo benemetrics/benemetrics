@@ -14,9 +14,12 @@ const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || "default";
 const CLICKHOUSE_USER = process.env.CLICKHOUSE_USER || "default";
 const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || "";
 const CLICKHOUSE_NATS_URL = process.env.CLICKHOUSE_NATS_URL || "nats:4222";
+// The engine connection is the `INTERNAL` config user of the broker.
+const CLICKHOUSE_NATS_USER = process.env.CLICKHOUSE_NATS_USER || "sentries-internal";
+const CLICKHOUSE_NATS_PASSWORD = process.env.CLICKHOUSE_NATS_PASSWORD || "sentries-dev-internal-pass";
 
 const NATS_STREAM = "SENTRIES";
-const EVENTS_SUBJECT = "sentry.events";
+const EVENTS_SUBJECT = "sentry.events.*";
 const EVENTS_CONSUMER = "clickhouse-events";
 const METRICS_SUBJECT = "sentry.metrics";
 const METRICS_CONSUMER = "clickhouse-metrics";
@@ -249,6 +252,8 @@ function natsEngine(consumer: string, subject: string): ChQuery {
   return sql`
     ENGINE = NATS
     SETTINGS nats_url = ${CLICKHOUSE_NATS_URL},
+             nats_username = ${CLICKHOUSE_NATS_USER},
+             nats_password = ${CLICKHOUSE_NATS_PASSWORD},
              nats_stream = ${NATS_STREAM},
              nats_consumer_name = ${consumer},
              nats_subjects = ${subject},
@@ -686,6 +691,23 @@ async function ensureEventsTtl(): Promise<void> {
   await setEventsTtl(DEFAULT_EVENTS_TTL.amount, DEFAULT_EVENTS_TTL.unit);
 }
 
+// A NATS table cannot be altered: when an existing engine table predates
+// the engine credentials, it is recreated (the rows live in the stream).
+async function ensureEngineAuthSettings(): Promise<void> {
+  for (const table of ["nats_events", "nats_metrics"]) {
+    const [row] = await queryRows<{ create_table_query: string }>(
+      sql`
+        SELECT create_table_query FROM system.tables
+        WHERE database = ${CLICKHOUSE_DATABASE} AND name = ${table}
+      `,
+    );
+    if (row && !row.create_table_query.includes("nats_username")) {
+      console.log(`[ClickHouse] Recreating ${table} with the engine auth settings`);
+      await runCommand(sql`DROP TABLE IF EXISTS ${sql.identifier(CLICKHOUSE_DATABASE)}.${sql.identifier(table)}`);
+    }
+  }
+}
+
 // Boot order: NATS (stream + durable pull consumers) first — the engine
 // table attaches to `clickhouse-events` by name. Retries, then fails fast.
 export async function initClickHouse(): Promise<void> {
@@ -693,6 +715,7 @@ export async function initClickHouse(): Promise<void> {
     await runCommand(sql`CREATE DATABASE IF NOT EXISTS ${sql.identifier(CLICKHOUSE_DATABASE)}`);
     await migrateEventsTable();
     await runCommand(createEventsTable());
+    await ensureEngineAuthSettings();
     await runCommand(createEventsEngineTable());
     await ensureEventsEngineColumns();
     await ensureView("sentry_events_mv", createEventsView());

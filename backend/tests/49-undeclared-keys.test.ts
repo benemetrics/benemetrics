@@ -8,12 +8,9 @@ import "../arktype-config";
 import { type as arktype } from "arktype";
 import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
 
-const baseUrl = TEST_ORIGIN;
+import { ADMIN_HEADERS } from "./test-helpers";
 
-const ADMIN_HEADERS = {
-  Authorization: "API-Key e2e-admin-token",
-  "Content-Type": "application/json",
-};
+const baseUrl = TEST_ORIGIN;
 
 describe("Undeclared keys are dropped", () => {
   it("strips client junk from a schema's output (unit)", () => {
@@ -29,7 +26,6 @@ describe("Undeclared keys are dropped", () => {
   describe("the spread-of-body create routes", () => {
     let projectId = "";
     let appId = "";
-    let environmentId = "";
 
     beforeAll(async () => {
       const projectRes = await (await fetch(`${baseUrl}/api/admin/projects`, {
@@ -47,15 +43,6 @@ describe("Undeclared keys are dropped", () => {
         })
       ).json();
       appId = (appRes as { id: string }).id;
-
-      const envRes = await (
-        await fetch(`${baseUrl}/api/admin/environments`, {
-          method: "POST",
-          headers: ADMIN_HEADERS,
-          body: JSON.stringify({ projectId, name: "Production" }),
-        })
-      ).json();
-      environmentId = (envRes as { id: string }).id;
     });
 
     afterAll(async () => {
@@ -75,7 +62,6 @@ describe("Undeclared keys are dropped", () => {
           name: "hardened",
           projectId,
           appId,
-          environmentId,
           // undeclared: must not survive the `...body` spread
           id: "attacker-supplied-id",
           tokenHash: "attacker-hash",

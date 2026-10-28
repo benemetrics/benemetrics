@@ -6,10 +6,15 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { handleFetch as fetch, startTestApp, TEST_ORIGIN, type TestApp } from "./test-helpers";
+import {
+  handleFetch as fetch,
+  startTestApp,
+  TEST_ORIGIN,
+  ADMIN_TOKEN,
+  type TestApp,
+} from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
 
 interface FeatureFlag {
   id: string;
@@ -115,7 +120,7 @@ describe("Feature Flags Management API", () => {
     });
 
     it("should attach an audience segment when creating a flag", async () => {
-      const segmentResponse = await apiRequest("POST", "/api/admin/segments", {
+      const segmentResponse = await apiRequest("POST", "/api/admin/feature-flags/segments", {
         name: `Audience Segment ${Date.now()}`,
         rules: [
           { id: "rule-1", attribute: "plan", operator: "equals", value: "enterprise" }
@@ -363,7 +368,7 @@ describe("Feature Flags Management API", () => {
 
   describe("Segments", () => {
     it("should create a segment", async () => {
-      const response = await apiRequest("POST", "/api/admin/segments", {
+      const response = await apiRequest("POST", "/api/admin/feature-flags/segments", {
         name: "Premium Users",
         description: "Users with premium subscription",
         rules: [
@@ -378,21 +383,21 @@ describe("Feature Flags Management API", () => {
     });
 
     it("should list segments", async () => {
-      const response = await apiRequest("GET", "/api/admin/segments");
+      const response = await apiRequest("GET", "/api/admin/feature-flags/segments");
       expect(response.status).toBe(200);
       const data = await response.json() as { data: any[] };
       expect(data.data).toBeInstanceOf(Array);
     });
 
     it("should retrieve a segment by id", async () => {
-      const createdResponse = await apiRequest("POST", "/api/admin/segments", {
+      const createdResponse = await apiRequest("POST", "/api/admin/feature-flags/segments", {
         name: `Segment Detail ${Date.now()}`,
         description: "detail lookup",
         rules: [{ attribute: "user.id", operator: "equals", value: "user-1" }],
       });
       const created = await createdResponse.json() as { id: string };
 
-      const response = await apiRequest("GET", `/api/admin/segments/${created.id}`);
+      const response = await apiRequest("GET", `/api/admin/feature-flags/segments/${created.id}`);
       expect(response.status).toBe(200);
       const data = await response.json() as {
         id: string;
@@ -404,7 +409,7 @@ describe("Feature Flags Management API", () => {
 
       const missing = await apiRequest(
         "GET",
-        `/api/admin/segments/${crypto.randomUUID()}`,
+        `/api/admin/feature-flags/segments/${crypto.randomUUID()}`,
       );
       expect(missing.status).toBe(404);
     });

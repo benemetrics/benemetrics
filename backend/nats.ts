@@ -5,14 +5,27 @@ import {
   jetstream,
   jetstreamManager,
   type JetStreamManager,
+  type ConsumerConfig,
 } from "@nats-io/jetstream";
 import { env } from "bun";
-import type { MetricSample } from "./protocol/metrics";
-import type { SentryEventMessage } from "./protocol/events";
 
-export const EVENTS_SUBJECT = "sentry.events";
+// The backend authenticates with its config user (the `AUTH` account, also
+// the auth-callout service); the dev defaults match docker-compose and are
+// expected to be overridden in production.
+const NATS_AUTH_USER = env.NATS_AUTH_USER || "sentries-auth";
+const NATS_AUTH_PASSWORD = env.NATS_AUTH_PASSWORD || "sentries-dev-auth-pass";
+
+export const EVENTS_SUBJECT_PREFIX = "sentry.events";
+// A publish without the app token fails at the server: the stream and every
+// `sentry.events` consumer filter the one-token shard.
+export const EVENTS_STREAM_SUBJECT = `${EVENTS_SUBJECT_PREFIX}.*`;
 export const METRICS_SUBJECT = "sentry.metrics";
 export const FLAG_CHANGE_SUBJECT = "sentry.flags.changed";
+
+/** The live-feed subject of one app shard. */
+export function eventsSubject(appNumber: number): string {
+  return `${EVENTS_SUBJECT_PREFIX}.${appNumber}`;
+}
 
 export const STREAM_NAME = "SENTRIES";
 // The side-effects and the flags consumers have their own durable, so a
@@ -28,12 +41,12 @@ const PULL_CONSUMERS: Array<{
   subject: string;
   deliverPolicy?: DeliverPolicy;
 }> = [
-  { name: "clickhouse-events", subject: EVENTS_SUBJECT },
-  { name: "clickhouse-metrics", subject: METRICS_SUBJECT },
-  // A fresh consumer must not replay the whole stream.
-  { name: SIDE_EFFECTS_CONSUMER, subject: EVENTS_SUBJECT, deliverPolicy: DeliverPolicy.New },
-  { name: FLAGS_CONSUMER, subject: FLAG_CHANGE_SUBJECT, deliverPolicy: DeliverPolicy.New },
-];
+    { name: "clickhouse-events", subject: EVENTS_STREAM_SUBJECT },
+    { name: "clickhouse-metrics", subject: METRICS_SUBJECT },
+    // A fresh consumer must not replay the whole stream.
+    { name: SIDE_EFFECTS_CONSUMER, subject: EVENTS_STREAM_SUBJECT, deliverPolicy: DeliverPolicy.New },
+    { name: FLAGS_CONSUMER, subject: FLAG_CHANGE_SUBJECT, deliverPolicy: DeliverPolicy.New },
+  ];
 
 const INIT_ATTEMPTS = Number(env.INIT_RETRY_ATTEMPTS) || 5;
 const INIT_RETRY_DELAY_MS = Number(env.INIT_RETRY_DELAY_MS) || 1000;
@@ -48,7 +61,7 @@ function describe(err: unknown): string {
 const STREAM_MAX_BYTES = Number(env.NATS_STREAM_MAX_BYTES) || 1024 * 1024 * 1024;
 
 async function ensureStream(manager: JetStreamManager): Promise<void> {
-  const subjects = [EVENTS_SUBJECT, METRICS_SUBJECT, FLAG_CHANGE_SUBJECT];
+  const subjects = [EVENTS_STREAM_SUBJECT, METRICS_SUBJECT, FLAG_CHANGE_SUBJECT];
   const info = await manager.streams.info(STREAM_NAME).catch(() => null);
   if (!info) {
     await manager.streams.add({
@@ -72,18 +85,25 @@ async function ensureStream(manager: JetStreamManager): Promise<void> {
 
 async function ensurePullConsumers(manager: JetStreamManager): Promise<void> {
   for (const { name, subject, deliverPolicy } of PULL_CONSUMERS) {
-    try {
-      await manager.consumers.info(STREAM_NAME, name);
-      continue;
-    } catch {
-      // Not provisioned yet.
-    }
-    await manager.consumers.add(STREAM_NAME, {
+    const config: ConsumerConfig = {
       durable_name: name,
       ack_policy: AckPolicy.Explicit,
       filter_subject: subject,
       ...(deliverPolicy ? { deliver_policy: deliverPolicy } : {}),
-    });
+    };
+    const existing = await manager.consumers.info(STREAM_NAME, name).catch(() => null);
+    // An existing durable keeps its deliver policy; only the shard filter
+    // is migrated in place.
+    if (existing) {
+      if (existing.config.filter_subject !== config.filter_subject) {
+        await manager.consumers.update(STREAM_NAME, name, {
+          ...existing.config,
+          filter_subject: config.filter_subject,
+        } as ConsumerConfig);
+      }
+      continue;
+    }
+    await manager.consumers.add(STREAM_NAME, config);
     console.log(`[NATS] Created durable pull consumer ${name}`);
   }
 }
@@ -95,13 +115,17 @@ async function initNats(): Promise<NatsConnection> {
   let connection: NatsConnection | undefined;
   for (let attempt = 1; ; attempt++) {
     try {
-      const nc = await connect({ servers: env.NATS_SERVERS });
+      const nc = await connect({
+        servers: env.NATS_SERVERS,
+        user: NATS_AUTH_USER,
+        pass: NATS_AUTH_PASSWORD,
+      });
       try {
         const manager = await jetstreamManager(nc);
         await ensureStream(manager);
         await ensurePullConsumers(manager);
       } catch (err) {
-        await nc.close().catch(() => {});
+        await nc.close().catch(() => { });
         throw err;
       }
       connection = nc;
@@ -119,31 +143,32 @@ async function initNats(): Promise<NatsConnection> {
 export const nats = await initNats();
 export const jetstream2 = jetstream(nats);
 
-// Publishes one ingested event through JetStream (the broker is required;
-// a failure throws and the caller answers 503). Resolves after the stream
-// has stored the message, so at-least-once delivery is JetStream's job.
-export async function publishEvent(event: SentryEventMessage): Promise<void> {
-  await jetstream2.publish(
-    EVENTS_SUBJECT,
-    new TextEncoder().encode(JSON.stringify(event)),
-    { timeout: 2000 },
-  );
+export async function publishEvent(
+  appNumber: number,
+  events: Uint8Array[],
+): Promise<void> {
+  if (events.length === 0) return;
+  const subject = eventsSubject(appNumber);
+  const totalLength = events.reduce((acc, curr) => acc + curr.length, 0);
+  const payload = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of events) {
+    payload.set(chunk, offset);
+    offset += chunk.length;
+  }
+  await jetstream2.publish(subject, payload, { timeout: 2000 });
 }
 
-// Publishes the samples extracted from one envelope as JSONEachRow — the
-// ClickHouse NATS engine inserts one row per line. Empty sample lists are
-// a no-op.
-export async function publishMetricSamples(samples: MetricSample[]): Promise<void> {
+export async function publishMetricSamples(samples: Uint8Array[]): Promise<void> {
   if (samples.length === 0) return;
-  // The tags travel as a JSON string: the ClickHouse column is a String.
-  const payload = samples
-    .map((sample) =>
-      JSON.stringify({ ...sample, tags: JSON.stringify(sample.tags ?? {}) }),
-    )
-    .join("\n");
-  await jetstream2.publish(METRICS_SUBJECT, new TextEncoder().encode(payload), {
-    timeout: 2000,
-  });
+  const totalLength = samples.reduce((acc, curr) => acc + curr.length, 0);
+  const payload = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of samples) {
+    payload.set(chunk, offset);
+    offset += chunk.length;
+  }
+  await jetstream2.publish(METRICS_SUBJECT, payload, { timeout: 2000 });
 }
 
 export async function publishFlagChangeEvent(event: {

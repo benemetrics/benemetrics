@@ -8,11 +8,36 @@
  * SDK-based tests need a real DSN.
  */
 
-import app from "../backend/index";
+// The admin token is generated at boot and `generateAdminToken()` prints it
+// on stdout. Intercept console.log before loading the backend so the suite
+// authenticates against the printed token instead of a hardcoded fixture.
+const originalLog = console.log.bind(console);
+let printedToken = "";
+console.log = (...args: unknown[]) => {
+  for (const arg of args) {
+    const match = String(arg).match(/\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/);
+    if (match) printedToken = match[0];
+  }
+  return originalLog(...args);
+};
+
+const { default: app } = await import("../backend/index");
+console.log = originalLog;
+
+export { app };
+
+if (!printedToken) {
+  throw new Error("admin token was not printed at boot");
+}
+
+app.store.adminTokenHash = await Bun.password.hash(printedToken);
+
+export const ADMIN_TOKEN_RAW = printedToken;
+export const ADMIN_TOKEN = `API-Key ${printedToken}`;
 
 export const ADMIN_HEADERS = {
   "Content-Type": "application/json",
-  Authorization: "API-Key e2e-admin-token",
+  Authorization: ADMIN_TOKEN,
 };
 
 /** Polls `fn` until the predicate holds; returns the last value either way. */

@@ -9,7 +9,6 @@ import {
 } from "backend/errors";
 import { resolveAdminId, validateUploadAuth } from "../auth";
 import { projectDAO } from "db/dao/project";
-import { environmentDAO } from "db/dao/environments";
 import { releaseDAO } from "db/dao/releases";
 import { sourceMapDAO } from "db/dao/source-maps";
 import { sourceMapTokenDAO } from "db/dao/source-map-tokens";
@@ -26,29 +25,20 @@ import { MAX_UPLOAD_BYTES, readSourceMapUpload } from "./upload";
 export const sourceMapUploadRoutes = new Elysia({
   prefix: "api/0/projects",
 })
-  // Upload-token auth is a middleware concern: it resolves the token, its
-  // project and environment once and hands them to every upload handler.
+  // Upload-token auth is a middleware concern: it resolves the token and its
+  // project once and hands them to every upload handler.
   .resolve(async ({ request, params }) => {
     const auth = await validateUploadAuth(request);
     if (!auth.valid || !auth.token) {
       throw unauthorized("Unauthorized - Invalid upload token");
     }
     const projectSlug = String((params as { project?: string }).project ?? "");
-    const [project, environment] = await Promise.all([
-      projectDAO.findBySlug(projectSlug),
-      environmentDAO.findById(auth.token.environmentId),
-    ]);
+    const project = await projectDAO.findBySlug(projectSlug);
     if (!project) throw notFound("Project", projectSlug);
     if (project.id !== auth.token.projectId) {
       throw forbidden("Upload token is not valid for this project");
     }
-    if (!environment) {
-      throw forbidden("Upload token references a missing environment");
-    }
-    if (environment.projectId !== project.id) {
-      throw forbidden("Upload token environment does not belong to this project");
-    }
-    return { uploadToken: auth.token, uploadProject: project, uploadEnvironment: environment };
+    return { uploadToken: auth.token, uploadProject: project };
   })
   .post(
     "/:org/:project/releases/",
@@ -66,7 +56,7 @@ export const sourceMapUploadRoutes = new Elysia({
   )
   .post(
     "/:org/:project/releases/:version/files/",
-    async ({ request, params: { version }, uploadToken, uploadProject, uploadEnvironment }) => {
+    async ({ request, params: { version }, uploadToken, uploadProject }) => {
       const declared = Number(request.headers.get("content-length") ?? "");
       if (Number.isFinite(declared) && declared > MAX_UPLOAD_BYTES) {
         throw payloadTooLarge("Source map exceeds the 10 MB limit");
@@ -74,7 +64,7 @@ export const sourceMapUploadRoutes = new Elysia({
       const upload = await readSourceMapUpload(await request.formData());
       const [, artifactRow] = await Promise.all([
         releaseDAO.findOrCreate({ appId: uploadToken.appId, version, status: "draft" }),
-        sourceMapDAO.create({ projectId: uploadProject.id, appId: uploadToken.appId, environmentId: uploadEnvironment.id, release: version, dist: upload.dist, filename: upload.filename, mapJson: upload.mapJson }),
+        sourceMapDAO.create({ projectId: uploadProject.id, appId: uploadToken.appId, release: version, dist: upload.dist, filename: upload.filename, mapJson: upload.mapJson }),
       ]);
       const { createdAt, ...artifact } = artifactRow;
       invalidateSourceMapCache(artifactRow.id);
@@ -91,7 +81,7 @@ export const sourceMapUploadRoutes = new Elysia({
   .get(
     "/:org/:project/releases/:version/files/",
     async ({ params: { version }, query, uploadToken, uploadProject }) => {
-      const { data } = await sourceMapDAO.list({ projectId: uploadProject.id, appId: uploadToken.appId, environmentId: uploadToken.environmentId, release: version, cursor: query.cursor, limit: query.limit });
+      const { data } = await sourceMapDAO.list({ projectId: uploadProject.id, appId: uploadToken.appId, release: version, cursor: query.cursor, limit: query.limit });
       return { data: data.map(({ createdAt, ...artifact }) => ({ ...artifact, dateCreated: createdAt })) };
     },
     {
@@ -149,7 +139,6 @@ export const sourceMapRoutes = new Elysia({ prefix: "/api/admin/source-maps" })
     async ({ query }) => {
       return sourceMapDAO.list({
         projectId: query.projectId,
-        environmentId: query.environmentId,
         release: query.release,
         cursor: query.cursor,
         limit: query.limit,
@@ -158,7 +147,6 @@ export const sourceMapRoutes = new Elysia({ prefix: "/api/admin/source-maps" })
     {
       query: arktype({
         projectId: "string.uuid?",
-        environmentId: "string.uuid?",
         release: "string?",
         cursor: "string?",
         limit: "string.integer.parse?",
@@ -214,12 +202,10 @@ export const sourceMapTokenRoutes = new Elysia({ prefix: "/api/admin/source-map-
   .post(
     "/",
     async ({ body, adminId }) => {
-      const [, environment, app] = await Promise.all([
+      const [, app] = await Promise.all([
         projectDAO.findByIdOrThrow(body.projectId),
-        environmentDAO.findByIdOrThrow(body.environmentId),
         appDAO.findByIdOrThrow(body.appId),
       ]);
-      if (environment.projectId !== body.projectId) throw badRequest("Environment does not belong to this project");
       if (app.projectId !== body.projectId) throw badRequest("App does not belong to this project");
       const { token, record } = await sourceMapTokenDAO.create({ ...body, createdBy: adminId, expiresAt: body.expiresAt ?? null });
       return { ...record, token };
@@ -229,7 +215,6 @@ export const sourceMapTokenRoutes = new Elysia({ prefix: "/api/admin/source-map-
         name: "string",
         projectId: "string.uuid",
         appId: "string.uuid",
-        environmentId: "string.uuid",
         expiresAt: "string?",
       }),
     },
@@ -242,7 +227,6 @@ export const sourceMapTokenRoutes = new Elysia({ prefix: "/api/admin/source-map-
     {
       query: arktype({
         projectId: "string.uuid?",
-        environmentId: "string.uuid?",
         cursor: "string?",
         limit: "string.integer.parse?",
       }),

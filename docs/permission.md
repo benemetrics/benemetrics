@@ -35,7 +35,7 @@ The admin token is the master credential. It is compared in constant time (no ti
 
 **Revocation:** The token is generated at boot; only its `Bun.password` hash is kept in memory (`backend/index.ts`), and it rotates daily at 00:00 UTC (Elysia cron in the same file) — a presented old token fails from the next request.
 
-**Lifecycle (known limitation):** the token never expires, is not bound to a person, and the UI keeps it in `localStorage`. There is no rotation, revocation or sign-out story beyond replacing the environment variable and restarting; the audit trail records the rule/grant changes, not the token's use. Deployments that need a short-lived credential should use the provider identities (a scoped grant) and keep the admin token for the administrative writes.
+**Lifecycle (known limitation):** the token never expires, is not bound to a person, and the UI keeps it in `sessionStorage` (per-tab, cleared on close). There is no rotation, revocation or sign-out story beyond replacing the environment variable and restarting; the audit trail records the rule/grant changes, not the token's use. Deployments that need a short-lived credential should use the provider identities (a scoped grant) and keep the admin token for the administrative writes.
 
 ### OIDC/OAuth2 JWT
 
@@ -45,9 +45,9 @@ A three-part JWT is verified **locally** using the provider's public signing key
 
 The SPA signs in with the standard authorization-code flow via [`openid-client`](https://github.com/panva/openid-client); the backend never handles the code.
 
-1. **Startup** — before React renders, the SPA reads the OIDC settings compiled into its bundle from the server environment by `frontend/auth-env-plugin.ts` (`virtual:auth-env`; issuer/client id/scope only). When a provider is configured and no token is stored (or a previous attempt failed), it redirects to the provider immediately; otherwise the app renders and the admin-token prompt handles any 401. Changing these variables requires a server restart so the bundle is rebuilt.
-2. **Authorization request** — `openid-client` discovers the provider metadata and builds the authorization URL with `state`, `nonce`, and a PKCE `S256` challenge. The verifier, state, and nonce live in `sessionStorage`; the redirect URI is `${origin}/ui/auth/callback`.
-3. **Callback** — `/ui/auth/callback` validates state/nonce, exchanges the code at the provider's token endpoint (public client, no secret), and verifies the ID token. The ID token is stored in the same localStorage slot as the admin token and sent as `Authorization: Bearer` on every request.
+1. **Startup** — before React renders, the SPA reads the OIDC settings compiled into its bundle from the server environment by `frontend/auth-env-plugin.ts` (it replaces `frontend/src/lib/auth-env.ts`; issuer/client id/scope/insecure opt-in only). When a provider is configured and no token is stored (or a previous attempt failed), it redirects to the provider immediately; otherwise the app renders and the admin-token prompt handles any 401. Changing these variables requires a server restart so the bundle is rebuilt.
+2. **Authorization request** — `openid-client` discovers the provider metadata and builds the authorization URL with `state` and a PKCE `S256` challenge. The verifier and state live in `sessionStorage`; the redirect URI is `${origin}/ui/auth/callback`.
+3. **Callback** — `/ui/auth/callback` validates the state, exchanges the code at the provider's token endpoint (public client, no secret), and verifies the ID token. The ID token is stored in the same sessionStorage slot as the admin token (the raw token only) and sent as `Authorization: Bearer` on every request.
 4. **Failure** — a failed exchange (denied consent, network error, bad token) sets a session flag and drops to the admin-token prompt instead of bouncing between the provider and the callback.
 
 Provider requirements: a **public SPA client** (no client secret), the redirect URI `${origin}/ui/auth/callback` allowlisted, and CORS on the discovery, token, and JWKS endpoints. `OIDC_CLIENT_ID` (or `OAUTH_CLIENT_ID`) is the client id; `OIDC_SCOPES` defaults to `openid email profile`.
@@ -172,7 +172,7 @@ Always requires credentials — the admin token or a verified provider JWT (same
 
 - **Events list** — App filter intersected with visible apps; explicit out-of-scope filter yields empty list
 - **Event detail** — 404 unless event's app is visible
-- **Live feed** — There is **no backend WebSocket**: the browser subscribes to NATS directly (`sentry.events`) and the backend does not fan the events out. The backend's permission model therefore does not filter the live feed — the NATS listener is the deployment's responsibility (TLS + an account/token, with the per-account subject permissions when the deployment needs them). The events the UI *polls* (`/events/*`) are scoped as described above.
+- **Live feed** — There is **no backend WebSocket**: the browser subscribes to NATS directly over the WebSocket listener and the backend does not fan the events out. The feed **does** honor the permission scope: the NATS auth callout (`docs/nats.md`) sends every connection to the backend, which verifies the credential (Keycloak JWT or the master admin token) and signs a sub-only user claim for exactly `sentry.events.<appNumber>` of the apps the identity's scope resolves to — an identity whose scope resolves to no app is denied. Publishing is denied for every reader connection. The events the UI *polls* (`/events/*`) are scoped as described above.
 - **Replays** — read under `/api/admin/events/:eventId/replay/:replayId`; follows the event's app scope via the admin guard; 404 for out-of-scope (indistinguishable from missing). The browser fetches the returned presigned object-store URLs directly; there is no `/storage/*` proxy surface.
 
 ### Environments Exposure
@@ -294,7 +294,7 @@ Same shape as rules, with the identity id (unique) instead of the group name, pl
 
 ## 8. Frontend Flow
 
-- Admin token persisted in localStorage; attached as Bearer token on every request when set. **Security note:** localStorage is vulnerable to XSS; for production, consider httpOnly cookie storage or a secure token vault.
+- Admin token kept in sessionStorage (per-tab, cleared on close); attached as `API-Key` on every request when set. An OIDC ID token shares the slot and goes out as `Bearer`. **Security note:** storage is still vulnerable to XSS; for production, consider httpOnly cookie storage or a secure token vault.
 - Any 401 dispatches an auth-required event; shell shows "Sign in to continue" prompt (reacts to status, not message text)
 - No `/me` / profile endpoint. Local display aid (`viewerProfile`):
   - No token stored → null ("Not signed in")
@@ -327,7 +327,7 @@ Startup never prints secrets.
 - Issuer/JWKS URLs must be HTTPS in any real deployment (whoever controls the fetch controls signing keys) — a plain-HTTP issuer needs the explicit `OIDC_ALLOW_INSECURE_HTTP=true` opt-in
 - No audience configured + issuer configured = accepts tokens for any client from that issuer
 - Browser login requires a public SPA client, the exact redirect URI allowlisted, and CORS on discovery/token/JWKS — without them startup falls back to the admin-token prompt
-- Admin token in localStorage is vulnerable to XSS — use httpOnly cookies or secure token vault in production
+- The credential slot in sessionStorage is vulnerable to XSS — use httpOnly cookies or secure token vault in production
 - The identity id is `<issuer>-<subject>`, so `sub` alone is enough — no email claim is required
 
 ---

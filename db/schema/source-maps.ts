@@ -15,7 +15,6 @@ export const sourceMaps = pgTable(
     id: text("id").primaryKey(),
     projectId: text("project_id").notNull(),
     appId: text("app_id").notNull(),
-    environmentId: text("environment_id").notNull(),
     release: text("release").notNull(),
     dist: text("dist"),
     filename: text("filename").notNull(),

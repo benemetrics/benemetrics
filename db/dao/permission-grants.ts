@@ -1,124 +1,54 @@
 import { db } from "db";
-import { permissionGrants } from "db/schema/permissions";
+import { permissionGrants, permissionsProjectApp } from "db/schema/permissions";
 import { desc, eq } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
 import { cursorAfter, cursorLimit } from "./cursor";
-
-export interface PermissionGrantRecord {
-  id: string;
-  identityId: string;
-  label: string | null;
-  environments: string[];
-  appPrefixes: string[];
-  isEnabled: boolean;
-  /** The identity may perform the admin writes. */
-  canWrite: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PermissionGrantInput {
-  identityId: string;
-  label?: string | null;
-  environments: string[];
-  appPrefixes: string[];
-  isEnabled?: boolean;
-  canWrite?: boolean;
-}
+import type { string } from "node_modules/arktype/out/keywords/string";
 
 const grantFields = {
   id: permissionGrants.id,
   identityId: permissionGrants.identityId,
   label: permissionGrants.label,
-  environments: permissionGrants.environments,
-  appPrefixes: permissionGrants.appPrefixes,
+  projectFixes: permissionGrants.projectIds,
+  appFixes: permissionGrants.appPrefixes,
   isEnabled: permissionGrants.isEnabled,
   canWrite: permissionGrants.canWrite,
   createdAt: permissionGrants.createdAt,
   updatedAt: permissionGrants.updatedAt,
 };
 
-function parseList(value: string): string[] {
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch {
-    return [];
-  }
-}
-
-function toRecord(row: {
-  id: string;
-  identityId: string;
-  label: string | null;
-  environments: string;
-  appPrefixes: string;
-  isEnabled: number;
-  canWrite: number;
-  createdAt: string;
-  updatedAt: string;
-}): PermissionGrantRecord {
-  return {
-    id: row.id,
-    identityId: row.identityId,
-    label: row.label,
-    environments: parseList(row.environments),
-    appPrefixes: parseList(row.appPrefixes),
-    isEnabled: row.isEnabled === 1,
-    canWrite: row.canWrite === 1,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-}
-
 export const permissionGrantDAO = {
-  create: async (input: PermissionGrantInput): Promise<PermissionGrantRecord> => {
-    const now = new Date().toISOString();
+  create: async (input: PermissionGrantInput) => {
     const [row] = await db
       .insert(permissionGrants)
       .values({
-        id: crypto.randomUUID(),
         identityId: input.identityId,
         label: input.label ?? null,
-        environments: JSON.stringify(input.environments),
+        projectPrefixes: JSON.stringify(input.projectIds),
         appPrefixes: JSON.stringify(input.appPrefixes),
         isEnabled: input.isEnabled === false ? 0 : 1,
         canWrite: input.canWrite === true ? 1 : 0,
-        createdAt: now,
-        updatedAt: now,
       })
       .onConflictDoNothing({ target: permissionGrants.identityId })
       .returning(grantFields);
-    if (!row) {
-      throw conflict(`Permission grant already exists: ${input.identityId}`);
-    }
-    return toRecord(row);
+
+    if (!row) throw conflict(`Permission grant already exists: ${input.identityId}`);
+    return row;
   },
 
-  findById: async (id: string): Promise<PermissionGrantRecord | undefined> => {
+  findById: async (id: string) => {
     const [row] = await db
       .select(grantFields)
       .from(permissionGrants)
       .where(eq(permissionGrants.id, id))
       .limit(1);
-    return row ? toRecord(row) : undefined;
+    return row;
   },
 
-  findByIdOrThrow: async (id: string): Promise<PermissionGrantRecord> => {
+  findByIdOrThrow: async (id: string) => {
     const grant = await permissionGrantDAO.findById(id);
     if (!grant) throw notFound("Permission grant", id);
     return grant;
-  },
-
-  findByIdentityId: async (
-    identityId: string,
-  ): Promise<PermissionGrantRecord | undefined> => {
-    const [row] = await db
-      .select(grantFields)
-      .from(permissionGrants)
-      .where(eq(permissionGrants.identityId, identityId))
-      .limit(1);
-    return row ? toRecord(row) : undefined;
   },
 
   list: async (options?: { cursor?: string; limit?: number }) => {
@@ -131,39 +61,22 @@ export const permissionGrantDAO = {
     );
     if (empty) return { data: [] };
 
-    const data = await db
+    return db
       .select(grantFields)
       .from(permissionGrants)
       .where(condition)
       .orderBy(desc(permissionGrants.createdAt), desc(permissionGrants.id))
       .limit(limit);
-
-    return { data: data.map(toRecord) };
   },
 
   updateOrThrow: async (
     id: string,
     data: Partial<PermissionGrantInput>,
-  ): Promise<PermissionGrantRecord> => {
+  ) => {
     const [row] = await db
       .update(permissionGrants)
       .set({
-        ...(data.identityId !== undefined
-          ? { identityId: data.identityId }
-          : {}),
-        ...(data.label !== undefined ? { label: data.label } : {}),
-        ...(data.environments !== undefined
-          ? { environments: JSON.stringify(data.environments) }
-          : {}),
-        ...(data.appPrefixes !== undefined
-          ? { appPrefixes: JSON.stringify(data.appPrefixes) }
-          : {}),
-        ...(data.isEnabled !== undefined
-          ? { isEnabled: data.isEnabled ? 1 : 0 }
-          : {}),
-        ...(data.canWrite !== undefined
-          ? { canWrite: data.canWrite ? 1 : 0 }
-          : {}),
+        ...data,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(permissionGrants.id, id))
@@ -171,16 +84,35 @@ export const permissionGrantDAO = {
     if (!row) {
       throw notFound("Permission grant", id);
     }
-    return toRecord(row);
+    return row;
   },
 
-  delete: async (id: string): Promise<void> => {
-    const deleted = await db
-      .delete(permissionGrants)
-      .where(eq(permissionGrants.id, id))
-      .returning({ id: permissionGrants.id });
-    if (deleted.length === 0) {
-      throw internalError(`Failed to delete permission grant ${id}`);
-    }
+  getUserGrantWithPermissions: async (identityId: string) => {
+    const x = await db
+      .select({ projectId: permissionsProjectApp.projectId, appId: permissionsProjectApp.appId })
+      .from(permissionGrants)
+      .where(eq(permissionGrants.identityId, identityId))
+      .rightJoin(permissionsProjectApp, eq(permissionsProjectApp.permissionGrant, permissionGrants.id))
+
+    return { projectIds: x.map(({ projectId }) => projectId), appsIds: x.map(({ appId }) => appId) }
+  },
+
+  delete: async (id: string) => db
+    .delete(permissionGrants)
+    .where(eq(permissionGrants.id, id))
+    .returning({ id: permissionGrants.id }),
+
+  // The identities the system knows about (every identity that has a grant).
+  // Feeds the user dropdown on the grant form so no one pastes a raw id.
+  listIdentities: async (): Promise<Array<{ id: string; label: string | null }>> => {
+    const rows = await db
+      .select({
+        id: permissionGrants.identityId,
+        label: permissionGrants.label,
+      })
+      .from(permissionGrants)
+      .groupBy(permissionGrants.identityId, permissionGrants.label)
+      .orderBy(permissionGrants.identityId);
+    return rows;
   },
 };

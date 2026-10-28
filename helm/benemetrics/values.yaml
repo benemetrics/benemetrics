@@ -153,6 +153,9 @@ clickhouse:
   # The URL the ClickHouse engine tables use to reach NATS. It must be
   # reachable *from ClickHouse*, not from the API pods.
   natsUrl: ""
+  # The engine connection's NATS credentials (the INTERNAL config user).
+  natsUser: sentries-internal
+  natsPassword: sentries-dev-internal-pass
 
 # --- NATS JetStream (the broker) -------------------------------------------
 nats:
@@ -166,6 +169,15 @@ nats:
   # under that name. See the README section "The live feed".
   websocketPort: 9222
   streamMaxBytes: 1073741824
+  # Auth callout (docs/nats.md): every non-config-user connection is
+  # authorized by the backend. `issuerSeed` is the account NKey seed that
+  # signs the verdicts (kept in the Secret); `issuer` is its public key —
+  # generate the pair with `scripts/nats-auth-keys.ts`.
+  auth:
+    user: sentries-auth
+    password: ""
+    issuerSeed: ""
+    issuer: ""
 
 # --- Object store (session replay segments) --------------------------------
 # The object store is S3-required: there is no local-disk fallback.

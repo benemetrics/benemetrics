@@ -2,7 +2,7 @@
  * E2E Test: Backend-parity admin surfaces in the real UI.
  *
  * Locks in the screens built for the admin API's full surface:
- *   - Projects: environment rename/default/delete controls
+ *   - Projects: app management
  *   - Segments page (create/list/detail)
  *   - Feature flags: unified creation with audience segments (pick existing or build inline)
  *   - Source maps page (upload tokens + artifacts + resolve tool)
@@ -14,9 +14,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
-
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
+import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
 const PROJECT_NAME = `Parity UI Project ${Date.now()}`;
 const SEGMENT_NAME = `Paying customers ${Date.now()}`;
 const TOKEN_NAME = `Upload token ${Date.now()}`;
@@ -149,7 +147,7 @@ describe("Backend parity — admin UI surfaces", () => {
     const server = (app as any).server;
     baseUrl = `http://localhost:${server.port}`;
 
-    // Project + app + default environment.
+    // Project + app.
     const project = (await (
       await adminRequest("POST", "/api/admin/projects", { name: PROJECT_NAME })
     ).json()) as { id: string };
@@ -159,11 +157,11 @@ describe("Backend parity — admin UI surfaces", () => {
         name: "Parity App",
         platform: "web",
       })
-    ).json()) as { id: string; publicKey: string; environment: { id: string } };
+    ).json()) as { id: string; publicKey: string };
     appPublicKey = appRecord.publicKey;
 
     // Segment fixture (rules use the targeting-rule shape).
-    await adminRequest("POST", "/api/admin/segments", {
+    await adminRequest("POST", "/api/admin/feature-flags/segments", {
       name: SEGMENT_NAME,
       description: "Everyone on a paid plan",
       rules: [
@@ -182,7 +180,6 @@ describe("Backend parity — admin UI surfaces", () => {
       name: TOKEN_NAME,
       projectId: project.id,
       appId: appRecord.id,
-      environmentId: appRecord.environment.id,
     });
 
     // Release fixture (draft, so the detail page offers Finalize).
@@ -204,7 +201,7 @@ describe("Backend parity — admin UI surfaces", () => {
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${baseUrl}/ui/overview`);
     await view.evaluate(
-      `localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
     );
     await view.navigate(`${baseUrl}/ui/overview`);
     // Wait until the workspace resolved the project before visiting
@@ -218,7 +215,10 @@ describe("Backend parity — admin UI surfaces", () => {
   });
 
   it("renders the Segments page with the created segment and its rules", async () => {
-    await clickNav("Segments");
+    // Segments sits behind the Feature flags screen since the mock v3 nav.
+    await clickNav("Feature flags");
+    await waitForTextInUI("New flag");
+    expect(await clickAction("Segments")).toBe(true);
     const body = await waitForTextInUI(SEGMENT_NAME);
     expect(body).toContain("1 rule");
 
@@ -239,17 +239,6 @@ describe("Backend parity — admin UI surfaces", () => {
     const body = await waitForTextInUI(TOKEN_NAME);
     expect(body).toContain("Upload tokens");
     expect(body).toContain("Resolve a position");
-  }, 30000);
-
-  it("renders environment management on the Projects page", async () => {
-    await clickNav("Projects");
-    // Wait for the workspace environments to resolve: the lowercase slug
-    // "testing" only appears in the environment row (the Source maps page
-    // shows "Testing" as the environment name, so it can't be the anchor).
-    const body = await waitForTextInUI("testing");
-    expect(body).toContain("Environments");
-    expect(body).toContain("Default");
-    expect(body).toContain("Rename");
   }, 30000);
 
   it("opens the release detail page from the releases list", async () => {
@@ -321,7 +310,9 @@ describe("Backend parity — admin UI surfaces", () => {
     expect(await waitForFlagRowWithAudience(flagName)).toBe(true);
 
     // The inline segment also exists as a standalone segment.
-    await clickNav("Segments");
+    await clickNav("Feature flags");
+    await waitForTextInUI("New flag");
+    expect(await clickAction("Segments")).toBe(true);
     const segmentsBody = await waitForTextInUI(segmentName);
     expect(segmentsBody).toContain(segmentName);
   }, 30000);

@@ -8,12 +8,7 @@
 
 import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
-
-const ADMIN_HEADERS = {
-  "Content-Type": "application/json",
-  Authorization: "API-Key e2e-admin-token",
-};
+import { app, ADMIN_HEADERS } from "./test-helpers";
 
 interface AppResponse {
   id: string;

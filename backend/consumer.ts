@@ -6,7 +6,6 @@
 import { processIngestedEvent } from "./alerting/evaluation";
 import { parseIssueDigests } from "./issues/tracking";
 import {
-  EVENTS_SUBJECT,
   jetstream2,
   nats,
   SIDE_EFFECTS_CONSUMER,
@@ -39,9 +38,12 @@ void (async () => {
   );
   for await (const message of await consumer.consume()) {
     try {
-      await applyEventMessage(
-        JSON.parse(message.string()) as SentryEventMessage,
-      );
+      const payload = message.string();
+      // Handle batched events (JSONEachRow format)
+      const lines = payload.split("\n").filter((line) => line.trim().length > 0);
+      for (const line of lines) {
+        await applyEventMessage(JSON.parse(line) as SentryEventMessage);
+      }
       message.ack();
     } catch (err) {
       console.error(

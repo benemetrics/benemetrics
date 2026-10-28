@@ -23,6 +23,21 @@ data:
       port: {{ .Values.nats.websocketPort }}
       no_tls: true
     }
+
+    # Everything shares the global account; the isolation is the callout's
+    # per-user claim (sub-only, app shards) — docs/nats.md. The config users
+    # bypass the callout: the backend is the auth service itself and the
+    # ClickHouse engine is a deployment-internal consumer.
+    authorization {
+      users: [
+        { user: {{ .Values.nats.auth.user | quote }}, password: {{ include "benemetrics.natsAuthPassword" . | quote }} }
+        { user: {{ .Values.clickhouse.natsUser | quote }}, password: {{ .Values.clickhouse.natsPassword | quote }} }
+      ]
+      auth_callout {
+        issuer: {{ .Values.nats.auth.issuer | quote }}
+        auth_users: [ {{ .Values.nats.auth.user | quote }}, {{ .Values.clickhouse.natsUser | quote }} ]
+      }
+    }
 ---
 apiVersion: v1
 kind: Service

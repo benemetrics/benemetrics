@@ -3,20 +3,20 @@
  *
  * The scope of an identity: the enabled grant for its id wins
  * exclusively, otherwise the union of the enabled group rules it matches.
- * The view expands the scope into the visible apps, environments and
- * projects.
+ * The view expands the scope into the visible apps and projects.
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
+import { handleFetch as fetch, TEST_ORIGIN, ADMIN_TOKEN } from "./test-helpers";
 import { permissionGrantDAO } from "db/dao/permission-grants";
 import { permissionRuleDAO } from "db/dao/permission-rules";
 import { computeScopedView, resolveScopeForIdentity } from "backend/permissions/engine";
 import { projectDAO, appDAO } from "db/dao/project";
-import { environmentDAO } from "db/dao/environments";
 
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+
+let projectId = "";
+let otherProjectId = "";
 
 async function apiRequest(
   method: string,
@@ -32,59 +32,20 @@ async function apiRequest(
 }
 
 describe("Permission scope engine", () => {
-  let environmentId = "";
-  let environmentName = "";
-  let otherEnvironmentName = "";
-  let projectId = "";
-  let appId = "";
-  let otherAppId = "";
-
   beforeAll(async () => {
     projectId = (await projectDAO.create({ name: `Perm-${uniq()}`, slug: `perm-${uniq()}` })).id;
-    const environment = await environmentDAO.create({
-      projectId,
-      name: "Production",
-      slug: `prod-${uniq()}`,
-      isDefault: 1,
-    });
-    environmentId = environment.id;
-    environmentName = environment.name;
-    const other = await environmentDAO.create({
-      projectId,
-      name: "Staging",
-      slug: `stg-${uniq()}`,
-      isDefault: 0,
-    });
-    otherEnvironmentName = other.name;
-    appId = (await appDAO.create({
-      id: crypto.randomUUID(),
-      projectId,
-      environmentId: environment.id,
-      name: "checkout-api",
-      platform: "javascript",
-      ingestKey: `ing-${uniq()}`,
-      publicKey: `pub-${uniq()}`,
-    })).id;
-    otherAppId = (await appDAO.create({
-      id: crypto.randomUUID(),
-      projectId,
-      environmentId: other.id,
-      name: "billing-worker",
-      platform: "javascript",
-      ingestKey: `ing-${uniq()}`,
-      publicKey: `pub-${uniq()}`,
-    })).id;
+    otherProjectId = (await projectDAO.create({ name: `Perm2-${uniq()}`, slug: `perm2-${uniq()}` })).id;
   });
 
   it("resolves the union of the matching group rules", async () => {
     await permissionRuleDAO.create({
       name: "Team A",
-      environments: [environmentName],
-      appPrefixes: [],
+      projectIds: [],
+      appPrefixes: ["checkout-"],
     });
     await permissionRuleDAO.create({
       name: "Team B",
-      environments: [],
+      projectIds: [],
       appPrefixes: ["billing-"],
     });
 
@@ -93,14 +54,13 @@ describe("Permission scope engine", () => {
       groups: ["team a", "TEAM B"],
     });
     expect(scope).not.toBeNull();
-    expect(scope!.environments).toEqual([environmentName]);
-    expect(scope!.appPrefixes).toEqual(["billing-"]);
+    expect(scope!.appPrefixes).toEqual(["checkout-", "billing-"]);
   });
 
   it("ignores the groups that match no rule", async () => {
     const scope = await resolveScopeForIdentity({ id: "nobody", groups: ["team a"] });
     expect(scope).not.toBeNull();
-    expect(scope!.environments).toEqual([environmentName]);
+    expect(scope!.appPrefixes).toEqual(["checkout-"]);
   });
 
   it("has no grant without a rule and without a grant", async () => {
@@ -111,68 +71,68 @@ describe("Permission scope engine", () => {
   it("lets an enabled grant win exclusively over the group rules", async () => {
     await permissionGrantDAO.create({
       identityId: "granted-user",
-      environments: [otherEnvironmentName],
-      appPrefixes: [],
+      projectIds: [],
+      appPrefixes: ["billing-"],
     });
     const scope = await resolveScopeForIdentity({
       id: "granted-user",
       groups: ["team a"],
     });
     expect(scope).not.toBeNull();
-    expect(scope!.environments).toEqual([otherEnvironmentName]);
-    expect(scope!.appPrefixes).toEqual([]);
+    expect(scope!.appPrefixes).toEqual(["billing-"]);
   });
 
   it("falls through to the group rules when the grant is disabled", async () => {
     const grant = await permissionGrantDAO.create({
       identityId: "disabled-user",
-      environments: [otherEnvironmentName],
-      appPrefixes: [],
+      projectIds: [],
+      appPrefixes: ["billing-"],
       isEnabled: false,
     });
     const scope = await resolveScopeForIdentity({
       id: "disabled-user",
       groups: ["team a"],
     });
-    expect(scope!.environments).toEqual([environmentName]);
+    expect(scope!.appPrefixes).toEqual(["checkout-"]);
     await permissionGrantDAO.delete(grant.id);
   });
 
   it("treats an enabled grant with an empty scope as read-nothing", async () => {
     await permissionGrantDAO.create({
       identityId: "read-nothing",
-      environments: [],
+      projectIds: [],
       appPrefixes: [],
     });
     const scope = await resolveScopeForIdentity({ id: "read-nothing", groups: [] });
     expect(scope).not.toBeNull();
-    expect(scope!.environments).toEqual([]);
+    expect(scope!.appPrefixes).toEqual([]);
     const view = await computeScopedView(scope!);
     expect(view.appIds.size).toBe(0);
-    expect(view.environmentIds.size).toBe(0);
     expect(view.projectIds.size).toBe(0);
   });
 
-  it("expands an environment grant to all of its apps and their project", async () => {
+  it("returns an empty view when nothing matches the scope", async () => {
     const view = await computeScopedView({
-      environments: [environmentName],
-      appPrefixes: [],
+      appPrefixes: ["nope-"],
+      projectIds: [otherProjectId],
     });
-    expect(view.appIds.has(appId)).toBe(true);
-    expect(view.appIds.has(otherAppId)).toBe(false);
-    expect(view.environmentIds.has(environmentId)).toBe(true);
-    expect(view.projectIds.has(projectId)).toBe(true);
+    expect(view.appIds.size).toBe(0);
+    expect(view.projectIds.size).toBe(0);
   });
 
-  it("expands an app prefix grant to the matching apps", async () => {
-    const view = await computeScopedView({
-      environments: [],
-      appPrefixes: ["billing-"],
+  it("propagates projectIds through an enabled grant's scope", async () => {
+    await permissionGrantDAO.create({
+      identityId: "project-user",
+      projectIds: [otherProjectId],
+      appPrefixes: [],
     });
-    expect(view.appIds.has(otherAppId)).toBe(true);
-    expect(view.appIds.has(appId)).toBe(false);
-    // The environment holding the visible app is visible too.
-    expect(view.environmentIds.size).toBe(1);
+    const scope = await resolveScopeForIdentity({
+      id: "project-user",
+      groups: [],
+    });
+    expect(scope).not.toBeNull();
+    expect(scope!.projectIds).toEqual([otherProjectId]);
+    expect(scope!.appPrefixes).toEqual([]);
   });
 });
 
@@ -180,7 +140,6 @@ describe("Permission routes", () => {
   it("creates, lists, patches and deletes a group rule", async () => {
     const created = await apiRequest("POST", "/api/admin/permissions/rules", {
       name: `Team ${uniq()}`,
-      environments: ["production"],
       appPrefixes: ["api-"],
     });
     expect(created.status).toBe(200);
@@ -193,11 +152,11 @@ describe("Permission routes", () => {
     expect(body.data.some((entry) => entry.id === rule.id)).toBe(true);
 
     const patched = await apiRequest("PATCH", `/api/admin/permissions/rules/${rule.id}`, {
-      environments: ["staging"],
+      appPrefixes: ["staging-"],
     });
     expect(patched.status).toBe(200);
-    expect(((await patched.json()) as { environments: string[] }).environments).toEqual([
-      "staging",
+    expect(((await patched.json()) as { appPrefixes: string[] }).appPrefixes).toEqual([
+      "staging-",
     ]);
 
     const deleted = await apiRequest("DELETE", `/api/admin/permissions/rules/${rule.id}`);
@@ -208,7 +167,6 @@ describe("Permission routes", () => {
     const created = await apiRequest("POST", "/api/admin/permissions/grants", {
       identityId: `user-${uniq()}`,
       label: "A user",
-      environments: ["production"],
       appPrefixes: [],
     });
     expect(created.status).toBe(200);
@@ -226,16 +184,14 @@ describe("Permission routes", () => {
   it("normalizes the scope lists", async () => {
     const created = await apiRequest("POST", "/api/admin/permissions/rules", {
       name: `Team ${uniq()}`,
-      environments: ["  Production  ", "production", ""],
-      appPrefixes: [" api- "],
+      appPrefixes: ["  api-  ", "api-", ""],
     });
     expect(created.status).toBe(200);
     const rule = (await created.json()) as {
       id: string;
-      environments: string[];
       appPrefixes: string[];
     };
-    expect(rule.environments).toEqual(["Production"]);
+    expect(rule.appPrefixes).toEqual(["api-"]);
     expect(rule.appPrefixes).toEqual(["api-"]);
     await apiRequest("DELETE", `/api/admin/permissions/rules/${rule.id}`);
   });
@@ -244,7 +200,6 @@ describe("Permission routes", () => {
     const name = `Team ${uniq()}`;
     const first = await apiRequest("POST", "/api/admin/permissions/rules", {
       name,
-      environments: [],
       appPrefixes: [],
     });
     expect(first.status).toBe(200);
@@ -252,15 +207,13 @@ describe("Permission routes", () => {
 
     const duplicate = await apiRequest("POST", "/api/admin/permissions/rules", {
       name: name.toUpperCase(),
-      environments: [],
       appPrefixes: [],
     });
     expect(duplicate.status).toBe(409);
 
     const tooMany = await apiRequest("POST", "/api/admin/permissions/rules", {
       name: `Team ${uniq()}`,
-      environments: Array.from({ length: 101 }, (_, index) => `env-${index}`),
-      appPrefixes: [],
+      appPrefixes: Array.from({ length: 101 }, (_, index) => `prefix-${index}`),
     });
     expect(tooMany.status).toBe(400);
 
@@ -270,13 +223,12 @@ describe("Permission routes", () => {
   it("records every change in the audit trail", async () => {
     const created = await apiRequest("POST", "/api/admin/permissions/rules", {
       name: `Team ${uniq()}`,
-      environments: ["production"],
-      appPrefixes: [],
+      appPrefixes: ["production-"],
     });
     const rule = (await created.json()) as { id: string };
 
     const patched = await apiRequest("PATCH", `/api/admin/permissions/rules/${rule.id}`, {
-      environments: ["staging"],
+      appPrefixes: ["staging-"],
     });
     expect(patched.status).toBe(200);
     await apiRequest("DELETE", `/api/admin/permissions/rules/${rule.id}`);
@@ -299,15 +251,14 @@ describe("Permission routes", () => {
     expect(entries.every((entry) => entry.target === "rule")).toBe(true);
     const created_entry = entries[entries.length - 1]!;
     expect(created_entry.before).toBeNull();
-    expect((created_entry.after as { environments: string[] }).environments).toEqual([
-      "production",
+    expect((created_entry.after as { appPrefixes: string[] }).appPrefixes).toEqual([
+      "production-",
     ]);
   });
 
   it("records the write access on a grant", async () => {
     const created = await apiRequest("POST", "/api/admin/permissions/grants", {
       identityId: `user-${uniq()}`,
-      environments: ["production"],
       appPrefixes: [],
       canWrite: true,
     });
@@ -329,5 +280,61 @@ describe("Permission routes", () => {
       isEnabled: false,
     });
     expect(response.status).toBe(404);
+  });
+
+  it("round-trips the project scope on a rule", async () => {
+    const created = await apiRequest("POST", "/api/admin/permissions/rules", {
+      name: `Team ${uniq()}`,
+      projectIds: [projectId],
+      appPrefixes: ["api-"],
+    });
+    expect(created.status).toBe(200);
+    const rule = (await created.json()) as {
+      id: string;
+      projectIds: string[];
+      appPrefixes: string[];
+    };
+    expect(rule.projectIds).toEqual([projectId]);
+    expect(rule.appPrefixes).toEqual(["api-"]);
+
+    const list = await apiRequest("GET", "/api/admin/permissions/rules");
+    const body = (await list.json()) as { data: Array<{ projectIds: string[] }> };
+    expect(body.data.some((entry) => entry.projectIds.includes(projectId))).toBe(true);
+
+    await apiRequest("DELETE", `/api/admin/permissions/rules/${rule.id}`);
+  });
+
+  it("round-trips the project scope on a grant", async () => {
+    const created = await apiRequest("POST", "/api/admin/permissions/grants", {
+      identityId: `user-${uniq()}`,
+      projectIds: [otherProjectId],
+      appPrefixes: [],
+    });
+    expect(created.status).toBe(200);
+    const grant = (await created.json()) as { id: string; projectIds: string[] };
+    expect(grant.projectIds).toEqual([otherProjectId]);
+
+    const list = await apiRequest("GET", "/api/admin/permissions/grants");
+    const body = (await list.json()) as { data: Array<{ projectIds: string[] }> };
+    expect(body.data.some((entry) => entry.projectIds.includes(otherProjectId))).toBe(true);
+
+    await apiRequest("DELETE", `/api/admin/permissions/grants/${grant.id}`);
+  });
+
+  it("lists the known identities for the user picker", async () => {
+    await permissionGrantDAO.create({
+      identityId: `known-user-${uniq()}`,
+      label: "A known user",
+      projectIds: [],
+      appPrefixes: [],
+    });
+
+    const identities = await apiRequest("GET", "/api/admin/permissions/identities");
+    expect(identities.status).toBe(200);
+    const body = (await identities.json()) as {
+      data: Array<{ id: string; label: string | null }>;
+    };
+    expect(body.data.some((entry) => entry.id.startsWith("known-user-"))).toBe(true);
+    expect(body.data.some((entry) => entry.label === "A known user")).toBe(true);
   });
 });

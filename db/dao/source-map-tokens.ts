@@ -36,7 +36,6 @@ const tokenFields = {
   name: sourceMapTokens.name,
   projectId: sourceMapTokens.projectId,
   appId: sourceMapTokens.appId,
-  environmentId: sourceMapTokens.environmentId,
   tokenPrefix: sourceMapTokens.tokenPrefix,
   createdBy: sourceMapTokens.createdBy,
   createdAt: sourceMapTokens.createdAt,
@@ -50,7 +49,6 @@ export interface SourceMapTokenAuthRecord {
   id: string;
   projectId: string;
   appId: string;
-  environmentId: string;
   expiresAt: string | null;
   revokedAt: string | null;
 }
@@ -100,7 +98,6 @@ export const sourceMapTokenDAO = {
           id: sourceMapTokens.id,
           projectId: sourceMapTokens.projectId,
           appId: sourceMapTokens.appId,
-          environmentId: sourceMapTokens.environmentId,
           expiresAt: sourceMapTokens.expiresAt,
           revokedAt: sourceMapTokens.revokedAt,
         })
@@ -122,7 +119,6 @@ export const sourceMapTokenDAO = {
 
   list: async (options: {
     projectId?: string;
-    environmentId?: string;
     includeRevoked?: boolean;
     cursor?: string;
     limit?: number;
@@ -131,9 +127,6 @@ export const sourceMapTokenDAO = {
     const conditions = [
       ...(options.projectId
         ? [eq(sourceMapTokens.projectId, options.projectId)]
-        : []),
-      ...(options.environmentId
-        ? [eq(sourceMapTokens.environmentId, options.environmentId)]
         : []),
       ...(options.includeRevoked ? [] : [isNull(sourceMapTokens.revokedAt)]),
     ];

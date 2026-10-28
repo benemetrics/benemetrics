@@ -1,12 +1,10 @@
 import { Elysia } from "elysia";
 import { appsRoutes } from "./apps";
-import { environmentRoutes } from "./environments";
 import { issueRoutes } from "./issues";
 import { projectRoutes } from "./projects";
 import { releaseRoutes } from "./releases";
-import { segmentRoutes } from "./segments";
 import { settingsRoutes } from "./settings";
-import { permissionRoutes, sessionRoutes } from "./permissions";
+import { permissionRoutes } from "./permissions";
 import { alertingRoutes } from "./alerting";
 import { metricsRoutes } from "./metrics";
 import { eventsRoutes, ingestionRoutes, replayRoutes } from "./events";
@@ -17,6 +15,7 @@ import {
   featureFlagRoutes,
   flagsStreamRoutes,
   flagsV1Routes,
+  segmentRoutes,
 } from "./feature-flags";
 import {
   sourceMapRoutes,
@@ -29,14 +28,12 @@ import {
 // need one; the oidc groups resolve the identity through `oidcGuard`.
 export const apiRoutes = new Elysia()
   .use(appsRoutes)
-  .use(environmentRoutes)
   .use(issueRoutes)
   .use(projectRoutes)
   .use(releaseRoutes)
   .use(segmentRoutes)
   .use(settingsRoutes)
   .use(permissionRoutes)
-  .use(sessionRoutes)
   .use(alertingRoutes)
   .use(metricsRoutes)
   .use(featureFlagRoutes)

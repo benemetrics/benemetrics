@@ -69,6 +69,25 @@ spec:
               value: {{ include "benemetrics.natsServers" . | quote }}
             - name: NATS_STREAM_MAX_BYTES
               value: {{ .Values.nats.streamMaxBytes | int64 | quote }}
+            - name: NATS_AUTH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "benemetrics.secretName" . }}
+                  key: nats-auth-user
+            - name: NATS_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "benemetrics.secretName" . }}
+                  key: nats-auth-password
+            - name: NATS_AUTH_KEY_SEED
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "benemetrics.secretName" . }}
+                  key: nats-auth-key-seed
+            - name: CLICKHOUSE_NATS_USER
+              value: {{ .Values.clickhouse.natsUser | quote }}
+            - name: CLICKHOUSE_NATS_PASSWORD
+              value: {{ .Values.clickhouse.natsPassword | quote }}
             - name: CLICKHOUSE_HOST
               value: {{ include "benemetrics.clickhouseHost" . | quote }}
             - name: CLICKHOUSE_PORT

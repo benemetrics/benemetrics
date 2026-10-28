@@ -1,1 +1,0 @@
-ALTER TABLE "alert_rules" ADD COLUMN "filters" text DEFAULT '{}' NOT NULL;

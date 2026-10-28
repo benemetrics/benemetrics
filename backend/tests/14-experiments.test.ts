@@ -8,10 +8,15 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { handleFetch as fetch, startTestApp, TEST_ORIGIN, type TestApp } from "./test-helpers";
+import {
+  handleFetch as fetch,
+  startTestApp,
+  TEST_ORIGIN,
+  ADMIN_TOKEN,
+  type TestApp,
+} from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
 
 interface FeatureFlag {
   id: string;

@@ -23,6 +23,7 @@ import { closeClickHouse, initClickHouse } from "../backend/clickhouse";
 // Importing the consumer starts its `sentry.events` subscription in this
 // process, so the side effects land in this file's in-memory PGlite.
 import "../backend/consumer";
+import { oidcProvider } from "./oidc-provider";
 
 // The object store is S3-required. The suite runs against the compose
 // RustFS (`docker compose up -d rustfs rustfs-init`); these defaults are
@@ -34,10 +35,6 @@ process.env.S3_ACCESS_KEY_ID ??= "rustfsadmin";
 process.env.S3_SECRET_ACCESS_KEY ??= "rustfsadmin";
 process.env.S3_REGION ??= "us-east-1";
 
-// The backend accepts only the ADMIN_TOKEN configured in the environment,
-// so the suite configures one for every test file. Tests that need the
-// unconfigured state unset it temporarily and restore it.
-process.env.ADMIN_TOKEN = "e2e-admin-token";
 
 // Bun's WebView leaves its Chrome profile in the temp directory; a suite
 // leaves hundreds behind, and a full temp filesystem makes Chrome abort on
@@ -56,6 +53,15 @@ function clearWebViewProfiles(): void {
 
 beforeAll(async () => {
   clearWebViewProfiles();
+  // Re-assert OIDC env vars for every test file: earlier test files may
+  // have deleted them (e.g. 19-admin-guard.test.ts). The provider stub
+  // is cached on globalThis and stays running across files.
+  if (oidcProvider) {
+    process.env.OIDC_ISSUER = oidcProvider.issuer;
+    process.env.OIDC_CLIENT_ID = oidcProvider.clientId;
+    process.env.OIDC_AUDIENCE = oidcProvider.clientId;
+    process.env.OIDC_ALLOW_INSECURE_HTTP = "true";
+  }
   await initClickHouse();
 });
 

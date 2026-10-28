@@ -17,11 +17,11 @@ SDK ──POST /envelope──▶ Ingest Handler
          Parse envelope → extract samples
                      │
                      ▼
-         NATS sentry.events   (envelope message)     ──▶ ClickHouse (engine table + MV)
+         NATS sentry.events.<app>   (envelope message)     ──▶ ClickHouse (engine table + MV)
                                                                Events table
          NATS sentry.metrics  (JSONEachRow samples)  ──▶ ClickHouse (engine table + MV)
                                                                Metrics table
-         NATS sentry.events                                 ──▶ Side-effects Consumer
+         NATS sentry.events.<app>                           ──▶ Side-effects Consumer
                                                               Issues / alert triggers only
 ```
 
@@ -32,7 +32,7 @@ SDK ──POST /envelope──▶ Ingest Handler
 3. **ClickHouse ingests from NATS by configuration** — `ENGINE = NATS` with a durable JetStream pull consumer + a materialized view into the target table. Acknowledgement happens **after** the MV insert succeeds; failed inserts are redelivered.
 4. **Idempotent writes** — target tables use `ReplacingMergeTree` with the event id in the sort key; reads use `FINAL` to collapse duplicates.
 5. **Side-effects consumer = control-plane only** — the side-effects subscription (its own binary, `backend/consumer.ts`) applies issue tracking, release tracking, and fires `new_issue`/`regression` alerts. It reads the stream through its own durable pull consumer (`side-effects`), so an event published while it is down is not lost, and it never inserts into ClickHouse, so a ClickHouse outage never stalls side effects. The test suite uses its own durables (`side-effects-test`, `flags-consumer-test`), so a deployment that runs against the same NATS does not split the messages with the suite.
-6. **Live feed = browser → NATS WebSocket** — the backend live-feed route and fanout are deleted. Auth is via NATS config (dev: open/`no_auth_user` subscribe-only; prod: token).
+6. **Live feed = browser → NATS WebSocket** — the backend live-feed route and fanout are deleted. Every connection is authorized by the backend through the NATS auth callout (see `docs/nats.md`): the browser presents its credential (`auth_token`), the backend verifies it and answers with a **sub-only**, per-app allowlist (`sentry.events.<appNumber>`), so the live feed honors the same scope as the HTTP reads.
 7. **No event state in control plane — ledger dropped** — events live only in NATS/ClickHouse. Side effects stay safe: issue creation (unique per app+fingerprint, upsert) and regression detection (conditional update on resolved status) are one-shot, so retries never duplicate issues or re-fire alerts. Only the issue event counter can drift: a crash between the control-plane write and the ack redelivers the message and increments again — accepted.
 
 ---
@@ -94,7 +94,7 @@ The level is normalized lowercase; a missing or unknown level counts as `error`.
 
 | Subject | Payload | Consumers |
 |---------|---------|-----------|
-| `sentry.events` | One JSON object per message (event id, project id, app id, envelope header, envelope items, received timestamp, type) | ClickHouse (events) + Side-effects consumer (`side-effects` durable) |
+| `sentry.events.<appNumber>` | One JSON object per message (event id, project id, app id, envelope header, envelope items, received timestamp, type) | ClickHouse (events) + Side-effects consumer (`side-effects` durable) |
 | `sentry.metrics` | JSONEachRow sample rows | ClickHouse (metrics) |
 | `sentry.flags.changed` | The flag change | Flags consumer (`flags-consumer` durable) |
 
@@ -109,7 +109,7 @@ ENGINE = NATS SETTINGS
   nats_url=...,
   nats_stream='SENTRIES',
   nats_consumer_name='clickhouse-events',
-  nats_subjects='sentry.events',
+  nats_subjects='sentry.events.*',
   nats_format='JSONEachRow',
   input_format_skip_unknown_fields=1,
   nats_skip_broken_messages=10;
@@ -154,7 +154,7 @@ TTL toDateTime(receivedAt) + toIntervalMonth(1)
 ### Ingest Handler
 1. Resolve app (control plane)
 2. Extract samples from envelope (every numeric measurement + sentinels)
-3. Publish `sentry.events` + `sentry.metrics`
+3. Publish `sentry.events.<appNumber>` + `sentry.metrics`
 4. Publish failure → 503; no in-process fallback
 
 ### ClickHouse
@@ -210,7 +210,7 @@ Response: { data: [{ dimension, count, mean, p50, p95 }] }
 ## 8. Frontend
 
 ### Live Feed
-- Subscribe with `nats.ws` to `sentry.events` (URL from config, default local dev WS port)
+- Subscribe over the NATS WebSocket to `sentry.events.<appNumber>` per app (URL from config, default local dev WS port); CONNECT carries the credential as `auth_token` and the auth callout scopes it
 - Parse envelopes client-side (reuse the events-API parser)
 - Old backend live-feed route removed
 
@@ -251,7 +251,7 @@ Each hop is asserted by its own small test (no chain assertions):
 
 | # | Test | Description |
 |---|------|-------------|
-| 1 | **ingest → NATS** | POST an envelope; assert the `sentry.events` message and `sentry.metrics` rows in the stream. Nothing downstream awaited. |
+| 1 | **ingest → NATS** | POST an envelope; assert the `sentry.events.<appNumber>` message and `sentry.metrics` rows in the stream. Nothing downstream awaited. |
 | 2 | **NATS → ClickHouse** | Publish directly to NATS; wait for row in events/metrics tables (`FINAL`); duplicate event id stays one row. Owns engine config/ack path. |
 | 3 | **NATS → Control Plane** | Publish; assert issue/alert side effects; republished id never creates a second issue or re-fires an alert (one-shot; counter drift accepted). |
 | 4 | **ClickHouse → API reads** | Seed ClickHouse directly; assert events/metrics endpoints. No ingestion involved. |

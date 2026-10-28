@@ -14,6 +14,7 @@ import {
   handleFetch as fetch,
   TEST_METRICS_SUBJECT,
   TEST_ORIGIN,
+  ADMIN_TOKEN,
   waitFor,
   waitForApiGet,
 } from "./test-helpers";
@@ -30,7 +31,6 @@ afterAll(async () => {
   await nats.close();
 });
 
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
 const uniq = () =>
   Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 const hex = (length: number) =>

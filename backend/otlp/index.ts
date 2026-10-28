@@ -27,6 +27,7 @@ export const otlpRoutes = new Elysia({ prefix: "api" })
       await Promise.all(
         envelopes.map((envelope) =>
           dispatchIngestedEvent(
+            app,
             {
               id: envelope.id,
               projectId: app.projectId,

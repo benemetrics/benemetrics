@@ -2,7 +2,7 @@ export { projects, apps } from "./project";
 export { issues } from "./issues";
 export { featureFlags } from "./feature-flags";
 export { segments } from "./segments";
-export { environments } from "./environments";
+
 export { releases } from "./releases";
 export { experimentAssignments } from "./experiment-assignments";
 export { experimentMetrics } from "./experiment-metrics";

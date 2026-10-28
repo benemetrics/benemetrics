@@ -202,7 +202,7 @@ Targeting rules determine which users receive which variant.
 
 Segments are reusable user groups that can be targeted across multiple feature flags.
 
-### `POST /api/admin/segments`
+### `POST /api/admin/feature-flags/segments`
 
 Create a new segment. Requires **Admin OAuth2/OIDC authentication**.
 
@@ -218,11 +218,11 @@ Create a new segment. Requires **Admin OAuth2/OIDC authentication**.
 }
 ```
 
-### `GET /api/admin/segments`
+### `GET /api/admin/feature-flags/segments`
 
 List all segments. Requires **Admin OAuth2/OIDC authentication**.
 
-### `GET /api/admin/segments/:id`
+### `GET /api/admin/feature-flags/segments/:id`
 
 Get a segment. Requires **Admin OAuth2/OIDC authentication**.
 

@@ -8,7 +8,6 @@
  * listener, only the NATS broker.)
  */
 
-import app from "../index";
 import { findStoredEventById } from "../events-store";
 import type { StoredEvent } from "../protocol/events";
 import { connect, type NatsConnection } from "@nats-io/transport-node";
@@ -17,9 +16,31 @@ import { jetstreamManager } from "@nats-io/jetstream";
 /** Canonical origin for in-process requests; DSN hosts derive from it. */
 export const TEST_ORIGIN = "http://test.local";
 
-app.store.adminTokenHash = await Bun.password.hash("e2e-admin-token");
+// The admin token is generated at boot and `generateAdminToken()` prints it
+// on stdout. Intercept console.log before loading the backend so the suite
+// authenticates against the printed token instead of a hardcoded fixture.
+const originalLog = console.log.bind(console);
+let printedToken = "";
+console.log = (...args: unknown[]) => {
+  for (const arg of args) {
+    const match = String(arg).match(/\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/);
+    if (match) printedToken = match[0];
+  }
+  return originalLog(...args);
+};
 
-export const ADMIN_TOKEN = "API-Key e2e-admin-token";
+const { default: app } = await import("../index");
+console.log = originalLog;
+
+export { app };
+
+if (!printedToken) {
+  throw new Error("admin token was not printed at boot");
+}
+
+app.store.adminTokenHash = await Bun.password.hash(printedToken);
+
+export const ADMIN_TOKEN = `API-Key ${printedToken}`;
 
 export const ADMIN_HEADERS: Record<string, string> = {
   "Content-Type": "application/json",
@@ -43,6 +64,7 @@ export interface TestApp {
   dsn: string;
   projectId: string;
   appId: string;
+  appNumber: number;
   ingestKey: string;
   publicKey: string;
 }
@@ -79,6 +101,7 @@ export async function startTestApp(): Promise<TestApp> {
     dsn: `http://${created.publicKey}@${new URL(TEST_ORIGIN).host}/${created.number}`,
     projectId: project.id,
     appId: created.id,
+    appNumber: created.number,
     ingestKey: created.ingestKey,
     publicKey: created.publicKey,
   };
@@ -132,12 +155,19 @@ export async function waitForApiGet<T>(path: string, timeoutMs = 10000): Promise
 
 /** The JetStream stream/consumers the suite relies on (backend/nats.ts). */
 export const TEST_STREAM = "SENTRIES";
-export const TEST_EVENTS_SUBJECT = "sentry.events";
+// A concrete shard: the publish side emits per app (sentry.events.<number>).
+export const TEST_EVENTS_SUBJECT = "sentry.events.1";
 export const TEST_METRICS_SUBJECT = "sentry.metrics";
 
 /** Connects to the broker the backend uses (the suite requires NATS). */
 export async function connectTestNats(): Promise<NatsConnection> {
-  return connect({ servers: process.env.NATS_SERVERS || "nats://localhost:4222" });
+  // The suite authenticates with the backend's config user — the callout
+  // authorizes every other connection (docs/nats.md).
+  return connect({
+    servers: process.env.NATS_SERVERS || "nats://localhost:4222",
+    user: process.env.NATS_AUTH_USER || "sentries-auth",
+    pass: process.env.NATS_AUTH_PASSWORD || "sentries-dev-auth-pass",
+  });
 }
 
 /**

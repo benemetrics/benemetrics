@@ -17,6 +17,7 @@ export { experimentRoutes } from "./experiments";
 export { evaluationRoutes } from "./evaluation";
 export { flagsStreamRoutes } from "./stream";
 export { flagsV1Routes } from "./openfeature";
+export { segmentRoutes } from "./segments";
 export { publishFlagChange, subscribeFlagChanges } from "./events";
 
 const variantsSchema = flagVariantSchema.array().atLeastLength(1).optional();

@@ -6,9 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import app from "../backend/index";
-
-const ADMIN_TOKEN = "API-Key e2e-admin-token";
+import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
 const GROUP_NAME = `backend-team-${Date.now()}`;
 
 let baseUrl = "";
@@ -77,7 +75,7 @@ describe("Permissions UI", () => {
 
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${baseUrl}/ui/overview`);
-    await view.evaluate(`localStorage.setItem("benemetrics.adminToken", "e2e-admin-token")`);
+    await view.evaluate(`sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`);
     await view.navigate(`${baseUrl}/ui/permissions`);
     await waitForTextInUI("Permissions");
   }, 40000);
@@ -89,11 +87,11 @@ describe("Permissions UI", () => {
 
   it("creates a group rule and lists it", async () => {
     expect(await fillField("backend-team", GROUP_NAME)).toBe(true);
-    expect(await fillField("production, staging", "production")).toBe(true);
+    expect(await fillField("api-, worker-", "production")).toBe(true);
     expect(await clickText("Create group rule")).toBe(true);
 
     const body = await waitForTextInUI(GROUP_NAME);
-    expect(body).toContain("env: production");
+    expect(body).toContain("apps: production");
   }, 30000);
 
   it("records the change in the trail", async () => {
@@ -104,11 +102,11 @@ describe("Permissions UI", () => {
   it("deletes the group rule", async () => {
     // The delete action lives in the rule's row.
     const removed = (await view.evaluate(`(() => {
-      const row = Array.from(document.querySelectorAll(".list-screen-row"))
+      const row = Array.from(document.querySelectorAll(".permission-rule"))
         .find((el) => (el.innerText || "").includes(${JSON.stringify(GROUP_NAME)}));
       if (!row) return false;
-      const button = Array.from(row.querySelectorAll("button, .action"))
-        .find((el) => (el.innerText || "").trim() === "Delete");
+      const button = Array.from(row.querySelectorAll("button, .action, .row-action"))
+        .find((el) => (el.innerText || "").trim() === "Remove");
       if (!button) return false;
       button.click();
       return true;

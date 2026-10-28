@@ -15,7 +15,6 @@ export const sourceMapTokens = pgTable(
     id: text("id").primaryKey(),
     projectId: text("project_id").notNull(),
     appId: text("app_id").notNull(),
-    environmentId: text("environment_id").notNull(),
     tokenHash: text("token_hash").notNull(),
     tokenPrefix: text("token_prefix").notNull(),
     name: text("name").notNull(),
@@ -28,9 +27,6 @@ export const sourceMapTokens = pgTable(
   (table) => ({
     projectIdIdx: index("source_map_tokens_project_id_idx").on(table.projectId),
     appIdIdx: index("source_map_tokens_app_id_idx").on(table.appId),
-    environmentIdIdx: index("source_map_tokens_environment_id_idx").on(
-      table.environmentId,
-    ),
     tokenHashIdx: index("source_map_tokens_hash_idx").on(table.tokenHash),
   }),
 );

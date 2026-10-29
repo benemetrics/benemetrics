@@ -93,7 +93,7 @@ export const alertDeadLetterDAO = {
     id: string,
     error: string,
     nextAttemptAt: string,
-  ): Promise<void> => {
+  ): Promise<void> =>
     await db
       .update(alertDeadLetters)
       .set({
@@ -102,19 +102,17 @@ export const alertDeadLetterDAO = {
         nextAttemptAt,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(alertDeadLetters.id, id));
-  },
+      .where(eq(alertDeadLetters.id, id)),
 
   // The retry is due now (a manual retry).
-  scheduleNow: async (id: string): Promise<void> => {
+  scheduleNow: async (id: string): Promise<void> =>
     await db
       .update(alertDeadLetters)
       .set({
         nextAttemptAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(alertDeadLetters.id, id));
-  },
+      .where(eq(alertDeadLetters.id, id)),
 
   delete: async (id: string): Promise<boolean> => {
     const deleted = await db

@@ -168,7 +168,6 @@ export const releaseDAO = {
     return deleted.length > 0;
   },
 
-  deleteByApp: async (appId: string) => {
-    await db.delete(releases).where(eq(releases.appId, appId));
-  },
+  deleteByApp: async (appId: string) =>
+    await db.delete(releases).where(eq(releases.appId, appId)),
 };

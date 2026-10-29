@@ -58,19 +58,19 @@ export const experimentAssignmentDAO = {
     return existing;
   },
 
-  findByFlagAndUser: async (flagId: string, userId: string) => {
-    const [row] = await db
-      .select(assignmentLookupFields)
-      .from(experimentAssignments)
-      .where(
-        and(
-          eq(experimentAssignments.flagId, flagId),
-          eq(experimentAssignments.userId, userId),
-        ),
-      )
-      .limit(1);
-    return row;
-  },
+  findByFlagAndUser: async (flagId: string, userId: string) =>
+    (
+      await db
+        .select(assignmentLookupFields)
+        .from(experimentAssignments)
+        .where(
+          and(
+            eq(experimentAssignments.flagId, flagId),
+            eq(experimentAssignments.userId, userId),
+          ),
+        )
+        .limit(1)
+    )[0],
 
   listByFlag: async (
     flagId: string,
@@ -115,15 +115,13 @@ export const experimentAssignmentDAO = {
     return { data };
   },
 
-  countByVariant: async (flagId: string): Promise<VariantCount[]> => {
-    const rows = await db
+  countByVariant: async (flagId: string): Promise<VariantCount[]> =>
+    db
       .select({
         variantKey: experimentAssignments.variantKey,
         count: countDistinct(experimentAssignments.userId),
       })
       .from(experimentAssignments)
       .where(eq(experimentAssignments.flagId, flagId))
-      .groupBy(experimentAssignments.variantKey);
-    return rows;
-  },
+      .groupBy(experimentAssignments.variantKey),
 };

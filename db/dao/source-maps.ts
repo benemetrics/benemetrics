@@ -84,7 +84,7 @@ export const sourceMapDAO = {
   deleteScoped: async (
     id: string,
     scope: { projectId: string; release: string; appId: string },
-  ) => {
+  ) =>
     await db
       .delete(sourceMaps)
       .where(
@@ -94,6 +94,5 @@ export const sourceMapDAO = {
           eq(sourceMaps.release, scope.release),
           eq(sourceMaps.appId, scope.appId),
         ),
-      );
-  },
+      ),
 };

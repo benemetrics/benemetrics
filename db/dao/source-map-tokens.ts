@@ -116,12 +116,11 @@ export const sourceMapTokenDAO = {
 
   // Best-effort bookkeeping for the admin token list: the last time the
   // token authenticated a source map upload request.
-  touchLastUsed: async (id: string) => {
+  touchLastUsed: async (id: string) =>
     await db
       .update(sourceMapTokens)
       .set({ lastUsedAt: new Date().toISOString() })
-      .where(eq(sourceMapTokens.id, id));
-  },
+      .where(eq(sourceMapTokens.id, id)),
 
   delete: (id: string) =>
     db.delete(sourceMapTokens).where(eq(sourceMapTokens.id, id)),

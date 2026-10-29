@@ -179,18 +179,16 @@ export const alertRuleDAO = {
 
   // Removes the app-scoped overrides only; global (appId = null)
   // rules are shared and stay in place.
-  deleteByApp: async (appId: string) => {
-    await db.delete(alertRules).where(eq(alertRules.appId, appId));
-  },
+  deleteByApp: async (appId: string) =>
+    await db.delete(alertRules).where(eq(alertRules.appId, appId)),
 
   touchTriggered: async (
     id: string,
     triggeredAt: string,
     executor: Executor = db,
-  ) => {
+  ) =>
     await executor
       .update(alertRules)
       .set({ lastTriggeredAt: triggeredAt })
-      .where(eq(alertRules.id, id));
-  },
+      .where(eq(alertRules.id, id)),
 };

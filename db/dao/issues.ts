@@ -143,14 +143,14 @@ export const issueDAO = {
   // (app_id, fingerprint) insert and fall through to the other paths).
   createIfNew: async (
     data: Omit<IssueInsert, "id"> & { id?: string },
-  ): Promise<Pick<IssueRow, "id" | "fingerprint" | "title"> | undefined> => {
-    const [created] = await db
-      .insert(issues)
-      .values({ ...data })
-      .onConflictDoNothing()
-      .returning(trackedIssueFields);
-    return created;
-  },
+  ): Promise<Pick<IssueRow, "id" | "fingerprint" | "title"> | undefined> =>
+    (
+      await db
+        .insert(issues)
+        .values({ ...data })
+        .onConflictDoNothing()
+        .returning(trackedIssueFields)
+    )[0],
 
   // Returns the row only when this call performed the resolved →
   // unresolved transition, so concurrent events produce exactly one
@@ -159,40 +159,40 @@ export const issueDAO = {
     appId: string,
     fingerprint: string,
     occurrence: IssueOccurrence,
-  ): Promise<Pick<IssueRow, "id" | "fingerprint" | "title"> | undefined> => {
-    const [updated] = await db
-      .update(issues)
-      .set({
-        status: "unresolved",
-        eventCount: sql`${issues.eventCount} + ${occurrence.occurrences}`,
-        lastSeen: occurrence.receivedAt,
-        latestEventId: occurrence.latestEventId,
-        title: occurrence.title,
-        culprit: occurrence.culprit,
-        level: occurrence.level,
-        type: occurrence.type,
-        lastRelease: sql`COALESCE(${occurrence.release}, ${issues.lastRelease})`,
-        firstRelease: sql`COALESCE(${issues.firstRelease}, ${occurrence.release})`,
-        tags: occurrence.tags ? JSON.stringify(occurrence.tags) : issues.tags,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(
-        and(
-          eq(issues.appId, appId),
-          eq(issues.fingerprint, fingerprint),
-          eq(issues.status, "resolved"),
-        ),
-      )
-      .returning(trackedIssueFields);
-    return updated;
-  },
+  ): Promise<Pick<IssueRow, "id" | "fingerprint" | "title"> | undefined> =>
+    (
+      await db
+        .update(issues)
+        .set({
+          status: "unresolved",
+          eventCount: sql`${issues.eventCount} + ${occurrence.occurrences}`,
+          lastSeen: occurrence.receivedAt,
+          latestEventId: occurrence.latestEventId,
+          title: occurrence.title,
+          culprit: occurrence.culprit,
+          level: occurrence.level,
+          type: occurrence.type,
+          lastRelease: sql`COALESCE(${occurrence.release}, ${issues.lastRelease})`,
+          firstRelease: sql`COALESCE(${issues.firstRelease}, ${occurrence.release})`,
+          tags: occurrence.tags ? JSON.stringify(occurrence.tags) : issues.tags,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(
+          and(
+            eq(issues.appId, appId),
+            eq(issues.fingerprint, fingerprint),
+            eq(issues.status, "resolved"),
+          ),
+        )
+        .returning(trackedIssueFields)
+    )[0],
 
   // A redelivered message is a no-op: no double `event_count`, no backwards `last_seen`.
   markSeen: async (
     appId: string,
     fingerprint: string,
     occurrence: IssueOccurrence,
-  ): Promise<void> => {
+  ): Promise<void> =>
     await db
       .update(issues)
       .set({
@@ -214,8 +214,7 @@ export const issueDAO = {
           sql`${issues.latestEventId} IS DISTINCT FROM ${occurrence.latestEventId}`,
           lte(issues.lastSeen, occurrence.receivedAt),
         ),
-      );
-  },
+      ),
 
   findById: async (id: string): Promise<IssueRow | undefined> =>
     (
@@ -350,7 +349,6 @@ export const issueDAO = {
   },
 
   // Issues are derived from stored events, so they die with the app.
-  deleteByApp: async (appId: string): Promise<void> => {
-    await db.delete(issues).where(eq(issues.appId, appId));
-  },
+  deleteByApp: async (appId: string): Promise<void> =>
+    await db.delete(issues).where(eq(issues.appId, appId)),
 };

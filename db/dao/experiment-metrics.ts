@@ -29,8 +29,8 @@ export const experimentMetricDAO = {
   countByVariant: async (
     flagId: string,
     metricName: string,
-  ): Promise<VariantCount[]> => {
-    const rows = await db
+  ): Promise<VariantCount[]> =>
+    db
       .select({
         variantKey: experimentMetrics.variantKey,
         count: count(),
@@ -42,7 +42,6 @@ export const experimentMetricDAO = {
           eq(experimentMetrics.metricName, metricName),
         ),
       )
-      .groupBy(experimentMetrics.variantKey);
-    return rows;
-  },
+      .groupBy(experimentMetrics.variantKey),
+
 };

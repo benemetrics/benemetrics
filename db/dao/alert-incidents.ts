@@ -143,7 +143,7 @@ export const alertIncidentDAO = {
     )[0],
 
   // Closes every open incident of a rule (the metric recovered).
-  resolveOpen: async (ruleId: string) => {
+  resolveOpen: async (ruleId: string) =>
     await db
       .update(alertIncidents)
       .set({ status: "resolved", resolvedAt: new Date().toISOString() })
@@ -152,13 +152,11 @@ export const alertIncidentDAO = {
           eq(alertIncidents.ruleId, ruleId),
           eq(alertIncidents.status, "firing"),
         ),
-      );
-  },
+      ),
 
   // Incidents die with the rule they were fired for.
-  deleteByRule: async (ruleId: string) => {
-    await db.delete(alertIncidents).where(eq(alertIncidents.ruleId, ruleId));
-  },
+  deleteByRule: async (ruleId: string) =>
+    await db.delete(alertIncidents).where(eq(alertIncidents.ruleId, ruleId)),
 
   // Latest firing of a rule for one issue — drives the per-issue
   // cooldown of issue triggers.
@@ -209,7 +207,6 @@ export const alertIncidentDAO = {
 
   // Removes incidents fired for the app's own rules; incidents of
   // global rules (appId = null) are shared and stay in place.
-  deleteByApp: async (appId: string) => {
-    await db.delete(alertIncidents).where(eq(alertIncidents.appId, appId));
-  },
+  deleteByApp: async (appId: string) =>
+    await db.delete(alertIncidents).where(eq(alertIncidents.appId, appId)),
 };

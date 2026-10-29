@@ -39,14 +39,14 @@ export const permissionGrantDAO = {
     return row;
   },
 
-  findById: async (id: string) => {
-    const [row] = await db
-      .select(grantFields)
-      .from(permissionGrants)
-      .where(eq(permissionGrants.id, id))
-      .limit(1);
-    return row;
-  },
+  findById: async (id: string) =>
+    (
+      await db
+        .select(grantFields)
+        .from(permissionGrants)
+        .where(eq(permissionGrants.id, id))
+        .limit(1)
+    )[0],
 
   findByIdOrThrow: async (id: string) => {
     const grant = await permissionGrantDAO.findById(id);

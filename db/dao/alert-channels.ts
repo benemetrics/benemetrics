@@ -162,7 +162,6 @@ export const alertChannelDAO = {
 
   // Removes the app-scoped overrides only; global (appId = null)
   // channels are shared and stay in place.
-  deleteByApp: async (appId: string) => {
-    await db.delete(alertChannels).where(eq(alertChannels.appId, appId));
-  },
+  deleteByApp: async (appId: string) =>
+    await db.delete(alertChannels).where(eq(alertChannels.appId, appId)),
 };

@@ -154,13 +154,5 @@ export const featureFlagDAO = {
     return data;
   },
 
-  delete: async (id: string) => {
-    await Promise.all([
-      db
-        .delete(experimentAssignments)
-        .where(eq(experimentAssignments.flagId, id)),
-      db.delete(experimentMetrics).where(eq(experimentMetrics.flagId, id)),
-    ]);
-    await db.delete(featureFlags).where(eq(featureFlags.id, id));
-  },
+  delete: (id: string) => db.delete(featureFlags).where(eq(featureFlags.id, id)),
 };

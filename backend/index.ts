@@ -24,7 +24,6 @@ const app = new Elysia({
     },
   },
 })
-  .state("allowedGroups", await permissionGrantDAO.getAllowedGroups())
   .onError(({ code, error, set }) => {
     if (error instanceof ApiError) {
       set.status = error.httpStatus;

@@ -1,26 +1,13 @@
 // permission-grants DAO no longer exists; permission_audit table not provisioned
 import type { resolveIdentity } from "backend/auth";
 import { env } from "bun";
+import { permissionGrantDAO } from "../../db/dao/permissions/grants";
+import { cache } from "backend/cache";
 
-export const projectsAndAppsPermissions = async ({
-  user,
-  store,
-}: Awaited<ReturnType<typeof resolveIdentity>> & { store: any }) => {
-  if (user.groups.has(env.OIDC_ADMIN_GROUP ?? "admin"))
-    return { perms: { projectIds: [] as string[], appIds: [] as string[] } };
-  // permission-grants DAO no longer exists; return empty permissions
-  return { perms: { projectIds: [] as string[], appIds: [] as string[] } };
+export const projectsAndAppsPermissions = async ({ user }: Awaited<ReturnType<typeof resolveIdentity>>) => {
+  if (user.groups.has(env.OIDC_ADMIN_GROUP ?? "admin")) return { perms: { projectIds: [], appIds: [] } };
+  
+  const { write, value } = await cache.PERMISSIONS(user.id);
+  if (value) return { perms: value };
+  return { perms: await write(permissionGrantDAO.getUserGrantWithPermissions(user.id)) };
 };
-
-export async function scopedViewFor({
-  request,
-  isAdmin,
-  adminScope,
-}: {
-  request: any;
-  isAdmin: boolean;
-  adminScope: any;
-}): Promise<{ appIds: Set<string> } | null> {
-  if (isAdmin) return null;
-  return { appIds: new Set<string>() };
-}

@@ -86,7 +86,6 @@ async function admit(
   try {
     identity = await resolveIdentity({
       request: new Request("http://callout.local/", { headers }),
-      store: { allowedGroups: undefined },
     });
   } catch {
     return null;

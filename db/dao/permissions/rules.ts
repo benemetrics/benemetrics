@@ -132,13 +132,5 @@ export const permissionRuleDAO = {
     return toRecord(row);
   },
 
-  delete: async (id: string): Promise<void> => {
-    const deleted = await db
-      .delete(permissionRules)
-      .where(eq(permissionRules.id, id))
-      .returning({ id: permissionRules.id });
-    if (deleted.length === 0) {
-      throw internalError(`Failed to delete permission rule ${id}`);
-    }
-  },
+  delete: (id: string) => db.delete(permissionRules).where(eq(permissionRules.id, id)),
 };

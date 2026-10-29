@@ -158,10 +158,7 @@ async function initNats(): Promise<NatsConnection> {
 export const nats = await initNats();
 export const jetstream2 = jetstream(nats);
 
-export async function publishEvent(
-  appNumber: number,
-  events: Uint8Array[],
-): Promise<void> {
+export const publishEvents = async (appNumber: number, events: Uint8Array[]) => {
   if (events.length === 0) return;
   const subject = eventsSubject(appNumber);
   const totalLength = events.reduce((acc, curr) => acc + curr.length, 0);

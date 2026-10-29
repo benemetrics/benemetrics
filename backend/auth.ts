@@ -3,6 +3,7 @@ import { sourceMapTokenDAO, generateUploadToken } from "db/dao/source-maps/token
 import { unauthorized } from "backend/errors";
 import * as jose from "jose";
 import * as client from "openid-client";
+import { cache } from 'backend/cache';
 
 export interface SentryAuthTarget {
   publicKey: string;
@@ -44,6 +45,8 @@ const jwks = jwksURI
     })
   : null;
 
+const { value: cacheAllowedGroups, write } = await cache.AUTH_GROUPS;
+
 // The groups claim, split on the delimiters the common IdPs use.
 function readGroups(payload: jose.JWTPayload) {
   const claim = env.OIDC_GROUPS_CLAIM ?? "groups";
@@ -81,18 +84,13 @@ const verifyWithIdP = async (token: string) => {
   }
 };
 
-export const resolveIdentity = async ({
-  request,
-  store,
-}: {
-  request: Request;
-  store: { allowedGroups?: Set<string> };
-}) => {
+export const resolveIdentity = async ({ request }: { request: Request }) => {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) throw unauthorized();
-  const allowedGroups = store.allowedGroups ?? new Set();
   const [type, token] = authHeader.split(" ");
   if (!type || !token) throw unauthorized();
+
+  const allowedGroups = cacheAllowedGroups ?? await write(permissionGrantDAO.getAllowedGroups())
 
   switch (type) {
     case "Bearer": {

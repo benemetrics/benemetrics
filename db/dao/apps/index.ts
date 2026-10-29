@@ -110,19 +110,5 @@ export const appDAO = {
       .limit(1)
       .then(([row]) => row),
 
-  delete: async (id: string) => {
-    await Promise.all([
-      db.delete(sourceMapTokens).where(eq(sourceMapTokens.appId, id)),
-      db.delete(sourceMaps).where(eq(sourceMaps.appId, id)),
-      db.delete(alertIncidents).where(eq(alertIncidents.appId, id)),
-      db.delete(alertRules).where(eq(alertRules.appId, id)),
-      db.delete(alertChannels).where(eq(alertChannels.appId, id)),
-      db.delete(releases).where(eq(releases.appId, id)),
-    ]);
-    const deleted = await db
-      .delete(apps)
-      .where(eq(apps.id, id))
-      .returning({ id: apps.id });
-    return deleted.length > 0;
-  },
+  delete: (id: string) => db.delete(apps).where(eq(apps.id, id)),
 };

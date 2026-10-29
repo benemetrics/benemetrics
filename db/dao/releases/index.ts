@@ -130,11 +130,5 @@ export const releaseDAO = {
     return updated;
   },
 
-  delete: async (id: string) => {
-    const deleted = await db
-      .delete(releases)
-      .where(eq(releases.id, id))
-      .returning({ id: releases.id });
-    return deleted.length > 0;
-  },
+  delete: (id: string) => db.delete(releases).where(eq(releases.id, id)),
 };

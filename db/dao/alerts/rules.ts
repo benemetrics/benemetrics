@@ -97,13 +97,7 @@ export const alertRuleDAO = {
     }
   },
 
-  delete: async (id: string) => {
-    const deleted = await db
-      .delete(alertRules)
-      .where(eq(alertRules.id, id))
-      .returning({ id: alertRules.id });
-    return deleted.length > 0;
-  },
+  delete: (id: string) => db.delete(alertRules).where(eq(alertRules.id, id)),
 
   touchTriggered: (
     id: string,

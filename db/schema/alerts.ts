@@ -37,7 +37,7 @@ export const alertChannels = pgTable(
 
 
 export type AlertChannelRow = typeof alertChannels.$inferSelect;
-export type AlertChannelInsert = typeof alertChannels.$inferInsert;
+export type AlertChannelInsert = Omit<typeof alertChannels.$inferInsert, 'updateAt'>;
 
 export const channelPublicFields = {
   id: alertChannels.id,

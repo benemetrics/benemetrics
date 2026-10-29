@@ -4,10 +4,8 @@ import {
   channelPublicFields,
   type AlertChannelInsert,
 } from "db/schema/alerts";
-import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, lt } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
-import { uniqueViolationConstraint } from "db/pg-errors";
-import type { AlertChannel, AlertChannelType } from "backend/protocol/alerting";
 import { cursorLimit } from "../cursor";
 import { whereNotNull } from "db/utils";
 
@@ -53,14 +51,12 @@ export const alertChannelDAO = {
   updateOrThrow: async (id: string, data: Partial<AlertChannelInsert>) => {
       const [updated] = await db
         .update(alertChannels)
-        .set({ ...data, updatedAt: new Date().toISOString() })
+        .set(data)
         .where(eq(alertChannels.id, id))
         .returning(channelPublicFields);
       if (!updated) throw notFound("Alert channel", id);
       return updated;
   },
 
-  delete: async (id: string) => db
-      .delete(alertChannels)
-      .where(eq(alertChannels.id, id)),
+  delete: (id: string) => db.delete(alertChannels).where(eq(alertChannels.id, id)),
 };

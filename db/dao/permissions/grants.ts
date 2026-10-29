@@ -4,22 +4,22 @@ import {
   permissionGrants,
   permissionRules,
   permissionsProjectApp,
+  type PermissionGrantInsert,
 } from "db/schema/permissions";
 import { desc, eq, lt } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
 import { cursorLimit } from "../cursor";
 import { whereNotNull } from "db/utils";
-import type { string } from "node_modules/arktype/out/keywords/string";
 
 export const permissionGrantDAO = {
-  create: async (input: PermissionGrantInput) => {
+  create: async (input: PermissionGrantInsert) => {
     const [row] = await db
       .insert(permissionGrants)
       .values({
         identityId: input.identityId,
         label: input.label ?? null,
-        projectFixes: JSON.stringify(input.projectIds),
-        appFixes: JSON.stringify(input.appPrefixes),
+        projectFixes: JSON.stringify(input.projectFixes),
+        appFixes: JSON.stringify(input.appFixes),
       })
       .onConflictDoNothing({ target: permissionGrants.identityId })
       .returning(permissionGrantPublicFields);
@@ -65,7 +65,7 @@ export const permissionGrantDAO = {
       .limit(limit);
   },
 
-  updateOrThrow: async (id: string, data: Partial<PermissionGrantInput>) => {
+  updateOrThrow: async (id: string, data: Partial<PermissionGrantInsert>) => {
     const [row] = await db
       .update(permissionGrants)
       .set({
@@ -90,12 +90,12 @@ export const permissionGrantDAO = {
       .where(eq(permissionGrants.identityId, identityId))
       .rightJoin(
         permissionsProjectApp,
-        eq(permissionsProjectApp.permissionGrant, permissionGrants.id),
+        eq(permissionsProjectApp.permissionGrantId, permissionGrants.id),
       );
 
     return {
       projectIds: x.map(({ projectId }) => projectId),
-      appsIds: x.map(({ appId }) => appId),
+      appIds: x.map(({ appId }) => appId),
     };
   },
 
@@ -106,9 +106,5 @@ export const permissionGrantDAO = {
     return new Set(groups.map(({ group }) => group));
   },
 
-  delete: (id: string) =>
-    db
-      .delete(permissionGrants)
-      .where(eq(permissionGrants.id, id))
-      .returning({ id: permissionGrants.id }),
+  delete: (id: string) => db.delete(permissionGrants).where(eq(permissionGrants.id, id)),
 };

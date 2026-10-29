@@ -28,9 +28,6 @@ export const releases = pgTable(
     lastSeen: isoTimestamp("last_seen"),
     eventCount: integer("event_count").notNull().default(0),
     latestEventId: text("latest_event_id"),
-    createdAt: isoTimestamp("created_at")
-      .notNull()
-      .default(sql`now()`),
     updatedAt: isoTimestamp("updated_at")
       .notNull()
       .default(sql`now()`)
@@ -50,6 +47,5 @@ export const releasePublicFields = {
   lastSeen: releases.lastSeen,
   eventCount: releases.eventCount,
   latestEventId: releases.latestEventId,
-  createdAt: releases.createdAt,
   updatedAt: releases.updatedAt,
 };

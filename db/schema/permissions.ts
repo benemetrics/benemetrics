@@ -23,9 +23,6 @@ export const permissionRules = pgTable(
     appFixes: text("app_fixes").notNull().default("[]"),
     isEnabled: boolean("is_enabled").notNull().default(false),
     canWrite: boolean("can_write").notNull().default(false),
-    createdAt: isoTimestamp("created_at")
-      .notNull()
-      .default(sql`now()`),
     updatedAt: isoTimestamp("updated_at")
       .notNull()
       .default(sql`now()`)
@@ -51,9 +48,6 @@ export const permissionGrants = pgTable(
     appFixes: text("app_fixes").notNull().default("[]"),
     isEnabled: boolean("is_enabled").notNull().default(false),
     canWrite: boolean("can_write").notNull().default(false),
-    createdAt: isoTimestamp("created_at")
-      .notNull()
-      .default(sql`now()`),
     updatedAt: isoTimestamp("updated_at")
       .notNull()
       .default(sql`now()`)

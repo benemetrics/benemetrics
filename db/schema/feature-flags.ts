@@ -27,9 +27,6 @@ export const featureFlags = pgTable(
     projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: 'cascade' }),
     rolloutPercentage: integer("rollout_percentage").notNull().default(100),
     experiment: text("experiment"),
-    createdAt: isoTimestamp("created_at")
-      .notNull()
-      .default(sql`now()`),
     updatedAt: isoTimestamp("updated_at")
       .notNull()
       .default(sql`now()`)
@@ -73,9 +70,6 @@ export const segments = pgTable("segments", {
   name: text("name").notNull(),
   description: text("description").default(""),
   rules: text("rules").notNull().default("[]"),
-  createdAt: isoTimestamp("created_at")
-    .notNull()
-    .default(sql`now()`),
 });
 
 export type Segment = typeof segments.$inferSelect;

@@ -13,7 +13,6 @@ const segmentFields = {
   name: segments.name,
   description: segments.description,
   rules: sql<unknown[]>`${segments.rules}::jsonb`,
-  createdAt: segments.createdAt,
 };
 
 export const segmentDAO = {

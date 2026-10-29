@@ -17,7 +17,6 @@ const grantFields = {
   appFixes: permissionGrants.appPrefixes,
   isEnabled: permissionGrants.isEnabled,
   canWrite: permissionGrants.canWrite,
-  createdAt: permissionGrants.createdAt,
   updatedAt: permissionGrants.updatedAt,
 };
 

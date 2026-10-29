@@ -13,7 +13,6 @@ export interface ReleaseRecord {
   lastSeen: string | null;
   eventCount: number;
   latestEventId: string | null;
-  createdAt: string;
   updatedAt: string;
 }
 

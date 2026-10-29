@@ -10,7 +10,6 @@ export interface PermissionRuleRecord {
   projectIds: string[];
   appPrefixes: string[];
   isEnabled: boolean;
-  createdAt: string;
   updatedAt: string;
 }
 
@@ -27,7 +26,6 @@ const ruleFields = {
   projectIds: permissionRules.projectIds,
   appPrefixes: permissionRules.appPrefixes,
   isEnabled: permissionRules.isEnabled,
-  createdAt: permissionRules.createdAt,
   updatedAt: permissionRules.updatedAt,
 };
 
@@ -46,7 +44,6 @@ function toRecord(row: {
   projectIds: string;
   appPrefixes: string;
   isEnabled: number;
-  createdAt: string;
   updatedAt: string;
 }): PermissionRuleRecord {
   return {
@@ -55,7 +52,6 @@ function toRecord(row: {
     projectIds: parseList(row.projectIds),
     appPrefixes: parseList(row.appPrefixes),
     isEnabled: row.isEnabled === 1,
-    createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
 }

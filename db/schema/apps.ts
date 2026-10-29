@@ -16,9 +16,6 @@ export const apps = pgTable(
     name: text("name").notNull(),
     platform: text("platform").notNull(),
     publicKey: text("public_key").notNull().unique(),
-    createdAt: isoTimestamp("created_at")
-      .notNull()
-      .default(sql`now()`),
     updatedAt: isoTimestamp("updated_at")
       .notNull()
       .default(sql`now()`)
@@ -34,7 +31,6 @@ export const appPublicFields = {
   projectId: apps.projectId,
   platform: apps.platform,
   publicKey: apps.publicKey,
-  createdAt: apps.createdAt,
   updatedAt: apps.updatedAt,
 };
 

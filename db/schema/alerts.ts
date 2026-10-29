@@ -24,9 +24,6 @@ export const alertChannels = pgTable(
     type: text("type").notNull(),
     config: text("config").notNull().default("{}"),
     projectId: uuid("project_id").references(() => projects.id, { onDelete: 'cascade' }),
-    createdAt: isoTimestamp("created_at")
-      .notNull()
-      .default(sql`now()`),
     updatedAt: isoTimestamp("updated_at")
       .notNull()
       .default(sql`now()`)
@@ -40,6 +37,17 @@ export const alertChannels = pgTable(
 
 export type AlertChannelRow = typeof alertChannels.$inferSelect;
 export type AlertChannelInsert = typeof alertChannels.$inferInsert;
+
+export const channelPublicFields = {
+  id: alertChannels.id,
+  name: alertChannels.name,
+  type: alertChannels.type,
+  config: `${alertChannels.config}::jsonb`,
+  appId: alertChannels.appId,
+  projectId: alertChannels.projectId,
+  updatedAt: alertChannels.updatedAt,
+};
+
 
 // The scope: app_id set = the app scope; project_id set (and app_id
 // null) = the project scope; both null = the global scope. A narrower rule
@@ -77,9 +85,6 @@ export const alertRules = pgTable(
     message: text("message"),
     isEnabled: boolean("is_enabled").notNull().default(true),
     lastTriggeredAt: isoTimestamp("last_triggered_at"),
-    createdAt: isoTimestamp("created_at")
-      .notNull()
-      .default(sql`now()`),
     updatedAt: isoTimestamp("updated_at")
       .notNull()
       .default(sql`now()`)

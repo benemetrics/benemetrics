@@ -13,32 +13,6 @@ import type {
 import { cursorAfter, cursorLimit, type CursorPage } from "./cursor";
 import type { Executor } from "./executor";
 
-type AlertRuleCreateInput = Omit<AlertRuleInsert, "id"> & {
-  id?: string;
-};
-
-const SCOPE_NAME_CONSTRAINT = "alert_rules_scope_name_idx";
-const GLOBAL_NAME_CONSTRAINT = "alert_rules_global_name_idx";
-
-// appId IS NULL is the global scope.
-export interface AlertScope {
-  /** The app scope — the narrowest. */
-  appId?: string | null;
-  /** The project scope. */
-  projectId?: string | null;
-}
-
-function scopeCondition(scope: AlertScope | null) {
-  if (!scope) return isNull(alertRules.appId);
-  if (scope.appId) return eq(alertRules.appId, scope.appId);
-  if (scope.projectId) {
-    return and(
-      isNull(alertRules.appId),
-      eq(alertRules.projectId, scope.projectId),
-    );
-  }
-  return isNull(alertRules.appId);
-}
 
 // `channelIds` is a JSON column and `isEnabled` an integer column stored
 // as text/number; both are decoded in the read (protocol shape out).
@@ -61,7 +35,6 @@ const ruleFields = {
   message: alertRules.message,
   isEnabled: sql<boolean>`${alertRules.isEnabled} = 1`,
   lastTriggeredAt: alertRules.lastTriggeredAt,
-  createdAt: alertRules.createdAt,
   updatedAt: alertRules.updatedAt,
 };
 

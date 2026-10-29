@@ -37,7 +37,6 @@ const issueFields = {
   firstSeen: issues.firstSeen,
   lastSeen: issues.lastSeen,
   latestEventId: issues.latestEventId,
-  createdAt: issues.createdAt,
   updatedAt: issues.updatedAt,
 };
 

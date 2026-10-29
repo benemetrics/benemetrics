@@ -42,7 +42,6 @@ const featureFlagFields = {
   projectId: featureFlags.projectId,
   appId: featureFlags.appId,
   experiment: sql<ExperimentConfig | null>`${featureFlags.experiment}::jsonb`,
-  createdAt: featureFlags.createdAt,
   updatedAt: featureFlags.updatedAt,
 };
 

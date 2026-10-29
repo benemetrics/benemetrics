@@ -16,9 +16,6 @@ export const sourceMaps = pgTable(
     dist: text("dist"),
     filename: text("filename").notNull(),
     mapJson: text("map_json").notNull(),
-    createdAt: isoTimestamp("created_at")
-      .default(sql`now()`)
-      .notNull(),
     updatedAt: isoTimestamp("updated_at")
       .notNull()
       .default(sql`now()`)
@@ -34,7 +31,6 @@ export const artifactPublicFields = {
   dist: sourceMaps.dist,
   name: sourceMaps.filename,
   size: sql<number>`octet_length(${sourceMaps.mapJson})`,
-  createdAt: sourceMaps.createdAt,
   updatedAt: sourceMaps.updatedAt,
 };
 
@@ -58,9 +54,6 @@ export const sourceMapTokens = pgTable(
     tokenPrefix: text("token_prefix").notNull(),
     name: text("name").notNull(),
     createdBy: text("created_by").notNull(),
-    createdAt: isoTimestamp("created_at")
-      .default(sql`now()`)
-      .notNull(),
     lastUsedAt: isoTimestamp("last_used_at"),
     expiresAt: isoTimestamp("expires_at"),
     revokedAt: isoTimestamp("revoked_at"),
@@ -74,7 +67,6 @@ export const tokenPublicFields = {
   appId: sourceMapTokens.appId,
   tokenPrefix: sourceMapTokens.tokenPrefix,
   createdBy: sourceMapTokens.createdBy,
-  createdAt: sourceMapTokens.createdAt,
   lastUsedAt: sourceMapTokens.lastUsedAt,
   expiresAt: sourceMapTokens.expiresAt,
   revokedAt: sourceMapTokens.revokedAt,

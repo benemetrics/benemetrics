@@ -22,7 +22,6 @@ export interface AlertRuleRecord {
   isEnabled: boolean;
   status: "ok" | "triggered" | "muted";
   lastTriggeredAt: string | null;
-  createdAt: string;
   updatedAt: string;
 }
 

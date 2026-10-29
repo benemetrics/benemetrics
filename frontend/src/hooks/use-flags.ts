@@ -31,7 +31,6 @@ export interface FlagRecord {
   } | null;
   projectId: string | null;
   appId: string | null;
-  createdAt: string;
   updatedAt: string;
 }
 

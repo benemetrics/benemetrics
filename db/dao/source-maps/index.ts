@@ -42,7 +42,6 @@ export const sourceMapDAO = {
         id: sourceMaps.id,
         filename: sourceMaps.filename,
         mapJson: sourceMaps.mapJson,
-        createdAt: sourceMaps.createdAt,
       })
       .from(sourceMaps)
       .where(

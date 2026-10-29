@@ -8,9 +8,6 @@ export const projects = pgTable("projects", {
     .primaryKey(),
   name: text("name").notNull(),
   description: text("description").default(""),
-  createdAt: isoTimestamp("created_at")
-    .notNull()
-    .default(sql`now()`),
   updatedAt: isoTimestamp("updated_at")
     .notNull()
     .default(sql`now()`)
@@ -21,7 +18,6 @@ export const projectPublicFields = {
   id: projects.id,
   name: projects.name,
   description: projects.description,
-  createdAt: projects.createdAt,
   updatedAt: projects.updatedAt,
 };
 

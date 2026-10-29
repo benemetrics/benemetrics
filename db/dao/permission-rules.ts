@@ -62,17 +62,12 @@ function toRecord(row: {
 
 export const permissionRuleDAO = {
   create: async (input: PermissionRuleInput): Promise<PermissionRuleRecord> => {
-    const now = new Date().toISOString();
     const [row] = await db
       .insert(permissionRules)
       .values({
-        id: crypto.randomUUID(),
         name: input.name.toLowerCase(),
         projectIds: JSON.stringify(input.projectIds),
         appPrefixes: JSON.stringify(input.appPrefixes),
-        isEnabled: input.isEnabled === false ? 0 : 1,
-        createdAt: now,
-        updatedAt: now,
       })
       .onConflictDoNothing({ target: permissionRules.name })
       .returning(ruleFields);

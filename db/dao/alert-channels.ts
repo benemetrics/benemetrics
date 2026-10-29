@@ -51,16 +51,9 @@ const channelFields = {
 
 export const alertChannelDAO = {
   create: async (data: AlertChannelCreateInput) => {
-    const now = new Date().toISOString();
     const [created] = await db
       .insert(alertChannels)
-      .values({
-        ...data,
-        id: data.id ?? crypto.randomUUID(),
-        config: data.config ?? "{}",
-        createdAt: now,
-        updatedAt: now,
-      })
+      .values({ ...data })
       .onConflictDoNothing()
       .returning(channelFields);
     if (!created) {

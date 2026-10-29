@@ -23,15 +23,9 @@ const releaseFields = {
 };
 
 async function insertRelease(data: ReleaseCreateInput) {
-  const now = new Date().toISOString();
   const [created] = await db
     .insert(releases)
-    .values({
-      ...data,
-      id: data.id ?? crypto.randomUUID(),
-      createdAt: now,
-      updatedAt: now,
-    })
+    .values({ ...data })
     .onConflictDoNothing({ target: [releases.appId, releases.version] })
     .returning(releaseFields);
   return created;
@@ -102,13 +96,10 @@ export const releaseDAO = {
         id: crypto.randomUUID(),
         appId,
         version,
-        status: "draft",
         firstSeen: event.at,
         lastSeen: event.at,
         eventCount: 1,
         latestEventId: event.eventId,
-        createdAt: now,
-        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: [releases.appId, releases.version],

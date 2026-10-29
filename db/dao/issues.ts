@@ -144,15 +144,9 @@ export const issueDAO = {
   createIfNew: async (
     data: Omit<IssueInsert, "id"> & { id?: string },
   ): Promise<Pick<IssueRow, "id" | "fingerprint" | "title"> | undefined> => {
-    const now = new Date().toISOString();
     const [created] = await db
       .insert(issues)
-      .values({
-        ...data,
-        id: data.id ?? crypto.randomUUID(),
-        createdAt: now,
-        updatedAt: now,
-      })
+      .values({ ...data })
       .onConflictDoNothing()
       .returning(trackedIssueFields);
     return created;

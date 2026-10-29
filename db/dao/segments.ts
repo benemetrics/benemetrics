@@ -20,11 +20,7 @@ export const segmentDAO = {
   create: async (data: Omit<SegmentInsert, "id"> & { id?: string }) => {
     const [row] = await db
       .insert(segments)
-      .values({
-        ...data,
-        id: data.id ?? crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
-      })
+      .values({ ...data })
       .returning(segmentFields);
     if (!row) {
       throw internalError("Failed to create segment");

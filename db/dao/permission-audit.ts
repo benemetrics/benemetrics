@@ -74,14 +74,12 @@ export const permissionAuditDAO = {
     const [row] = await db
       .insert(permissionAudit)
       .values({
-        id: crypto.randomUUID(),
         actorId: entry.actorId,
         target: entry.target,
         targetId: entry.targetId,
         action: entry.action,
         before: JSON.stringify(entry.before ?? null),
         after: JSON.stringify(entry.after ?? null),
-        createdAt: new Date().toISOString(),
       })
       .returning(auditFields);
     return row ? toRecord(row) : undefined;

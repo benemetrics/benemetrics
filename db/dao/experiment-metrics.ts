@@ -20,7 +20,6 @@ export const experimentMetricDAO = {
   ): Promise<void> => {
     await executor.insert(experimentMetrics).values({
       ...data,
-      id: data.id ?? crypto.randomUUID(),
       recordedAt: data.recordedAt ?? new Date().toISOString(),
     });
   },

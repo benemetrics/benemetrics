@@ -38,7 +38,6 @@ export const experimentAssignmentDAO = {
       .insert(experimentAssignments)
       .values({
         ...data,
-        id: data.id ?? crypto.randomUUID(),
         assignedAt: data.assignedAt ?? new Date().toISOString(),
       })
       // (flagId, userId) is unique: concurrent evaluations of the

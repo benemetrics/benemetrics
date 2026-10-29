@@ -67,17 +67,9 @@ const ruleFields = {
 
 export const alertRuleDAO = {
   create: async (data: AlertRuleCreateInput) => {
-    const now = new Date().toISOString();
     const [created] = await db
       .insert(alertRules)
-      .values({
-        ...data,
-        id: data.id ?? crypto.randomUUID(),
-        cooldownSeconds: data.cooldownSeconds ?? 3600,
-        channelIds: data.channelIds ?? "[]",
-        createdAt: now,
-        updatedAt: now,
-      })
+      .values({ ...data })
       .onConflictDoNothing()
       .returning(ruleFields);
     if (!created) {

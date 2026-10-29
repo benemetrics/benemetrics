@@ -30,8 +30,6 @@ export const permissionGrantDAO = {
         label: input.label ?? null,
         projectPrefixes: JSON.stringify(input.projectIds),
         appPrefixes: JSON.stringify(input.appPrefixes),
-        isEnabled: input.isEnabled === false ? 0 : 1,
-        canWrite: input.canWrite === true ? 1 : 0,
       })
       .onConflictDoNothing({ target: permissionGrants.identityId })
       .returning(grantFields);

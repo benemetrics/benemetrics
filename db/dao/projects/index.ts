@@ -7,10 +7,10 @@ import {
 } from "db/schema/project";
 import { eq, and, desc, inArray, count, gt } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
-import { cursorLimit } from "./cursor";
+import { cursorLimit } from "../cursor";
 import { whereNotNull } from "db/utils";
 import { apps } from "db/schema/apps";
-import { appDAO } from "./apps";
+import { appDAO } from "../apps";
 
 export const projectDAO = {
   create: async (data: ProjectInsert) => {
@@ -91,7 +91,7 @@ export const projectDAO = {
           whereNotNull(gt, projects.id, page?.cursor),
         ),
       )
-      .orderBy(desc(projects.createdAt), desc(projects.id))
+      .orderBy(desc(projects.id))
       .rightJoin(apps, eq(apps.projectId, projects.id))
       .limit(cursorLimit(page?.limit)),
 

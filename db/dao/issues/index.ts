@@ -16,7 +16,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { notFound } from "backend/errors";
-import { cursorAfter, cursorLimit, type CursorPage } from "./cursor";
+import { cursorAfter, cursorLimit, type CursorPage } from "../cursor";
 import type { IssueFilter } from "backend/issues/resolve";
 import type { IssueSort } from "backend/issues/query";
 

@@ -2,7 +2,7 @@ import { db } from "db";
 import { experimentMetrics } from "db/schema/experiment-metrics";
 import { count, eq, and } from "drizzle-orm";
 import type { PgInsertValue } from "drizzle-orm/pg-core";
-import type { Executor } from "./executor";
+import type { Executor } from "../cursor";
 
 export interface VariantCount {
   variantKey: string;

@@ -6,7 +6,7 @@ import {
 } from "db/schema/permissions";
 import { desc, eq } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
-import { cursorAfter, cursorLimit } from "./cursor";
+import { cursorAfter, cursorLimit } from "../cursor";
 import type { string } from "node_modules/arktype/out/keywords/string";
 
 const grantFields = {
@@ -67,7 +67,7 @@ export const permissionGrantDAO = {
     const { condition, empty } = await cursorAfter(
       permissionGrants,
       permissionGrants.id,
-      permissionGrants.createdAt,
+      permissionGrants.id,
       options?.cursor,
     );
     if (empty) return { data: [] };
@@ -76,7 +76,7 @@ export const permissionGrantDAO = {
       .select(grantFields)
       .from(permissionGrants)
       .where(condition)
-      .orderBy(desc(permissionGrants.createdAt), desc(permissionGrants.id))
+      .orderBy(desc(permissionGrants.id))
       .limit(limit);
   },
 
@@ -126,18 +126,4 @@ export const permissionGrantDAO = {
       .delete(permissionGrants)
       .where(eq(permissionGrants.id, id))
       .returning({ id: permissionGrants.id }),
-
-  // The identities the system knows about (every identity that has a grant).
-  // Feeds the user dropdown on the grant form so no one pastes a raw id.
-  listIdentities: (): Promise<
-    Array<{ id: string; label: string | null }>
-  > =>
-    db
-      .select({
-        id: permissionGrants.identityId,
-        label: permissionGrants.label,
-      })
-      .from(permissionGrants)
-      .groupBy(permissionGrants.identityId, permissionGrants.label)
-      .orderBy(permissionGrants.identityId),
 };

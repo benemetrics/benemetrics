@@ -2,7 +2,7 @@ import { db } from "db";
 import { permissionRules } from "db/schema/permissions";
 import { desc, eq } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
-import { cursorAfter, cursorLimit } from "./cursor";
+import { cursorAfter, cursorLimit } from "../cursor";
 
 export interface PermissionRuleRecord {
   id: string;
@@ -104,7 +104,7 @@ export const permissionRuleDAO = {
     const { condition, empty } = await cursorAfter(
       permissionRules,
       permissionRules.id,
-      permissionRules.createdAt,
+      permissionRules.id,
       options?.cursor,
     );
     if (empty) return { data: [] };
@@ -113,7 +113,7 @@ export const permissionRuleDAO = {
       .select(ruleFields)
       .from(permissionRules)
       .where(condition)
-      .orderBy(desc(permissionRules.createdAt), desc(permissionRules.id))
+      .orderBy(desc(permissionRules.id))
       .limit(limit);
 
     return { data: data.map(toRecord) };

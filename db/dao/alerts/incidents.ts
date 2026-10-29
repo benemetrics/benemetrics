@@ -2,7 +2,7 @@ import { db } from "db";
 import {
   alertIncidents,
   type AlertIncidentInsert,
-} from "db/schema/alert-incidents";
+} from "db/schema/alerts";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
 import type {
@@ -11,8 +11,8 @@ import type {
   AlertMetric,
   AlertTrigger,
 } from "backend/protocol/alerting";
-import { cursorAfter, cursorLimit, type CursorPage } from "./cursor";
-import type { Executor } from "./executor";
+import { cursorAfter, cursorLimit, type CursorPage } from "../cursor";
+import type { Executor } from "../cursor";
 
 type AlertIncidentCreateInput = Omit<AlertIncidentInsert, "id"> & {
   id?: string;
@@ -35,14 +35,14 @@ const incidentFields = {
   parentId: alertIncidents.parentId,
   acknowledgedAt: alertIncidents.acknowledgedAt,
   acknowledgedBy: alertIncidents.acknowledgedBy,
-  assignee: alertIncidents.assignee,
+  assignee: sql<string | null>`null`,
 };
 
 export const alertIncidentDAO = {
   create: async (data: AlertIncidentCreateInput, executor: Executor = db) => {
     const [created] = await executor
       .insert(alertIncidents)
-      .values({ ...data, id: data.id ?? crypto.randomUUID() })
+      .values({ ...data })
       .returning(incidentFields);
     if (!created) {
       throw internalError("Failed to create alert incident");

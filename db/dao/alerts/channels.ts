@@ -1,16 +1,18 @@
 import { db } from "db";
 import {
   alertChannels,
+  channelPublicFields,
   type AlertChannelInsert,
-} from "db/schema/alert-channels";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+} from "db/schema/alerts";
+import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
 import { uniqueViolationConstraint } from "db/pg-errors";
 import type { AlertChannel, AlertChannelType } from "backend/protocol/alerting";
-import { cursorLimit } from "./cursor";
+import { cursorLimit } from "../cursor";
+import { whereNotNull } from "db/utils";
 
 export const alertChannelDAO = {
-  create: async (data: AlertChannelCreateInput) => {
+  create: async (data: Omit<AlertChannelInsert, "id">) => {
     const [created] = await db
       .insert(alertChannels)
       .values({ ...data })
@@ -36,7 +38,7 @@ export const alertChannelDAO = {
   list: async (
     options: {
       projectId: string | null;
-    }, 
+    },
     page: {
       cursor?: string;
       limit?: number;

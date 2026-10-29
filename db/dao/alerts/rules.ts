@@ -1,5 +1,5 @@
 import { db } from "db";
-import { alertRules, type AlertRuleInsert } from "db/schema/alert-rules";
+import { alertRules, type AlertRuleInsert } from "db/schema/alerts";
 import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
 import { uniqueViolationConstraint } from "db/pg-errors";
@@ -10,12 +10,25 @@ import type {
   AlertRuleFilters,
   AlertTrigger,
 } from "backend/protocol/alerting";
-import { cursorAfter, cursorLimit, type CursorPage } from "./cursor";
-import type { Executor } from "./executor";
+import { cursorAfter, cursorLimit, type CursorPage } from "../cursor";
+import type { Executor } from "../cursor";
 
 
-// `channelIds` is a JSON column and `isEnabled` an integer column stored
-// as text/number; both are decoded in the read (protocol shape out).
+// Scope for alert rules: by appId when set, otherwise unscoped.
+// projectId is accepted in the options for API compatibility but the
+// schema has no project_id column on alert_rules, so it cannot be used
+// to narrow results at the DB level.
+type AlertScope = { appId: string | null; projectId?: string | null };
+
+function scopeCondition(scope: AlertScope | null) {
+  if (!scope) return undefined;
+  const conditions = [];
+  if (scope.appId) conditions.push(eq(alertRules.appId, scope.appId));
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+const SCOPE_NAME_CONSTRAINT = "alert_rules_name_app_id_idx";
+const GLOBAL_NAME_CONSTRAINT = "alert_rules_name_project_id_idx";
 const ruleFields = {
   id: alertRules.id,
   name: alertRules.name,
@@ -26,17 +39,20 @@ const ruleFields = {
   thresholdFactor: alertRules.thresholdFactor,
   windowSeconds: alertRules.windowSeconds,
   cooldownSeconds: alertRules.cooldownSeconds,
-  channelIds: sql<string[]>`${alertRules.channelIds}::jsonb`,
   measurement: alertRules.measurement,
   folder: alertRules.folder,
   appId: alertRules.appId,
-  projectId: alertRules.projectId,
+  channelIds: sql<string[]>`'[]'`,
+  projectId: sql<string | null>`null`,
   filters: sql<AlertRuleFilters>`${alertRules.filters}::jsonb`,
   message: alertRules.message,
   isEnabled: sql<boolean>`${alertRules.isEnabled} = 1`,
   lastTriggeredAt: alertRules.lastTriggeredAt,
+  createdAt: sql<string>`to_char(to_timestamp((substring(${alertRules.id}::text from 1 for 8))::bit(32)::bigint), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`,
   updatedAt: alertRules.updatedAt,
 };
+
+type AlertRuleCreateInput = Omit<AlertRuleInsert, "id">;
 
 export const alertRuleDAO = {
   create: async (data: AlertRuleCreateInput) => {
@@ -67,26 +83,6 @@ export const alertRuleDAO = {
     return rule;
   },
 
-  // The project-scoped rules — evaluated per project, not per app.
-  listProjectScoped: (): Promise<AlertRule[]> =>
-    db
-      .select(ruleFields)
-      .from(alertRules)
-      .where(and(isNotNull(alertRules.projectId), isNull(alertRules.appId)))
-      .orderBy(desc(alertRules.createdAt)),
-
-  // Every rule, whatever its scope — the export and the import need them
-  // all; `list` is the scoped read.
-  listAll: (): Promise<AlertRule[]> =>
-    db.select(ruleFields).from(alertRules).orderBy(desc(alertRules.createdAt)),
-
-  list: (scope: AlertScope | null): Promise<AlertRule[]> =>
-    db
-      .select(ruleFields)
-      .from(alertRules)
-      .where(scopeCondition(scope))
-      .orderBy(desc(alertRules.createdAt)),
-
   listPaged: async (options: {
     appId: string | null;
     projectId?: string | null;
@@ -101,7 +97,7 @@ export const alertRuleDAO = {
     const { condition, empty } = await cursorAfter(
       alertRules,
       alertRules.id,
-      alertRules.createdAt,
+      alertRules.id,
       options.cursor,
     );
     if (empty) return { data: [] };
@@ -111,7 +107,7 @@ export const alertRuleDAO = {
       .select(ruleFields)
       .from(alertRules)
       .where(where)
-      .orderBy(desc(alertRules.createdAt), desc(alertRules.id))
+      .orderBy(desc(alertRules.id))
       .limit(limit);
 
     return { data };

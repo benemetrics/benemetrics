@@ -2,7 +2,7 @@ import { db } from "db";
 import { releasePublicFields, releases, type Release, type ReleaseInsert } from "db/schema/releases";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
-import { cursorLimit } from "./cursor";
+import { cursorLimit } from "../cursor";
 
 // Every release field is part of the API response; the projection keeps
 // the response shape stable if the table grows more columns.
@@ -69,7 +69,6 @@ export const releaseDAO = {
     const [row] = await db
       .insert(releases)
       .values({
-        id: crypto.randomUUID(),
         appId,
         version,
         firstSeen: event.at,
@@ -100,9 +99,10 @@ export const releaseDAO = {
     limit?: number;
   }): Promise<{ data: Release[] }> => {
     const limit = cursorLimit(options.limit);
-    // Releases without an event yet fall back to the creation time, so the
-    // keyset order matches the coalesced sort expression exactly.
-    const sort = sql`coalesce(${releases.lastSeen}, ${releases.createdAt})`;
+    // Releases without an event yet fall back to the creation time, which is
+    // encoded in the uuidv7 id, so the keyset order matches the coalesced
+    // sort expression exactly.
+    const sort = sql`coalesce(${releases.lastSeen}, ${releases.id})`;
     const scope = options.appId ? eq(releases.appId, options.appId) : undefined;
     const { condition, empty } = await cursorAfter(
       releases,

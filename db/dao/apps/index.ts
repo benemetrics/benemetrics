@@ -8,7 +8,7 @@ import { alertRules } from "db/schema/alert-rules";
 import { alertIncidents } from "db/schema/alert-incidents";
 import { eq, and, asc, inArray, sql, gt } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
-import { cursorLimit } from "./cursor";
+import { cursorLimit } from "../cursor";
 import { appPublicFields } from "db/schema/app";
 import { whereNotNull } from "db/utils";
 
@@ -83,23 +83,6 @@ export const appDAO = {
     return app ? cacheApp(`project:${projectId}:${publicKey}`, app) : undefined;
   },
 
-  // Every app — used by the auth callout and issue list to build the full
-  // app→number map without pagination.
-  listAll: () =>
-    db
-      .select(appPublicFields)
-      .from(apps)
-      .orderBy(asc(apps.createdAt), asc(apps.id)),
-
-  // All apps of a project, unpaginated — used by issue tracking, alert
-  // evaluation and release summaries that need every app of a project.
-  listRawByProject: (projectId: string) =>
-    db
-      .select(appPublicFields)
-      .from(apps)
-      .where(eq(apps.projectId, projectId))
-      .orderBy(asc(apps.createdAt), asc(apps.id)),
-
   findByIdOrThrow: async (id: string) => {
     const app = await appDAO.findById(id);
     if (!app) throw notFound("App", id);
@@ -123,7 +106,7 @@ export const appDAO = {
           whereNotNull(gt, apps.id, options?.cursor),
         ),
       )
-      .orderBy(asc(apps.createdAt), asc(apps.id))
+      .orderBy(asc(apps.id))
       .limit(cursorLimit(options?.limit)),
 
   // The issue query resolves an app by its exact name (case-insensitive).

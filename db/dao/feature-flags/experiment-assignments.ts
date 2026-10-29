@@ -2,7 +2,7 @@ import { db } from "db";
 import { experimentAssignments } from "db/schema/experiment-assignments";
 import { countDistinct, desc, eq, and, sql } from "drizzle-orm";
 import { internalError } from "backend/errors";
-import { cursorAfter, cursorLimit } from "./cursor";
+import { cursorAfter, cursorLimit } from "../cursor";
 
 // Sticky-assignment lookups only need the variant identity.
 const assignmentLookupFields = {

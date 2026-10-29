@@ -6,7 +6,7 @@ import {
 } from "db/schema/source-maps";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { internalError } from "backend/errors";
-import { cursorLimit } from "./cursor";
+import { cursorLimit } from "../cursor";
 import { apps } from "db/schema/apps";
 import { whereNotNull } from "db/utils";
 
@@ -50,7 +50,7 @@ export const sourceMapDAO = {
           eq(sourceMaps.release, release),
         ),
       )
-      .orderBy(desc(sourceMaps.createdAt)),
+      .orderBy(desc(sourceMaps.id)),
 
   list: (
     options: { appId?: (typeof apps)["id"] },
@@ -60,7 +60,7 @@ export const sourceMapDAO = {
       .select(artifactPublicFields)
       .from(sourceMaps)
       .where(and(whereNotNull(eq, sourceMaps.appId, options.appId)))
-      .orderBy(desc(sourceMaps.createdAt), desc(sourceMaps.id))
+      .orderBy(desc(sourceMaps.id))
       .limit(cursorLimit(page?.limit)),
 
   // Deletes the artifact only when it is inside the caller's scope; an

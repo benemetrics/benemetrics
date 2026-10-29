@@ -2,7 +2,7 @@ import { db } from "db";
 import { segments } from "db/schema/segments";
 import { desc, eq, sql } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
-import { cursorAfter, cursorLimit } from "./cursor";
+import { cursorAfter, cursorLimit } from "../cursor";
 
 type SegmentInsert = typeof segments.$inferInsert;
 
@@ -46,7 +46,7 @@ export const segmentDAO = {
     const { condition, empty } = await cursorAfter(
       segments,
       segments.id,
-      segments.createdAt,
+      segments.id,
       options?.cursor,
     );
     if (empty) return { data: [] };
@@ -55,7 +55,7 @@ export const segmentDAO = {
       .select(segmentFields)
       .from(segments)
       .where(condition)
-      .orderBy(desc(segments.createdAt), desc(segments.id))
+      .orderBy(desc(segments.id))
       .limit(limit);
 
     return { data };

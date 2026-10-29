@@ -6,7 +6,7 @@ import {
 } from "db/schema/source-map-tokens";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
-import { cursorLimit } from "./cursor";
+import { cursorLimit } from "../cursor";
 
 // Raw tokens are only ever returned at creation/rotation time;
 // at rest we keep the SHA-256 hash plus a short display prefix.
@@ -95,7 +95,7 @@ export const sourceMapTokenDAO = {
     const { condition, empty } = await cursorAfter(
       sourceMapTokens,
       sourceMapTokens.id,
-      sourceMapTokens.createdAt,
+      sourceMapTokens.id,
       options.cursor,
     );
     if (empty) return { data: [] };
@@ -106,7 +106,7 @@ export const sourceMapTokenDAO = {
       .select(tokenPublicFields)
       .from(sourceMapTokens)
       .where(where)
-      .orderBy(desc(sourceMapTokens.createdAt), desc(sourceMapTokens.id))
+      .orderBy(desc(sourceMapTokens.id))
       .limit(limit);
 
     return { data };

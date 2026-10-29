@@ -1,7 +1,7 @@
 export { projects } from "./project";
 export { apps } from "./apps";
 export { issues } from "./issues";
-export { featureFlags, userFeatureFlagAssigment, segments, featureFlagMetrics } from "./feature-flags";
+export { featureFlags, userFeatureFlagAssigment as experimentAssignments, segments, featureFlagMetrics as experimentMetrics } from "./feature-flags";
 
 export { releases } from "./releases";
 export { alertChannels, alertRules, alertRuleChannels, alertIncidents } from "./alerts";

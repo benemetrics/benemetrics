@@ -6,15 +6,17 @@ import type {
   TargetingRule,
 } from "backend/protocol/feature-flags";
 import { db } from "db";
-import { featureFlags } from "db/schema/feature-flags";
-import { experimentAssignments } from "db/schema/experiment-assignments";
-import { experimentMetrics } from "db/schema/experiment-metrics";
+import {
+  featureFlags,
+  userFeatureFlagAssigment as experimentAssignments,
+  featureFlagMetrics as experimentMetrics,
+} from "db/schema/feature-flags";
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import type { PgInsertValue } from "drizzle-orm/pg-core";
 import { conflict, notFound } from "backend/errors";
 import { uniqueViolationConstraint } from "db/pg-errors";
-import type { Executor } from "./executor";
-import { cursorAfter, cursorLimit } from "./cursor";
+import type { Executor } from "../cursor";
+import { cursorAfter, cursorLimit } from "../cursor";
 
 const KEY_CONSTRAINT = "feature_flags_scope_key_idx";
 
@@ -40,7 +42,6 @@ const featureFlagFields = {
   status: sql<FeatureFlagStatus>`${featureFlags.status}`,
   rolloutPercentage: featureFlags.rolloutPercentage,
   projectId: featureFlags.projectId,
-  appId: featureFlags.appId,
   experiment: sql<ExperimentConfig | null>`${featureFlags.experiment}::jsonb`,
   updatedAt: featureFlags.updatedAt,
 };
@@ -51,7 +52,7 @@ export const featureFlagDAO = {
   ) => {
     const [row] = await db
       .insert(featureFlags)
-      .values({ ...data, id: data.id ?? crypto.randomUUID() })
+      .values({ ...data })
       .onConflictDoNothing()
       .returning(featureFlagFields);
     if (!row) {
@@ -83,15 +84,14 @@ export const featureFlagDAO = {
       .then(([row]) => row),
 
   /**
-   * The flag that applies to a scope: the app's own, else the project's,
-   * else the unscoped one (the narrower wins).
+   * The flag that applies to a scope: the project's, else the unscoped one
+   * (the narrower wins).
    */
   findByKeyForScope: async (key: string, scope: FlagScope) => {
-    const { projectId = null, appId = null } = scope;
+    const { projectId = null } = scope;
     const scopes = [
-      appId ? eq(featureFlags.appId, appId) : null,
       projectId ? eq(featureFlags.projectId, projectId) : null,
-      and(isNull(featureFlags.projectId), isNull(featureFlags.appId)),
+      and(isNull(featureFlags.projectId)),
     ].filter(
       (condition): condition is NonNullable<typeof condition> =>
         condition !== null,
@@ -102,8 +102,8 @@ export const featureFlagDAO = {
       .from(featureFlags)
       .where(and(eq(featureFlags.key, key), or(...scopes)))
       .orderBy(
-        // The app scope first, the project scope next, the unscoped last.
-        sql`case when ${featureFlags.appId} is not null then 0 when ${featureFlags.projectId} is not null then 1 else 2 end`,
+        // The project scope first, the unscoped last.
+        sql`case when ${featureFlags.projectId} is not null then 0 else 1 end`,
       )
       .limit(1);
     return row;
@@ -147,9 +147,6 @@ export const featureFlagDAO = {
     if (options.type) conditions.push(eq(featureFlags.type, options.type));
     if (options.projectId !== undefined && options.projectId !== null) {
       conditions.push(eq(featureFlags.projectId, options.projectId));
-    }
-    if (options.appId !== undefined && options.appId !== null) {
-      conditions.push(eq(featureFlags.appId, options.appId));
     }
     if (options.search) {
       const searchTerm = `%${options.search.toLowerCase()}%`;

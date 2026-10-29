@@ -42,8 +42,7 @@ export const channelPublicFields = {
   id: alertChannels.id,
   name: alertChannels.name,
   type: alertChannels.type,
-  config: `${alertChannels.config}::jsonb`,
-  appId: alertChannels.appId,
+  config: sql<unknown>`${alertChannels.config}::jsonb`,
   projectId: alertChannels.projectId,
   updatedAt: alertChannels.updatedAt,
 };

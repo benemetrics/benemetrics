@@ -9,7 +9,7 @@ export const sourceMaps = pgTable(
     id: uuid("id")
       .default(sql`uuidv7()`)
       .primaryKey(),
-    appId: text("app_id")
+    appId: uuid("app_id")
       .references(() => apps.id)
       .notNull(),
     release: text("release").notNull(),

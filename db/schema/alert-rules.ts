@@ -6,6 +6,8 @@ import {
   check,
   index,
   uniqueIndex,
+  uuid,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
@@ -23,7 +25,7 @@ import { isoTimestamp } from "./timestamps";
 export const alertRules = pgTable(
   "alert_rules",
   {
-    id: text("id").primaryKey(),
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
     name: text("name").notNull(),
     trigger: text("trigger").notNull().default("threshold"),
     metric: text("metric"),
@@ -46,7 +48,7 @@ export const alertRules = pgTable(
     filters: text("filters").notNull().default("{}"),
     // The message template; null keeps the default message.
     message: text("message"),
-    isEnabled: integer("is_enabled").notNull().default(1),
+    isEnabled: boolean("is_enabled").notNull().default(false),
     lastTriggeredAt: isoTimestamp("last_triggered_at"),
     createdAt: isoTimestamp("created_at")
       .notNull()

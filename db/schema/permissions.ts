@@ -17,7 +17,7 @@ import { apps } from "./app";
 export const permissionRules = pgTable(
   "permission_rules",
   {
-    id: text("id").primaryKey(),
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
     name: text("name").notNull(),
     group: text("group"),
     // The scope lists are JSON text: the projects the group sees and the

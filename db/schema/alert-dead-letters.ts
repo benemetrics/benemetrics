@@ -1,4 +1,4 @@
-import { pgTable, text, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, index, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
 
@@ -8,7 +8,7 @@ import { isoTimestamp } from "./timestamps";
 export const alertDeadLetters = pgTable(
   "alert_dead_letters",
   {
-    id: text("id").primaryKey(),
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
     channelId: text("channel_id").notNull(),
     channelName: text("channel_name").notNull(),
     channelType: text("channel_type").notNull(),

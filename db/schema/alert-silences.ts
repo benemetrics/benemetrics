@@ -1,4 +1,4 @@
-import { pgTable, text, index } from "drizzle-orm/pg-core";
+import { pgTable, text, index, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
 
@@ -8,7 +8,7 @@ import { isoTimestamp } from "./timestamps";
 export const alertSilences = pgTable(
   "alert_silences",
   {
-    id: text("id").primaryKey(),
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
     name: text("name").notNull(),
     // "global" | "project" | "app"; the app/project id is in scopeId.
     scopeType: text("scope_type").notNull().default("global"),

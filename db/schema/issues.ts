@@ -4,6 +4,7 @@ import {
   integer,
   index,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
@@ -16,7 +17,7 @@ import { isoTimestamp } from "./timestamps";
 export const issues = pgTable(
   "issues",
   {
-    id: text("id").primaryKey(),
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
     appId: text("app_id").notNull(),
     fingerprint: text("fingerprint").notNull(),
     title: text("title").notNull(),

@@ -1,10 +1,11 @@
-import { pgTable, text, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, index, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
 
 export const experimentAssignments = pgTable(
   "experiment_assignments",
   {
-    id: text("id").primaryKey(),
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
     flagId: text("flag_id").notNull(),
     userId: text("user_id").notNull(),
     variantKey: text("variant_key").notNull(),

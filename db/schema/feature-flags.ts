@@ -4,6 +4,7 @@ import {
   integer,
   index,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
@@ -11,7 +12,7 @@ import { isoTimestamp } from "./timestamps";
 export const featureFlags = pgTable(
   "feature_flags",
   {
-    id: text("id").primaryKey(),
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
     key: text("key").notNull(),
     name: text("name").notNull(),
     description: text("description").default(""),

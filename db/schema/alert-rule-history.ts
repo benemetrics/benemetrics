@@ -1,4 +1,5 @@
-import { pgTable, text, index } from "drizzle-orm/pg-core";
+import { pgTable, text, index, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
 
 // The history of an alert rule: every change is recorded with the actor
@@ -6,7 +7,7 @@ import { isoTimestamp } from "./timestamps";
 export const alertRuleHistory = pgTable(
   "alert_rule_history",
   {
-    id: text("id").primaryKey(),
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
     ruleId: text("rule_id").notNull(),
     name: text("name").notNull(),
     // "created" | "updated" | "deleted"

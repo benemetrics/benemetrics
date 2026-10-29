@@ -5,7 +5,6 @@ import {
   real,
   check,
   index,
-  uniqueIndex,
   uuid,
   boolean,
 } from "drizzle-orm/pg-core";
@@ -98,8 +97,8 @@ export const alertRuleChannels = pgTable(
   "alert_rule_channels",
   {
     id: uuid("id").default(sql`uuidv7()`).primaryKey(),
-    ruleId: uuid("id").notNull().references(() => alertRules.id, { onDelete: 'cascade' }),
-    channelId: uuid("id").notNull().references(() => alertChannels.id, { onDelete: 'cascade' }),
+    ruleId: uuid("rule_id").notNull().references(() => alertRules.id, { onDelete: 'cascade' }),
+    channelId: uuid("channel_id").notNull().references(() => alertChannels.id, { onDelete: 'cascade' }),
   },
   (table) => [
     index().on(table.ruleId)

@@ -1,7 +1,6 @@
 import {
   pgTable,
   text,
-  integer,
   index,
   uniqueIndex,
   uuid,
@@ -42,7 +41,7 @@ export const permissionRules = pgTable(
 export const permissionGrants = pgTable(
   "permission_grants",
   {
-    id: uuid("id").default(`uuidv7()`).primaryKey(),
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
     // The resolved identity id (`<issuer>-<subject>`).
     identityId: text("identity_id").notNull(),
     // A display label for the admin UI; the identity id stays the key.

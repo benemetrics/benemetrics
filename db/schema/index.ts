@@ -1,18 +1,9 @@
 export { projects } from "./project";
-export { apps } from "./app";
+export { apps } from "./apps";
 export { issues } from "./issues";
-export { featureFlags } from "./feature-flags";
-export { segments } from "./segments";
+export { featureFlags, userFeatureFlagAssigment, segments, featureFlagMetrics } from "./feature-flags";
 
 export { releases } from "./releases";
-export { experimentAssignments } from "./experiment-assignments";
-export { experimentMetrics } from "./experiment-metrics";
-export { alertChannels } from "./alert-channels";
-export { alertRules } from "./alert-rules";
-export { alertIncidents } from "./alert-incidents";
-export { alertDeadLetters } from "./alert-dead-letters";
-export { alertSilences } from "./alert-silences";
-export { alertRuleHistory } from "./alert-rule-history";
-export { sourceMapTokens } from "./source-map-tokens";
+export { alertChannels, alertRules, alertRuleChannels, alertIncidents } from "./alerts";
 export { permissionRules, permissionGrants } from "./permissions";
-export { sourceMaps } from "./source-maps";
+export { sourceMaps, sourceMapTokens } from "./source-maps";

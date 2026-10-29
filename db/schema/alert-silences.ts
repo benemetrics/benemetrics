@@ -25,7 +25,7 @@ export const alertSilences = pgTable(
       .$onUpdate(() => sql`now()`),
   },
   (table) => ({
-    scopeIdx: index("alert_silences_scope_idx").on(
+    scopeIdx: index().on(
       table.scopeType,
       table.scopeId,
     ),

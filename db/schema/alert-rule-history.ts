@@ -18,7 +18,7 @@ export const alertRuleHistory = pgTable(
     createdAt: isoTimestamp("created_at").notNull(),
   },
   (table) => ({
-    ruleIdx: index("alert_rule_history_rule_id_idx").on(table.ruleId),
+    ruleIdx: index().on(table.ruleId),
   }),
 );
 

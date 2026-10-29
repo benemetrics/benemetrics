@@ -14,7 +14,7 @@ export const experimentMetrics = pgTable(
     recordedAt: isoTimestamp("recorded_at").notNull(),
   },
   (table) => ({
-    flagMetricIdx: index("experiment_metrics_flag_metric_idx").on(
+    flagMetricIdx: index().on(
       table.flagId,
       table.metricName,
     ),

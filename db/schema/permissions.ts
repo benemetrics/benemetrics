@@ -35,7 +35,7 @@ export const permissionRules = pgTable(
       .$onUpdate(() => sql`now()`),
   },
   (table) => ({
-    nameUnique: uniqueIndex("permission_rules_name_idx").on(table.name),
+    nameUnique: uniqueIndex().on(table.name),
   }),
 );
 
@@ -63,7 +63,7 @@ export const permissionGrants = pgTable(
       .$onUpdate(() => sql`now()`),
   },
   (table) => ({
-    identityUnique: uniqueIndex("permission_grants_identity_id_idx").on(
+    identityUnique: uniqueIndex().on(
       table.identityId,
     ),
   }),

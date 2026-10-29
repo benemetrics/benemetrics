@@ -59,16 +59,16 @@ export const alertRules = pgTable(
       .$onUpdate(() => sql`now()`),
   },
   (table) => ({
-    appIdIdx: index("alert_rules_app_id_idx").on(table.appId),
-    projectIdIdx: index("alert_rules_project_id_idx").on(table.projectId),
-    scopeNameUnique: uniqueIndex("alert_rules_scope_name_idx").on(
+    appIdIdx: index().on(table.appId),
+    projectIdIdx: index().on(table.projectId),
+    scopeNameUnique: uniqueIndex().on(
       table.appId,
       table.name,
     ),
-    projectNameUnique: uniqueIndex("alert_rules_project_name_idx")
+    projectNameUnique: uniqueIndex()
       .on(table.projectId, table.name)
       .where(sql`${table.appId} is null`),
-    globalNameUnique: uniqueIndex("alert_rules_global_name_idx")
+    globalNameUnique: uniqueIndex()
       .on(table.name)
       .where(sql`${table.appId} is null and ${table.projectId} is null`),
     triggerCheck: check(

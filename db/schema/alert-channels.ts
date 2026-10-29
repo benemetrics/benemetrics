@@ -23,16 +23,16 @@ export const alertChannels = pgTable(
       .$onUpdate(() => sql`now()`),
   },
   (table) => ({
-    appIdIdx: index("alert_channels_app_id_idx").on(table.appId),
-    projectIdIdx: index("alert_channels_project_id_idx").on(table.projectId),
-    scopeNameUnique: uniqueIndex("alert_channels_scope_name_idx").on(
+    appIdIdx: index().on(table.appId),
+    projectIdIdx: index().on(table.projectId),
+    scopeNameUnique: uniqueIndex().on(
       table.appId,
       table.name,
     ),
-    projectNameUnique: uniqueIndex("alert_channels_project_name_idx")
+    projectNameUnique: uniqueIndex()
       .on(table.projectId, table.name)
       .where(sql`${table.appId} is null`),
-    globalNameUnique: uniqueIndex("alert_channels_global_name_idx")
+    globalNameUnique: uniqueIndex()
       .on(table.name)
       .where(sql`${table.appId} is null and ${table.projectId} is null`),
   }),

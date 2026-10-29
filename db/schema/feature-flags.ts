@@ -37,9 +37,9 @@ export const featureFlags = pgTable(
       .$onUpdate(() => sql`now()`),
   },
   (table) => ({
-    keyIdx: index("feature_flags_key_idx").on(table.key),
-    statusIdx: index("feature_flags_status_idx").on(table.status),
-    scopeKeyUnique: uniqueIndex("feature_flags_scope_key_idx").on(
+    keyIdx: index().on(table.key),
+    statusIdx: index().on(table.status),
+    scopeKeyUnique: uniqueIndex().on(
       sql`coalesce(${table.projectId}, '')`,
       sql`coalesce(${table.appId}, '')`,
       table.key,

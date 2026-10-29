@@ -13,11 +13,11 @@ export const experimentAssignments = pgTable(
     assignedAt: isoTimestamp("assigned_at").notNull(),
   },
   (table) => ({
-    flagUserUnique: uniqueIndex("experiment_assignments_flag_user_idx").on(
+    flagUserUnique: uniqueIndex().on(
       table.flagId,
       table.userId,
     ),
-    flagIdx: index("experiment_assignments_flag_idx").on(table.flagId),
+    flagIdx: index().on(table.flagId),
   }),
 );
 

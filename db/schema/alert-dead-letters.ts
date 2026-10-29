@@ -26,7 +26,7 @@ export const alertDeadLetters = pgTable(
       .$onUpdate(() => sql`now()`),
   },
   (table) => ({
-    dueIdx: index("alert_dead_letters_next_attempt_at_idx").on(
+    dueIdx: index().on(
       table.nextAttemptAt,
     ),
   }),

@@ -34,9 +34,9 @@ export const alertIncidents = pgTable(
     assignee: text("assignee"),
   },
   (table) => ({
-    ruleIdIdx: index("alert_incidents_rule_id_idx").on(table.ruleId),
-    appIdIdx: index("alert_incidents_app_id_idx").on(table.appId),
-    statusIdx: index("alert_incidents_status_idx").on(table.status),
+    ruleIdIdx: index().on(table.ruleId),
+    appIdIdx: index().on(table.appId),
+    statusIdx: index().on(table.status),
     triggerCheck: check(
       "alert_incidents_trigger_check",
       sql`${table.trigger} in ('threshold', 'new_issue', 'regression')`,

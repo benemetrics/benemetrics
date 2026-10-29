@@ -2,7 +2,6 @@ import { db } from "db";
 import { experimentMetrics } from "db/schema/experiment-metrics";
 import { count, eq, and } from "drizzle-orm";
 import type { PgInsertValue } from "drizzle-orm/pg-core";
-import type { Executor } from "../cursor";
 
 export interface VariantCount {
   variantKey: string;
@@ -16,9 +15,8 @@ export const experimentMetricDAO = {
       id?: string;
       recordedAt?: string;
     },
-    executor: Executor = db,
   ): Promise<void> =>
-    executor.insert(experimentMetrics).values({
+    db.insert(experimentMetrics).values({
       ...data,
       recordedAt: data.recordedAt ?? new Date().toISOString(),
     }),

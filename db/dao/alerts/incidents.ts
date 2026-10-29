@@ -3,7 +3,7 @@ import {
   alertIncidents,
   type AlertIncidentInsert,
 } from "db/schema/alerts";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, lt, sql } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
 import type {
   AlertIncident,
@@ -11,8 +11,7 @@ import type {
   AlertMetric,
   AlertTrigger,
 } from "backend/protocol/alerting";
-import { cursorAfter, cursorLimit, type CursorPage } from "../cursor";
-import type { Executor } from "../cursor";
+import { cursorLimit } from "../cursor";
 
 type AlertIncidentCreateInput = Omit<AlertIncidentInsert, "id"> & {
   id?: string;
@@ -39,8 +38,8 @@ const incidentFields = {
 };
 
 export const alertIncidentDAO = {
-  create: async (data: AlertIncidentCreateInput, executor: Executor = db) => {
-    const [created] = await executor
+  create: async (data: AlertIncidentCreateInput) => {
+    const [created] = await db
       .insert(alertIncidents)
       .values({ ...data })
       .returning(incidentFields);
@@ -70,20 +69,16 @@ export const alertIncidentDAO = {
     appId?: string;
     cursor?: string;
     limit?: number;
-  }): Promise<CursorPage<AlertIncident>> => {
+  }): Promise<AlertIncident[]> => {
     const limit = cursorLimit(options.limit);
     const scope = options.appId
       ? eq(alertIncidents.appId, options.appId)
       : undefined;
-    const { condition, empty } = await cursorAfter(
-      alertIncidents,
-      alertIncidents.id,
-      alertIncidents.triggeredAt,
-      options.cursor,
-    );
-    if (empty) return { data: [] };
-    const where =
-      scope && condition ? and(scope, condition) : (scope ?? condition);
+    const conditions = [
+      ...(scope ? [scope] : []),
+      ...(options.cursor ? [lt(alertIncidents.id, options.cursor)] : []),
+    ];
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const data = await db
       .select(incidentFields)
@@ -92,14 +87,14 @@ export const alertIncidentDAO = {
       .orderBy(desc(alertIncidents.triggeredAt), desc(alertIncidents.id))
       .limit(limit);
 
-    return { data };
+    return data;
   },
 
   listPaged: (options: {
     appId?: string;
     cursor?: string;
     limit?: number;
-  }): Promise<CursorPage<AlertIncident>> => alertIncidentDAO.list(options),
+  }): Promise<AlertIncident[]> => alertIncidentDAO.list(options),
 
   updateOrThrow: async (
     id: string,

@@ -4,9 +4,9 @@ import {
   permissionRules,
   permissionsProjectApp,
 } from "db/schema/permissions";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, lt } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
-import { cursorAfter, cursorLimit } from "../cursor";
+import { cursorLimit } from "../cursor";
 import type { string } from "node_modules/arktype/out/keywords/string";
 
 const grantFields = {
@@ -64,18 +64,15 @@ export const permissionGrantDAO = {
 
   list: (options?: { cursor?: string; limit?: number }) => {
     const limit = cursorLimit(options?.limit);
-    const { condition, empty } = await cursorAfter(
-      permissionGrants,
-      permissionGrants.id,
-      permissionGrants.id,
-      options?.cursor,
-    );
-    if (empty) return { data: [] };
+    const conditions = [
+      ...(options?.cursor ? [lt(permissionGrants.id, options.cursor)] : []),
+    ];
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     return db
       .select(grantFields)
       .from(permissionGrants)
-      .where(condition)
+      .where(where)
       .orderBy(desc(permissionGrants.id))
       .limit(limit);
   },

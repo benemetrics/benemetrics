@@ -1,6 +1,6 @@
 import { db } from "db";
 import { alertRules, type AlertRuleInsert } from "db/schema/alerts";
-import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
 import { uniqueViolationConstraint } from "db/pg-errors";
 import type {
@@ -10,8 +10,7 @@ import type {
   AlertRuleFilters,
   AlertTrigger,
 } from "backend/protocol/alerting";
-import { cursorAfter, cursorLimit, type CursorPage } from "../cursor";
-import type { Executor } from "../cursor";
+import { cursorLimit } from "../cursor";
 
 
 // Scope for alert rules: by appId when set, otherwise unscoped.
@@ -88,20 +87,17 @@ export const alertRuleDAO = {
     projectId?: string | null;
     cursor?: string;
     limit?: number;
-  }): Promise<CursorPage<AlertRule>> => {
+  }): Promise<AlertRule[]> => {
     const limit = cursorLimit(options.limit);
     const scope = scopeCondition({
       appId: options.appId,
       projectId: options.projectId,
     });
-    const { condition, empty } = await cursorAfter(
-      alertRules,
-      alertRules.id,
-      alertRules.id,
-      options.cursor,
-    );
-    if (empty) return { data: [] };
-    const where = condition ? and(scope, condition) : scope;
+    const conditions = [
+      ...(scope ? [scope] : []),
+      ...(options.cursor ? [lt(alertRules.id, options.cursor)] : []),
+    ];
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const data = await db
       .select(ruleFields)
@@ -110,7 +106,7 @@ export const alertRuleDAO = {
       .orderBy(desc(alertRules.id))
       .limit(limit);
 
-    return { data };
+    return data;
   },
 
   updateOrThrow: async (id: string, data: Partial<AlertRuleInsert>) => {
@@ -148,9 +144,8 @@ export const alertRuleDAO = {
   touchTriggered: (
     id: string,
     triggeredAt: string,
-    executor: Executor = db,
   ) =>
-    executor
+    db
       .update(alertRules)
       .set({ lastTriggeredAt: triggeredAt })
       .where(eq(alertRules.id, id)),

@@ -1,8 +1,8 @@
 import { db } from "db";
 import { segments } from "db/schema/segments";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
-import { cursorAfter, cursorLimit } from "../cursor";
+import { cursorLimit } from "../cursor";
 
 type SegmentInsert = typeof segments.$inferInsert;
 
@@ -43,21 +43,18 @@ export const segmentDAO = {
 
   list: async (options?: { cursor?: string; limit?: number }) => {
     const limit = cursorLimit(options?.limit);
-    const { condition, empty } = await cursorAfter(
-      segments,
-      segments.id,
-      segments.id,
-      options?.cursor,
-    );
-    if (empty) return { data: [] };
+    const conditions = [
+      ...(options?.cursor ? [lt(segments.id, options.cursor)] : []),
+    ];
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const data = await db
       .select(segmentFields)
       .from(segments)
-      .where(condition)
+      .where(where)
       .orderBy(desc(segments.id))
       .limit(limit);
 
-    return { data };
+    return data;
   },
 };

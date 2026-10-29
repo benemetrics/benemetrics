@@ -1,8 +1,8 @@
 import { db } from "db";
 import { permissionRules } from "db/schema/permissions";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, lt } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
-import { cursorAfter, cursorLimit } from "../cursor";
+import { cursorLimit } from "../cursor";
 
 export interface PermissionRuleRecord {
   id: string;
@@ -101,22 +101,19 @@ export const permissionRuleDAO = {
 
   list: async (options?: { cursor?: string; limit?: number }) => {
     const limit = cursorLimit(options?.limit);
-    const { condition, empty } = await cursorAfter(
-      permissionRules,
-      permissionRules.id,
-      permissionRules.id,
-      options?.cursor,
-    );
-    if (empty) return { data: [] };
+    const conditions = [
+      ...(options?.cursor ? [lt(permissionRules.id, options.cursor)] : []),
+    ];
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const data = await db
       .select(ruleFields)
       .from(permissionRules)
-      .where(condition)
+      .where(where)
       .orderBy(desc(permissionRules.id))
       .limit(limit);
 
-    return { data: data.map(toRecord) };
+    return data.map(toRecord);
   },
 
   updateOrThrow: async (

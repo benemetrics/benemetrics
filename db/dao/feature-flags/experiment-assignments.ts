@@ -1,8 +1,8 @@
 import { db } from "db";
 import { experimentAssignments } from "db/schema/experiment-assignments";
-import { countDistinct, desc, eq, and, sql } from "drizzle-orm";
+import { countDistinct, desc, eq, and, lt, sql } from "drizzle-orm";
 import { internalError } from "backend/errors";
-import { cursorAfter, cursorLimit } from "../cursor";
+import { cursorLimit } from "../cursor";
 
 // Sticky-assignment lookups only need the variant identity.
 const assignmentLookupFields = {
@@ -91,15 +91,9 @@ export const experimentAssignmentDAO = {
         sql`lower(${experimentAssignments.userId}) like ${`%${options.search.toLowerCase()}%`}`,
       );
     }
-
-    const { condition, empty } = await cursorAfter(
-      experimentAssignments,
-      experimentAssignments.id,
-      experimentAssignments.assignedAt,
-      options.cursor,
-    );
-    if (empty) return { data: [] };
-    if (condition) conditions.push(condition);
+    if (options.cursor) {
+      conditions.push(lt(experimentAssignments.id, options.cursor));
+    }
 
     const data = await db
       .select(assignmentListFields)
@@ -111,7 +105,7 @@ export const experimentAssignmentDAO = {
       )
       .limit(limit);
 
-    return { data };
+    return data;
   },
 
   countByVariant: (flagId: string): Promise<VariantCount[]> =>

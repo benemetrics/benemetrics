@@ -11,12 +11,11 @@ import {
   userFeatureFlagAssigment as experimentAssignments,
   featureFlagMetrics as experimentMetrics,
 } from "db/schema/feature-flags";
-import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import type { PgInsertValue } from "drizzle-orm/pg-core";
 import { conflict, notFound } from "backend/errors";
 import { uniqueViolationConstraint } from "db/pg-errors";
-import type { Executor } from "../cursor";
-import { cursorAfter, cursorLimit } from "../cursor";
+import { cursorLimit } from "../cursor";
 
 const KEY_CONSTRAINT = "feature_flags_scope_key_idx";
 
@@ -112,10 +111,9 @@ export const featureFlagDAO = {
   updateOrThrow: async (
     id: string,
     obj: Partial<typeof featureFlags.$inferInsert>,
-    executor: Executor = db,
   ) => {
     try {
-      const [row] = await executor
+      const [row] = await db
         .update(featureFlags)
         .set(obj)
         .where(eq(featureFlags.id, id))
@@ -157,15 +155,9 @@ export const featureFlagDAO = {
         ),
       );
     }
-
-    const { condition, empty } = await cursorAfter(
-      featureFlags,
-      featureFlags.id,
-      featureFlags.updatedAt,
-      options.cursor,
-    );
-    if (empty) return { data: [] };
-    if (condition) conditions.push(condition);
+    if (options.cursor) {
+      conditions.push(lt(featureFlags.id, options.cursor));
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -176,7 +168,7 @@ export const featureFlagDAO = {
       .orderBy(desc(featureFlags.updatedAt), desc(featureFlags.id))
       .limit(limit);
 
-    return { data };
+    return data;
   },
 
   delete: async (id: string) => {

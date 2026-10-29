@@ -16,7 +16,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { notFound } from "backend/errors";
-import { cursorAfter, cursorLimit, type CursorPage } from "../cursor";
+import { cursorLimit } from "../cursor";
 import type { IssueFilter } from "backend/issues/resolve";
 import type { IssueSort } from "backend/issues/query";
 
@@ -233,7 +233,7 @@ export const issueDAO = {
     sort?: IssueSort;
     cursor?: string;
     limit?: number;
-  }): Promise<CursorPage<IssueRow>> => {
+  }): Promise<IssueRow[]> => {
     const limit = cursorLimit(options.limit);
     const filters = options.filters ?? [{}];
 
@@ -257,15 +257,9 @@ export const issueDAO = {
             ? [desc(issues.firstSeen), desc(issues.id)]
             : [desc(issues.lastSeen), desc(issues.id)];
 
-    const { condition, empty } = await cursorAfter(
-      issues,
-      issues.id,
-      sortColumn,
-      options.cursor,
-      "desc",
-      tieBreak === issues.id ? undefined : tieBreak,
-    );
-    if (empty) return { data: [] };
+    const conditions = [
+      ...(options.cursor ? [lt(issues.id, options.cursor)] : []),
+    ];
 
     // Every alternative is an AND of its terms; the alternatives are ORed.
     const alternatives = filters
@@ -281,7 +275,7 @@ export const issueDAO = {
           ? or(...alternatives)
           : undefined;
     const where =
-      scope && condition ? and(scope, condition) : (scope ?? condition);
+      scope && conditions[0] ? and(scope, conditions[0]) : (scope ?? conditions[0]);
 
     const data = await db
       .select(issueFields)
@@ -290,7 +284,7 @@ export const issueDAO = {
       .orderBy(...order)
       .limit(limit);
 
-    return { data };
+    return data;
   },
 
   // `sort=users` syncs the distinct-user counts of the issue index into the

@@ -4,10 +4,9 @@ import {
   tokenPublicFields,
   type SourceMapTokenInsert,
 } from "db/schema/source-map-tokens";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, lt } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
 import { cursorLimit } from "../cursor";
-
 // Raw tokens are only ever returned at creation/rotation time;
 // at rest we keep the SHA-256 hash plus a short display prefix.
 export function generateUploadToken(): {
@@ -91,15 +90,8 @@ export const sourceMapTokenDAO = {
         ? [eq(sourceMapTokens.projectId, options.projectId)]
         : []),
       ...(options.includeRevoked ? [] : [isNull(sourceMapTokens.revokedAt)]),
+      ...(options.cursor ? [lt(sourceMapTokens.id, options.cursor)] : []),
     ];
-    const { condition, empty } = await cursorAfter(
-      sourceMapTokens,
-      sourceMapTokens.id,
-      sourceMapTokens.id,
-      options.cursor,
-    );
-    if (empty) return { data: [] };
-    if (condition) conditions.push(condition);
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const data = await db
@@ -109,7 +101,7 @@ export const sourceMapTokenDAO = {
       .orderBy(desc(sourceMapTokens.id))
       .limit(limit);
 
-    return { data };
+    return data;
   },
 
   // Best-effort bookkeeping for the admin token list: the last time the

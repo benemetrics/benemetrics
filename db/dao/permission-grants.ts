@@ -53,6 +53,16 @@ export const permissionGrantDAO = {
     return grant;
   },
 
+  // Returns the grant for an identity, or undefined when none exists.
+  findByIdentityId: async (identityId: string) => {
+    const [row] = await db
+      .select(grantFields)
+      .from(permissionGrants)
+      .where(eq(permissionGrants.identityId, identityId))
+      .limit(1);
+    return row ?? undefined;
+  },
+
   list: (options?: { cursor?: string; limit?: number }) => {
     const limit = cursorLimit(options?.limit);
     const { condition, empty } = await cursorAfter(

@@ -110,12 +110,6 @@ export const featureFlagDAO = {
     return row;
   },
 
-  findByKeyOrThrow: async (key: string) => {
-    const flag = await featureFlagDAO.findByKey(key);
-    if (!flag) throw notFound("Feature flag", key);
-    return flag;
-  },
-
   updateOrThrow: async (
     id: string,
     obj: Partial<typeof featureFlags.$inferInsert>,

@@ -103,14 +103,6 @@ export const permissionRuleDAO = {
     return row ? toRecord(row) : undefined;
   },
 
-  // The enabled rules only — the scope engine merges them.
-  listEnabled: (): Promise<PermissionRuleRecord[]> =>
-    db
-      .select(ruleFields)
-      .from(permissionRules)
-      .where(eq(permissionRules.isEnabled, 1))
-      .then((rows) => rows.map(toRecord)),
-
   list: async (options?: { cursor?: string; limit?: number }) => {
     const limit = cursorLimit(options?.limit);
     const { condition, empty } = await cursorAfter(

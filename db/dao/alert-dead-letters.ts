@@ -3,7 +3,7 @@ import {
   alertDeadLetters,
   type AlertDeadLetterInsert,
 } from "db/schema/alert-dead-letters";
-import { and, asc, desc, eq, lte, sql } from "drizzle-orm";
+import { asc, desc, eq, lte, sql } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
 import type { AlertDeadLetter } from "backend/protocol/alerting";
 import { cursorAfter, cursorLimit, type CursorPage } from "./cursor";
@@ -120,12 +120,4 @@ export const alertDeadLetterDAO = {
       .returning({ id: alertDeadLetters.id });
     return deleted.length > 0;
   },
-
-  count: (): Promise<number> =>
-    db
-      .$count(
-        alertDeadLetters,
-        and(eq(alertDeadLetters.id, alertDeadLetters.id)),
-      )
-      .then(Number),
 };

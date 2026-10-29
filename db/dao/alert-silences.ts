@@ -4,7 +4,7 @@ import {
   type AlertSilenceInsert,
 } from "db/schema/alert-silences";
 import { and, desc, eq, inArray, lte, or, sql } from "drizzle-orm";
-import { internalError, notFound } from "backend/errors";
+import { internalError } from "backend/errors";
 import type {
   AlertSilence,
   AlertSilenceScope,
@@ -49,12 +49,6 @@ export const alertSilenceDAO = {
       .where(eq(alertSilences.id, id))
       .limit(1)
       .then(([row]) => row),
-
-  findByIdOrThrow: async (id: string): Promise<AlertSilence> => {
-    const silence = await alertSilenceDAO.findById(id);
-    if (!silence) throw notFound("Alert silence", id);
-    return silence;
-  },
 
   list: async (options: {
     cursor?: string;

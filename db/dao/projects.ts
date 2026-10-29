@@ -23,6 +23,18 @@ export const projectDAO = {
     return created;
   },
 
+  // Creates a project, throwing on slug conflict. Kept separate from `create`
+  // for call sites that want the explicit "unique" semantics.
+  createUnique: async (data: ProjectInsert) => {
+    const [created] = await db
+      .insert(projects)
+      .values(data)
+      .onConflictDoNothing()
+      .returning(projectPublicFields);
+    if (!created) throw conflict(`Project slug already exists: ${data.name}`);
+    return created;
+  },
+
   duplicate: async (
     sourceId: string,
     overrides: { name?: string; slug?: string; description?: string },

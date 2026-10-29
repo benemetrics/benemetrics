@@ -83,6 +83,23 @@ export const appDAO = {
     return app ? cacheApp(`project:${projectId}:${publicKey}`, app) : undefined;
   },
 
+  // Every app — used by the auth callout and issue list to build the full
+  // app→number map without pagination.
+  listAll: () =>
+    db
+      .select(appPublicFields)
+      .from(apps)
+      .orderBy(asc(apps.createdAt), asc(apps.id)),
+
+  // All apps of a project, unpaginated — used by issue tracking, alert
+  // evaluation and release summaries that need every app of a project.
+  listRawByProject: (projectId: string) =>
+    db
+      .select(appPublicFields)
+      .from(apps)
+      .where(eq(apps.projectId, projectId))
+      .orderBy(asc(apps.createdAt), asc(apps.id)),
+
   findByIdOrThrow: async (id: string) => {
     const app = await appDAO.findById(id);
     if (!app) throw notFound("App", id);
@@ -108,28 +125,6 @@ export const appDAO = {
       )
       .orderBy(asc(apps.createdAt), asc(apps.id))
       .limit(cursorLimit(options?.limit)),
-
-  listByNameFixes: async (prefixes: string[]) => {
-    if (prefixes.length === 0) return [];
-
-    return db
-      .select({
-        id: apps.id,
-        name: apps.name,
-        projectId: apps.projectId,
-      })
-      .from(apps)
-      .where(
-        sql.join(
-          prefixes.map(
-            (prefix) => sql`lower(${apps.name}) like %${prefix.toLowerCase()}%`,
-          ),
-          sql` or `,
-        ),
-      )
-      .orderBy(asc(apps.createdAt))
-      .limit(100);
-  },
 
   // The issue query resolves an app by its exact name (case-insensitive).
   findByName: (name: string): Promise<{ id: string } | undefined> =>

@@ -5,7 +5,7 @@ import {
   type SourceMapInsert,
 } from "db/schema/source-maps";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { internalError, notFound } from "backend/errors";
+import { internalError } from "backend/errors";
 import { cursorLimit } from "./cursor";
 import { apps } from "db/schema/apps";
 import { whereNotNull } from "db/utils";
@@ -35,12 +35,6 @@ export const sourceMapDAO = {
       .limit(1)
       .then(([row]) => row),
 
-  findByIdOrThrow: async (id: string) => {
-    const map = await sourceMapDAO.findById(id);
-    if (!map) throw notFound("Source map", id);
-    return map;
-  },
-
   // Symbolication only needs the artifact identity and its body.
   findByRelease: (projectId: string, release: string) =>
     db
@@ -69,14 +63,6 @@ export const sourceMapDAO = {
       .where(and(whereNotNull(eq, sourceMaps.appId, options.appId)))
       .orderBy(desc(sourceMaps.createdAt), desc(sourceMaps.id))
       .limit(cursorLimit(page?.limit)),
-
-  delete: async (id: string) => {
-    const deleted = await db
-      .delete(sourceMaps)
-      .where(eq(sourceMaps.id, id))
-      .returning({ id: sourceMaps.id });
-    return deleted.length > 0;
-  },
 
   // Deletes the artifact only when it is inside the caller's scope; an
   // artifact that is missing or belongs to someone else is left alone.

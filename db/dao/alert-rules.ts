@@ -176,11 +176,6 @@ export const alertRuleDAO = {
     return deleted.length > 0;
   },
 
-  // Removes the app-scoped overrides only; global (appId = null)
-  // rules are shared and stay in place.
-  deleteByApp: (appId: string) =>
-    db.delete(alertRules).where(eq(alertRules.appId, appId)),
-
   touchTriggered: (
     id: string,
     triggeredAt: string,

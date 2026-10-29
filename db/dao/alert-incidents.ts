@@ -114,14 +114,6 @@ export const alertIncidentDAO = {
     return updated;
   },
 
-  delete: async (id: string): Promise<boolean> => {
-    const deleted = await db
-      .delete(alertIncidents)
-      .where(eq(alertIncidents.id, id))
-      .returning({ id: alertIncidents.id });
-    return deleted.length > 0;
-  },
-
   findOpen: (
     ruleId: string,
     executor: Executor = db,
@@ -198,9 +190,4 @@ export const alertIncidentDAO = {
       .orderBy(asc(alertIncidents.triggeredAt))
       .limit(1)
       .then(([row]) => row),
-
-  // Removes incidents fired for the app's own rules; incidents of
-  // global rules (appId = null) are shared and stay in place.
-  deleteByApp: (appId: string) =>
-    db.delete(alertIncidents).where(eq(alertIncidents.appId, appId)),
 };

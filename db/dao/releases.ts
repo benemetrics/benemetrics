@@ -143,7 +143,4 @@ export const releaseDAO = {
       .returning({ id: releases.id });
     return deleted.length > 0;
   },
-
-  deleteByApp: (appId: string) =>
-    db.delete(releases).where(eq(releases.appId, appId)),
 };

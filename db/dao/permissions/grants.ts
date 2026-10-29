@@ -1,5 +1,6 @@
 import { db } from "db";
 import {
+  permissionGrantPublicFields,
   permissionGrants,
   permissionRules,
   permissionsProjectApp,
@@ -7,18 +8,8 @@ import {
 import { desc, eq, lt } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
 import { cursorLimit } from "../cursor";
+import { whereNotNull } from "db/utils";
 import type { string } from "node_modules/arktype/out/keywords/string";
-
-const grantFields = {
-  id: permissionGrants.id,
-  identityId: permissionGrants.identityId,
-  label: permissionGrants.label,
-  projectFixes: permissionGrants.projectIds,
-  appFixes: permissionGrants.appPrefixes,
-  isEnabled: permissionGrants.isEnabled,
-  canWrite: permissionGrants.canWrite,
-  updatedAt: permissionGrants.updatedAt,
-};
 
 export const permissionGrantDAO = {
   create: async (input: PermissionGrantInput) => {
@@ -27,11 +18,11 @@ export const permissionGrantDAO = {
       .values({
         identityId: input.identityId,
         label: input.label ?? null,
-        projectPrefixes: JSON.stringify(input.projectIds),
-        appPrefixes: JSON.stringify(input.appPrefixes),
+        projectFixes: JSON.stringify(input.projectIds),
+        appFixes: JSON.stringify(input.appPrefixes),
       })
       .onConflictDoNothing({ target: permissionGrants.identityId })
-      .returning(grantFields);
+      .returning(permissionGrantPublicFields);
 
     if (!row)
       throw conflict(`Permission grant already exists: ${input.identityId}`);
@@ -40,7 +31,7 @@ export const permissionGrantDAO = {
 
   findById: (id: string) =>
     db
-      .select(grantFields)
+      .select(permissionGrantPublicFields)
       .from(permissionGrants)
       .where(eq(permissionGrants.id, id))
       .limit(1)
@@ -55,7 +46,7 @@ export const permissionGrantDAO = {
   // Returns the grant for an identity, or undefined when none exists.
   findByIdentityId: async (identityId: string) => {
     const [row] = await db
-      .select(grantFields)
+      .select(permissionGrantPublicFields)
       .from(permissionGrants)
       .where(eq(permissionGrants.identityId, identityId))
       .limit(1);
@@ -64,13 +55,10 @@ export const permissionGrantDAO = {
 
   list: (options?: { cursor?: string; limit?: number }) => {
     const limit = cursorLimit(options?.limit);
-    const conditions = [
-      ...(options?.cursor ? [lt(permissionGrants.id, options.cursor)] : []),
-    ];
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = whereNotNull(lt, permissionGrants.id, options?.cursor);
 
     return db
-      .select(grantFields)
+      .select(permissionGrantPublicFields)
       .from(permissionGrants)
       .where(where)
       .orderBy(desc(permissionGrants.id))
@@ -85,7 +73,7 @@ export const permissionGrantDAO = {
         updatedAt: new Date().toISOString(),
       })
       .where(eq(permissionGrants.id, id))
-      .returning(grantFields);
+      .returning(permissionGrantPublicFields);
     if (!row) {
       throw notFound("Permission grant", id);
     }

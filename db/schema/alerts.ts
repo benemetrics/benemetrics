@@ -97,6 +97,26 @@ export const alertRules = pgTable(
 export type AlertRuleRow = typeof alertRules.$inferSelect;
 export type AlertRuleInsert = typeof alertRules.$inferInsert;
 
+export const alertRulePublicFields = {
+  id: alertRules.id,
+  name: alertRules.name,
+  trigger: alertRules.trigger,
+  metric: alertRules.metric,
+  operator: alertRules.operator,
+  threshold: alertRules.threshold,
+  thresholdFactor: alertRules.thresholdFactor,
+  windowSeconds: alertRules.windowSeconds,
+  cooldownSeconds: alertRules.cooldownSeconds,
+  measurement: alertRules.measurement,
+  folder: alertRules.folder,
+  appId: alertRules.appId,
+  filters: alertRules.filters,
+  message: alertRules.message,
+  isEnabled: alertRules.isEnabled,
+  lastTriggeredAt: alertRules.lastTriggeredAt,
+  updatedAt: alertRules.updatedAt,
+};
+
 export const alertRuleChannels = pgTable(
   "alert_rule_channels",
   {
@@ -155,4 +175,22 @@ export const alertIncidents = pgTable(
 
 export type AlertIncidentRow = typeof alertIncidents.$inferSelect;
 export type AlertIncidentInsert = typeof alertIncidents.$inferInsert;
+
+export const alertIncidentPublicFields = {
+  id: alertIncidents.id,
+  ruleId: alertIncidents.ruleId,
+  appId: alertIncidents.appId,
+  trigger: alertIncidents.trigger,
+  metric: alertIncidents.metric,
+  value: alertIncidents.value,
+  threshold: alertIncidents.threshold,
+  issueFingerprint: alertIncidents.issueFingerprint,
+  status: alertIncidents.status,
+  triggeredAt: alertIncidents.triggeredAt,
+  resolvedAt: alertIncidents.resolvedAt,
+  correlationKey: alertIncidents.correlationKey,
+  parentId: alertIncidents.parentId,
+  acknowledgedAt: alertIncidents.acknowledgedAt,
+  acknowledgedBy: alertIncidents.acknowledgedBy,
+};
 

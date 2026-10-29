@@ -64,3 +64,23 @@ export const issues = pgTable(
 
 export type IssueRow = typeof issues.$inferSelect;
 export type IssueInsert = typeof issues.$inferInsert;
+
+export const issuePublicFields = {
+  id: issues.id,
+  appId: issues.appId,
+  fingerprint: issues.fingerprint,
+  title: issues.title,
+  culprit: issues.culprit,
+  level: issues.level,
+  type: issues.type,
+  firstRelease: issues.firstRelease,
+  lastRelease: issues.lastRelease,
+  tags: issues.tags,
+  status: issues.status,
+  eventCount: issues.eventCount,
+  userCount: issues.userCount,
+  firstSeen: issues.firstSeen,
+  lastSeen: issues.lastSeen,
+  latestEventId: issues.latestEventId,
+  updatedAt: issues.updatedAt,
+};

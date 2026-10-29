@@ -7,6 +7,7 @@ import {
 import { and, desc, eq, isNull, lt } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
 import { cursorLimit } from "../cursor";
+import { whereNotNull } from "db/utils";
 // Raw tokens are only ever returned at creation/rotation time;
 // at rest we keep the SHA-256 hash plus a short display prefix.
 export function generateUploadToken(): {
@@ -85,14 +86,11 @@ export const sourceMapTokenDAO = {
     limit?: number;
   }) => {
     const limit = cursorLimit(options.limit);
-    const conditions = [
-      ...(options.projectId
-        ? [eq(sourceMapTokens.projectId, options.projectId)]
-        : []),
-      ...(options.includeRevoked ? [] : [isNull(sourceMapTokens.revokedAt)]),
-      ...(options.cursor ? [lt(sourceMapTokens.id, options.cursor)] : []),
-    ];
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = and(
+      whereNotNull(eq, sourceMapTokens.projectId, options.projectId ?? undefined),
+      options.includeRevoked ? undefined : isNull(sourceMapTokens.revokedAt),
+      whereNotNull(lt, sourceMapTokens.id, options.cursor),
+    );
 
     const data = await db
       .select(tokenPublicFields)

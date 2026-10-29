@@ -3,6 +3,7 @@ import { releasePublicFields, releases, type Release, type ReleaseInsert } from 
 import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
 import { cursorLimit } from "../cursor";
+import { whereNotNull } from "db/utils";
 // Every release field is part of the API response; the projection keeps
 // the response shape stable if the table grows more columns.
 
@@ -102,12 +103,10 @@ export const releaseDAO = {
     // encoded in the uuidv7 id, so the keyset order matches the coalesced
     // sort expression exactly.
     const sort = sql`coalesce(${releases.lastSeen}, ${releases.id})`;
-    const scope = options.appId ? eq(releases.appId, options.appId) : undefined;
-    const conditions = [
-      ...(scope ? [scope] : []),
-      ...(options.cursor ? [lt(releases.id, options.cursor)] : []),
-    ];
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = and(
+      whereNotNull(eq, releases.appId, options.appId ?? undefined),
+      whereNotNull(lt, releases.id, options.cursor),
+    );
 
     const data = await db
       .select(releasePublicFields)

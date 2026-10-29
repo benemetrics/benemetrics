@@ -1,6 +1,7 @@
 import { db } from "db";
 import {
   alertIncidents,
+  alertIncidentPublicFields,
   type AlertIncidentInsert,
 } from "db/schema/alerts";
 import { and, asc, desc, eq, lt, sql } from "drizzle-orm";
@@ -12,29 +13,10 @@ import type {
   AlertTrigger,
 } from "backend/protocol/alerting";
 import { cursorLimit } from "../cursor";
+import { whereNotNull } from "db/utils";
 
 type AlertIncidentCreateInput = Omit<AlertIncidentInsert, "id"> & {
   id?: string;
-};
-
-// The enum-ish text columns are cast to the protocol unions in the read.
-const incidentFields = {
-  id: alertIncidents.id,
-  ruleId: alertIncidents.ruleId,
-  appId: alertIncidents.appId,
-  trigger: sql<AlertTrigger>`${alertIncidents.trigger}`,
-  metric: sql<AlertMetric | null>`${alertIncidents.metric}`,
-  value: alertIncidents.value,
-  threshold: alertIncidents.threshold,
-  issueFingerprint: alertIncidents.issueFingerprint,
-  status: sql<AlertIncidentStatus>`${alertIncidents.status}`,
-  triggeredAt: alertIncidents.triggeredAt,
-  resolvedAt: alertIncidents.resolvedAt,
-  correlationKey: alertIncidents.correlationKey,
-  parentId: alertIncidents.parentId,
-  acknowledgedAt: alertIncidents.acknowledgedAt,
-  acknowledgedBy: alertIncidents.acknowledgedBy,
-  assignee: sql<string | null>`null`,
 };
 
 export const alertIncidentDAO = {
@@ -42,7 +24,7 @@ export const alertIncidentDAO = {
     const [created] = await db
       .insert(alertIncidents)
       .values({ ...data })
-      .returning(incidentFields);
+      .returning(alertIncidentPublicFields);
     if (!created) {
       throw internalError("Failed to create alert incident");
     }
@@ -51,7 +33,7 @@ export const alertIncidentDAO = {
 
   findById: (id: string): Promise<AlertIncident | undefined> =>
     db
-      .select(incidentFields)
+      .select(alertIncidentPublicFields)
       .from(alertIncidents)
       .where(eq(alertIncidents.id, id))
       .limit(1)
@@ -71,17 +53,13 @@ export const alertIncidentDAO = {
     limit?: number;
   }): Promise<AlertIncident[]> => {
     const limit = cursorLimit(options.limit);
-    const scope = options.appId
-      ? eq(alertIncidents.appId, options.appId)
-      : undefined;
-    const conditions = [
-      ...(scope ? [scope] : []),
-      ...(options.cursor ? [lt(alertIncidents.id, options.cursor)] : []),
-    ];
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = and(
+      whereNotNull(eq, alertIncidents.appId, options.appId ?? undefined),
+      whereNotNull(lt, alertIncidents.id, options.cursor),
+    );
 
     const data = await db
-      .select(incidentFields)
+      .select(alertIncidentPublicFields)
       .from(alertIncidents)
       .where(where)
       .orderBy(desc(alertIncidents.triggeredAt), desc(alertIncidents.id))
@@ -104,17 +82,16 @@ export const alertIncidentDAO = {
       .update(alertIncidents)
       .set(data)
       .where(eq(alertIncidents.id, id))
-      .returning(incidentFields);
+      .returning(alertIncidentPublicFields);
     if (!updated) throw notFound("Alert incident", id);
     return updated;
   },
 
   findOpen: (
     ruleId: string,
-    executor: Executor = db,
   ): Promise<AlertIncident | undefined> =>
-    executor
-      .select(incidentFields)
+    db
+      .select(alertIncidentPublicFields)
       .from(alertIncidents)
       .where(
         and(
@@ -167,7 +144,7 @@ export const alertIncidentDAO = {
     correlationKey: string,
   ): Promise<AlertIncident | undefined> =>
     db
-      .select(incidentFields)
+      .select(alertIncidentPublicFields)
       .from(alertIncidents)
       .where(eq(alertIncidents.correlationKey, correlationKey))
       .orderBy(desc(alertIncidents.triggeredAt))
@@ -179,7 +156,7 @@ export const alertIncidentDAO = {
     correlationKey: string,
   ): Promise<AlertIncident | undefined> =>
     db
-      .select(incidentFields)
+      .select(alertIncidentPublicFields)
       .from(alertIncidents)
       .where(eq(alertIncidents.correlationKey, correlationKey))
       .orderBy(asc(alertIncidents.triggeredAt))

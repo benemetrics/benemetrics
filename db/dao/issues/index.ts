@@ -1,5 +1,5 @@
 import { db } from "db";
-import { issues, type IssueRow, type IssueInsert } from "db/schema/issues";
+import { issuePublicFields, issues, type IssueInsert } from "db/schema/issues";
 import { apps } from "db/schema/project";
 import {
   and,
@@ -17,28 +17,9 @@ import {
 } from "drizzle-orm";
 import { notFound } from "backend/errors";
 import { cursorLimit } from "../cursor";
+import { whereNotNull } from "db/utils";
 import type { IssueFilter } from "backend/issues/resolve";
 import type { IssueSort } from "backend/issues/query";
-
-const issueFields = {
-  id: issues.id,
-  appId: issues.appId,
-  fingerprint: issues.fingerprint,
-  title: issues.title,
-  culprit: issues.culprit,
-  level: issues.level,
-  type: issues.type,
-  firstRelease: issues.firstRelease,
-  lastRelease: issues.lastRelease,
-  tags: issues.tags,
-  status: issues.status,
-  eventCount: issues.eventCount,
-  userCount: issues.userCount,
-  firstSeen: issues.firstSeen,
-  lastSeen: issues.lastSeen,
-  latestEventId: issues.latestEventId,
-  updatedAt: issues.updatedAt,
-};
 
 // Issue tracking only needs the fields carried into the alert notifications.
 const trackedIssueFields = {
@@ -120,8 +101,6 @@ function issueConditions(filter: IssueFilter): SQL[] {
       conditions.push(gt(issues.lastSeen, filter.lastSeen.gt));
     if (filter.lastSeen.lte)
       conditions.push(lte(issues.lastSeen, filter.lastSeen.lte));
-    if (filter.lastSeen.lt)
-      conditions.push(lt(issues.lastSeen, filter.lastSeen.lt));
     if (filter.lastSeen.eq)
       conditions.push(eq(issues.lastSeen, filter.lastSeen.eq));
   }
@@ -215,7 +194,7 @@ export const issueDAO = {
 
   findById: (id: string): Promise<IssueRow | undefined> =>
     db
-      .select(issueFields)
+      .select(issuePublicFields)
       .from(issues)
       .where(eq(issues.id, id))
       .limit(1)
@@ -257,9 +236,9 @@ export const issueDAO = {
             ? [desc(issues.firstSeen), desc(issues.id)]
             : [desc(issues.lastSeen), desc(issues.id)];
 
-    const conditions = [
-      ...(options.cursor ? [lt(issues.id, options.cursor)] : []),
-    ];
+    const where = and(
+      whereNotNull(lt, issues.id, options.cursor),
+    );
 
     // Every alternative is an AND of its terms; the alternatives are ORed.
     const alternatives = filters
@@ -274,13 +253,11 @@ export const issueDAO = {
         : alternatives.length > 0
           ? or(...alternatives)
           : undefined;
-    const where =
-      scope && conditions[0] ? and(scope, conditions[0]) : (scope ?? conditions[0]);
 
     const data = await db
-      .select(issueFields)
+      .select(issuePublicFields)
       .from(issues)
-      .where(where)
+      .where(scope && where ? and(scope, where) : (scope ?? where))
       .orderBy(...order)
       .limit(limit);
 
@@ -313,7 +290,7 @@ export const issueDAO = {
       .update(issues)
       .set({ ...data, updatedAt: new Date().toISOString() })
       .where(eq(issues.id, id))
-      .returning(issueFields);
+      .returning(issuePublicFields);
     if (!updated) {
       throw notFound("Issue", id);
     }

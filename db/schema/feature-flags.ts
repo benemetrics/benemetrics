@@ -41,6 +41,23 @@ export const featureFlags = pgTable(
 
 export type FeatureFlag = typeof featureFlags.$inferSelect;
 
+export const featureFlagPublicFields = {
+  id: featureFlags.id,
+  key: featureFlags.key,
+  name: featureFlags.name,
+  description: featureFlags.description,
+  type: featureFlags.type,
+  defaultValue: featureFlags.defaultValue,
+  variants: featureFlags.variants,
+  targetingRules: featureFlags.targetingRules,
+  segments: featureFlags.segments,
+  status: featureFlags.status,
+  rolloutPercentage: featureFlags.rolloutPercentage,
+  projectId: featureFlags.projectId,
+  experiment: featureFlags.experiment,
+  updatedAt: featureFlags.updatedAt,
+};
+
 export const userFeatureFlagAssigment = pgTable(
   "user_feature_flags_assigment",
   {
@@ -63,6 +80,15 @@ export const userFeatureFlagAssigment = pgTable(
 
 export type ExperimentAssignment = typeof userFeatureFlagAssigment.$inferSelect;
 
+export const assignmentPublicFields = {
+  id: userFeatureFlagAssigment.id,
+  flagId: userFeatureFlagAssigment.flagId,
+  userId: userFeatureFlagAssigment.userId,
+  variantKey: userFeatureFlagAssigment.variantKey,
+  context: userFeatureFlagAssigment.context,
+  assignedAt: userFeatureFlagAssigment.assignedAt,
+};
+
 export const segments = pgTable("segments", {
   id: uuid("id")
     .default(sql`uuidv7()`)
@@ -73,6 +99,13 @@ export const segments = pgTable("segments", {
 });
 
 export type Segment = typeof segments.$inferSelect;
+
+export const segmentPublicFields = {
+  id: segments.id,
+  name: segments.name,
+  description: segments.description,
+  rules: segments.rules,
+};
 
 export const featureFlagMetrics = pgTable(
   "experiment_metrics",

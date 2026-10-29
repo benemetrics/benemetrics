@@ -1,6 +1,10 @@
 import { db } from "db";
-import { alertRules, type AlertRuleInsert } from "db/schema/alerts";
-import { and, desc, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import {
+  alertRules,
+  type AlertRuleInsert,
+  alertRulePublicFields,
+} from "db/schema/alerts";
+import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
 import { uniqueViolationConstraint } from "db/pg-errors";
 import type {
@@ -11,45 +15,10 @@ import type {
   AlertTrigger,
 } from "backend/protocol/alerting";
 import { cursorLimit } from "../cursor";
-
-
-// Scope for alert rules: by appId when set, otherwise unscoped.
-// projectId is accepted in the options for API compatibility but the
-// schema has no project_id column on alert_rules, so it cannot be used
-// to narrow results at the DB level.
-type AlertScope = { appId: string | null; projectId?: string | null };
-
-function scopeCondition(scope: AlertScope | null) {
-  if (!scope) return undefined;
-  const conditions = [];
-  if (scope.appId) conditions.push(eq(alertRules.appId, scope.appId));
-  return conditions.length > 0 ? and(...conditions) : undefined;
-}
+import { whereNotNull } from "db/utils";
 
 const SCOPE_NAME_CONSTRAINT = "alert_rules_name_app_id_idx";
 const GLOBAL_NAME_CONSTRAINT = "alert_rules_name_project_id_idx";
-const ruleFields = {
-  id: alertRules.id,
-  name: alertRules.name,
-  trigger: sql<AlertTrigger>`${alertRules.trigger}`,
-  metric: sql<AlertMetric | null>`${alertRules.metric}`,
-  operator: sql<AlertOperator | null>`${alertRules.operator}`,
-  threshold: alertRules.threshold,
-  thresholdFactor: alertRules.thresholdFactor,
-  windowSeconds: alertRules.windowSeconds,
-  cooldownSeconds: alertRules.cooldownSeconds,
-  measurement: alertRules.measurement,
-  folder: alertRules.folder,
-  appId: alertRules.appId,
-  channelIds: sql<string[]>`'[]'`,
-  projectId: sql<string | null>`null`,
-  filters: sql<AlertRuleFilters>`${alertRules.filters}::jsonb`,
-  message: alertRules.message,
-  isEnabled: sql<boolean>`${alertRules.isEnabled} = 1`,
-  lastTriggeredAt: alertRules.lastTriggeredAt,
-  createdAt: sql<string>`to_char(to_timestamp((substring(${alertRules.id}::text from 1 for 8))::bit(32)::bigint), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`,
-  updatedAt: alertRules.updatedAt,
-};
 
 type AlertRuleCreateInput = Omit<AlertRuleInsert, "id">;
 
@@ -59,7 +28,7 @@ export const alertRuleDAO = {
       .insert(alertRules)
       .values({ ...data })
       .onConflictDoNothing()
-      .returning(ruleFields);
+      .returning(alertRulePublicFields);
     if (!created) {
       throw conflict(`Alert rule already exists in this scope: ${data.name}`);
     }
@@ -68,7 +37,7 @@ export const alertRuleDAO = {
 
   findById: (id: string): Promise<AlertRule | undefined> =>
     db
-      .select(ruleFields)
+      .select(alertRulePublicFields)
       .from(alertRules)
       .where(eq(alertRules.id, id))
       .limit(1)
@@ -89,18 +58,13 @@ export const alertRuleDAO = {
     limit?: number;
   }): Promise<AlertRule[]> => {
     const limit = cursorLimit(options.limit);
-    const scope = scopeCondition({
-      appId: options.appId,
-      projectId: options.projectId,
-    });
-    const conditions = [
-      ...(scope ? [scope] : []),
-      ...(options.cursor ? [lt(alertRules.id, options.cursor)] : []),
-    ];
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = and(
+      whereNotNull(eq, alertRules.appId, options.appId ?? undefined),
+      whereNotNull(lt, alertRules.id, options.cursor),
+    );
 
     const data = await db
-      .select(ruleFields)
+      .select(alertRulePublicFields)
       .from(alertRules)
       .where(where)
       .orderBy(desc(alertRules.id))
@@ -115,7 +79,7 @@ export const alertRuleDAO = {
         .update(alertRules)
         .set({ ...data, updatedAt: new Date().toISOString() })
         .where(eq(alertRules.id, id))
-        .returning(ruleFields);
+        .returning(alertRulePublicFields);
       if (!updated) {
         throw notFound("Alert rule", id);
       }

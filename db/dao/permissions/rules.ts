@@ -1,8 +1,9 @@
 import { db } from "db";
-import { permissionRules } from "db/schema/permissions";
+import { permissionRulePublicFields, permissionRules } from "db/schema/permissions";
 import { desc, eq, lt } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
 import { cursorLimit } from "../cursor";
+import { whereNotNull } from "db/utils";
 
 export interface PermissionRuleRecord {
   id: string;
@@ -20,15 +21,6 @@ export interface PermissionRuleInput {
   isEnabled?: boolean;
 }
 
-const ruleFields = {
-  id: permissionRules.id,
-  name: permissionRules.name,
-  projectIds: permissionRules.projectIds,
-  appPrefixes: permissionRules.appPrefixes,
-  isEnabled: permissionRules.isEnabled,
-  updatedAt: permissionRules.updatedAt,
-};
-
 function parseList(value: string): string[] {
   try {
     const parsed = JSON.parse(value);
@@ -41,16 +33,16 @@ function parseList(value: string): string[] {
 function toRecord(row: {
   id: string;
   name: string;
-  projectIds: string;
-  appPrefixes: string;
+  projectFixes: string;
+  appFixes: string;
   isEnabled: number;
   updatedAt: string;
 }): PermissionRuleRecord {
   return {
     id: row.id,
     name: row.name,
-    projectIds: parseList(row.projectIds),
-    appPrefixes: parseList(row.appPrefixes),
+    projectIds: parseList(row.projectFixes),
+    appPrefixes: parseList(row.appFixes),
     isEnabled: row.isEnabled === 1,
     updatedAt: row.updatedAt,
   };
@@ -62,11 +54,11 @@ export const permissionRuleDAO = {
       .insert(permissionRules)
       .values({
         name: input.name.toLowerCase(),
-        projectIds: JSON.stringify(input.projectIds),
-        appPrefixes: JSON.stringify(input.appPrefixes),
+        projectFixes: JSON.stringify(input.projectIds),
+        appFixes: JSON.stringify(input.appPrefixes),
       })
       .onConflictDoNothing({ target: permissionRules.name })
-      .returning(ruleFields);
+      .returning(permissionRulePublicFields);
     if (!row) {
       throw conflict(`Permission rule already exists: ${input.name}`);
     }
@@ -75,7 +67,7 @@ export const permissionRuleDAO = {
 
   findById: async (id: string): Promise<PermissionRuleRecord | undefined> => {
     const [row] = await db
-      .select(ruleFields)
+      .select(permissionRulePublicFields)
       .from(permissionRules)
       .where(eq(permissionRules.id, id))
       .limit(1);
@@ -92,7 +84,7 @@ export const permissionRuleDAO = {
     name: string,
   ): Promise<PermissionRuleRecord | undefined> => {
     const [row] = await db
-      .select(ruleFields)
+      .select(permissionRulePublicFields)
       .from(permissionRules)
       .where(eq(permissionRules.name, name.toLowerCase()))
       .limit(1);
@@ -101,13 +93,10 @@ export const permissionRuleDAO = {
 
   list: async (options?: { cursor?: string; limit?: number }) => {
     const limit = cursorLimit(options?.limit);
-    const conditions = [
-      ...(options?.cursor ? [lt(permissionRules.id, options.cursor)] : []),
-    ];
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const where = whereNotNull(lt, permissionRules.id, options?.cursor);
 
     const data = await db
-      .select(ruleFields)
+      .select(permissionRulePublicFields)
       .from(permissionRules)
       .where(where)
       .orderBy(desc(permissionRules.id))
@@ -125,10 +114,10 @@ export const permissionRuleDAO = {
       .set({
         ...(data.name !== undefined ? { name: data.name.toLowerCase() } : {}),
         ...(data.projectIds !== undefined
-          ? { projectIds: JSON.stringify(data.projectIds) }
+          ? { projectFixes: JSON.stringify(data.projectIds) }
           : {}),
         ...(data.appPrefixes !== undefined
-          ? { appPrefixes: JSON.stringify(data.appPrefixes) }
+          ? { appFixes: JSON.stringify(data.appPrefixes) }
           : {}),
         ...(data.isEnabled !== undefined
           ? { isEnabled: data.isEnabled ? 1 : 0 }
@@ -136,7 +125,7 @@ export const permissionRuleDAO = {
         updatedAt: new Date().toISOString(),
       })
       .where(eq(permissionRules.id, id))
-      .returning(ruleFields);
+      .returning(permissionRulePublicFields);
     if (!row) {
       throw notFound("Permission rule", id);
     }

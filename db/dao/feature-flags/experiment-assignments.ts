@@ -1,24 +1,12 @@
 import { db } from "db";
-import { experimentAssignments } from "db/schema/experiment-assignments";
+import {
+  assignmentPublicFields,
+  experimentAssignments,
+} from "db/schema/feature-flags";
 import { countDistinct, desc, eq, and, lt, sql } from "drizzle-orm";
 import { internalError } from "backend/errors";
 import { cursorLimit } from "../cursor";
-
-// Sticky-assignment lookups only need the variant identity.
-const assignmentLookupFields = {
-  id: experimentAssignments.id,
-  variantKey: experimentAssignments.variantKey,
-  assignedAt: experimentAssignments.assignedAt,
-};
-
-// The experiment users endpoint lists the participant's id (stored as
-// userId), its stored variant, and the context snapshot.
-const assignmentListFields = {
-  userId: experimentAssignments.userId,
-  variantKey: experimentAssignments.variantKey,
-  context: sql<unknown>`${experimentAssignments.context}::jsonb`,
-  assignedAt: experimentAssignments.assignedAt,
-};
+import { whereNotNull } from "db/utils";
 
 export interface VariantCount {
   variantKey: string;
@@ -45,7 +33,7 @@ export const experimentAssignmentDAO = {
       .onConflictDoNothing({
         target: [experimentAssignments.flagId, experimentAssignments.userId],
       })
-      .returning(assignmentLookupFields);
+      .returning(assignmentPublicFields);
     if (row) return row;
 
     const existing = await experimentAssignmentDAO.findByFlagAndUser(
@@ -60,7 +48,7 @@ export const experimentAssignmentDAO = {
 
   findByFlagAndUser: (flagId: string, userId: string) =>
     db
-      .select(assignmentLookupFields)
+      .select(assignmentPublicFields)
       .from(experimentAssignments)
       .where(
         and(
@@ -96,7 +84,7 @@ export const experimentAssignmentDAO = {
     }
 
     const data = await db
-      .select(assignmentListFields)
+      .select(assignmentPublicFields)
       .from(experimentAssignments)
       .where(and(...conditions))
       .orderBy(
@@ -115,6 +103,10 @@ export const experimentAssignmentDAO = {
         count: countDistinct(experimentAssignments.userId),
       })
       .from(experimentAssignments)
-      .where(eq(experimentAssignments.flagId, flagId))
+      .where(
+        and(
+          eq(experimentAssignments.flagId, flagId),
+        ),
+      )
       .groupBy(experimentAssignments.variantKey),
 };

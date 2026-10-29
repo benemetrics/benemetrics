@@ -8,6 +8,7 @@ import type {
 import { db } from "db";
 import {
   featureFlags,
+  featureFlagPublicFields,
   userFeatureFlagAssigment as experimentAssignments,
   featureFlagMetrics as experimentMetrics,
 } from "db/schema/feature-flags";
@@ -16,6 +17,7 @@ import type { PgInsertValue } from "drizzle-orm/pg-core";
 import { conflict, notFound } from "backend/errors";
 import { uniqueViolationConstraint } from "db/pg-errors";
 import { cursorLimit } from "../cursor";
+import { whereNotNull } from "db/utils";
 
 const KEY_CONSTRAINT = "feature_flags_scope_key_idx";
 
@@ -26,25 +28,6 @@ export interface FlagScope {
   appId?: string | null;
 }
 
-// The API exposes the JSON columns decoded and the enum-ish text columns
-// typed, so the DAO returns the protocol shape directly.
-const featureFlagFields = {
-  id: featureFlags.id,
-  key: featureFlags.key,
-  name: featureFlags.name,
-  description: featureFlags.description,
-  type: sql<FeatureFlagType>`${featureFlags.type}`,
-  defaultValue: featureFlags.defaultValue,
-  variants: sql<FeatureFlagVariant[]>`${featureFlags.variants}::jsonb`,
-  targetingRules: sql<TargetingRule[]>`${featureFlags.targetingRules}::jsonb`,
-  segments: sql<string[]>`${featureFlags.segments}::jsonb`,
-  status: sql<FeatureFlagStatus>`${featureFlags.status}`,
-  rolloutPercentage: featureFlags.rolloutPercentage,
-  projectId: featureFlags.projectId,
-  experiment: sql<ExperimentConfig | null>`${featureFlags.experiment}::jsonb`,
-  updatedAt: featureFlags.updatedAt,
-};
-
 export const featureFlagDAO = {
   create: async (
     data: Omit<PgInsertValue<typeof featureFlags>, "id"> & { id?: string },
@@ -53,7 +36,7 @@ export const featureFlagDAO = {
       .insert(featureFlags)
       .values({ ...data })
       .onConflictDoNothing()
-      .returning(featureFlagFields);
+      .returning(featureFlagPublicFields);
     if (!row) {
       throw conflict(`Feature flag key already exists: ${data.key}`);
     }
@@ -62,7 +45,7 @@ export const featureFlagDAO = {
 
   findById: (id: string) =>
     db
-      .select(featureFlagFields)
+      .select(featureFlagPublicFields)
       .from(featureFlags)
       .where(eq(featureFlags.id, id))
       .limit(1)
@@ -76,7 +59,7 @@ export const featureFlagDAO = {
 
   findByKey: (key: string) =>
     db
-      .select(featureFlagFields)
+      .select(featureFlagPublicFields)
       .from(featureFlags)
       .where(eq(featureFlags.key, key))
       .limit(1)
@@ -97,7 +80,7 @@ export const featureFlagDAO = {
     );
 
     const [row] = await db
-      .select(featureFlagFields)
+      .select(featureFlagPublicFields)
       .from(featureFlags)
       .where(and(eq(featureFlags.key, key), or(...scopes)))
       .orderBy(
@@ -117,7 +100,7 @@ export const featureFlagDAO = {
         .update(featureFlags)
         .set(obj)
         .where(eq(featureFlags.id, id))
-        .returning(featureFlagFields);
+        .returning(featureFlagPublicFields);
       if (!row) throw notFound("Feature flag", id);
       return row;
     } catch (err) {
@@ -162,7 +145,7 @@ export const featureFlagDAO = {
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const data = await db
-      .select(featureFlagFields)
+      .select(featureFlagPublicFields)
       .from(featureFlags)
       .where(whereClause)
       .orderBy(desc(featureFlags.updatedAt), desc(featureFlags.id))

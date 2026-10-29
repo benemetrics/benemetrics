@@ -62,3 +62,24 @@ export type PermissionRuleRow = typeof permissionRules.$inferSelect;
 export type PermissionRuleInsert = typeof permissionRules.$inferInsert;
 export type PermissionGrantRow = typeof permissionGrants.$inferSelect;
 export type PermissionGrantInsert = typeof permissionGrants.$inferInsert;
+
+export const permissionRulePublicFields = {
+  id: permissionRules.id,
+  name: permissionRules.name,
+  projectFixes: permissionRules.projectFixes,
+  appFixes: permissionRules.appFixes,
+  isEnabled: permissionRules.isEnabled,
+  canWrite: permissionRules.canWrite,
+  updatedAt: permissionRules.updatedAt,
+};
+
+export const permissionGrantPublicFields = {
+  id: permissionGrants.id,
+  identityId: permissionGrants.identityId,
+  label: permissionGrants.label,
+  projectFixes: permissionGrants.projectFixes,
+  appFixes: permissionGrants.appFixes,
+  isEnabled: permissionGrants.isEnabled,
+  canWrite: permissionGrants.canWrite,
+  updatedAt: permissionGrants.updatedAt,
+};

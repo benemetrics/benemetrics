@@ -13,9 +13,9 @@ Bun reads your `.env` files automatically and provides idiomatic ways to read an
 
 Bun reads the following files automatically (listed in order of increasing precedence).
 
-* `.env`
-* `.env.production`, `.env.development`, `.env.test` (depending on value of `NODE_ENV`)
-* `.env.local`
+- `.env`
+- `.env.production`, `.env.development`, `.env.test` (depending on value of `NODE_ENV`)
+- `.env.local`
 
 ```ini .env icon="settings" theme={"theme":{"light":"github-light","dark":"dracula"}}
 FOO=hello
@@ -29,44 +29,46 @@ Variables can also be set via the command line.
   FOO=helloworld bun run dev
   ```
 
-  ```sh Windows icon="windows" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  # Using CMD
-  set FOO=helloworld && bun run dev
+```sh Windows icon="windows" theme={"theme":{"light":"github-light","dark":"dracula"}}
+# Using CMD
+set FOO=helloworld && bun run dev
 
-  # Using PowerShell
-  $env:FOO="helloworld"; bun run dev
-  ```
+# Using PowerShell
+$env:FOO="helloworld"; bun run dev
+```
+
 </CodeGroup>
 
 <Accordion title="Cross-platform solution with Windows">
   For a cross-platform solution, you can use [bun shell](/runtime/shell). For example, the `bun exec` command.
 
-  ```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
-  bun exec 'FOO=helloworld bun run dev'
-  ```
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
+bun exec 'FOO=helloworld bun run dev'
+```
 
-  On Windows, `package.json` scripts called with `bun run` will automatically use the **bun shell**, making the following also cross-platform.
+On Windows, `package.json` scripts called with `bun run` will automatically use the **bun shell**, making the following also cross-platform.
 
-  ```json package.json icon="file-json" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  "scripts": {
-    "dev": "NODE_ENV=development bun --watch app.ts",
-  },
-  ```
+```json package.json icon="file-json" theme={"theme":{"light":"github-light","dark":"dracula"}}
+"scripts": {
+  "dev": "NODE_ENV=development bun --watch app.ts",
+},
+```
+
 </Accordion>
 
 Or programmatically by assigning a property to `process.env`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 process.env.FOO = "hello";
 ```
 
-***
+---
 
 ## Manually specifying `.env` files
 
 Bun supports `--env-file` to override which specific `.env` file to load. You can use `--env-file` when running scripts in bun's runtime, or when running package.json scripts.
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun --env-file=.env.1 src/index.ts
 
 bun --env-file=.env.abc --env-file=.env.def run build
@@ -76,7 +78,7 @@ bun --env-file=.env.abc --env-file=.env.def run build
 
 Use `--no-env-file` to disable Bun's automatic `.env` file loading. This is useful in production environments or CI/CD pipelines where you want to rely solely on system environment variables.
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run --no-env-file index.ts
 ```
 
@@ -89,7 +91,7 @@ env = false
 
 Explicitly provided environment files via `--env-file` will still be loaded even when default loading is disabled.
 
-***
+---
 
 ## Quotation marks
 
@@ -103,14 +105,14 @@ FOO=`hello`
 
 ### Expansion
 
-Environment variables are automatically *expanded*. This means you can reference previously-defined variables in your environment variables.
+Environment variables are automatically _expanded_. This means you can reference previously-defined variables in your environment variables.
 
 ```ini .env icon="settings" theme={"theme":{"light":"github-light","dark":"dracula"}}
 FOO=world
 BAR=hello$FOO
 ```
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 process.env.BAR; // => "helloworld"
 ```
 
@@ -131,7 +133,7 @@ FOO=world
 BAR=hello\$FOO
 ```
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 process.env.BAR; // => "hello$FOO"
 ```
 
@@ -143,20 +145,20 @@ Generally speaking, you won't need `dotenv` or `dotenv-expand` anymore, because 
 
 The current environment variables can be accessed via `process.env`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 process.env.API_TOKEN; // => "secret"
 ```
 
 Bun also exposes these variables via `Bun.env` and `import.meta.env`, which is a simple alias of `process.env`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.env.API_TOKEN; // => "secret"
 import.meta.env.API_TOKEN; // => "secret"
 ```
 
 To print all currently-set environment variables to the command line, run `bun --print process.env`. This is useful for debugging.
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun --print process.env
 BAZ=stuff
 FOOBAR=aaaaaa
@@ -167,14 +169,14 @@ FOOBAR=aaaaaa
 
 In TypeScript, all properties of `process.env` are typed as `string | undefined`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.env.whatever;
 // string | undefined
 ```
 
 To get autocompletion and tell TypeScript to treat a variable as a non-optional string, we'll use [interface merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html#merging-interfaces).
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 declare module "bun" {
   interface Env {
     AWESOME: string;
@@ -184,7 +186,7 @@ declare module "bun" {
 
 Add this line to any file in your project. It will globally add the `AWESOME` property to `process.env` and `Bun.env`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 process.env.AWESOME; // => string
 ```
 
@@ -217,7 +219,7 @@ It is recommended to disable this cache when using ephemeral filesystems like Do
 
 To disable the runtime transpiler cache, set `BUN_RUNTIME_TRANSPILER_CACHE_PATH` to an empty string or the string `"0"`.
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 bun run dev
 ```
 
@@ -225,7 +227,7 @@ BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 bun run dev
 
 It caches:
 
-* The transpiled output of source files larger than 50 KB.
-* The sourcemap for the transpiled output of the file
+- The transpiled output of source files larger than 50 KB.
+- The sourcemap for the transpiled output of the file
 
 The file extension `.pile` is used for these cached files.

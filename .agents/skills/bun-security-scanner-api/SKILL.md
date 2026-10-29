@@ -7,7 +7,7 @@ description: Security Scanner API
 
 Bun's package manager can scan packages for security vulnerabilities before installation, helping protect your applications from supply chain attacks and known vulnerabilities.
 
-***
+---
 
 ## Quick Start
 
@@ -20,30 +20,30 @@ scanner = "@acme/bun-security-scanner"
 
 When configured, Bun will:
 
-* Scan all packages before installation
-* Display security warnings and advisories
-* Cancel installation if critical vulnerabilities are found
-* Automatically disable auto-install for security
+- Scan all packages before installation
+- Display security warnings and advisories
+- Cancel installation if critical vulnerabilities are found
+- Automatically disable auto-install for security
 
-***
+---
 
 ## How It Works
 
 Security scanners analyze packages during `bun install`, `bun add`, and other package operations. They can detect:
 
-* Known security vulnerabilities (CVEs)
-* Malicious packages
-* License compliance issues
-* ...and more!
+- Known security vulnerabilities (CVEs)
+- Malicious packages
+- License compliance issues
+- ...and more!
 
 ### Security Levels
 
 Scanners report issues at two severity levels:
 
-* **`fatal`** - Installation stops immediately, exits with non-zero code
-* **`warn`** - In interactive terminals, prompts to continue; in CI, exits immediately
+- **`fatal`** - Installation stops immediately, exits with non-zero code
+- **`warn`** - In interactive terminals, prompts to continue; in CI, exits immediately
 
-***
+---
 
 ## Using Pre-built Scanners
 
@@ -92,6 +92,6 @@ For a complete example with tests and CI setup, see the official template:
 
 ## Related
 
-* [Configuration (bunfig.toml)](/runtime/bunfig#install-security-scanner)
-* [Package Manager](/installation)
-* [Security Scanner Template](https://github.com/oven-sh/security-scanner-template)
+- [Configuration (bunfig.toml)](/runtime/bunfig#install-security-scanner)
+- [Package Manager](/installation)
+- [Security Scanner Template](https://github.com/oven-sh/security-scanner-template)

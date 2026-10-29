@@ -109,10 +109,10 @@ bun test --coverage --coverage-reporter=lcov
 
 The LCOV format is widely supported by various tools and services:
 
-* **Code editors**: VS Code extensions can show coverage inline
-* **CI/CD services**: GitHub Actions, GitLab CI, CircleCI
-* **Coverage services**: Codecov, Coveralls
-* **IDEs**: WebStorm, IntelliJ IDEA
+- **Code editors**: VS Code extensions can show coverage inline
+- **CI/CD services**: GitHub Actions, GitLab CI, CircleCI
+- **Coverage services**: Codecov, Coveralls
+- **IDEs**: WebStorm, IntelliJ IDEA
 
 #### Using LCOV with GitHub Actions
 
@@ -216,10 +216,10 @@ coverageIgnoreSourcemaps = true  # default false
 
 By default, coverage reports:
 
-* **Exclude** `node_modules` directories
-* **Exclude** files loaded via non-JS/TS loaders (e.g., `.css`, `.txt`) unless a custom JS loader is specified
-* **Include** test files themselves (can be disabled with `coverageSkipTestFiles = true`)
-* Can exclude additional files with `coveragePathIgnorePatterns`
+- **Exclude** `node_modules` directories
+- **Exclude** files loaded via non-JS/TS loaders (e.g., `.css`, `.txt`) unless a custom JS loader is specified
+- **Include** test files themselves (can be disabled with `coverageSkipTestFiles = true`)
+- Can exclude additional files with `coveragePathIgnorePatterns`
 
 ## Advanced Configuration
 
@@ -310,16 +310,16 @@ All files    |   85.71 |   90.48 |
 -------------|---------|---------|-------------------
 ```
 
-* **% Funcs**: Percentage of functions that were called during tests
-* **% Lines**: Percentage of executable lines that were run during tests
-* **Uncovered Line #s**: Specific line numbers that were not executed
+- **% Funcs**: Percentage of functions that were called during tests
+- **% Lines**: Percentage of executable lines that were run during tests
+- **Uncovered Line #s**: Specific line numbers that were not executed
 
 ### What to Aim For
 
-* **80%+ overall coverage**: Generally considered good
-* **90%+ critical paths**: Important business logic should be well-tested
-* **100% utility functions**: Pure functions and utilities are easy to test completely
-* **Lower coverage for UI components**: Often acceptable as they may require integration tests
+- **80%+ overall coverage**: Generally considered good
+- **90%+ critical paths**: Important business logic should be well-tested
+- **100% utility functions**: Pure functions and utilities are easy to test completely
+- **Lower coverage for UI components**: Often acceptable as they may require integration tests
 
 ## Best Practices
 
@@ -367,11 +367,11 @@ bun test --coverage src/critical-module.ts
 
 Coverage is just one metric. Also consider:
 
-* **Code review quality**
-* **Integration test coverage**
-* **Error handling tests**
-* **Performance tests**
-* **Type safety**
+- **Code review quality**
+- **Integration test coverage**
+- **Error handling tests**
+- **Performance tests**
+- **Type safety**
 
 ## Troubleshooting
 

@@ -11,9 +11,9 @@ description: Learn how to manipulate time and dates in your Bun tests using setS
 
 This works with any of the following:
 
-* `Date.now`
-* `new Date()`
-* `new Intl.DateTimeFormat().format()`
+- `Date.now`
+- `new Date()`
+- `new Intl.DateTimeFormat().format()`
 
 <Note>Timers are not impacted yet, but may be in a future release of Bun.</Note>
 
@@ -119,14 +119,18 @@ import { test, expect } from "bun:test";
 test("Welcome to California!", () => {
   process.env.TZ = "America/Los_Angeles";
   expect(new Date().getTimezoneOffset()).toBe(420);
-  expect(new Intl.DateTimeFormat().resolvedOptions().timeZone).toBe("America/Los_Angeles");
+  expect(new Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(
+    "America/Los_Angeles",
+  );
 });
 
 test("Welcome to New York!", () => {
   // Unlike in Jest, you can set the timezone multiple times at runtime and it will work.
   process.env.TZ = "America/New_York";
   expect(new Date().getTimezoneOffset()).toBe(240);
-  expect(new Intl.DateTimeFormat().resolvedOptions().timeZone).toBe("America/New_York");
+  expect(new Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(
+    "America/New_York",
+  );
 });
 ```
 

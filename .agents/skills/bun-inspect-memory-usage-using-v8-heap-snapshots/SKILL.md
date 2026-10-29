@@ -15,7 +15,7 @@ const snapshotPath = v8.writeHeapSnapshot();
 console.log(`Heap snapshot written to: ${snapshotPath}`);
 ```
 
-***
+---
 
 ## Inspect memory in Chrome DevTools
 

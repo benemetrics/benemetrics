@@ -11,20 +11,20 @@ The `--define` flag can be used with `bun build` and `bun build --compile` to in
 bun build --compile --define BUILD_VERSION='"1.2.3"' --define BUILD_TIME='"2024-01-15T10:30:00Z"' src/index.ts --outfile myapp
 ```
 
-***
+---
 
 ## Why use build-time constants?
 
 Build-time constants are embedded directly into your compiled code, making them:
 
-* **Zero runtime overhead** - No environment variable lookups or file reads
-* **Immutable** - Values are baked into the binary at compile time
-* **Optimizable** - Dead code elimination can remove unused branches
-* **Secure** - No external dependencies or configuration files to manage
+- **Zero runtime overhead** - No environment variable lookups or file reads
+- **Immutable** - Values are baked into the binary at compile time
+- **Optimizable** - Dead code elimination can remove unused branches
+- **Secure** - No external dependencies or configuration files to manage
 
 This is similar to `gcc -D` or `#define` in C/C++, but for JavaScript/TypeScript.
 
-***
+---
 
 ## Basic usage
 
@@ -56,7 +56,7 @@ await Bun.build({
 });
 ```
 
-***
+---
 
 ## Common use cases
 
@@ -71,22 +71,24 @@ Embed version and build metadata directly into your executable:
   declare const BUILD_TIME: string;
   declare const GIT_COMMIT: string;
 
-  export function getVersion() {
-    return {
-      version: BUILD_VERSION,
-      buildTime: BUILD_TIME,
-      commit: GIT_COMMIT,
-    };
-  }
-  ```
+export function getVersion() {
+return {
+version: BUILD_VERSION,
+buildTime: BUILD_TIME,
+commit: GIT_COMMIT,
+};
+}
 
-  ```sh Build command theme={"theme":{"light":"github-light","dark":"dracula"}}
-  bun build --compile \
-    --define BUILD_VERSION='"1.2.3"' \
-    --define BUILD_TIME='"2024-01-15T10:30:00Z"' \
-    --define GIT_COMMIT='"abc123"' \
-    src/cli.ts --outfile mycli
-  ```
+````
+
+```sh Build command theme={"theme":{"light":"github-light","dark":"dracula"}}
+bun build --compile \
+  --define BUILD_VERSION='"1.2.3"' \
+  --define BUILD_TIME='"2024-01-15T10:30:00Z"' \
+  --define GIT_COMMIT='"abc123"' \
+  src/cli.ts --outfile mycli
+````
+
 </CodeGroup>
 
 ### Feature flags
@@ -110,7 +112,7 @@ if (ENABLE_DEBUG) {
 }
 ```
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 # Production build - analytics enabled, debug disabled
 bun build --compile --define ENABLE_ANALYTICS=true --define ENABLE_DEBUG=false src/app.ts --outfile app-prod
 
@@ -135,11 +137,11 @@ const response = await fetch(CONFIG.apiUrl, {
 });
 ```
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun build --compile --define 'CONFIG={"apiUrl":"https://api.example.com","timeout":5000,"retries":3}' src/app.ts --outfile app
 ```
 
-***
+---
 
 ## Advanced patterns
 
@@ -147,7 +149,7 @@ bun build --compile --define 'CONFIG={"apiUrl":"https://api.example.com","timeou
 
 Create different executables for different environments:
 
-```json  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```json theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
   "scripts": {
     "build:dev": "bun build --compile --define NODE_ENV='\"development\"' --define API_URL='\"http://localhost:3000\"' src/app.ts --outfile app-dev",
@@ -161,7 +163,7 @@ Create different executables for different environments:
 
 Generate build-time constants from shell commands:
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 # Use git to get current commit and timestamp
 bun build --compile \
   --define BUILD_VERSION="\"$(git describe --tags --always)\"" \
@@ -174,7 +176,7 @@ bun build --compile \
 
 Create a build script that automatically injects build metadata:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // build.ts
 import { $ } from "bun";
 
@@ -195,7 +197,7 @@ await Bun.build({
 console.log(`Built with version ${version.trim()}`);
 ```
 
-***
+---
 
 ## Important considerations
 
@@ -203,7 +205,7 @@ console.log(`Built with version ${version.trim()}`);
 
 Values must be valid JSON that will be parsed and inlined as JavaScript expressions:
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 # ✅ Strings must be JSON-quoted
 --define VERSION='"1.0.0"'
 
@@ -227,7 +229,7 @@ Values must be valid JSON that will be parsed and inlined as JavaScript expressi
 
 You can use property access patterns as keys, not just simple identifiers:
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 # ✅ Replace process.env.NODE_ENV with "production"
 --define 'process.env.NODE_ENV="production"'
 
@@ -243,7 +245,7 @@ You can use property access patterns as keys, not just simple identifiers:
 
 This is particularly useful for environment variables:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Before compilation
 if (process.env.NODE_ENV === "production") {
   console.log("Production mode");
@@ -262,7 +264,7 @@ console.log("Production mode");
 
 For TypeScript projects, declare your constants to avoid type errors:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // types/build-constants.d.ts
 declare const BUILD_VERSION: string;
 declare const BUILD_TIME: string;
@@ -274,7 +276,7 @@ declare const DEBUG: boolean;
 
 When building for multiple platforms, constants work the same way:
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 # Linux
 bun build --compile --target=bun-linux-x64 --define PLATFORM='"linux"' src/app.ts --outfile app-linux
 
@@ -285,10 +287,10 @@ bun build --compile --target=bun-darwin-x64 --define PLATFORM='"darwin"' src/app
 bun build --compile --target=bun-windows-x64 --define PLATFORM='"windows"' src/app.ts --outfile app-windows.exe
 ```
 
-***
+---
 
 ## Related
 
-* [Define constants at runtime](/guides/runtime/define-constant) - Using `--define` with `bun run`
-* [Building executables](/bundler/executables) - Complete guide to `bun build --compile`
-* [Bundler API](/bundler) - Full bundler documentation including `define` option
+- [Define constants at runtime](/guides/runtime/define-constant) - Using `--define` with `bun run`
+- [Building executables](/bundler/executables) - Complete guide to `bun build --compile`
+- [Bundler API](/bundler) - Full bundler documentation including `define` option

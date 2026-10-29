@@ -11,13 +11,13 @@ Node-API is an interface for building native add-ons to Node.js. Bun implements 
 
 As in Node.js, `.node` files (Node-API modules) can be required directly in Bun.
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 const napi = require("./my-node-module.node");
 ```
 
 Alternatively, use `process.dlopen`:
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 let mod = { exports: {} };
 process.dlopen(mod, "./my-node-module.node");
 ```

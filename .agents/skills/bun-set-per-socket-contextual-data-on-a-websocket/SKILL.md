@@ -36,7 +36,7 @@ Bun.serve({
 });
 ```
 
-***
+---
 
 It's common to read cookies/headers from the incoming request to identify the connecting client.
 

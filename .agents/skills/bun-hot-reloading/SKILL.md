@@ -33,25 +33,26 @@ import.meta.hot.dispose(() => {
 <Warning>
   For this to work, Bun forces these APIs to be called without indirection. That means the following do not work:
 
-  ```ts title="index.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  // INVALID: Assigning `hot` to a variable
-  const hot = import.meta.hot;
-  hot.accept();
+```ts title="index.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
+// INVALID: Assigning `hot` to a variable
+const hot = import.meta.hot;
+hot.accept();
 
-  // INVALID: Assigning `import.meta` to a variable
-  const meta = import.meta;
-  meta.hot.accept();
-  console.log(meta.hot.data);
+// INVALID: Assigning `import.meta` to a variable
+const meta = import.meta;
+meta.hot.accept();
+console.log(meta.hot.data);
 
-  // INVALID: Passing to a function
-  doSomething(import.meta.hot.dispose);
+// INVALID: Passing to a function
+doSomething(import.meta.hot.dispose);
 
-  // OK: The full phrase "import.meta.hot.<API>" must be called directly:
-  import.meta.hot.accept();
+// OK: The full phrase "import.meta.hot.<API>" must be called directly:
+import.meta.hot.accept();
 
-  // OK: `data` can be passed to functions:
-  doSomething(import.meta.hot.data);
-  ```
+// OK: `data` can be passed to functions:
+doSomething(import.meta.hot.data);
+```
+
 </Warning>
 
 <Note>
@@ -62,15 +63,15 @@ import.meta.hot.dispose(() => {
 
 | Method             | Status | Notes                                                                 |
 | ------------------ | ------ | --------------------------------------------------------------------- |
-| `hot.accept()`     | ✅      | Indicate that a hot update can be replaced gracefully.                |
-| `hot.data`         | ✅      | Persist data between module evaluations.                              |
-| `hot.dispose()`    | ✅      | Add a callback function to run when a module is about to be replaced. |
-| `hot.invalidate()` | ❌      |                                                                       |
-| `hot.on()`         | ✅      | Attach an event listener                                              |
-| `hot.off()`        | ✅      | Remove an event listener from `on`.                                   |
-| `hot.send()`       | ❌      |                                                                       |
+| `hot.accept()`     | ✅     | Indicate that a hot update can be replaced gracefully.                |
+| `hot.data`         | ✅     | Persist data between module evaluations.                              |
+| `hot.dispose()`    | ✅     | Add a callback function to run when a module is about to be replaced. |
+| `hot.invalidate()` | ❌     |                                                                       |
+| `hot.on()`         | ✅     | Attach an event listener                                              |
+| `hot.off()`        | ✅     | Remove an event listener from `on`.                                   |
+| `hot.send()`       | ❌     |                                                                       |
 | `hot.prune()`      | 🚧     | NOTE: Callback is currently never called.                             |
-| `hot.decline()`    | ✅      | No-op to match Vite's `import.meta.hot`                               |
+| `hot.decline()`    | ✅     | No-op to match Vite's `import.meta.hot`                               |
 
 ## import.meta.hot.accept()
 
@@ -106,7 +107,7 @@ When provided one callback, `import.meta.hot.accept` will function how it does i
 ```ts title="index.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 export const count = 0;
 
-import.meta.hot.accept(newModule => {
+import.meta.hot.accept((newModule) => {
   if (newModule) {
     // newModule is undefined when SyntaxError happened
     console.log("updated: count is now ", newModule.count);
@@ -135,7 +136,7 @@ Indicates that a dependency's module can be accepted. When the dependency is upd
 ### With multiple dependencies
 
 ```ts title="index.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-import.meta.hot.accept(["./foo", "./bar"], newModules => {
+import.meta.hot.accept(["./foo", "./bar"], (newModules) => {
   // newModules is an array where each item corresponds to the updated module
   // or undefined if that module had a syntax error
 });
@@ -166,8 +167,8 @@ In production, `data` is inlined to be `{}`, meaning it cannot be used as a stat
 
 Attaches an on-dispose callback. This is called:
 
-* Just before the module is replaced with another copy (before the next is loaded)
-* After the module is detached (removing all imports to this module, see `import.meta.hot.prune()`)
+- Just before the module is replaced with another copy (before the next is loaded)
+- After the module is detached (removing all imports to this module, see `import.meta.hot.prune()`)
 
 ```ts title="index.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 const sideEffect = setupSideEffect();

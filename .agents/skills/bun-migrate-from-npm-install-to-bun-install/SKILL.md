@@ -9,10 +9,10 @@ description: Migrate from npm install to bun install
 
 We've put a lot of work into making sure that the migration path from `npm install` to `bun install` is as easy as running `bun install` instead of `npm install`.
 
-* **Designed for Node.js & Bun**: `bun install` installs a Node.js compatible `node_modules` folder. You can use it in place of `npm install` for Node.js projects without any code changes and without using Bun's runtime.
-* **Automatically converts `package-lock.json`** to bun's `bun.lock` lockfile format, preserving your existing resolved dependency versions without any manual work on your part. You can secretly use `bun install` in place of `npm install` at work without anyone noticing.
-* **`.npmrc` compatible**: bun install reads npm registry configuration from npm's `.npmrc`, so you can use the same configuration for both npm and Bun.
-* **Hardlinks**: On Windows and Linux, `bun install` uses hardlinks to conserve disk space and install times.
+- **Designed for Node.js & Bun**: `bun install` installs a Node.js compatible `node_modules` folder. You can use it in place of `npm install` for Node.js projects without any code changes and without using Bun's runtime.
+- **Automatically converts `package-lock.json`** to bun's `bun.lock` lockfile format, preserving your existing resolved dependency versions without any manual work on your part. You can secretly use `bun install` in place of `npm install` at work without anyone noticing.
+- **`.npmrc` compatible**: bun install reads npm registry configuration from npm's `.npmrc`, so you can use the same configuration for both npm and Bun.
+- **Hardlinks**: On Windows and Linux, `bun install` uses hardlinks to conserve disk space and install times.
 
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 # It only takes one command to migrate
@@ -28,7 +28,7 @@ bun i -d @types/bun
 bun rm @types/bun
 ```
 
-***
+---
 
 ## Run package.json scripts faster
 
@@ -56,7 +56,7 @@ bun run my-executable
 bun ./index.ts
 ```
 
-***
+---
 
 ## Workspaces? Yes.
 
@@ -71,7 +71,7 @@ In package.json, you can set `"workspaces"` to an array of relative paths.
 }
 ```
 
-***
+---
 
 ### Filter scripts by workspace name
 
@@ -83,7 +83,7 @@ bun --filter 'lib-*' my-script
 # npm run --workspace lib-foo --workspace lib-bar my-script
 ```
 
-***
+---
 
 ## Update dependencies
 
@@ -106,7 +106,7 @@ bun update @types/bun@1.3.3
 bun update --latest
 ```
 
-***
+---
 
 ### View outdated dependencies
 
@@ -116,7 +116,7 @@ To view outdated dependencies, run `bun outdated`. This is like `npm outdated` b
 bun outdated
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 ┌────────────────────────────────────────┬─────────┬────────┬────────┐
 │ Package                                │ Current │ Update │ Latest │
 ├────────────────────────────────────────┼─────────┼────────┼────────┤
@@ -144,7 +144,7 @@ bun outdated
 └────────────────────────────────────────┴─────────┴────────┴────────┘
 ```
 
-***
+---
 
 ## List installed packages
 
@@ -155,7 +155,7 @@ To list installed packages, you can use `bun pm ls`. This will list all the pack
 bun pm ls
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 my-pkg node_modules (781)
 ├── @types/node@20.16.5
 ├── @types/react@18.3.8
@@ -170,7 +170,7 @@ my-pkg node_modules (781)
 bun pm ls -a
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 my-pkg node_modules
 ├── @alloc/quick-lru@5.2.0
 ├── @isaacs/cliui@8.0.2
@@ -181,7 +181,7 @@ my-pkg node_modules
 ...
 ```
 
-***
+---
 
 ## Create a package tarball
 
@@ -192,7 +192,7 @@ To create a package tarball, you can use `bun pm pack`. This will create a tarba
 bun pm pack
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Total files: 46
 Shasum: 2ee19b6f0c6b001358449ca0eadead703f326216
 Integrity: sha512-ZV0lzWTEkGAMz[...]Gl4f8lA9sl97g==
@@ -200,7 +200,7 @@ Unpacked size: 0.41MB
 Packed size: 117.50KB
 ```
 
-***
+---
 
 ## Shebang
 
@@ -216,7 +216,7 @@ bun --bun my-script
 bun run --bun my-script
 ```
 
-***
+---
 
 ## Global installs
 

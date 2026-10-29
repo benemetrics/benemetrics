@@ -31,7 +31,10 @@ export function narrowToScope(
 ): IssueFilter[] {
   return filters.map((filter) => {
     if (!filter.appIds) return { ...filter, appIds };
-    return { ...filter, appIds: filter.appIds.filter((id) => appIds.includes(id)) };
+    return {
+      ...filter,
+      appIds: filter.appIds.filter((id) => appIds.includes(id)),
+    };
   });
 }
 
@@ -86,14 +89,18 @@ function dayStart(date: string): string {
 }
 
 function dayEnd(date: string): string {
-  return new Date(new Date(`${date}T00:00:00.000Z`).getTime() + DAY_MS).toISOString();
+  return new Date(
+    new Date(`${date}T00:00:00.000Z`).getTime() + DAY_MS,
+  ).toISOString();
 }
 
 // The instant a time value points at: a relative offset from now, the start
 // of a day, or an absolute timestamp.
 function instantOf(value: TimeValue, now: Date): string {
   if (value.type === "relative") {
-    return new Date(now.getTime() + value.amount * UNIT_MS[value.unit]!).toISOString();
+    return new Date(
+      now.getTime() + value.amount * UNIT_MS[value.unit]!,
+    ).toISOString();
   }
   if (value.type === "date") return dayStart(value.date);
   return value.at;
@@ -201,7 +208,8 @@ export async function resolveIssueFilter(
   for (const term of terms) {
     switch (term.kind) {
       case "status": {
-        if (term.negated) filter.excludedStatuses = add(filter.excludedStatuses, term.value);
+        if (term.negated)
+          filter.excludedStatuses = add(filter.excludedStatuses, term.value);
         else filter.statuses = add(filter.statuses, term.value);
         break;
       }
@@ -257,19 +265,22 @@ export async function resolveIssueFilter(
         break;
       }
       case "eventType": {
-        if (term.negated) filter.excludedTypes = add(filter.excludedTypes, term.value);
+        if (term.negated)
+          filter.excludedTypes = add(filter.excludedTypes, term.value);
         else filter.types = add(filter.types, term.value);
         break;
       }
       case "app": {
         const appIds = await resolveAppIds(term.value, unknownIsEmpty);
-        if (term.negated) filter.excludedAppIds = add(filter.excludedAppIds, ...appIds);
+        if (term.negated)
+          filter.excludedAppIds = add(filter.excludedAppIds, ...appIds);
         else filter.appIds = narrow(filter.appIds, appIds);
         break;
       }
       case "project": {
         const appIds = await resolveProjectAppIds(term.value, unknownIsEmpty);
-        if (term.negated) filter.excludedAppIds = add(filter.excludedAppIds, ...appIds);
+        if (term.negated)
+          filter.excludedAppIds = add(filter.excludedAppIds, ...appIds);
         else filter.appIds = narrow(filter.appIds, appIds);
         break;
       }
@@ -308,7 +319,8 @@ export async function resolveIssueFilter(
         break;
       }
       case "text": {
-        if (term.negated) filter.excludedText = add(filter.excludedText, term.value);
+        if (term.negated)
+          filter.excludedText = add(filter.excludedText, term.value);
         else filter.text = add(filter.text, term.value);
         break;
       }

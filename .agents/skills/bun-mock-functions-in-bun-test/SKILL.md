@@ -13,7 +13,7 @@ import { test, expect, mock } from "bun:test";
 const random = mock(() => Math.random());
 ```
 
-***
+---
 
 The mock function can accept arguments.
 
@@ -23,7 +23,7 @@ import { test, expect, mock } from "bun:test";
 const random = mock((multiplier: number) => multiplier * Math.random());
 ```
 
-***
+---
 
 The result of `mock()` is a new function that's been decorated with some additional properties.
 
@@ -45,7 +45,7 @@ random.mock.results;
 //  ]
 ```
 
-***
+---
 
 These extra properties make it possible to write `expect` assertions about usage of the mock function, including how many times it was called, the arguments, and the return values.
 
@@ -66,6 +66,6 @@ test("random", async () => {
 });
 ```
 
-***
+---
 
 See [Docs > Test Runner > Mocks](/test/mocks) for complete documentation on mocking with the Bun test runner.

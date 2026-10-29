@@ -31,9 +31,9 @@ root = "src"  # Only scan for tests in the src directory
 
 This is useful when you want to:
 
-* Limit test discovery to specific directories
-* Exclude certain parts of your project from test scanning
-* Organize tests in a specific subdirectory structure
+- Limit test discovery to specific directories
+- Exclude certain parts of your project from test scanning
+- Organize tests in a specific subdirectory structure
 
 #### Examples
 
@@ -178,15 +178,15 @@ bun test --smol
 
 The `smol` mode reduces memory usage by:
 
-* Using less memory for the JavaScript heap
-* Being more aggressive about garbage collection
-* Reducing buffer sizes where possible
+- Using less memory for the JavaScript heap
+- Being more aggressive about garbage collection
+- Reducing buffer sizes where possible
 
 This is useful for:
 
-* CI environments with limited memory
-* Large test suites that consume significant memory
-* Development environments with memory constraints
+- CI environments with limited memory
+- Large test suites that consume significant memory
+- Development environments with memory constraints
 
 ## Test execution
 
@@ -201,9 +201,9 @@ concurrentTestGlob = "**/concurrent-*.test.ts"  # Run files matching this patter
 
 Test files matching this pattern will behave as if the `--concurrent` flag was passed, running all tests within those files concurrently. This allows you to:
 
-* Gradually migrate your test suite to concurrent execution
-* Run integration tests concurrently while keeping unit tests sequential
-* Separate fast concurrent tests from tests that require sequential execution
+- Gradually migrate your test suite to concurrent execution
+- Run integration tests concurrently while keeping unit tests sequential
+- Separate fast concurrent tests from tests that require sequential execution
 
 The `--concurrent` CLI flag will override this setting when specified, forcing all tests to run concurrently regardless of the glob pattern.
 

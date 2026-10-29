@@ -12,7 +12,7 @@ To get started, install `react` & `react-dom`:
 bun add react react-dom
 ```
 
-***
+---
 
 To render a React component to an HTML stream server-side (SSR):
 
@@ -27,17 +27,21 @@ function Component(props: { message: string }) {
   );
 }
 
-const stream = await renderToReadableStream(<Component message="Hello from server!" />);
+const stream = await renderToReadableStream(
+  <Component message="Hello from server!" />,
+);
 ```
 
-***
+---
 
 Combining this with `Bun.serve()`, we get a simple SSR HTTP server:
 
 ```tsx server.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.serve({
   async fetch() {
-    const stream = await renderToReadableStream(<Component message="Hello from server!" />);
+    const stream = await renderToReadableStream(
+      <Component message="Hello from server!" />,
+    );
     return new Response(stream, {
       headers: { "Content-Type": "text/html" },
     });
@@ -45,6 +49,6 @@ Bun.serve({
 });
 ```
 
-***
+---
 
 React `19` and later includes an [SSR optimization](https://github.com/facebook/react/pull/25597) that takes advantage of Bun's "direct" `ReadableStream` implementation. If you run into an error like `export named 'renderToReadableStream' not found`, please make sure to install version `19` of `react` & `react-dom`, or import from `react-dom/server.browser` instead of `react-dom/server`. See [facebook/react#28941](https://github.com/facebook/react/issues/28941) for more information.

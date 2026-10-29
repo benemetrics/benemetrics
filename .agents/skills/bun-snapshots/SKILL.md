@@ -54,9 +54,9 @@ bun test --update-snapshots
 
 This is useful when:
 
-* You've intentionally changed the output
-* You're adding new snapshot tests
-* The expected output has legitimately changed
+- You've intentionally changed the output
+- You're adding new snapshot tests
+- The expected output has legitimately changed
 
 ## Inline Snapshots
 
@@ -162,7 +162,7 @@ Arrays are also well-suited for snapshot testing:
 import { test, expect } from "bun:test";
 
 test("array snapshot", () => {
-  const numbers = [1, 2, 3, 4, 5].map(n => n * 2);
+  const numbers = [1, 2, 3, 4, 5].map((n) => n * 2);
   expect(numbers).toMatchSnapshot();
 });
 ```
@@ -177,7 +177,7 @@ import { test, expect } from "bun:test";
 function generateReport(data: any[]) {
   return {
     total: data.length,
-    summary: data.map(item => ({ id: item.id, name: item.name })),
+    summary: data.map((item) => ({ id: item.id, name: item.name })),
     timestamp: "2024-01-01", // Fixed for testing
   };
 }
@@ -206,7 +206,9 @@ function Button({ children, variant = "primary" }) {
 
 test("Button component snapshots", () => {
   const { container: primary } = render(<Button>Click me</Button>);
-  const { container: secondary } = render(<Button variant="secondary">Cancel</Button>);
+  const { container: secondary } = render(
+    <Button variant="secondary">Cancel</Button>,
+  );
 
   expect(primary.innerHTML).toMatchSnapshot();
   expect(secondary.innerHTML).toMatchSnapshot();
@@ -255,8 +257,8 @@ import { test, expect } from "bun:test";
 
 // Custom serializer for Date objects
 expect.addSnapshotSerializer({
-  test: val => val instanceof Date,
-  serialize: val => `"${val.toISOString()}"`,
+  test: (val) => val instanceof Date,
+  serialize: (val) => `"${val.toISOString()}"`,
 });
 
 test("custom serializer", () => {
@@ -416,10 +418,10 @@ When snapshots fail, you'll see a diff:
 
 Common causes:
 
-* Intentional changes (update with `--update-snapshots`)
-* Unintentional changes (fix the code)
-* Dynamic data (use property matchers)
-* Environment differences (normalize the data)
+- Intentional changes (update with `--update-snapshots`)
+- Unintentional changes (fix the code)
+- Dynamic data (use property matchers)
+- Environment differences (normalize the data)
 
 ### Platform Differences
 

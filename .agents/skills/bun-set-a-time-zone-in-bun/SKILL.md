@@ -10,14 +10,14 @@ Bun supports programmatically setting a default time zone for the lifetime of th
 <Note>
   When running a file with `bun`, the timezone defaults to your system's configured local time zone.
 
-  When running tests with `bun test`, the timezone is set to `UTC` to make tests more deterministic.
+When running tests with `bun test`, the timezone is set to `UTC` to make tests more deterministic.
 </Note>
 
 ```ts process.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 process.env.TZ = "America/New_York";
 ```
 
-***
+---
 
 Alternatively, this can be set from the command line when running a Bun command.
 
@@ -25,7 +25,7 @@ Alternatively, this can be set from the command line when running a Bun command.
 TZ=America/New_York bun run dev
 ```
 
-***
+---
 
 Once `TZ` is set, any `Date` instances will have that time zone. By default all dates use your system's configured time zone.
 

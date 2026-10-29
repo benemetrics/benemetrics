@@ -1,4 +1,3 @@
-
 import { alertRuleDAO } from "db/dao/alert-rules";
 import { alertIncidentDAO } from "db/dao/alert-incidents";
 import { alertDeadLetterDAO } from "db/dao/alert-dead-letters";
@@ -54,8 +53,7 @@ function correlationKey(
 }
 
 // The deduplication window: the same root cause is reported once.
-const DEDUP_WINDOW_MS =
-  Number(process.env.ALERT_DEDUP_WINDOW_MS) || 5 * 60_000;
+const DEDUP_WINDOW_MS = Number(process.env.ALERT_DEDUP_WINDOW_MS) || 5 * 60_000;
 
 // The silence that covers the scope right now, if any.
 async function activeSilence(scope: {
@@ -132,7 +130,9 @@ async function computeRuleValue(
         // The issues are app-scoped; the project's count is the sum of its apps.
         const apps = await appDAO.listRawByProject(projectId);
         const counts = await Promise.all(
-          apps.map((app) => issueDAO.countNewSince(app.id, since, filters?.tags)),
+          apps.map((app) =>
+            issueDAO.countNewSince(app.id, since, filters?.tags),
+          ),
         );
         return counts.reduce((total, count) => total + count, 0);
       }
@@ -142,7 +142,13 @@ async function computeRuleValue(
       const quantile = metric === "latency_p95" ? 95 : 99;
       const name = measurement ?? DEFAULT_MEASUREMENT;
       return projectId && !appId
-        ? projectMetricSampleQuantile(projectId, name, quantile, since, filters?.tags)
+        ? projectMetricSampleQuantile(
+            projectId,
+            name,
+            quantile,
+            since,
+            filters?.tags,
+          )
         : metricSampleQuantile(appId!, name, quantile, since, filters?.tags);
     }
     default:
@@ -152,7 +158,8 @@ async function computeRuleValue(
 
 // The dynamic-threshold history: the same metric over the windows
 // preceding the evaluation window.
-const BASELINE_SECONDS = Number(process.env.ALERT_BASELINE_SECONDS) || 24 * 3600;
+const BASELINE_SECONDS =
+  Number(process.env.ALERT_BASELINE_SECONDS) || 24 * 3600;
 
 interface Window {
   appId?: string | null;
@@ -174,7 +181,12 @@ async function computeBaselineMetric(
   const since = new Date(
     Math.max(0, Date.now() - BASELINE_SECONDS * 1000),
   ).toISOString();
-  const windows = Math.max(1, Math.floor((Date.now() - new Date(since).getTime()) / (windowSeconds * 1000)));
+  const windows = Math.max(
+    1,
+    Math.floor(
+      (Date.now() - new Date(since).getTime()) / (windowSeconds * 1000),
+    ),
+  );
   switch (metric) {
     case "event_count":
     case "error_count":
@@ -203,7 +215,9 @@ async function computeBaselineMetric(
           ? await appDAO.listRawByProject(scope.projectId)
           : [{ id: scope.appId! }];
       const counts = await Promise.all(
-        apps.map(async (app) => issueDAO.countNewSince(app.id, since, filters?.tags)),
+        apps.map(async (app) =>
+          issueDAO.countNewSince(app.id, since, filters?.tags),
+        ),
       );
       const total = counts.reduce((sum, count) => sum + count, 0);
       return total > 0 ? total / windows : null;
@@ -255,87 +269,54 @@ async function evaluateRules(scope: {
   for (const rule of enabled) {
     incidents.push(
       await (async (): Promise<AlertIncident | null> => {
-      const { metric, operator, windowSeconds } = rule;
-      if (
-        metric === null ||
-        operator === null ||
-        windowSeconds === null
-      ) {
-        return null;
-      }
-      const value = await computeRuleValue(
-        scope,
-        metric,
-        windowSeconds,
-        rule.measurement,
-        rule.filters,
-      );
-      // A dynamic threshold ("3x baseline"): the rule needs the history to
-      // produce a verdict; without it the evaluation is skipped.
-      let threshold: number | null = rule.threshold;
-      if (rule.thresholdFactor !== null) {
-        const baseline = await computeBaselineMetric(
+        const { metric, operator, windowSeconds } = rule;
+        if (metric === null || operator === null || windowSeconds === null) {
+          return null;
+        }
+        const value = await computeRuleValue(
           scope,
           metric,
           windowSeconds,
           rule.measurement,
           rule.filters,
         );
-        if (baseline === null) {
-          logDecision({
-            event: "evaluated",
-            rule: rule.name,
-            scope: scope.projectId ? { projectId: scope.projectId } : { appId },
+        // A dynamic threshold ("3x baseline"): the rule needs the history to
+        // produce a verdict; without it the evaluation is skipped.
+        let threshold: number | null = rule.threshold;
+        if (rule.thresholdFactor !== null) {
+          const baseline = await computeBaselineMetric(
+            scope,
             metric,
-            value,
-            threshold: null,
-            thresholdFactor: rule.thresholdFactor,
-            outcome: "no_baseline",
-          });
+            windowSeconds,
+            rule.measurement,
+            rule.filters,
+          );
+          if (baseline === null) {
+            logDecision({
+              event: "evaluated",
+              rule: rule.name,
+              scope: scope.projectId
+                ? { projectId: scope.projectId }
+                : { appId },
+              metric,
+              value,
+              threshold: null,
+              thresholdFactor: rule.thresholdFactor,
+              outcome: "no_baseline",
+            });
+            return null;
+          }
+          threshold = rule.thresholdFactor * baseline;
+        } else if (threshold === null) {
           return null;
         }
-        threshold = rule.thresholdFactor * baseline;
-      } else if (threshold === null) {
-        return null;
-      }
-      const breached = operator === "gt" ? value > threshold : value < threshold;
-      countRuleEvaluated();
+        const breached =
+          operator === "gt" ? value > threshold : value < threshold;
+        countRuleEvaluated();
 
-      if (!breached) {
-        await alertIncidentDAO.resolveOpen(rule.id);
-        countIncidentResolved();
-        logDecision({
-          event: "evaluated",
-          rule: rule.name,
-          scope: scope.projectId ? { projectId: scope.projectId } : { appId },
-          metric,
-          value,
-          threshold,
-          outcome: "no_breach",
-        });
-        return null;
-      }
-
-      const silence = await activeSilence(scope);
-      if (silence) {
-        logDecision({
-          event: "evaluated",
-          rule: rule.name,
-          scope: scope.projectId ? { projectId: scope.projectId } : { appId },
-          metric,
-          value,
-          threshold,
-          outcome: "silenced",
-          silence: silence.name,
-        });
-        return null;
-      }
-
-      const now = new Date().toISOString();
-      if (rule.lastTriggeredAt !== null) {
-        const elapsed = Date.now() - new Date(rule.lastTriggeredAt).getTime();
-        if (elapsed < rule.cooldownSeconds * 1000) {
-          countCooldownSkipped();
+        if (!breached) {
+          await alertIncidentDAO.resolveOpen(rule.id);
+          countIncidentResolved();
           logDecision({
             event: "evaluated",
             rule: rule.name,
@@ -343,19 +324,13 @@ async function evaluateRules(scope: {
             metric,
             value,
             threshold,
-            outcome: "cooldown",
+            outcome: "no_breach",
           });
           return null;
         }
-      }
 
-      // The same root cause (the scope and the metric) is reported once in
-      // the deduplication window, whichever rule noticed it.
-      const key = correlationKey(scope, metric);
-      const reported = await alertIncidentDAO.findLastByCorrelationKey(key);
-      if (reported) {
-        const elapsed = Date.now() - new Date(reported.triggeredAt).getTime();
-        if (elapsed < DEDUP_WINDOW_MS) {
+        const silence = await activeSilence(scope);
+        if (silence) {
           logDecision({
             event: "evaluated",
             rule: rule.name,
@@ -363,77 +338,121 @@ async function evaluateRules(scope: {
             metric,
             value,
             threshold,
-            outcome: "deduplicated",
-            correlationKey: key,
+            outcome: "silenced",
+            silence: silence.name,
           });
           return null;
         }
-      }
 
-      const targets =
-        rule.channelIds.length > 0
-          ? rule.channelIds
-          : channels.map((channel) => channel.id);
-      const selected = channels.filter((channel) =>
-        targets.includes(channel.id),
-      );
-      const notification = buildAlertNotification(
-        {
-          name: rule.name,
-          metric,
-          operator,
-          threshold,
-          windowSeconds,
-          message: rule.message,
-        },
-        value,
-        appId,
-        now,
-      );
-      const deliveries = await deliverAlertToChannels(selected, notification);
-      await recordFailedDeliveries(deliveries, notification, rule.id, appId);
-      countIncidentFired();
-      logDecision({
-        event: "evaluated",
-        rule: rule.name,
-        scope: scope.projectId ? { projectId: scope.projectId } : { appId },
-        metric,
-        value,
-        threshold,
-        outcome: "fired",
-      });
-
-      // The group's parent: the first incident of the same root cause.
-      const parent = await alertIncidentDAO.findFirstByCorrelationKey(key);
-
-      // The incident and the cooldown stamp are one unit: a crash between
-      // them would re-notify and duplicate the incident on the next tick.
-      const incident = await db.transaction(async (tx) => {
-        const open = await alertIncidentDAO.findOpen(rule.id, tx);
-        const created =
-          open ??
-          (await alertIncidentDAO.create(
-            {
-              ruleId: rule.id,
-              appId,
-              trigger: "threshold",
+        const now = new Date().toISOString();
+        if (rule.lastTriggeredAt !== null) {
+          const elapsed = Date.now() - new Date(rule.lastTriggeredAt).getTime();
+          if (elapsed < rule.cooldownSeconds * 1000) {
+            countCooldownSkipped();
+            logDecision({
+              event: "evaluated",
+              rule: rule.name,
+              scope: scope.projectId
+                ? { projectId: scope.projectId }
+                : { appId },
               metric,
               value,
               threshold,
-              triggeredAt: now,
+              outcome: "cooldown",
+            });
+            return null;
+          }
+        }
+
+        // The same root cause (the scope and the metric) is reported once in
+        // the deduplication window, whichever rule noticed it.
+        const key = correlationKey(scope, metric);
+        const reported = await alertIncidentDAO.findLastByCorrelationKey(key);
+        if (reported) {
+          const elapsed = Date.now() - new Date(reported.triggeredAt).getTime();
+          if (elapsed < DEDUP_WINDOW_MS) {
+            logDecision({
+              event: "evaluated",
+              rule: rule.name,
+              scope: scope.projectId
+                ? { projectId: scope.projectId }
+                : { appId },
+              metric,
+              value,
+              threshold,
+              outcome: "deduplicated",
               correlationKey: key,
-              parentId: parent?.id ?? null,
-            },
-            tx,
-          ));
-        await alertRuleDAO.touchTriggered(rule.id, now, tx);
-        return created;
-      });
-      return incident;
+            });
+            return null;
+          }
+        }
+
+        const targets =
+          rule.channelIds.length > 0
+            ? rule.channelIds
+            : channels.map((channel) => channel.id);
+        const selected = channels.filter((channel) =>
+          targets.includes(channel.id),
+        );
+        const notification = buildAlertNotification(
+          {
+            name: rule.name,
+            metric,
+            operator,
+            threshold,
+            windowSeconds,
+            message: rule.message,
+          },
+          value,
+          appId,
+          now,
+        );
+        const deliveries = await deliverAlertToChannels(selected, notification);
+        await recordFailedDeliveries(deliveries, notification, rule.id, appId);
+        countIncidentFired();
+        logDecision({
+          event: "evaluated",
+          rule: rule.name,
+          scope: scope.projectId ? { projectId: scope.projectId } : { appId },
+          metric,
+          value,
+          threshold,
+          outcome: "fired",
+        });
+
+        // The group's parent: the first incident of the same root cause.
+        const parent = await alertIncidentDAO.findFirstByCorrelationKey(key);
+
+        // The incident and the cooldown stamp are one unit: a crash between
+        // them would re-notify and duplicate the incident on the next tick.
+        const incident = await db.transaction(async (tx) => {
+          const open = await alertIncidentDAO.findOpen(rule.id, tx);
+          const created =
+            open ??
+            (await alertIncidentDAO.create(
+              {
+                ruleId: rule.id,
+                appId,
+                trigger: "threshold",
+                metric,
+                value,
+                threshold,
+                triggeredAt: now,
+                correlationKey: key,
+                parentId: parent?.id ?? null,
+              },
+              tx,
+            ));
+          await alertRuleDAO.touchTriggered(rule.id, now, tx);
+          return created;
+        });
+        return incident;
       })(),
     );
   }
-  return incidents.filter((incident): incident is AlertIncident => incident !== null);
+  return incidents.filter(
+    (incident): incident is AlertIncident => incident !== null,
+  );
 }
 
 // A rule's tag filters: every filtered tag must be on the occurrence.
@@ -529,123 +548,127 @@ async function fireIssueTriggerRules(
             });
             return true;
           }),
-        );
+      );
 
-        if (fired.some(Boolean)) await alertRuleDAO.touchTriggered(rule.id, new Date().toISOString());
-      }),
+      if (fired.some(Boolean))
+        await alertRuleDAO.touchTriggered(rule.id, new Date().toISOString());
+    }),
+  );
+}
+
+const evaluationChains = new Map<string, Promise<unknown>>();
+
+function enqueueAppWork(
+  appId: string,
+  label: string,
+  run: () => Promise<unknown>,
+): Promise<void> {
+  const guarded = () =>
+    run().catch((error: unknown) => {
+      console.error(
+        `[alerting] ${label} for app ${appId}:`,
+        error instanceof Error ? error.message : error,
+      );
+    });
+  const next = (evaluationChains.get(appId) ?? Promise.resolve()).then(
+    guarded,
+    guarded,
+  );
+  evaluationChains.set(appId, next);
+  return next.then(() => undefined);
+}
+
+export function evaluateProjectRules(projectId: string): void {
+  enqueueAppWork(`project:${projectId}`, "project rule evaluation failed", () =>
+    evaluateRules({ projectId }),
+  );
+}
+
+export function evaluateRulesForApp(appId: string): void {
+  enqueueAppWork(appId, "rule evaluation failed", () =>
+    evaluateRules({ appId }),
+  );
+}
+
+// The same evaluation, awaited — the sweep runs the apps in parallel.
+export function evaluateRulesForAppAndWait(appId: string): Promise<void> {
+  return enqueueAppWork(appId, "rule evaluation failed", () =>
+    evaluateRules({ appId }),
+  );
+}
+
+export function evaluateProjectRulesAndWait(projectId: string): Promise<void> {
+  return enqueueAppWork(
+    `project:${projectId}`,
+    "project rule evaluation failed",
+    () => evaluateRules({ projectId }),
+  );
+}
+
+// Threshold rules belong to the sweeper: the ingestion path would read a
+// ClickHouse window that does not contain the event yet.
+export function processIngestedEvent(
+  appId: string,
+  digests: IssueDigest[],
+  receivedAt: string,
+  eventId: string,
+  projectId?: string | null,
+): void {
+  enqueueAppWork(appId, "ingested event processing failed", async () => {
+    const { newIssues, regressions } = await trackIssuesForEvent(
+      appId,
+      digests,
+      receivedAt,
+      eventId,
     );
-  }
+    const scope = { appId, projectId: projectId ?? null };
+    await Promise.all([
+      newIssues.length > 0
+        ? fireIssueTriggerRules(scope, "new_issue", newIssues)
+        : Promise.resolve(),
+      regressions.length > 0
+        ? fireIssueTriggerRules(scope, "regression", regressions)
+        : Promise.resolve(),
+    ]);
+  });
+}
 
-  const evaluationChains = new Map<string, Promise<unknown>>();
+let sweeperTimer: ReturnType<typeof setInterval> | null = null;
 
-  function enqueueAppWork(
-    appId: string,
-    label: string,
-    run: () => Promise<unknown>,
-  ): Promise<void> {
-    const guarded = () =>
-      run().catch((error: unknown) => {
+export function startAlertSweeper(): void {
+  if (sweeperTimer !== null) return;
+  const intervalMs = Number(process.env.ALERT_EVALUATION_INTERVAL_MS) || 60_000;
+  sweeperTimer = setInterval(() => {
+    // A down ClickHouse would fail every app's evaluation; the circuit
+    // makes the queries fail fast, so the sweep is skipped as a whole.
+    if (isClickHouseCircuitOpen()) {
+      console.warn(
+        "[alerting] the sweep is skipped — the ClickHouse circuit is open",
+      );
+      return;
+    }
+    void Promise.all([appDAO.listAll(), alertRuleDAO.listProjectScoped()])
+      .then(async ([apps, projectRules]) => {
+        const concurrency = Number(process.env.ALERT_SWEEPER_CONCURRENCY) || 8;
+        // The project-scoped rules are evaluated per project.
+        const projectIds = new Set(
+          projectRules
+            .map((rule) => rule.projectId)
+            .filter((id): id is string => Boolean(id)),
+        );
+        await mapWithConcurrency(apps, concurrency, (app) =>
+          evaluateRulesForAppAndWait(app.id),
+        );
+        await mapWithConcurrency([...projectIds], concurrency, (projectId) =>
+          evaluateProjectRulesAndWait(projectId),
+        );
+      })
+      .catch((error: unknown) => {
         console.error(
-          `[alerting] ${label} for app ${appId}:`,
+          "[alerting] sweeper failed to list apps:",
           error instanceof Error ? error.message : error,
         );
       });
-    const next = (evaluationChains.get(appId) ?? Promise.resolve()).then(
-      guarded,
-      guarded,
-    );
-    evaluationChains.set(appId, next);
-    return next.then(() => undefined);
-  }
-
-  export function evaluateProjectRules(projectId: string): void {
-    enqueueAppWork(
-      `project:${projectId}`,
-      "project rule evaluation failed",
-      () => evaluateRules({ projectId }),
-    );
-  }
-
-  export function evaluateRulesForApp(appId: string): void {
-    enqueueAppWork(appId, "rule evaluation failed", () => evaluateRules({ appId }));
-  }
-
-  // The same evaluation, awaited — the sweep runs the apps in parallel.
-  export function evaluateRulesForAppAndWait(appId: string): Promise<void> {
-    return enqueueAppWork(appId, "rule evaluation failed", () =>
-      evaluateRules({ appId }),
-    );
-  }
-
-  export function evaluateProjectRulesAndWait(projectId: string): Promise<void> {
-    return enqueueAppWork(
-      `project:${projectId}`,
-      "project rule evaluation failed",
-      () => evaluateRules({ projectId }),
-    );
-  }
-
-  // Threshold rules belong to the sweeper: the ingestion path would read a
-  // ClickHouse window that does not contain the event yet.
-  export function processIngestedEvent(
-    appId: string,
-    digests: IssueDigest[],
-    receivedAt: string,
-    eventId: string,
-    projectId?: string | null,
-  ): void {
-    enqueueAppWork(appId, "ingested event processing failed", async () => {
-      const { newIssues, regressions } = await trackIssuesForEvent(
-        appId,
-        digests,
-        receivedAt,
-        eventId,
-      );
-      const scope = { appId, projectId: projectId ?? null };
-      await Promise.all([
-        newIssues.length > 0 ? fireIssueTriggerRules(scope, "new_issue", newIssues) : Promise.resolve(),
-        regressions.length > 0 ? fireIssueTriggerRules(scope, "regression", regressions) : Promise.resolve(),
-      ]);
-    });
-  }
-
-  let sweeperTimer: ReturnType<typeof setInterval> | null = null;
-
-  export function startAlertSweeper(): void {
-    if (sweeperTimer !== null) return;
-    const intervalMs = Number(process.env.ALERT_EVALUATION_INTERVAL_MS) || 60_000;
-    sweeperTimer = setInterval(() => {
-      // A down ClickHouse would fail every app's evaluation; the circuit
-      // makes the queries fail fast, so the sweep is skipped as a whole.
-      if (isClickHouseCircuitOpen()) {
-        console.warn(
-          "[alerting] the sweep is skipped — the ClickHouse circuit is open",
-        );
-        return;
-      }
-      void Promise.all([appDAO.listAll(), alertRuleDAO.listProjectScoped()])
-        .then(async ([apps, projectRules]) => {
-          const concurrency =
-            Number(process.env.ALERT_SWEEPER_CONCURRENCY) || 8;
-          // The project-scoped rules are evaluated per project.
-          const projectIds = new Set(
-            projectRules
-              .map((rule) => rule.projectId)
-              .filter((id): id is string => Boolean(id)),
-          );
-          await mapWithConcurrency(apps, concurrency, (app) =>
-            evaluateRulesForAppAndWait(app.id),
-          );
-          await mapWithConcurrency([...projectIds], concurrency, (projectId) =>
-            evaluateProjectRulesAndWait(projectId),
-          );
-        })
-        .catch((error: unknown) => {
-          console.error(
-            "[alerting] sweeper failed to list apps:",
-            error instanceof Error ? error.message : error,
-          );
-        });
-    }, intervalMs);
-    sweeperTimer.unref();
-  }
+  }, intervalMs);
+  sweeperTimer.unref();
+}

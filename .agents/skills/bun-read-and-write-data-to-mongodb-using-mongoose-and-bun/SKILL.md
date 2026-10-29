@@ -7,7 +7,7 @@ description: Read and write data to MongoDB using Mongoose and Bun
 
 MongoDB and Mongoose work out of the box with Bun. This guide assumes you've already installed MongoDB and are running it as background process/service on your development machine. Follow [this guide](https://www.mongodb.com/docs/manual/installation/) for details.
 
-***
+---
 
 Once MongoDB is running, create a directory and initialize it with `bun init`.
 
@@ -17,7 +17,7 @@ cd mongoose-app
 bun init
 ```
 
-***
+---
 
 Then add Mongoose as a dependency.
 
@@ -25,7 +25,7 @@ Then add Mongoose as a dependency.
 bun add mongoose
 ```
 
-***
+---
 
 In `schema.ts` we'll declare and export a simple `Animal` model.
 
@@ -50,7 +50,7 @@ export type Animal = mongoose.InferSchemaType<typeof animalSchema>;
 export const Animal = mongoose.model("Animal", animalSchema);
 ```
 
-***
+---
 
 Now from `index.ts` we can import `Animal`, connect to MongoDB, and add some data to our database.
 
@@ -76,7 +76,7 @@ animals[0].speak(); // logs "Moo!"
 await mongoose.disconnect();
 ```
 
-***
+---
 
 Let's run this with `bun run`.
 
@@ -84,10 +84,10 @@ Let's run this with `bun run`.
 bun run index.ts
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Moo!
 ```
 
-***
+---
 
 This is a simple introduction to using Mongoose with TypeScript and Bun. As you build your application, refer to the official [MongoDB](https://www.mongodb.com/docs) and [Mongoose](https://mongoosejs.com/docs/) sites for complete documentation.

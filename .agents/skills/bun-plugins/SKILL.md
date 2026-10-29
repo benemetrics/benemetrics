@@ -15,11 +15,11 @@ Plugins intercept imports and perform custom loading logic: reading files, trans
 
 Plugins can register callbacks to be run at various points in the lifecycle of a bundle:
 
-* `onStart()`: Run once the bundler has started a bundle
-* `onResolve()`: Run before a module is resolved
-* `onLoad()`: Run before a module is loaded
-* `onBeforeParse()`: Run zero-copy native addons in the parser thread before a file is parsed
-* `onEnd()`: Run after the bundle is complete
+- `onStart()`: Run once the bundler has started a bundle
+- `onResolve()`: Run before a module is resolved
+- `onLoad()`: Run before a module is loaded
+- `onBeforeParse()`: Run zero-copy native addons in the parser thread before a file is parsed
+- `onEnd()`: Run after the bundle is complete
 
 ## Reference
 
@@ -102,12 +102,12 @@ The default namespace is `"file"` and it is not necessary to specify it, for ins
 
 Other common namespaces are:
 
-* `"bun"`: for Bun-specific modules (e.g. `"bun:test"`, `"bun:sqlite"`)
-* `"node"`: for Node.js modules (e.g. `"node:fs"`, `"node:path"`)
+- `"bun"`: for Bun-specific modules (e.g. `"bun:test"`, `"bun:sqlite"`)
+- `"node"`: for Node.js modules (e.g. `"node:fs"`, `"node:path"`)
 
 ### onStart
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 onStart(callback: () => void): Promise<void> | void;
 ```
 
@@ -167,7 +167,7 @@ In the above example, Bun will wait until the first `onStart()` (sleeping for 10
 
 ### onResolve
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 onResolve(
   args: { filter: RegExp; namespace?: string },
   callback: (args: { path: string; importer: string }) => {
@@ -195,7 +195,7 @@ import { plugin } from "bun";
 plugin({
   name: "onResolve example",
   setup(build) {
-    build.onResolve({ filter: /.*/, namespace: "file" }, args => {
+    build.onResolve({ filter: /.*/, namespace: "file" }, (args) => {
       if (args.path.startsWith("images/")) {
         return {
           path: args.path.replace("images/", "./public/images/"),
@@ -208,7 +208,7 @@ plugin({
 
 ### onLoad
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 onLoad(
   args: { filter: RegExp; namespace?: string },
   defer: () => Promise<void>,
@@ -273,10 +273,10 @@ This is useful for returning contents of a module that depends on other modules.
   ```ts title="index.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
   import { plugin } from "bun";
 
-  plugin({
-    name: "track imports",
-    setup(build) {
-      const transpiler = new Bun.Transpiler();
+plugin({
+name: "track imports",
+setup(build) {
+const transpiler = new Bun.Transpiler();
 
       let trackedImports: Record<string, number> = {};
 
@@ -307,12 +307,14 @@ This is useful for returning contents of a module that depends on other modules.
         };
       });
     },
-  });
-  ```
+
+});
+
+````
 </Accordion>
 
 <Warning>
-  The `.defer()` function currently has the limitation that it can only be called once per `onLoad` callback.
+The `.defer()` function currently has the limitation that it can only be called once per `onLoad` callback.
 </Warning>
 
 ## Native plugins
@@ -342,7 +344,7 @@ To create a native plugin, you must export a C ABI function which matches the si
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun add -g @napi-rs/cli
 napi new
-```
+````
 
 Then install this crate:
 
@@ -415,7 +417,7 @@ Bun.build({
 
 ### onBeforeParse
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 onBeforeParse(
   args: { filter: RegExp; namespace?: string },
   callback: { napiModule: NapiModule; symbol: string; external?: unknown },
@@ -430,7 +432,7 @@ As input, it receives the file's contents and can optionally return new source c
 
 ### onEnd
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 onEnd(callback: (result: BuildOutput) => void | Promise<void>): void;
 ```
 
@@ -444,7 +446,7 @@ const result = await Bun.build({
     {
       name: "onEnd example",
       setup(build) {
-        build.onEnd(result => {
+        build.onEnd((result) => {
           console.log(`Build completed with ${result.outputs.length} files`);
           for (const log of result.logs) {
             console.log(log);
@@ -466,7 +468,7 @@ const result = await Bun.build({
     {
       name: "Upload to S3",
       setup(build) {
-        build.onEnd(async result => {
+        build.onEnd(async (result) => {
           if (!result.success) return;
           for (const output of result.outputs) {
             await uploadToS3(output);

@@ -152,7 +152,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-    
+
   # The API in dev mode: `bun --hot` watches the mounted source tree and
   # reloads on every change. The admin token is regenerated at each boot.
   backend:

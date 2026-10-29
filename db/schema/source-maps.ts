@@ -1,39 +1,42 @@
-import {
-  pgTable,
-  text,
-  index,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, index, uuid } from "drizzle-orm/pg-core";
 import { isoTimestamp } from "./timestamps";
+import { sql } from "drizzle-orm";
+import { apps } from "./app";
 
-// A source map artifact uploaded for a release. `filename` is the
-// artifact name sentry-cli sends (the --url-prefix path, e.g.
-// "~/dist/app.js.map"); `mapJson` is the raw map document.
 export const sourceMaps = pgTable(
   "source_maps",
   {
-    id: text("id").primaryKey(),
-    projectId: text("project_id").notNull(),
-    appId: text("app_id").notNull(),
+    id: uuid("id")
+      .default(sql`uuidv7()`)
+      .primaryKey(),
+    appId: text("app_id")
+      .references(() => apps.id)
+      .notNull(),
     release: text("release").notNull(),
     dist: text("dist"),
     filename: text("filename").notNull(),
     mapJson: text("map_json").notNull(),
-    createdAt: isoTimestamp("created_at").notNull(),
+    createdAt: isoTimestamp("created_at")
+      .default(sql`now()`)
+      .notNull(),
+    updatedAt: isoTimestamp("created_at")
+      .default(sql`now()`)
+      .$onUpdate(() => sql`now()`)
+      .notNull(),
   },
-  (table) => ({
-    projectIdIdx: index("source_maps_project_id_idx").on(table.projectId),
-    releaseIdx: index("source_maps_project_release_idx").on(
-      table.projectId,
-      table.release,
-    ),
-    artifactUnique: uniqueIndex("source_maps_artifact_idx").on(
-      table.projectId,
-      table.release,
-      table.filename,
-    ),
-  }),
+  (table) => [index().on(table.appId)],
 );
+
+export const artifactPublicFields = {
+  id: sourceMaps.id,
+  appId: sourceMaps.appId,
+  release: sourceMaps.release,
+  dist: sourceMaps.dist,
+  name: sourceMaps.filename,
+  size: sql<number>`octet_length(${sourceMaps.mapJson})`,
+  createdAt: sourceMaps.createdAt,
+  updatedAt: sourceMaps.updatedAt,
+};
 
 export type SourceMap = typeof sourceMaps.$inferSelect;
 export type SourceMapInsert = typeof sourceMaps.$inferInsert;

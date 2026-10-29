@@ -24,16 +24,16 @@ It also ships the parts Sentry charges extra for: **session replay**,
 **role-scoped access control**, all in the same binary and the same database
 story.
 
-| | |
-|---|---|
-| **Runtime** | [Bun](https://bun.com) 1.x — one process, one bundle |
-| **HTTP** | [Elysia](https://elysiajs.com) + [ArkType](https://arktype.io) validation |
-| **Control plane** | PostgreSQL (Drizzle ORM) |
-| **Event store** | ClickHouse (ReplacingMergeTree, TTL retention) |
-| **Pipeline** | NATS JetStream — NATS-first, no in-process fallback |
-| **Object store** | Any S3-compatible store (RustFS locally) |
-| **UI** | React 19 SPA served by the backend itself |
-| **Deploy** | Docker, Docker Compose, Helm chart |
+|                   |                                                                           |
+| ----------------- | ------------------------------------------------------------------------- |
+| **Runtime**       | [Bun](https://bun.com) 1.x — one process, one bundle                      |
+| **HTTP**          | [Elysia](https://elysiajs.com) + [ArkType](https://arktype.io) validation |
+| **Control plane** | PostgreSQL (Drizzle ORM)                                                  |
+| **Event store**   | ClickHouse (ReplacingMergeTree, TTL retention)                            |
+| **Pipeline**      | NATS JetStream — NATS-first, no in-process fallback                       |
+| **Object store**  | Any S3-compatible store (RustFS locally)                                  |
+| **UI**            | React 19 SPA served by the backend itself                                 |
+| **Deploy**        | Docker, Docker Compose, Helm chart                                        |
 
 ---
 
@@ -127,6 +127,7 @@ change lands in the audit trail.
 ## Features
 
 **Error tracking**
+
 - Sentry envelope ingestion (gzip aware), the legacy `store/` endpoint and
   OTLP traces
 - Backend-side fingerprinting into issues, with status, counters and
@@ -137,12 +138,14 @@ change lands in the audit trail.
 - Releases with per-release issue summaries (new / regressed)
 
 **Performance monitoring**
+
 - Transactions and spans ingested as first-class events
 - Metric samples extracted at the API edge and aggregated in ClickHouse
   (`p50`, `p95`, `p99`, breakdowns by dimension)
 - Web vitals and mobile vitals
 
 **Feature flags and experiments**
+
 - Global flags, project-scoped flags and app-scoped flags
 - Targeting rules, reusable segments, rollout percentages and a deterministic
   weighted assignment
@@ -152,6 +155,7 @@ change lands in the audit trail.
   z-test
 
 **Alerting**
+
 - Threshold rules (event, error and fatal counts, p95/p99 latency) evaluated
   by a sweeper
 - Issue triggers (new issue, regression) fired event-driven at ingestion
@@ -160,6 +164,7 @@ change lands in the audit trail.
 - Global, project-scoped and app-scoped rules and channels
 
 **Access control**
+
 - One admin token (`API-Key`) or an OIDC provider identity (`Bearer`)
 - Scoped, read-only identities resolved from group rules and identity grants
 - Every permission change recorded in an audit trail
@@ -192,8 +197,8 @@ Benemetrics is **NATS-first**: ingestion is a publish, never a write path.
 - **The API** resolves the app from the DSN, parses the envelope, extracts
   the metric samples, offloads the replay segments and publishes both
   subjects. A broker failure answers `503` — there is no in-process fallback.
-- **ClickHouse** ingests `sentry.events.<appNumber>` and `sentry.metrics` *by
-  configuration*: NATS engine tables + a durable pull consumer + materialized
+- **ClickHouse** ingests `sentry.events.<appNumber>` and `sentry.metrics` _by
+  configuration_: NATS engine tables + a durable pull consumer + materialized
   views. The insert is acknowledged only after the view wrote the row, so an
   acknowledged batch is durable (`fsync_after_insert`).
 - **The side-effects consumer** is a second binary from the same image. It
@@ -201,7 +206,7 @@ Benemetrics is **NATS-first**: ingestion is a publish, never a write path.
   alert triggers and release tracking. An event published while it is down is
   not lost.
 - **The live feed** is the browser → NATS WebSocket. There is no backend
-  fan-out; the connection state *is* the health signal of the UI. Every
+  fan-out; the connection state _is_ the health signal of the UI. Every
   connection is authorized by the backend through the NATS auth callout —
   sub-only, scoped to the apps the identity may see (`docs/nats.md`).
 - **The object store** is S3-required: the replay segments are written
@@ -364,19 +369,19 @@ that port (`dependencies.nats.websocket.service.type`) or inject your own
 
 ### Chart values
 
-| Key | Default | Description |
-|---|---|---|
-| `image.repository` | `ghcr.io/benemetrics/benemetrics` | The image built from the Dockerfile |
-| `adminToken` | generated | The master credential (`API-Key`) |
-| `backend.replicaCount` | `2` | API replicas |
-| `backend.autoscaling.enabled` | `false` | HPA on the API |
-| `backend.podDisruptionBudget.enabled` | `false` | PDB on the API |
-| `consumer.enabled` | `true` | The side-effects consumer |
-| `ingress.enabled` | `true` | Ingress for the UI and the API |
-| `oidc.issuer` / `oidc.clientId` | `""` | An OIDC provider (optional) |
-| `nats.websocketPort` | `9222` | The live feed listener |
-| `objectStorage.bucket` | `benemetrics-replays` | The replay bucket |
-| `dependencies.*.enabled` | `true` | The bundled services |
+| Key                                   | Default                           | Description                         |
+| ------------------------------------- | --------------------------------- | ----------------------------------- |
+| `image.repository`                    | `ghcr.io/benemetrics/benemetrics` | The image built from the Dockerfile |
+| `adminToken`                          | generated                         | The master credential (`API-Key`)   |
+| `backend.replicaCount`                | `2`                               | API replicas                        |
+| `backend.autoscaling.enabled`         | `false`                           | HPA on the API                      |
+| `backend.podDisruptionBudget.enabled` | `false`                           | PDB on the API                      |
+| `consumer.enabled`                    | `true`                            | The side-effects consumer           |
+| `ingress.enabled`                     | `true`                            | Ingress for the UI and the API      |
+| `oidc.issuer` / `oidc.clientId`       | `""`                              | An OIDC provider (optional)         |
+| `nats.websocketPort`                  | `9222`                            | The live feed listener              |
+| `objectStorage.bucket`                | `benemetrics-replays`             | The replay bucket                   |
+| `dependencies.*.enabled`              | `true`                            | The bundled services                |
 
 ---
 
@@ -384,21 +389,21 @@ that port (`dependencies.nats.websocket.service.type`) or inject your own
 
 Every setting is an environment variable. The chart wires them for you.
 
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `31337` | The HTTP port |
-| `ADMIN_TOKEN` | — | The master admin credential (`API-Key <token>`) |
-| `DATABASE_URL` | — | PostgreSQL; without it the dev PGlite database is used |
-| `NATS_SERVERS` | — | `nats://host:4222`, comma separated |
-| `NATS_STREAM_MAX_BYTES` | `1 GiB` | The JetStream stream bound |
-| `CLICKHOUSE_HOST` / `_PORT` | `localhost` / `8123` | The ClickHouse HTTP endpoint |
-| `CLICKHOUSE_DATABASE` / `_USER` / `_PASSWORD` | `default` | The credentials |
-| `CLICKHOUSE_NATS_URL` | `nats:4222` | Where **ClickHouse** reaches NATS |
-| `S3_ENDPOINT` / `S3_BUCKET` / `S3_REGION` | — | The object store (required) |
-| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | — | The object store credentials |
-| `OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_SCOPES` | — | An optional OIDC provider |
-| `ALERT_EVALUATION_INTERVAL_MS` | `60000` | The threshold-rule sweeper |
-| `INIT_RETRY_ATTEMPTS` / `INIT_RETRY_DELAY_MS` | `5` / `1000` | The boot retries |
+| Variable                                                                | Default              | Description                                            |
+| ----------------------------------------------------------------------- | -------------------- | ------------------------------------------------------ |
+| `PORT`                                                                  | `31337`              | The HTTP port                                          |
+| `ADMIN_TOKEN`                                                           | —                    | The master admin credential (`API-Key <token>`)        |
+| `DATABASE_URL`                                                          | —                    | PostgreSQL; without it the dev PGlite database is used |
+| `NATS_SERVERS`                                                          | —                    | `nats://host:4222`, comma separated                    |
+| `NATS_STREAM_MAX_BYTES`                                                 | `1 GiB`              | The JetStream stream bound                             |
+| `CLICKHOUSE_HOST` / `_PORT`                                             | `localhost` / `8123` | The ClickHouse HTTP endpoint                           |
+| `CLICKHOUSE_DATABASE` / `_USER` / `_PASSWORD`                           | `default`            | The credentials                                        |
+| `CLICKHOUSE_NATS_URL`                                                   | `nats:4222`          | Where **ClickHouse** reaches NATS                      |
+| `S3_ENDPOINT` / `S3_BUCKET` / `S3_REGION`                               | —                    | The object store (required)                            |
+| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`                             | —                    | The object store credentials                           |
+| `OIDC_ISSUER` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` / `OIDC_SCOPES` | —                    | An optional OIDC provider                              |
+| `ALERT_EVALUATION_INTERVAL_MS`                                          | `60000`              | The threshold-rule sweeper                             |
+| `INIT_RETRY_ATTEMPTS` / `INIT_RETRY_DELAY_MS`                           | `5` / `1000`         | The boot retries                                       |
 
 ---
 
@@ -406,16 +411,16 @@ Every setting is an environment variable. The chart wires them for you.
 
 The full reference lives in [`docs/BACKEND_API.md`](docs/BACKEND_API.md). The shape:
 
-| Surface | Prefix | Credential |
-|---|---|---|
-| Ingestion | `POST /api/:appNumber/envelope/` | The DSN public key |
-| OTLP traces | `POST /api/:projectId/otlp/v1/traces` | The DSN public key |
-| Events | `GET /events` | Admin token or provider JWT |
-| Admin | `/api/admin/*` | Admin token or provider JWT |
-| Flag evaluation | `POST /api/sentry/flags/evaluate` | The DSN public key |
-| OpenFeature | `POST /v1/flags/:key` | The DSN public key |
-| Source maps (CLI) | `/api/0/projects/:org/:project/*` | An upload token |
-| UI | `/ui` | — |
+| Surface           | Prefix                                | Credential                  |
+| ----------------- | ------------------------------------- | --------------------------- |
+| Ingestion         | `POST /api/:appNumber/envelope/`      | The DSN public key          |
+| OTLP traces       | `POST /api/:projectId/otlp/v1/traces` | The DSN public key          |
+| Events            | `GET /events`                         | Admin token or provider JWT |
+| Admin             | `/api/admin/*`                        | Admin token or provider JWT |
+| Flag evaluation   | `POST /api/sentry/flags/evaluate`     | The DSN public key          |
+| OpenFeature       | `POST /v1/flags/:key`                 | The DSN public key          |
+| Source maps (CLI) | `/api/0/projects/:org/:project/*`     | An upload token             |
+| UI                | `/ui`                                 | —                           |
 
 Every list endpoint is cursor-paginated (`cursor` + `limit`, never `page`) and
 returns `{ data }`.
@@ -480,18 +485,18 @@ e2e/             the end-to-end suites
 The `docs/` directory is the architectural reference — it is the source of
 truth for every decision in the codebase.
 
-| Document | Subject |
-|---|---|
-| [`docs/models.md`](docs/models.md) | Projects, environments and apps |
-| [`docs/metrics.md`](docs/metrics.md) | The metric taxonomy and the series APIs |
-| [`docs/issues.md`](docs/issues.md) | Issue tracking, fingerprinting, the query protocol |
-| [`docs/feature-flags.md`](docs/feature-flags.md) | Flags, evaluation priority, experiments |
-| [`docs/alerting.md`](docs/alerting.md) | Channels, rules, the sweeper, incidents |
-| [`docs/session-replays.md`](docs/session-replays.md) | The replay offload and the playback |
-| [`docs/source-maps.md`](docs/source-maps.md) | The artifact storage and the symbolication |
-| [`docs/permission.md`](docs/permission.md) | The admin model and the scoped reads |
-| [`docs/rate-limiting.md`](docs/rate-limiting.md) | The request hygiene and the caps |
-| [`docs/BACKEND_API.md`](docs/BACKEND_API.md) | The full endpoint and schema reference |
+| Document                                             | Subject                                            |
+| ---------------------------------------------------- | -------------------------------------------------- |
+| [`docs/models.md`](docs/models.md)                   | Projects, environments and apps                    |
+| [`docs/metrics.md`](docs/metrics.md)                 | The metric taxonomy and the series APIs            |
+| [`docs/issues.md`](docs/issues.md)                   | Issue tracking, fingerprinting, the query protocol |
+| [`docs/feature-flags.md`](docs/feature-flags.md)     | Flags, evaluation priority, experiments            |
+| [`docs/alerting.md`](docs/alerting.md)               | Channels, rules, the sweeper, incidents            |
+| [`docs/session-replays.md`](docs/session-replays.md) | The replay offload and the playback                |
+| [`docs/source-maps.md`](docs/source-maps.md)         | The artifact storage and the symbolication         |
+| [`docs/permission.md`](docs/permission.md)           | The admin model and the scoped reads               |
+| [`docs/rate-limiting.md`](docs/rate-limiting.md)     | The request hygiene and the caps                   |
+| [`docs/BACKEND_API.md`](docs/BACKEND_API.md)         | The full endpoint and schema reference             |
 
 ---
 

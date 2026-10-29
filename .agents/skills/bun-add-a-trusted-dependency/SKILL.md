@@ -14,14 +14,14 @@ Unlike other npm clients, Bun does not execute arbitrary lifecycle scripts for i
   `git:`, or `github:` dependencies), you must explicitly add them to `trustedDependencies`.
 </Note>
 
-***
+---
 
 If you are seeing one of the following errors, you are probably trying to use a package that uses `postinstall` to work properly:
 
-* `error: could not determine executable to run for package`
-* `InvalidExe`
+- `error: could not determine executable to run for package`
+- `InvalidExe`
 
-***
+---
 
 To allow Bun to execute lifecycle scripts for a specific package, add the package to `trustedDependencies` in your package.json file. You can do this automatically by running the command `bun pm trust <pkg>`.
 
@@ -38,7 +38,7 @@ To allow Bun to execute lifecycle scripts for a specific package, add the packag
 }
 ```
 
-***
+---
 
 Once this is added, run a fresh install. Bun will re-install your dependencies and properly install
 
@@ -48,6 +48,6 @@ rm bun.lock
 bun install
 ```
 
-***
+---
 
 See [Docs > Package manager > Trusted dependencies](/pm/lifecycle) for complete documentation of trusted dependencies.

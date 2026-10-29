@@ -13,7 +13,7 @@ cd my-bot
 bun init
 ```
 
-***
+---
 
 Now install Discord.js.
 
@@ -21,13 +21,13 @@ Now install Discord.js.
 bun add discord.js
 ```
 
-***
+---
 
-Before we go further, we need to go to the [Discord developer portal](https://discord.com/developers/applications), login/signup, create a new *Application*, then create a new *Bot* within that application. Follow the [official guide](https://discordjs.guide/legacy/preparations/app-setup#creating-your-bot) for step-by-step instructions.
+Before we go further, we need to go to the [Discord developer portal](https://discord.com/developers/applications), login/signup, create a new _Application_, then create a new _Bot_ within that application. Follow the [official guide](https://discordjs.guide/legacy/preparations/app-setup#creating-your-bot) for step-by-step instructions.
 
-***
+---
 
-Once complete, you'll be presented with your bot's *private key*. Let's add this to a file called `.env.local`. Bun automatically reads this file and loads it into `process.env`.
+Once complete, you'll be presented with your bot's _private key_. Let's add this to a file called `.env.local`. Bun automatically reads this file and loads it into `process.env`.
 
 <Note>This is an example token that has already been invalidated.</Note>
 
@@ -35,7 +35,7 @@ Once complete, you'll be presented with your bot's *private key*. Let's add this
 DISCORD_TOKEN=YOUR_BOT_TOKEN_HERE
 ```
 
-***
+---
 
 Be sure to add `.env.local` to your `.gitignore`! It is dangerous to check your bot's private key into version control.
 
@@ -44,7 +44,7 @@ node_modules
 .env.local
 ```
 
-***
+---
 
 Now let's actually write our bot in a new file called `bot.ts`.
 
@@ -56,7 +56,7 @@ import { Client, Events, GatewayIntentBits } from "discord.js";
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 // listen for the client to be ready
-client.once(Events.ClientReady, c => {
+client.once(Events.ClientReady, (c) => {
   console.log(`Ready! Logged in as ${c.user.tag}`);
 });
 
@@ -64,7 +64,7 @@ client.once(Events.ClientReady, c => {
 client.login(process.env.DISCORD_TOKEN);
 ```
 
-***
+---
 
 Now we can run our bot with `bun run`. It may take a several seconds for the client to initialize the first time you run the file.
 
@@ -72,10 +72,10 @@ Now we can run our bot with `bun run`. It may take a several seconds for the cli
 bun run bot.ts
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Ready! Logged in as my-bot#1234
 ```
 
-***
+---
 
 You're up and running with a bare-bones Discord.js bot! This is a basic guide to setting up your bot with Bun; we recommend the [official discord.js docs](https://discordjs.guide/) for complete information on the `discord.js` API.

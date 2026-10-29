@@ -103,7 +103,8 @@ export const permissionAuditDAO = {
     const scope = options?.target
       ? eq(permissionAudit.target, options.target)
       : undefined;
-    const where = scope && condition ? and(scope, condition) : (scope ?? condition);
+    const where =
+      scope && condition ? and(scope, condition) : (scope ?? condition);
 
     const data = await db
       .select(auditFields)

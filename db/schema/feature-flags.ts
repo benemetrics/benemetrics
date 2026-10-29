@@ -27,8 +27,12 @@ export const featureFlags = pgTable(
     appId: text("app_id"),
     rolloutPercentage: integer("rollout_percentage").notNull().default(100),
     experiment: text("experiment"),
-    createdAt: isoTimestamp("created_at").notNull().default(sql`now()`),
-    updatedAt: isoTimestamp("updated_at").notNull().default(sql`now()`),
+    createdAt: isoTimestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: isoTimestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
   },
   (table) => ({
     keyIdx: index("feature_flags_key_idx").on(table.key),

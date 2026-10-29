@@ -1,4 +1,3 @@
-
 interface OtlpAnyValue {
   stringValue?: string;
   intValue?: string;

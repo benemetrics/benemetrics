@@ -1,12 +1,12 @@
 import { db } from "db";
 import {
   sourceMapTokens,
+  tokenPublicFields,
   type SourceMapTokenInsert,
 } from "db/schema/source-map-tokens";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
-import type { SourceMapTokenResponse } from "backend/protocol/source-map";
-import { cursorAfter, cursorLimit } from "./cursor";
+import { cursorLimit } from "./cursor";
 
 // Raw tokens are only ever returned at creation/rotation time;
 // at rest we keep the SHA-256 hash plus a short display prefix.
@@ -20,62 +20,27 @@ export function generateUploadToken(): {
   return { raw, hash, prefix: raw.slice(0, 8) };
 }
 
-export function hashUploadToken(raw: string): string {
-  return new Bun.CryptoHasher("sha256").update(raw).digest("hex");
-}
-
-type TokenCreateInput = Omit<
-  SourceMapTokenInsert,
-  "id" | "tokenHash" | "tokenPrefix" | "createdAt"
->;
-
-// `tokenHash` never leaves the DAO: the response projection leaves it out
-// so no caller can accidentally serialize the secret.
-const tokenFields = {
-  id: sourceMapTokens.id,
-  name: sourceMapTokens.name,
-  projectId: sourceMapTokens.projectId,
-  appId: sourceMapTokens.appId,
-  tokenPrefix: sourceMapTokens.tokenPrefix,
-  createdBy: sourceMapTokens.createdBy,
-  createdAt: sourceMapTokens.createdAt,
-  lastUsedAt: sourceMapTokens.lastUsedAt,
-  expiresAt: sourceMapTokens.expiresAt,
-  revokedAt: sourceMapTokens.revokedAt,
-};
-
-// Upload authentication only needs the token's scope and validity window.
-export interface SourceMapTokenAuthRecord {
-  id: string;
-  projectId: string;
-  appId: string;
-  expiresAt: string | null;
-  revokedAt: string | null;
-}
-
 export const sourceMapTokenDAO = {
-  create: async (data: TokenCreateInput) => {
+  create: async (
+    data: Omit<SourceMapTokenInsert, "tokenHash" | "tokenPrefix">,
+  ) => {
     const { raw, hash, prefix } = generateUploadToken();
     const [record] = await db
       .insert(sourceMapTokens)
       .values({
         ...data,
-        id: crypto.randomUUID(),
         tokenHash: hash,
         tokenPrefix: prefix,
-        createdAt: new Date().toISOString(),
       })
-      .returning(tokenFields);
-    if (!record) {
-      throw internalError("Failed to create source map token");
-    }
+      .returning(tokenPublicFields);
+    if (!record) throw internalError("Failed to create source map token");
     return { token: raw, record };
   },
 
-  findById: async (id: string): Promise<SourceMapTokenResponse | undefined> =>
+  findById: async (id: (typeof sourceMapTokens)["id"]) =>
     (
       await db
-        .select(tokenFields)
+        .select(tokenPublicFields)
         .from(sourceMapTokens)
         .where(eq(sourceMapTokens.id, id))
         .limit(1)
@@ -89,9 +54,7 @@ export const sourceMapTokenDAO = {
 
   // Only the auth path looks a token up by hash; the hash itself never
   // needs to leave the database.
-  findByHash: async (
-    hash: string,
-  ): Promise<SourceMapTokenAuthRecord | undefined> =>
+  findByHash: async (hash: (typeof sourceMapTokens)["tokenHash"]) =>
     (
       await db
         .select({
@@ -109,12 +72,13 @@ export const sourceMapTokenDAO = {
   // Rotation keeps a revoked token revoked.
   rotate: async (id: string) => {
     const { raw, hash, prefix } = generateUploadToken();
-    const rows = await db
+    const [updated] = await db
       .update(sourceMapTokens)
       .set({ tokenHash: hash, tokenPrefix: prefix })
       .where(eq(sourceMapTokens.id, id))
-      .returning(tokenFields);
-    return rows[0] ? { token: raw, record: rows[0]! } : null;
+      .returning(tokenPublicFields);
+    if (!updated) throw notFound("Upload token", id);
+    return { ...updated, token: raw };
   },
 
   list: async (options: {
@@ -141,7 +105,7 @@ export const sourceMapTokenDAO = {
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const data = await db
-      .select(tokenFields)
+      .select(tokenPublicFields)
       .from(sourceMapTokens)
       .where(where)
       .orderBy(desc(sourceMapTokens.createdAt), desc(sourceMapTokens.id))
@@ -159,19 +123,6 @@ export const sourceMapTokenDAO = {
       .where(eq(sourceMapTokens.id, id));
   },
 
-  // Soft revoke: keeps the audit trail, invalidates the token.
-  revoke: async (id: string): Promise<void> => {
-    await db
-      .update(sourceMapTokens)
-      .set({ revokedAt: new Date().toISOString() })
-      .where(eq(sourceMapTokens.id, id));
-  },
-
-  delete: async (id: string) => {
-    const deleted = await db
-      .delete(sourceMapTokens)
-      .where(eq(sourceMapTokens.id, id))
-      .returning({ id: sourceMapTokens.id });
-    return deleted.length > 0;
-  },
+  delete: (id: string) =>
+    db.delete(sourceMapTokens).where(eq(sourceMapTokens.id, id)),
 };

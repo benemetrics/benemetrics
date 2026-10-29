@@ -39,10 +39,7 @@ const incidentFields = {
 };
 
 export const alertIncidentDAO = {
-  create: async (
-    data: AlertIncidentCreateInput,
-    executor: Executor = db,
-  ) => {
+  create: async (data: AlertIncidentCreateInput, executor: Executor = db) => {
     const [created] = await executor
       .insert(alertIncidents)
       .values({ ...data, id: data.id ?? crypto.randomUUID() })
@@ -76,7 +73,9 @@ export const alertIncidentDAO = {
     limit?: number;
   }): Promise<CursorPage<AlertIncident>> => {
     const limit = cursorLimit(options.limit);
-    const scope = options.appId ? eq(alertIncidents.appId, options.appId) : undefined;
+    const scope = options.appId
+      ? eq(alertIncidents.appId, options.appId)
+      : undefined;
     const { condition, empty } = await cursorAfter(
       alertIncidents,
       alertIncidents.id,
@@ -84,7 +83,8 @@ export const alertIncidentDAO = {
       options.cursor,
     );
     if (empty) return { data: [] };
-    const where = scope && condition ? and(scope, condition) : (scope ?? condition);
+    const where =
+      scope && condition ? and(scope, condition) : (scope ?? condition);
 
     const data = await db
       .select(incidentFields)
@@ -100,7 +100,8 @@ export const alertIncidentDAO = {
     appId?: string;
     cursor?: string;
     limit?: number;
-  }): Promise<CursorPage<AlertIncident>> => await alertIncidentDAO.list(options),
+  }): Promise<CursorPage<AlertIncident>> =>
+    await alertIncidentDAO.list(options),
 
   updateOrThrow: async (
     id: string,

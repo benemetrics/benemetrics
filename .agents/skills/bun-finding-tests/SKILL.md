@@ -13,18 +13,18 @@ bun test's file discovery mechanism determines which files to run as tests. Unde
 
 By default, `bun test` recursively searches the project directory for files that match specific patterns:
 
-* `*.test.{js|jsx|ts|tsx}` - Files ending with `.test.js`, `.test.jsx`, `.test.ts`, or `.test.tsx`
-* `*_test.{js|jsx|ts|tsx}` - Files ending with `_test.js`, `_test.jsx`, `_test.ts`, or `_test.tsx`
-* `*.spec.{js|jsx|ts|tsx}` - Files ending with `.spec.js`, `.spec.jsx`, `.spec.ts`, or `.spec.tsx`
-* `*_spec.{js|jsx|ts|tsx}` - Files ending with `_spec.js`, `_spec.jsx`, `_spec.ts`, or `_spec.tsx`
+- `*.test.{js|jsx|ts|tsx}` - Files ending with `.test.js`, `.test.jsx`, `.test.ts`, or `.test.tsx`
+- `*_test.{js|jsx|ts|tsx}` - Files ending with `_test.js`, `_test.jsx`, `_test.ts`, or `_test.tsx`
+- `*.spec.{js|jsx|ts|tsx}` - Files ending with `.spec.js`, `.spec.jsx`, `.spec.ts`, or `.spec.tsx`
+- `*_spec.{js|jsx|ts|tsx}` - Files ending with `_spec.js`, `_spec.jsx`, `_spec.ts`, or `_spec.tsx`
 
 ## Exclusions
 
 By default, Bun test ignores:
 
-* `node_modules` directories
-* Hidden directories (those starting with a period `.`)
-* Files that don't have JavaScript-like extensions (based on available loaders)
+- `node_modules` directories
+- Hidden directories (those starting with a period `.`)
+- Files that don't have JavaScript-like extensions (based on available loaders)
 
 ## Customizing Test Discovery
 

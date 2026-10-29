@@ -11,9 +11,9 @@ Bun supports the [`--hot`](/runtime/watch-mode#hot-mode) flag to run a file with
 bun --hot run index.ts
 ```
 
-***
+---
 
-Bun detects when you are running an HTTP server with `Bun.serve()`. It reloads your fetch handler when source files change, *without* restarting the `bun` process. This makes hot reloads nearly instantaneous.
+Bun detects when you are running an HTTP server with `Bun.serve()`. It reloads your fetch handler when source files change, _without_ restarting the `bun` process. This makes hot reloads nearly instantaneous.
 
 <Note>
   Note that this doesn't reload the page on your browser.

@@ -69,7 +69,11 @@ async function makeApp(): Promise<OtlpApp> {
       name: `OtlpProj-${uniq()}`,
     }),
   );
-  const appRecord = await json<{ id: string; ingestKey: string; publicKey: string }>(
+  const appRecord = await json<{
+    id: string;
+    ingestKey: string;
+    publicKey: string;
+  }>(
     await adminRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `OtlpApp-${uniq()}`,
     }),
@@ -92,7 +96,9 @@ async function postOtlp(
   );
 }
 
-function span(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+function span(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
   return {
     traceId: hex(32),
     spanId: hex(16),
@@ -105,7 +111,9 @@ function span(overrides: Record<string, unknown> = {}): Record<string, unknown> 
   };
 }
 
-function otlpBatch(...spans: Record<string, unknown>[]): Record<string, unknown> {
+function otlpBatch(
+  ...spans: Record<string, unknown>[]
+): Record<string, unknown> {
   return {
     resourceSpans: [
       {
@@ -114,9 +122,7 @@ function otlpBatch(...spans: Record<string, unknown>[]): Record<string, unknown>
             { key: "service.name", value: { stringValue: "checkout" } },
           ],
         },
-        scopeSpans: [
-          { scope: { name: "test", version: "1.0.0" }, spans },
-        ],
+        scopeSpans: [{ scope: { name: "test", version: "1.0.0" }, spans }],
       },
     ],
   };
@@ -144,7 +150,9 @@ describe("OTLP/JSON ingestion", () => {
     const { ids } = await json<{ ids: string[] }>(response);
     expect(ids).toEqual([rootSpanId]);
 
-    const event = await waitForApiGet<Record<string, any>>(`/events/${rootSpanId}`);
+    const event = await waitForApiGet<Record<string, any>>(
+      `/events/${rootSpanId}`,
+    );
     expect(event.transaction).toBe("GET /api/orders");
     expect(event.trace_id).toBe(traceId);
     expect(event.contexts.trace.trace_id).toBe(traceId);
@@ -173,7 +181,9 @@ describe("OTLP/JSON ingestion", () => {
     const response = await postOtlp(appRecord, otlpBatch(failing));
     expect(response.status).toBe(200);
 
-    const event = await waitForApiGet<Record<string, any>>(`/events/${failingSpanId}`);
+    const event = await waitForApiGet<Record<string, any>>(
+      `/events/${failingSpanId}`,
+    );
     expect(event.status).toBe("error");
     expect(event.measurements.duration.value).toBe(150);
     expect(event.tags["http.status_code"]).toBe("500");
@@ -220,11 +230,9 @@ describe("OTLP/JSON ingestion", () => {
 
   it("rejects protobuf-encoded payloads (400)", async () => {
     const appRecord = await makeApp();
-    const response = await postOtlp(
-      appRecord,
-      "0a120a08011200",
-      { "Content-Type": "application/x-protobuf" },
-    );
+    const response = await postOtlp(appRecord, "0a120a08011200", {
+      "Content-Type": "application/x-protobuf",
+    });
     expect(response.status).toBe(400);
   });
 

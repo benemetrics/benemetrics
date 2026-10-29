@@ -15,7 +15,7 @@ test("snapshot", () => {
 });
 ```
 
-***
+---
 
 The first time this test is executed, Bun will evaluate the value passed into `expect()` and write it to disk in a directory called `__snapshots__` that lives alongside the test file. (Note the `snapshots: +1 added` line in the output.)
 
@@ -23,7 +23,7 @@ The first time this test is executed, Bun will evaluate the value passed into `e
 bun test test/snap
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 test/snap.test.ts:
 ✓ snapshot [1.48ms]
 
@@ -34,7 +34,7 @@ test/snap.test.ts:
 Ran 1 tests across 1 files. [82.00ms]
 ```
 
-***
+---
 
 The `__snapshots__` directory contains a `.snap` file for each test file in the directory.
 
@@ -45,7 +45,7 @@ test
 └── snap.test.ts
 ```
 
-***
+---
 
 The `snap.test.ts.snap` file is a JavaScript file that exports a serialized version of the value passed into `expect()`. The `{foo: "bar"}` object has been serialized to JSON.
 
@@ -59,7 +59,7 @@ exports[`snapshot 1`] = `
 `;
 ```
 
-***
+---
 
 Later, when this test file is executed again, Bun will read the snapshot file and compare it to the value passed into `expect()`. If the values are different, the test will fail.
 
@@ -67,7 +67,7 @@ Later, when this test file is executed again, Bun will read the snapshot file an
 bun test
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun test v1.3.3 (9c68abdb)
 test/snap.test.ts:
 ✓ snapshot [1.05ms]
@@ -78,7 +78,7 @@ test/snap.test.ts:
 Ran 1 tests across 1 files. [101.00ms]
 ```
 
-***
+---
 
 To update snapshots, use the `--update-snapshots` flag.
 
@@ -86,7 +86,7 @@ To update snapshots, use the `--update-snapshots` flag.
 bun test --update-snapshots
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun test v1.3.3 (9c68abdb)
 test/snap.test.ts:
 ✓ snapshot [0.86ms]
@@ -98,6 +98,6 @@ test/snap.test.ts:
 Ran 1 tests across 1 files. [102.00ms]
 ```
 
-***
+---
 
 See [Docs > Test Runner > Snapshots](/test/snapshots) for complete documentation on snapshots with the Bun test runner.

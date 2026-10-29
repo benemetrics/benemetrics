@@ -11,12 +11,12 @@ description: Build an HTTP server using Hono and Bun
 import { Hono } from "hono";
 const app = new Hono();
 
-app.get("/", c => c.text("Hono!"));
+app.get("/", (c) => c.text("Hono!"));
 
 export default app;
 ```
 
-***
+---
 
 Use `create-hono` to get started with one of Hono's project templates. Select `bun` when prompted for a template.
 
@@ -24,7 +24,7 @@ Use `create-hono` to get started with one of Hono's project templates. Select `b
 bun create hono myapp
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 ✔ Which template do you want to use? › bun
 cloned honojs/starter#main to /path/to/myapp
 ✔ Copied project files
@@ -35,7 +35,7 @@ cd myapp
 bun install
 ```
 
-***
+---
 
 Then start the dev server and visit [localhost:3000](http://localhost:3000).
 
@@ -43,6 +43,6 @@ Then start the dev server and visit [localhost:3000](http://localhost:3000).
 bun run dev
 ```
 
-***
+---
 
 Refer to Hono's guide on [getting started with Bun](https://hono.dev/getting-started/bun) for more information.

@@ -48,8 +48,12 @@ export const alertRules = pgTable(
     message: text("message"),
     isEnabled: integer("is_enabled").notNull().default(1),
     lastTriggeredAt: isoTimestamp("last_triggered_at"),
-    createdAt: isoTimestamp("created_at").notNull().default(sql`now()`),
-    updatedAt: isoTimestamp("updated_at").notNull().default(sql`now()`),
+    createdAt: isoTimestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: isoTimestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
   },
   (table) => ({
     appIdIdx: index("alert_rules_app_id_idx").on(table.appId),

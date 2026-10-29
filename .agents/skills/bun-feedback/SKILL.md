@@ -31,6 +31,7 @@ Whether you've found a bug, have a performance issue, or just want to suggest an
     ```
 
     If the issue still persists after upgrading, continue to the next step.
+
   </Step>
 
   <Step title="Review Existing Issues">
@@ -40,6 +41,7 @@ Whether you've found a bug, have a performance issue, or just want to suggest an
     * 💬 [**Check discussions**](https://github.com/oven-sh/bun/discussions)
 
     If you find a related issue, add a 👍 reaction or comment with extra details instead of opening a new one.
+
   </Step>
 
   <Step title="Report the Issue">
@@ -60,12 +62,13 @@ Whether you've found a bug, have a performance issue, or just want to suggest an
         * For Windows: copy the output of this command in the powershell console:
           `"$([Environment]::OSVersion | ForEach-Object VersionString) $(if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x86" })"`
       </Note>
+
   </Step>
 </Steps>
 
 The Bun team will review the issue and get back to you as soon as possible!
 
-***
+---
 
 ## Use `bun feedback`
 

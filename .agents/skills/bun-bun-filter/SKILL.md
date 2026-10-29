@@ -11,7 +11,7 @@ The `--filter` (or `-F`) flag is used for selecting packages by pattern in a mon
 
 Currently `--filter` is supported by `bun install` and `bun outdated`, and can also be used to run scripts for multiple packages at once.
 
-***
+---
 
 ## Matching
 
@@ -23,7 +23,7 @@ Name patterns select packages based on the package name, as specified in `packag
 
 Path patterns are specified by starting the pattern with `./`, and will select all packages in directories that match the pattern. For example, to match all packages in subdirectories of `packages`, you can use `--filter './packages/**'`. To match a package located in `packages/foo`, use `--filter ./packages/foo`.
 
-***
+---
 
 ## `bun install` and `bun outdated`
 
@@ -56,7 +56,7 @@ bun outdated --filter './'
 
 For more information on both these commands, see [`bun install`](/pm/cli/install) and [`bun outdated`](/pm/cli/outdated).
 
-***
+---
 
 ## Running scripts with `--filter`
 

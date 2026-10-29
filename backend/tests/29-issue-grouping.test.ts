@@ -12,7 +12,9 @@ import {
   issueTitle,
 } from "../issues/grouping";
 
-function errorEvent(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+function errorEvent(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
   return {
     event_id: "e1",
     message: "boom",
@@ -21,7 +23,11 @@ function errorEvent(overrides: Record<string, unknown> = {}): Record<string, unk
 }
 
 function frames(...list: Array<Record<string, unknown>>): unknown {
-  return { values: [{ type: "TypeError", value: "boom", stacktrace: { frames: list } }] };
+  return {
+    values: [
+      { type: "TypeError", value: "boom", stacktrace: { frames: list } },
+    ],
+  };
 }
 
 describe("Issue grouping", () => {
@@ -33,7 +39,9 @@ describe("Issue grouping", () => {
     });
 
     it("expands {{ default }} to the default component", () => {
-      const payload = errorEvent({ fingerprint: ["database-error", "{{ default }}"] });
+      const payload = errorEvent({
+        fingerprint: ["database-error", "{{ default }}"],
+      });
       expect(issueFingerprint(payload)).toBe(
         `database-error::${issueFingerprint({ ...payload, fingerprint: undefined })}`,
       );
@@ -90,9 +98,9 @@ describe("Issue grouping", () => {
     });
 
     it("is unknown for an exception without frames", () => {
-      expect(issueFingerprint({ exception: { values: [{ type: "Error" }] } })).toBe(
-        "unknown",
-      );
+      expect(
+        issueFingerprint({ exception: { values: [{ type: "Error" }] } }),
+      ).toBe("unknown");
     });
 
     it("keys a message event by its text", () => {
@@ -150,7 +158,9 @@ describe("Issue grouping", () => {
       expect(issuePresentation(errorEvent({ level: "WARNING" })).level).toBe(
         "warning",
       );
-      expect(issuePresentation(errorEvent({ level: "fatal" })).level).toBe("fatal");
+      expect(issuePresentation(errorEvent({ level: "fatal" })).level).toBe(
+        "fatal",
+      );
       expect(issuePresentation(errorEvent()).level).toBe("error");
       expect(issuePresentation(errorEvent({ level: "nonsense" })).level).toBe(
         "error",

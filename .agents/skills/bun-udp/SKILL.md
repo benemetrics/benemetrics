@@ -11,14 +11,14 @@ description: Use Bun's UDP API to implement services with advanced real-time req
 
 To create a new (bound) UDP socket:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const socket = await Bun.udpSocket({});
 console.log(socket.port); // assigned by the operating system
 ```
 
 Specify a port:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const socket = await Bun.udpSocket({
   port: 41234, // [!code ++]
 });
@@ -30,7 +30,7 @@ console.log(socket.port); // 41234
 
 Specify the data to send, as well as the destination port and address.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 socket.send("Hello, world!", 41234, "127.0.0.1");
 ```
 
@@ -119,10 +119,10 @@ as destinations, as it does not perform DNS resolution.
 It may happen that a packet that you're sending does not fit into the operating system's packet buffer. You can detect that this
 has happened when:
 
-* `send` returns `false`
-* `sendMany` returns a number smaller than the number of packets you specified. In this case, the `drain` socket handler will be called once the socket becomes writable again:
+- `send` returns `false`
+- `sendMany` returns a number smaller than the number of packets you specified. In this case, the `drain` socket handler will be called once the socket becomes writable again:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const socket = await Bun.udpSocket({
   socket: {
     drain(socket) {
@@ -136,7 +136,7 @@ const socket = await Bun.udpSocket({
 
 UDP sockets support setting various socket options:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const socket = await Bun.udpSocket({});
 
 // Enable broadcasting to send packets to a broadcast address
@@ -150,7 +150,7 @@ socket.setTTL(64);
 
 Bun supports multicast operations for UDP sockets. Use `addMembership` and `dropMembership` to join and leave multicast groups:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const socket = await Bun.udpSocket({});
 
 // Join a multicast group
@@ -165,7 +165,7 @@ socket.dropMembership("224.0.0.1");
 
 Additional multicast options:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Set TTL for multicast packets (number of network hops)
 socket.setMulticastTTL(2);
 
@@ -178,7 +178,7 @@ socket.setMulticastInterface("192.168.1.100");
 
 For source-specific multicast (SSM), use `addSourceSpecificMembership` and `dropSourceSpecificMembership`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 socket.addSourceSpecificMembership("10.0.0.1", "232.0.0.1");
 socket.dropSourceSpecificMembership("10.0.0.1", "232.0.0.1");
 ```

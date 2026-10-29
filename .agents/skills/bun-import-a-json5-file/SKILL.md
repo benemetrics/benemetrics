@@ -28,7 +28,7 @@ Bun natively supports `.json5` imports.
 }
 ```
 
-***
+---
 
 Import the file like any other source file.
 
@@ -40,7 +40,7 @@ config.server.port; // => 3000
 config.features.auth; // => true
 ```
 
-***
+---
 
 You can also use named imports to destructure top-level properties:
 
@@ -52,7 +52,7 @@ console.log(server.timeout); // => 30
 console.log(features.rateLimit); // => true
 ```
 
-***
+---
 
 For parsing JSON5 strings at runtime, use `Bun.JSON5.parse()`:
 
@@ -70,6 +70,6 @@ console.log(data.name); // => "John Doe"
 console.log(data.hobbies); // => ["reading", "coding"]
 ```
 
-***
+---
 
 See [Docs > API > JSON5](/runtime/json5) for complete documentation on JSON5 support in Bun.

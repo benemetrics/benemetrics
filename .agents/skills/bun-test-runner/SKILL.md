@@ -9,12 +9,12 @@ description: Bun's fast, built-in, Jest-compatible test runner with TypeScript s
 
 Bun ships with a fast, built-in, Jest-compatible test runner. Tests are executed with the Bun runtime, and support the following features.
 
-* TypeScript and JSX
-* Lifecycle hooks
-* Snapshot testing
-* UI & DOM testing
-* Watch mode with `--watch`
-* Script pre-loading with `--preload`
+- TypeScript and JSX
+- Lifecycle hooks
+- Snapshot testing
+- UI & DOM testing
+- Watch mode with `--watch`
+- Script pre-loading with `--preload`
 
 <Note>
   Bun aims for compatibility with Jest, but not everything is implemented. To track compatibility, see [this tracking
@@ -39,18 +39,18 @@ test("2 + 2", () => {
 
 The runner recursively searches the working directory for files that match the following patterns:
 
-* `*.test.{js|jsx|ts|tsx}`
-* `*_test.{js|jsx|ts|tsx}`
-* `*.spec.{js|jsx|ts|tsx}`
-* `*_spec.{js|jsx|ts|tsx}`
+- `*.test.{js|jsx|ts|tsx}`
+- `*_test.{js|jsx|ts|tsx}`
+- `*.spec.{js|jsx|ts|tsx}`
+- `*_spec.{js|jsx|ts|tsx}`
 
-You can filter the set of *test files* to run by passing additional positional arguments to `bun test`. Any test file with a path that matches one of the filters will run. Commonly, these filters will be file or directory names; glob patterns are not yet supported.
+You can filter the set of _test files_ to run by passing additional positional arguments to `bun test`. Any test file with a path that matches one of the filters will run. Commonly, these filters will be file or directory names; glob patterns are not yet supported.
 
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun test <filter> <filter> ...
 ```
 
-To filter by *test name*, use the `-t`/`--test-name-pattern` flag.
+To filter by _test name_, use the `-t`/`--test-name-pattern` flag.
 
 ```sh terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 # run all tests or test suites with "addition" in the name
@@ -112,7 +112,7 @@ JUnit XML is a popular format for reporting test results in CI/CD pipelines.
 
 ## Timeouts
 
-Use the `--timeout` flag to specify a *per-test* timeout in milliseconds. If a test times out, it will be marked as failed. The default value is `5000`.
+Use the `--timeout` flag to specify a _per-test_ timeout in milliseconds. If a test times out, it will be marked as failed. The default value is `5000`.
 
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 # default value is 5000
@@ -198,7 +198,7 @@ test("independent test", () => {
 });
 
 // Chaining test qualifiers
-test.failing.each([1, 2, 3])("chained qualifiers %d", input => {
+test.failing.each([1, 2, 3])("chained qualifiers %d", (input) => {
   expect(input).toBe(0); // This test is expected to fail for each input
 });
 ```
@@ -213,7 +213,7 @@ bun test --retry 3
 
 Per-test `{ retry: N }` overrides the global `--retry` value:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Uses the global --retry value
 test("uses global retry", () => {
   /* ... */
@@ -254,7 +254,7 @@ When using `--randomize`, the seed used for randomization will be displayed in t
 bun test --randomize
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 # ... test output ...
  --seed=12345
  2 pass
@@ -365,9 +365,9 @@ See [Test > Snapshots](/test/snapshots) for complete documentation.
 
 Bun is compatible with popular UI testing libraries:
 
-* [HappyDOM](https://github.com/capricorn86/happy-dom)
-* [DOM Testing Library](https://testing-library.com/docs/dom-testing-library/intro/)
-* [React Testing Library](https://testing-library.com/docs/react-testing-library/intro)
+- [HappyDOM](https://github.com/capricorn86/happy-dom)
+- [DOM Testing Library](https://testing-library.com/docs/dom-testing-library/intro/)
+- [React Testing Library](https://testing-library.com/docs/react-testing-library/intro)
 
 See [Test > DOM Testing](/test/dom) for complete documentation.
 
@@ -385,17 +385,17 @@ When using Bun's test runner with AI coding assistants, you can enable quieter o
 
 Set any of the following environment variables to enable AI-friendly output:
 
-* `CLAUDECODE=1` - For Claude Code
-* `REPL_ID=1` - For Replit
-* `AGENT=1` - Generic AI agent flag
+- `CLAUDECODE=1` - For Claude Code
+- `REPL_ID=1` - For Replit
+- `AGENT=1` - Generic AI agent flag
 
 ### Behavior
 
 When an AI agent environment is detected:
 
-* Only test failures are displayed in detail
-* Passing, skipped, and todo test indicators are hidden
-* Summary statistics remain intact
+- Only test failures are displayed in detail
+- Passing, skipped, and todo test indicators are hidden
+- Summary statistics remain intact
 
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 # Example: Enable quiet output for Claude Code
@@ -406,11 +406,11 @@ CLAUDECODE=1 bun test
 
 This feature is particularly useful in AI-assisted development workflows where reduced output verbosity improves context efficiency while maintaining visibility into test failures.
 
-***
+---
 
 # CLI Usage
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun test <patterns>
 ```
 

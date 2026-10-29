@@ -13,6 +13,6 @@ The default timeout is `5000` (5 seconds).
 bun test --timeout 3000 # 3 seconds
 ```
 
-***
+---
 
 See [Docs > Test runner](/test) for complete documentation of `bun test`.

@@ -47,7 +47,9 @@ const featureFlagFields = {
 };
 
 export const featureFlagDAO = {
-  create: async (data: Omit<PgInsertValue<typeof featureFlags>, "id"> & { id?: string }) => {
+  create: async (
+    data: Omit<PgInsertValue<typeof featureFlags>, "id"> & { id?: string },
+  ) => {
     const [row] = await db
       .insert(featureFlags)
       .values({ ...data, id: data.id ?? crypto.randomUUID() })
@@ -93,7 +95,10 @@ export const featureFlagDAO = {
       appId ? eq(featureFlags.appId, appId) : null,
       projectId ? eq(featureFlags.projectId, projectId) : null,
       and(isNull(featureFlags.projectId), isNull(featureFlags.appId)),
-    ].filter((condition): condition is NonNullable<typeof condition> => condition !== null);
+    ].filter(
+      (condition): condition is NonNullable<typeof condition> =>
+        condition !== null,
+    );
 
     const [row] = await db
       .select(featureFlagFields)
@@ -146,7 +151,8 @@ export const featureFlagDAO = {
     const limit = cursorLimit(options.limit);
 
     const conditions = [];
-    if (options.status) conditions.push(eq(featureFlags.status, options.status));
+    if (options.status)
+      conditions.push(eq(featureFlags.status, options.status));
     if (options.type) conditions.push(eq(featureFlags.type, options.type));
     if (options.projectId !== undefined && options.projectId !== null) {
       conditions.push(eq(featureFlags.projectId, options.projectId));
@@ -187,7 +193,9 @@ export const featureFlagDAO = {
 
   delete: async (id: string) => {
     await Promise.all([
-      db.delete(experimentAssignments).where(eq(experimentAssignments.flagId, id)),
+      db
+        .delete(experimentAssignments)
+        .where(eq(experimentAssignments.flagId, id)),
       db.delete(experimentMetrics).where(eq(experimentMetrics.flagId, id)),
     ]);
     await db.delete(featureFlags).where(eq(featureFlags.id, id));

@@ -21,47 +21,56 @@ description: Bun is an all-in-one toolkit for developing modern JavaScript/TypeS
     A fast JavaScript runtime designed as a drop-in replacement for Node.js
   </Card>
 
-  <Card
-    icon="box"
-    title="Bun Package Manager"
-    href="/pm/cli/install"
-    cta={
-    <span>
-      Get started with <code>bun install</code>
-    </span>
-  }
-  >
+<Card
+icon="box"
+title="Bun Package Manager"
+href="/pm/cli/install"
+cta={
+<span>
+Get started with <code>bun install</code>
+</span>
+}
+
+>
+
     Install packages up to 30x faster than npm with a global cache and workspaces
+
   </Card>
 
-  <Card
-    icon="flask-conical"
-    title="Bun Test Runner"
-    href="/test"
-    cta={
-    <span>
-      Get started with <code>bun test</code>
-    </span>
-  }
-  >
+<Card
+icon="flask-conical"
+title="Bun Test Runner"
+href="/test"
+cta={
+<span>
+Get started with <code>bun test</code>
+</span>
+}
+
+>
+
     Jest-compatible, TypeScript-first tests with snapshots, DOM, and watch mode
+
   </Card>
 
-  <Card
-    icon="combine"
-    title="Bun Bundler"
-    href="/bundler"
-    cta={
-    <span>
-      Get started with <code>bun build</code>
-    </span>
-  }
-  >
+<Card
+icon="combine"
+title="Bun Bundler"
+href="/bundler"
+cta={
+<span>
+Get started with <code>bun build</code>
+</span>
+}
+
+>
+
     Bundle TypeScript, JSX, React & CSS for both browsers and servers
+
   </Card>
 </CardGroup>
 
-***
+---
 
 ## Get Started
 
@@ -77,24 +86,24 @@ Bun ships as a single, dependency-free binary and includes a runtime, package ma
   </Card>
 </CardGroup>
 
-***
+---
 
 ## What's Inside
 
-* Runtime: Execute JavaScript/TypeScript files and package scripts with near-zero overhead.
-* Package Manager: Fast installs, workspaces, overrides, and audits with `bun install`.
-* Test Runner: Jest-compatible, TypeScript-first tests with snapshots, DOM, and watch mode.
-* Bundler: Native bundling for JS/TS/JSX with splitting, plugins, and HTML imports.
+- Runtime: Execute JavaScript/TypeScript files and package scripts with near-zero overhead.
+- Package Manager: Fast installs, workspaces, overrides, and audits with `bun install`.
+- Test Runner: Jest-compatible, TypeScript-first tests with snapshots, DOM, and watch mode.
+- Bundler: Native bundling for JS/TS/JSX with splitting, plugins, and HTML imports.
 
 Explore each area using the cards above. Each section is structured with an overview, quick examples, reference, and best practices for fast scanning and deep dives.
 
-***
+---
 
 ## What is Bun?
 
 Bun is an all-in-one toolkit for JavaScript and TypeScript apps. It ships as a single executable called `bun`.
 
-At its core is the *Bun runtime*, a fast JavaScript runtime designed as **a drop-in replacement for Node.js**. It's written in Zig and powered by JavaScriptCore under the hood, dramatically reducing startup times and memory usage.
+At its core is the _Bun runtime_, a fast JavaScript runtime designed as **a drop-in replacement for Node.js**. It's written in Zig and powered by JavaScriptCore under the hood, dramatically reducing startup times and memory usage.
 
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run index.tsx  # TS and JSX supported out of the box
@@ -112,10 +121,10 @@ bunx cowsay 'Hello, world!'   # execute a package
 
 ## What is a runtime?
 
-JavaScript (or, more formally, ECMAScript) is just a *specification* for a programming language. Anyone can write a JavaScript *engine* that ingests a valid JavaScript program and executes it. The two most popular engines in use today are V8 (developed by Google)
+JavaScript (or, more formally, ECMAScript) is just a _specification_ for a programming language. Anyone can write a JavaScript _engine_ that ingests a valid JavaScript program and executes it. The two most popular engines in use today are V8 (developed by Google)
 and JavaScriptCore (developed by Apple). Both are open source.
 
-But most JavaScript programs don't run in a vacuum. They need a way to access the outside world to perform useful tasks. This is where *runtimes* come in. They implement additional APIs that are then made available to the JavaScript programs they execute.
+But most JavaScript programs don't run in a vacuum. They need a way to access the outside world to perform useful tasks. This is where _runtimes_ come in. They implement additional APIs that are then made available to the JavaScript programs they execute.
 
 ### Browsers
 
@@ -131,10 +140,10 @@ Bun is designed as a faster, leaner, more modern replacement for Node.js.
 
 Bun is designed from the ground-up with today's JavaScript ecosystem in mind.
 
-* **Speed**. Bun processes start [4x faster than Node.js](https://twitter.com/jarredsumner/status/1499225725492076544) currently (try it yourself!)
-* **TypeScript & JSX support**. You can directly execute `.jsx`, `.ts`, and `.tsx` files; Bun's transpiler converts these to vanilla JavaScript before execution.
-* **ESM & CommonJS compatibility**. The world is moving towards ES modules (ESM), but millions of packages on npm still require CommonJS. Bun recommends ES modules, but supports CommonJS.
-* **Web-standard APIs**. Bun implements standard Web APIs like `fetch`, `WebSocket`, and `ReadableStream`. Bun is powered by the JavaScriptCore engine, which is developed by Apple for Safari, so some APIs like [`Headers`](https://developer.mozilla.org/en-US/docs/Web/API/Headers) and [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL) directly use [Safari's implementation](https://github.com/oven-sh/bun/blob/HEAD/src/bun.js/bindings/webcore/JSFetchHeaders.cpp).
-* **Node.js compatibility**. In addition to supporting Node-style module resolution, Bun aims for full compatibility with built-in Node.js globals (`process`, `Buffer`) and modules (`path`, `fs`, `http`, etc.) *This is an ongoing effort that is not complete.* Refer to the [compatibility page](/runtime/nodejs-compat) for the current status.
+- **Speed**. Bun processes start [4x faster than Node.js](https://twitter.com/jarredsumner/status/1499225725492076544) currently (try it yourself!)
+- **TypeScript & JSX support**. You can directly execute `.jsx`, `.ts`, and `.tsx` files; Bun's transpiler converts these to vanilla JavaScript before execution.
+- **ESM & CommonJS compatibility**. The world is moving towards ES modules (ESM), but millions of packages on npm still require CommonJS. Bun recommends ES modules, but supports CommonJS.
+- **Web-standard APIs**. Bun implements standard Web APIs like `fetch`, `WebSocket`, and `ReadableStream`. Bun is powered by the JavaScriptCore engine, which is developed by Apple for Safari, so some APIs like [`Headers`](https://developer.mozilla.org/en-US/docs/Web/API/Headers) and [`URL`](https://developer.mozilla.org/en-US/docs/Web/API/URL) directly use [Safari's implementation](https://github.com/oven-sh/bun/blob/HEAD/src/bun.js/bindings/webcore/JSFetchHeaders.cpp).
+- **Node.js compatibility**. In addition to supporting Node-style module resolution, Bun aims for full compatibility with built-in Node.js globals (`process`, `Buffer`) and modules (`path`, `fs`, `http`, etc.) _This is an ongoing effort that is not complete._ Refer to the [compatibility page](/runtime/nodejs-compat) for the current status.
 
 Bun is more than a runtime. The long-term goal is to be a cohesive, infrastructural toolkit for building apps with JavaScript/TypeScript, including a package manager, transpiler, bundler, script runner, test runner, and more.

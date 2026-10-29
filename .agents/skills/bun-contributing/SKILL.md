@@ -15,7 +15,7 @@ If you are using Windows, please refer to [this guide](/project/building-windows
 
 A Nix flake is provided as an alternative to manual dependency installation:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 nix develop
 # or explicitly use the pure shell
 # nix develop .#pure
@@ -34,21 +34,22 @@ Using your system's package manager, install Bun's dependencies:
   brew install automake ccache cmake coreutils gnu-sed go icu4c libiconv libtool ninja pkg-config rust ruby
   ```
 
-  ```bash Ubuntu/Debian theme={"theme":{"light":"github-light","dark":"dracula"}}
-  sudo apt install curl wget lsb-release software-properties-common cargo cmake git golang libtool ninja-build pkg-config rustc ruby-full xz-utils
-  ```
+```bash Ubuntu/Debian theme={"theme":{"light":"github-light","dark":"dracula"}}
+sudo apt install curl wget lsb-release software-properties-common cargo cmake git golang libtool ninja-build pkg-config rustc ruby-full xz-utils
+```
 
-  ```bash Arch theme={"theme":{"light":"github-light","dark":"dracula"}}
-  sudo pacman -S base-devel cmake git go libiconv libtool make ninja pkg-config python rust sed unzip ruby
-  ```
+```bash Arch theme={"theme":{"light":"github-light","dark":"dracula"}}
+sudo pacman -S base-devel cmake git go libiconv libtool make ninja pkg-config python rust sed unzip ruby
+```
 
-  ```bash Fedora theme={"theme":{"light":"github-light","dark":"dracula"}}
-  sudo dnf install cargo clang21 llvm21 lld21 cmake git golang libtool ninja-build pkg-config rustc ruby libatomic-static libstdc++-static sed unzip which libicu-devel 'perl(Math::BigInt)'
-  ```
+```bash Fedora theme={"theme":{"light":"github-light","dark":"dracula"}}
+sudo dnf install cargo clang21 llvm21 lld21 cmake git golang libtool ninja-build pkg-config rustc ruby libatomic-static libstdc++-static sed unzip which libicu-devel 'perl(Math::BigInt)'
+```
 
-  ```bash openSUSE Tumbleweed theme={"theme":{"light":"github-light","dark":"dracula"}}
-  sudo zypper install go cmake ninja automake git icu rustup && rustup toolchain install stable
-  ```
+```bash openSUSE Tumbleweed theme={"theme":{"light":"github-light","dark":"dracula"}}
+sudo zypper install go cmake ninja automake git icu rustup && rustup toolchain install stable
+```
+
 </CodeGroup>
 
 > **Note**: The Zig compiler is automatically installed and updated by the build scripts. Manual installation is not required.
@@ -60,21 +61,22 @@ Before starting, you will need to already have a release build of Bun installed,
   curl -fsSL https://bun.com/install | bash
   ```
 
-  ```bash npm theme={"theme":{"light":"github-light","dark":"dracula"}}
-  npm install -g bun
-  ```
+```bash npm theme={"theme":{"light":"github-light","dark":"dracula"}}
+npm install -g bun
+```
 
-  ```bash Homebrew theme={"theme":{"light":"github-light","dark":"dracula"}}
-  brew tap oven-sh/bun
-  brew install bun
-  ```
+```bash Homebrew theme={"theme":{"light":"github-light","dark":"dracula"}}
+brew tap oven-sh/bun
+brew install bun
+```
+
 </CodeGroup>
 
 ### Optional: Install `ccache`
 
 ccache is used to cache compilation artifacts, significantly speeding up builds:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 # For macOS
 brew install ccache
 
@@ -102,29 +104,30 @@ Bun requires LLVM 21.1.8 (`clang` is part of LLVM). This version is enforced by 
   brew install llvm@21
   ```
 
-  ```bash Ubuntu/Debian theme={"theme":{"light":"github-light","dark":"dracula"}}
-  # LLVM has an automatic installation script that is compatible with all versions of Ubuntu
-  wget https://apt.llvm.org/llvm.sh -O - | sudo bash -s -- 21 all
-  ```
+```bash Ubuntu/Debian theme={"theme":{"light":"github-light","dark":"dracula"}}
+# LLVM has an automatic installation script that is compatible with all versions of Ubuntu
+wget https://apt.llvm.org/llvm.sh -O - | sudo bash -s -- 21 all
+```
 
-  ```bash Arch theme={"theme":{"light":"github-light","dark":"dracula"}}
-  sudo pacman -S llvm clang lld
-  ```
+```bash Arch theme={"theme":{"light":"github-light","dark":"dracula"}}
+sudo pacman -S llvm clang lld
+```
 
-  ```bash Fedora theme={"theme":{"light":"github-light","dark":"dracula"}}
-  sudo dnf install llvm clang lld-devel
-  ```
+```bash Fedora theme={"theme":{"light":"github-light","dark":"dracula"}}
+sudo dnf install llvm clang lld-devel
+```
 
-  ```bash openSUSE Tumbleweed theme={"theme":{"light":"github-light","dark":"dracula"}}
-  sudo zypper install clang21 lld21 llvm21
-  ```
+```bash openSUSE Tumbleweed theme={"theme":{"light":"github-light","dark":"dracula"}}
+sudo zypper install clang21 lld21 llvm21
+```
+
 </CodeGroup>
 
 If none of the above solutions apply, you will have to install it [manually](https://github.com/llvm/llvm-project/releases/tag/llvmorg-21.1.8).
 
 Make sure Clang/LLVM 21 is in your path:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 which clang-21
 ```
 
@@ -137,10 +140,11 @@ If not, run this to manually add it:
   export PATH="$(brew --prefix llvm@21)/bin:$PATH"
   ```
 
-  ```bash Arch theme={"theme":{"light":"github-light","dark":"dracula"}}
-  # use fish_add_path if you're using fish
-  export PATH="$PATH:/usr/lib/llvm21/bin"
-  ```
+```bash Arch theme={"theme":{"light":"github-light","dark":"dracula"}}
+# use fish_add_path if you're using fish
+export PATH="$PATH:/usr/lib/llvm21/bin"
+```
+
 </CodeGroup>
 
 <Warning>
@@ -151,13 +155,13 @@ If not, run this to manually add it:
 
 After cloning the repository, run the following command to build. This may take a while as it will clone submodules and build dependencies.
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run build
 ```
 
 The binary will be located at `./build/debug/bun-debug`. It is recommended to add this to your `$PATH`. To verify the build worked, let's print the version number on the development build of Bun.
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 build/debug/bun-debug --version
 x.y.z_debug
 ```
@@ -170,7 +174,7 @@ If you use a different editor, make sure that you tell ZLS to use the automatica
 
 We recommend adding `./build/debug` to your `$PATH` so that you can run `bun-debug` in your terminal:
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun-debug
 ```
 
@@ -178,7 +182,7 @@ bun-debug
 
 The `bd` package.json script compiles and runs a debug build of Bun, only printing the output of the build process if it fails.
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun bd <args>
 bun bd test foo.test.ts
 bun bd ./foo.ts
@@ -186,11 +190,11 @@ bun bd ./foo.ts
 
 Bun generally takes about 2.5 minutes to compile a debug build when there are Zig changes. If your development workflow is "change one line, save, rebuild", you will spend too much time waiting for the build to finish. Instead:
 
-* Batch up your changes
-* Ensure zls is running with incremental watching for LSP errors (if you use VSCode and install Zig and run `bun run build` once to download Zig, this should just work)
-* Prefer using the debugger ("CodeLLDB" in VSCode) to step through the code.
-* Use debug logs. `BUN_DEBUG_<scope>=1` will enable debug logging for the corresponding `Output.scoped(.<scope>, .hidden)` logs. You can also set `BUN_DEBUG_QUIET_LOGS=1` to disable all debug logging that isn't explicitly enabled. To dump debug logs into a file, `BUN_DEBUG=<path-to-file>.log`. Debug logs are aggressively removed in release builds.
-* src/js/\*\*.ts changes are pretty much instant to rebuild. C++ changes are a bit slower, but still much faster than the Zig code (Zig is one compilation unit, C++ is many).
+- Batch up your changes
+- Ensure zls is running with incremental watching for LSP errors (if you use VSCode and install Zig and run `bun run build` once to download Zig, this should just work)
+- Prefer using the debugger ("CodeLLDB" in VSCode) to step through the code.
+- Use debug logs. `BUN_DEBUG_<scope>=1` will enable debug logging for the corresponding `Output.scoped(.<scope>, .hidden)` logs. You can also set `BUN_DEBUG_QUIET_LOGS=1` to disable all debug logging that isn't explicitly enabled. To dump debug logs into a file, `BUN_DEBUG=<path-to-file>.log`. Debug logs are aggressively removed in release builds.
+- src/js/\*\*.ts changes are pretty much instant to rebuild. C++ changes are a bit slower, but still much faster than the Zig code (Zig is one compilation unit, C++ is many).
 
 ## Code generation scripts
 
@@ -198,11 +202,11 @@ Several code generation scripts are used during Bun's build process. These are r
 
 In particular, these are:
 
-* `./src/codegen/generate-jssink.ts` -- Generates `build/debug/codegen/JSSink.cpp`, `build/debug/codegen/JSSink.h` which implement various classes for interfacing with `ReadableStream`. This is internally how `FileSink`, `ArrayBufferSink`, `"type": "direct"` streams and other code related to streams works.
-* `./src/codegen/generate-classes.ts` -- Generates `build/debug/codegen/ZigGeneratedClasses*`, which generates Zig & C++ bindings for JavaScriptCore classes implemented in Zig. In `**/*.classes.ts` files, we define the interfaces for various classes, methods, prototypes, getters/setters etc which the code generator reads to generate boilerplate code implementing the JavaScript objects in C++ and wiring them up to Zig
-* `./src/codegen/cppbind.ts` -- Generates automatic Zig bindings for C++ functions marked with `[[ZIG_EXPORT]]` attributes.
-* `./src/codegen/bundle-modules.ts` -- Bundles built-in modules like `node:fs`, `bun:ffi` into files we can include in the final binary. In development, these can be reloaded without rebuilding Zig (you still need to run `bun run build`, but it re-reads the transpiled files from disk afterwards). In release builds, these are embedded into the binary.
-* `./src/codegen/bundle-functions.ts` -- Bundles globally-accessible functions implemented in JavaScript/TypeScript like `ReadableStream`, `WritableStream`, and a handful more. These are used similarly to the builtin modules, but the output more closely aligns with what WebKit/Safari does for Safari's built-in functions so that we can copy-paste the implementations from WebKit as a starting point.
+- `./src/codegen/generate-jssink.ts` -- Generates `build/debug/codegen/JSSink.cpp`, `build/debug/codegen/JSSink.h` which implement various classes for interfacing with `ReadableStream`. This is internally how `FileSink`, `ArrayBufferSink`, `"type": "direct"` streams and other code related to streams works.
+- `./src/codegen/generate-classes.ts` -- Generates `build/debug/codegen/ZigGeneratedClasses*`, which generates Zig & C++ bindings for JavaScriptCore classes implemented in Zig. In `**/*.classes.ts` files, we define the interfaces for various classes, methods, prototypes, getters/setters etc which the code generator reads to generate boilerplate code implementing the JavaScript objects in C++ and wiring them up to Zig
+- `./src/codegen/cppbind.ts` -- Generates automatic Zig bindings for C++ functions marked with `[[ZIG_EXPORT]]` attributes.
+- `./src/codegen/bundle-modules.ts` -- Bundles built-in modules like `node:fs`, `bun:ffi` into files we can include in the final binary. In development, these can be reloaded without rebuilding Zig (you still need to run `bun run build`, but it re-reads the transpiled files from disk afterwards). In release builds, these are embedded into the binary.
+- `./src/codegen/bundle-functions.ts` -- Bundles globally-accessible functions implemented in JavaScript/TypeScript like `ReadableStream`, `WritableStream`, and a handful more. These are used similarly to the builtin modules, but the output more closely aligns with what WebKit/Safari does for Safari's built-in functions so that we can copy-paste the implementations from WebKit as a starting point.
 
 ## Modifying ESM modules
 
@@ -212,7 +216,7 @@ Certain modules like `node:fs`, `node:stream`, `bun:sqlite`, and `ws` are implem
 
 To compile a release build of Bun, run:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run build:release
 ```
 
@@ -224,7 +228,7 @@ To save you time spent building a release build locally, we provide a way to run
 
 To run a release build from a pull request, you can use the `bun-pr` npm package:
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bunx bun-pr <pr-number>
 bunx bun-pr <branch-name>
 bunx bun-pr "https://github.com/oven-sh/bun/pull/1234566"
@@ -233,7 +237,7 @@ bunx bun-pr --asan <pr-number> # Linux x64 only
 
 This will download the release build from the pull request and add it to `$PATH` as `bun-${pr-number}`. You can then run the build with `bun-${pr-number}`.
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun-1234566 --version
 ```
 
@@ -245,7 +249,7 @@ This works by downloading the release build from the GitHub Actions artifacts on
 
 To build a release build with Address Sanitizer, run:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run build:release:asan
 ```
 
@@ -255,7 +259,7 @@ In CI, we run our test suite with at least one target that is built with Address
 
 WebKit is not cloned by default (to save time and disk space). To clone and build WebKit locally, run:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 # Clone WebKit into ./vendor/WebKit
 git clone https://github.com/oven-sh/WebKit vendor/WebKit
 
@@ -270,10 +274,10 @@ bun run build:local
 
 The build output goes to `./build/debug-local` (instead of `./build/debug`), so you'll need to update a couple of places:
 
-* The first line in `src/js/builtins.d.ts`
-* The `CompilationDatabase` line in `.clangd` config should be `CompilationDatabase: build/debug-local`
-* In `build.zig`, the `codegen_path` option should be `build/debug-local/codegen` (instead of `build/debug/codegen`)
-* In `.vscode/launch.json`, many configurations use `./build/debug/`, change them as you see fit
+- The first line in `src/js/builtins.d.ts`
+- The `CompilationDatabase` line in `.clangd` config should be `CompilationDatabase: build/debug-local`
+- In `build.zig`, the `codegen_path` option should be `build/debug-local/codegen` (instead of `build/debug/codegen`)
+- In `.vscode/launch.json`, many configurations use `./build/debug/`, change them as you see fit
 
 Note that the WebKit folder, including build artifacts, is 8GB+ in size.
 
@@ -294,7 +298,7 @@ The Clang compiler typically uses the `libstdc++` C++ standard library by defaul
 
 Bun relies on C++20 features like `std::span`, which are not available in GCC versions lower than 11. GCC 10 doesn't have all of the C++20 features implemented. As a result, running `make setup` may fail with the following error:
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 fatal error: 'span' file not found
 #include <span>
          ^~~~~~
@@ -302,7 +306,7 @@ fatal error: 'span' file not found
 
 The issue may manifest when initially running `bun setup` as Clang being unable to compile a simple program:
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 The C++ compiler
 
   "/usr/bin/clang++-21"
@@ -312,7 +316,7 @@ is not able to compile a simple test program.
 
 To fix the error, we need to update the GCC version to 11. To do this, we'll need to check if the latest version is available in the distribution's official repositories or use a third-party repository that provides GCC 11 packages. Here are general steps:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 sudo apt update
 sudo apt install gcc-11 g++-11
 # If the above command fails with `Unable to locate package gcc-11` we need
@@ -324,7 +328,7 @@ sudo apt install gcc-11 g++-11
 
 Now, we need to set GCC 11 as the default compiler:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100
 ```
@@ -333,7 +337,7 @@ sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100
 
 If you see an error on macOS when compiling `libarchive`, run:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 brew install pkg-config
 ```
 
@@ -341,7 +345,7 @@ brew install pkg-config
 
 If you see this error when compiling, run:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 xcode-select --install
 ```
 
@@ -349,7 +353,7 @@ xcode-select --install
 
 Bun defaults to linking `libatomic` statically, as not all systems have it. If you are building on a distro that does not have a static libatomic available, you can run the following command to enable dynamic linking:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run build -DUSE_STATIC_LIBATOMIC=OFF
 ```
 
@@ -357,6 +361,6 @@ The built version of Bun may not work on other systems if compiled this way.
 
 ## Using bun-debug
 
-* Disable logging: `BUN_DEBUG_QUIET_LOGS=1 bun-debug ...` (to disable all debug logging)
-* Enable logging for a specific zig scope: `BUN_DEBUG_EventLoop=1 bun-debug ...` (to allow `std.log.scoped(.EventLoop)`)
-* Bun transpiles every file it runs, to see the actual executed source in a debug build find it in `/tmp/bun-debug-src/...path/to/file`, for example the transpiled version of `/home/bun/index.ts` would be in `/tmp/bun-debug-src/home/bun/index.ts`
+- Disable logging: `BUN_DEBUG_QUIET_LOGS=1 bun-debug ...` (to disable all debug logging)
+- Enable logging for a specific zig scope: `BUN_DEBUG_EventLoop=1 bun-debug ...` (to allow `std.log.scoped(.EventLoop)`)
+- Bun transpiles every file it runs, to see the actual executed source in a debug build find it in `/tmp/bun-debug-src/...path/to/file`, for example the transpiled version of `/home/bun/index.ts` would be in `/tmp/bun-debug-src/home/bun/index.ts`

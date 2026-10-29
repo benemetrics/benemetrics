@@ -10,10 +10,14 @@ import { describe, it, expect, beforeAll } from "bun:test";
 import { handleFetch as fetch, TEST_ORIGIN, ADMIN_TOKEN } from "./test-helpers";
 import { permissionGrantDAO } from "db/dao/permission-grants";
 import { permissionRuleDAO } from "db/dao/permission-rules";
-import { computeScopedView, resolveScopeForIdentity } from "backend/permissions/engine";
+import {
+  computeScopedView,
+  resolveScopeForIdentity,
+} from "backend/permissions/engine";
 import { projectDAO, appDAO } from "db/dao/project";
 
-const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+const uniq = () =>
+  Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
 let projectId = "";
 let otherProjectId = "";
@@ -33,8 +37,18 @@ async function apiRequest(
 
 describe("Permission scope engine", () => {
   beforeAll(async () => {
-    projectId = (await projectDAO.create({ name: `Perm-${uniq()}`, slug: `perm-${uniq()}` })).id;
-    otherProjectId = (await projectDAO.create({ name: `Perm2-${uniq()}`, slug: `perm2-${uniq()}` })).id;
+    projectId = (
+      await projectDAO.create({
+        name: `Perm-${uniq()}`,
+        slug: `perm-${uniq()}`,
+      })
+    ).id;
+    otherProjectId = (
+      await projectDAO.create({
+        name: `Perm2-${uniq()}`,
+        slug: `perm2-${uniq()}`,
+      })
+    ).id;
   });
 
   it("resolves the union of the matching group rules", async () => {
@@ -58,13 +72,19 @@ describe("Permission scope engine", () => {
   });
 
   it("ignores the groups that match no rule", async () => {
-    const scope = await resolveScopeForIdentity({ id: "nobody", groups: ["team a"] });
+    const scope = await resolveScopeForIdentity({
+      id: "nobody",
+      groups: ["team a"],
+    });
     expect(scope).not.toBeNull();
     expect(scope!.appPrefixes).toEqual(["checkout-"]);
   });
 
   it("has no grant without a rule and without a grant", async () => {
-    const scope = await resolveScopeForIdentity({ id: "nobody", groups: ["unknown"] });
+    const scope = await resolveScopeForIdentity({
+      id: "nobody",
+      groups: ["unknown"],
+    });
     expect(scope).toBeNull();
   });
 
@@ -103,7 +123,10 @@ describe("Permission scope engine", () => {
       projectIds: [],
       appPrefixes: [],
     });
-    const scope = await resolveScopeForIdentity({ id: "read-nothing", groups: [] });
+    const scope = await resolveScopeForIdentity({
+      id: "read-nothing",
+      groups: [],
+    });
     expect(scope).not.toBeNull();
     expect(scope!.appPrefixes).toEqual([]);
     const view = await computeScopedView(scope!);
@@ -151,15 +174,22 @@ describe("Permission routes", () => {
     const body = (await list.json()) as { data: Array<{ id: string }> };
     expect(body.data.some((entry) => entry.id === rule.id)).toBe(true);
 
-    const patched = await apiRequest("PATCH", `/api/admin/permissions/rules/${rule.id}`, {
-      appPrefixes: ["staging-"],
-    });
+    const patched = await apiRequest(
+      "PATCH",
+      `/api/admin/permissions/rules/${rule.id}`,
+      {
+        appPrefixes: ["staging-"],
+      },
+    );
     expect(patched.status).toBe(200);
-    expect(((await patched.json()) as { appPrefixes: string[] }).appPrefixes).toEqual([
-      "staging-",
-    ]);
+    expect(
+      ((await patched.json()) as { appPrefixes: string[] }).appPrefixes,
+    ).toEqual(["staging-"]);
 
-    const deleted = await apiRequest("DELETE", `/api/admin/permissions/rules/${rule.id}`);
+    const deleted = await apiRequest(
+      "DELETE",
+      `/api/admin/permissions/rules/${rule.id}`,
+    );
     expect(deleted.status).toBe(200);
   });
 
@@ -177,7 +207,10 @@ describe("Permission routes", () => {
     const body = (await list.json()) as { data: Array<{ id: string }> };
     expect(body.data.some((entry) => entry.id === grant.id)).toBe(true);
 
-    const deleted = await apiRequest("DELETE", `/api/admin/permissions/grants/${grant.id}`);
+    const deleted = await apiRequest(
+      "DELETE",
+      `/api/admin/permissions/grants/${grant.id}`,
+    );
     expect(deleted.status).toBe(200);
   });
 
@@ -227,13 +260,20 @@ describe("Permission routes", () => {
     });
     const rule = (await created.json()) as { id: string };
 
-    const patched = await apiRequest("PATCH", `/api/admin/permissions/rules/${rule.id}`, {
-      appPrefixes: ["staging-"],
-    });
+    const patched = await apiRequest(
+      "PATCH",
+      `/api/admin/permissions/rules/${rule.id}`,
+      {
+        appPrefixes: ["staging-"],
+      },
+    );
     expect(patched.status).toBe(200);
     await apiRequest("DELETE", `/api/admin/permissions/rules/${rule.id}`);
 
-    const audit = await apiRequest("GET", "/api/admin/permissions/audit?target=rule");
+    const audit = await apiRequest(
+      "GET",
+      "/api/admin/permissions/audit?target=rule",
+    );
     expect(audit.status).toBe(200);
     const body = (await audit.json()) as {
       data: Array<{
@@ -246,14 +286,20 @@ describe("Permission routes", () => {
       }>;
     };
     const entries = body.data.filter((entry) => entry.targetId === rule.id);
-    expect(entries.map((entry) => entry.action)).toEqual(["delete", "update", "create"]);
-    expect(entries.every((entry) => entry.actorId === "local-admin")).toBe(true);
+    expect(entries.map((entry) => entry.action)).toEqual([
+      "delete",
+      "update",
+      "create",
+    ]);
+    expect(entries.every((entry) => entry.actorId === "local-admin")).toBe(
+      true,
+    );
     expect(entries.every((entry) => entry.target === "rule")).toBe(true);
     const created_entry = entries[entries.length - 1]!;
     expect(created_entry.before).toBeNull();
-    expect((created_entry.after as { appPrefixes: string[] }).appPrefixes).toEqual([
-      "production-",
-    ]);
+    expect(
+      (created_entry.after as { appPrefixes: string[] }).appPrefixes,
+    ).toEqual(["production-"]);
   });
 
   it("records the write access on a grant", async () => {
@@ -272,13 +318,19 @@ describe("Permission routes", () => {
       { canWrite: false },
     );
     expect(patched.status).toBe(200);
-    expect(((await patched.json()) as { canWrite: boolean }).canWrite).toBe(false);
+    expect(((await patched.json()) as { canWrite: boolean }).canWrite).toBe(
+      false,
+    );
   });
 
   it("rejects an unknown rule", async () => {
-    const response = await apiRequest("PATCH", `/api/admin/permissions/rules/${crypto.randomUUID()}`, {
-      isEnabled: false,
-    });
+    const response = await apiRequest(
+      "PATCH",
+      `/api/admin/permissions/rules/${crypto.randomUUID()}`,
+      {
+        isEnabled: false,
+      },
+    );
     expect(response.status).toBe(404);
   });
 
@@ -298,8 +350,12 @@ describe("Permission routes", () => {
     expect(rule.appPrefixes).toEqual(["api-"]);
 
     const list = await apiRequest("GET", "/api/admin/permissions/rules");
-    const body = (await list.json()) as { data: Array<{ projectIds: string[] }> };
-    expect(body.data.some((entry) => entry.projectIds.includes(projectId))).toBe(true);
+    const body = (await list.json()) as {
+      data: Array<{ projectIds: string[] }>;
+    };
+    expect(
+      body.data.some((entry) => entry.projectIds.includes(projectId)),
+    ).toBe(true);
 
     await apiRequest("DELETE", `/api/admin/permissions/rules/${rule.id}`);
   });
@@ -311,12 +367,19 @@ describe("Permission routes", () => {
       appPrefixes: [],
     });
     expect(created.status).toBe(200);
-    const grant = (await created.json()) as { id: string; projectIds: string[] };
+    const grant = (await created.json()) as {
+      id: string;
+      projectIds: string[];
+    };
     expect(grant.projectIds).toEqual([otherProjectId]);
 
     const list = await apiRequest("GET", "/api/admin/permissions/grants");
-    const body = (await list.json()) as { data: Array<{ projectIds: string[] }> };
-    expect(body.data.some((entry) => entry.projectIds.includes(otherProjectId))).toBe(true);
+    const body = (await list.json()) as {
+      data: Array<{ projectIds: string[] }>;
+    };
+    expect(
+      body.data.some((entry) => entry.projectIds.includes(otherProjectId)),
+    ).toBe(true);
 
     await apiRequest("DELETE", `/api/admin/permissions/grants/${grant.id}`);
   });
@@ -329,12 +392,19 @@ describe("Permission routes", () => {
       appPrefixes: [],
     });
 
-    const identities = await apiRequest("GET", "/api/admin/permissions/identities");
+    const identities = await apiRequest(
+      "GET",
+      "/api/admin/permissions/identities",
+    );
     expect(identities.status).toBe(200);
     const body = (await identities.json()) as {
       data: Array<{ id: string; label: string | null }>;
     };
-    expect(body.data.some((entry) => entry.id.startsWith("known-user-"))).toBe(true);
-    expect(body.data.some((entry) => entry.label === "A known user")).toBe(true);
+    expect(body.data.some((entry) => entry.id.startsWith("known-user-"))).toBe(
+      true,
+    );
+    expect(body.data.some((entry) => entry.label === "A known user")).toBe(
+      true,
+    );
   });
 });

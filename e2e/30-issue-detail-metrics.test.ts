@@ -10,7 +10,12 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { startTestServer, ADMIN_TOKEN, ADMIN_TOKEN_RAW, type TestServer } from "./test-helpers";
+import {
+  startTestServer,
+  ADMIN_TOKEN,
+  ADMIN_TOKEN_RAW,
+  type TestServer,
+} from "./test-helpers";
 
 const REPLAY_ID = "cccccccccccccccccccccccccccccccc";
 
@@ -27,7 +32,10 @@ function buildEnvelope(
   for (const item of items) {
     const payloadText = JSON.stringify(item.payload);
     lines.push(
-      JSON.stringify({ ...item.header, length: Buffer.byteLength(payloadText, "utf8") }),
+      JSON.stringify({
+        ...item.header,
+        length: Buffer.byteLength(payloadText, "utf8"),
+      }),
     );
     lines.push(payloadText);
   }
@@ -36,18 +44,30 @@ function buildEnvelope(
 
 // The DSN carries the public key as the userinfo and the numeric project
 // number as the path, exactly what resolveAuthorizedApp expects.
-async function sendEvent(eventId: string, payload: Record<string, unknown>): Promise<void> {
+async function sendEvent(
+  eventId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
   const dsn = new URL(testServer.dsn);
-  const response = await fetch(`${testServer.baseUrl}/api${dsn.pathname}/envelope/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-sentry-envelope",
-      "X-Sentry-Auth": `Sentry sentry_key=${encodeURIComponent(dsn.username)}, sentry_version=7`,
+  const response = await fetch(
+    `${testServer.baseUrl}/api${dsn.pathname}/envelope/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-sentry-envelope",
+        "X-Sentry-Auth": `Sentry sentry_key=${encodeURIComponent(dsn.username)}, sentry_version=7`,
+      },
+      body: buildEnvelope(
+        { event_id: eventId, sent_at: new Date().toISOString() },
+        [
+          {
+            header: { type: "event", content_type: "application/json" },
+            payload,
+          },
+        ],
+      ),
     },
-    body: buildEnvelope({ event_id: eventId, sent_at: new Date().toISOString() }, [
-      { header: { type: "event", content_type: "application/json" }, payload },
-    ]),
-  });
+  );
   expect(response.status).toBe(200);
 }
 
@@ -71,7 +91,14 @@ function failurePayload(
           type: "TypeError",
           value: "Cannot read 'id' of null",
           stacktrace: {
-            frames: [{ filename: "app.js", function: "boom", lineno: 12, in_app: true }],
+            frames: [
+              {
+                filename: "app.js",
+                function: "boom",
+                lineno: 12,
+                in_app: true,
+              },
+            ],
           },
         },
       ],
@@ -83,7 +110,10 @@ function failurePayload(
 // The page reads the issue's occurrences from the server, so the test
 // resolves the issue the events were folded into. The issue tracks the
 // latest occurrence, so any of the issue's events identifies it.
-async function resolveIssueId(eventIds: string[], timeoutMs = 20000): Promise<string> {
+async function resolveIssueId(
+  eventIds: string[],
+  timeoutMs = 20000,
+): Promise<string> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const response = await fetch(
@@ -102,7 +132,10 @@ async function resolveIssueId(eventIds: string[], timeoutMs = 20000): Promise<st
   throw new Error(`No issue found for events ${eventIds.join(", ")}`);
 }
 
-async function waitForTextInUI(text: string, timeoutMs = 20000): Promise<string> {
+async function waitForTextInUI(
+  text: string,
+  timeoutMs = 20000,
+): Promise<string> {
   const start = Date.now();
   let body = "";
   while (Date.now() - start < timeoutMs) {
@@ -158,7 +191,10 @@ function panelText(title: string): Promise<string | null> {
   })()`) as Promise<string | null>;
 }
 
-async function waitForDetailUser(email: string, timeoutMs = 20000): Promise<void> {
+async function waitForDetailUser(
+  email: string,
+  timeoutMs = 20000,
+): Promise<void> {
   const start = Date.now();
   let shown = "";
   while (Date.now() - start < timeoutMs) {
@@ -220,7 +256,14 @@ describe("Issue details — metrics, event list and event switching", () => {
             type: "RangeError",
             value: "out of range",
             stacktrace: {
-              frames: [{ filename: "other.js", function: "bust", lineno: 3, in_app: true }],
+              frames: [
+                {
+                  filename: "other.js",
+                  function: "bust",
+                  lineno: 3,
+                  in_app: true,
+                },
+              ],
             },
           },
         ],
@@ -229,7 +272,9 @@ describe("Issue details — metrics, event list and event switching", () => {
 
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
-    await view.evaluate(`sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`);
+    await view.evaluate(
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
+    );
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
     await waitForTextInUI("Overview");
   }, 40000);
@@ -241,7 +286,9 @@ describe("Issue details — metrics, event list and event switching", () => {
 
   it("aggregates every event of the issue into the metrics panel", async () => {
     const issueId = await resolveIssueId([firstEventId, secondEventId]);
-    await view.navigate(`${testServer.baseUrl}/ui/issues/${firstEventId}?issue=${issueId}`);
+    await view.navigate(
+      `${testServer.baseUrl}/ui/issues/${firstEventId}?issue=${issueId}`,
+    );
     // Firefox and bob only exist on the second event, so their presence
     // proves the panel aggregated more than the selected event.
     await waitForTextInUI("Firefox 115.0");
@@ -282,7 +329,9 @@ describe("Issue details — metrics, event list and event switching", () => {
   it("switches the details to the clicked event", async () => {
     // The URL event is the selected one, and its replay is linked.
     const initial = await readEventRows();
-    expect(initial.find((row) => row.selected)?.text).toContain("First failure");
+    expect(initial.find((row) => row.selected)?.text).toContain(
+      "First failure",
+    );
     await waitForDetailUser("alice@example.com");
     await waitForTextInUI(`replay ${REPLAY_ID.slice(0, 8)}`);
 
@@ -298,15 +347,21 @@ describe("Issue details — metrics, event list and event switching", () => {
 
     // The user card and the replay section follow the selected event.
     await waitForDetailUser("bob@example.com");
-    const body = await waitForTextInUI("No session replay is linked to this issue");
+    const body = await waitForTextInUI(
+      "No session replay is linked to this issue",
+    );
     expect(body).toContain("bob@example.com");
     expect((await view.evaluate("location.pathname")) ?? "").toBe(
       `/ui/issues/${secondEventId}`,
     );
     expect((await view.evaluate("location.search")) ?? "").toContain("issue=");
     const rows = await waitForEventRows(
-      (list) => list.find((row) => row.selected)?.text.includes("Second failure") === true,
+      (list) =>
+        list.find((row) => row.selected)?.text.includes("Second failure") ===
+        true,
     );
-    expect(rows.find((row) => row.text.includes("First failure"))?.selected).toBe(false);
+    expect(
+      rows.find((row) => row.text.includes("First failure"))?.selected,
+    ).toBe(false);
   }, 40000);
 });

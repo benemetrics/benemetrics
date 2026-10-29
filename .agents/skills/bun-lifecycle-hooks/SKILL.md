@@ -225,13 +225,13 @@ import { beforeAll, afterAll, test } from "bun:test";
 
 beforeAll(async () => {
   // Async setup
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 100));
   console.log("Async setup complete");
 });
 
 afterAll(async () => {
   // Async teardown
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 100));
   console.log("Async teardown complete");
 });
 
@@ -246,7 +246,14 @@ test("async test", async () => {
 Hooks can be nested and will run in the appropriate order:
 
 ```ts title="test.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-import { describe, beforeAll, beforeEach, afterEach, afterAll, test } from "bun:test";
+import {
+  describe,
+  beforeAll,
+  beforeEach,
+  afterEach,
+  afterAll,
+  test,
+} from "bun:test";
 
 beforeAll(() => console.log("File beforeAll"));
 afterAll(() => console.log("File afterAll"));
@@ -270,7 +277,7 @@ describe("outer describe", () => {
 });
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Output order:
 // File beforeAll
 // Outer beforeAll

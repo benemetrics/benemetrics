@@ -28,7 +28,7 @@ const server = Bun.serve({
 console.log(`Listening on http://localhost:${server.port}`);
 ```
 
-***
+---
 
 We can define our HTML form in another file, `index.html`.
 
@@ -49,16 +49,16 @@ We can define our HTML form in another file, `index.html`.
 </html>
 ```
 
-***
+---
 
 At this point, we can run the server and visit [`localhost:4000`](http://localhost:4000) to see our form.
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run index.ts
 Listening on http://localhost:4000
 ```
 
-***
+---
 
 Our form will send a `POST` request to the `/action` endpoint with the form data. Let's handle that request in our server.
 
@@ -81,7 +81,8 @@ const server = Bun.serve({
       });
 
     // parse formdata at /action // [!code ++]
-    if (url.pathname === "/action") { // [!code ++]
+    if (url.pathname === "/action") {
+      // [!code ++]
       const formdata = await req.formData(); // [!code ++]
       const name = formdata.get("name"); // [!code ++]
       const profilePicture = formdata.get("profilePicture"); // [!code ++]

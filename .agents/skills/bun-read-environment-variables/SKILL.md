@@ -11,7 +11,7 @@ The current environment variables can be accessed via `process.env`.
 process.env.API_TOKEN; // => "secret"
 ```
 
-***
+---
 
 Bun also exposes these variables via `Bun.env`, which is a simple alias of `process.env`.
 
@@ -19,7 +19,7 @@ Bun also exposes these variables via `Bun.env`, which is a simple alias of `proc
 Bun.env.API_TOKEN; // => "secret"
 ```
 
-***
+---
 
 To print all currently-set environment variables to the command line, run `bun --print process.env`. This is useful for debugging.
 
@@ -27,12 +27,12 @@ To print all currently-set environment variables to the command line, run `bun -
 bun --print process.env
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 BAZ=stuff
 FOOBAR=aaaaaa
 <lots more lines>
 ```
 
-***
+---
 
 See [Docs > Runtime > Environment variables](/runtime/environment-variables) for more information on using environment variables with Bun.

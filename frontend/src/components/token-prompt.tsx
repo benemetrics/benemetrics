@@ -28,10 +28,15 @@ export function TokenPrompt({
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <form onSubmit={submit} className="panel w-full max-w-md p-6">
-        <h1 className="font-mono text-sm text-muted-foreground">// auth required</h1>
-        <h2 className="mt-2 text-xl font-bold tracking-tight">Sign in to Glitchlog</h2>
+        <h1 className="font-mono text-sm text-muted-foreground">
+          // auth required
+        </h1>
+        <h2 className="mt-2 text-xl font-bold tracking-tight">
+          Sign in to Glitchlog
+        </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Paste the admin token printed in the server log. OIDC identities sign in with their provider instead.
+          Paste the admin token printed in the server log. OIDC identities sign
+          in with their provider instead.
         </p>
         <input
           type="password"
@@ -42,7 +47,11 @@ export function TokenPrompt({
           placeholder="bnm_xxxxxx-xxxxxx-xxxxxx-xxxxxx"
           className="mt-4 w-full rounded-md border bg-input px-3 py-2 font-mono text-sm"
         />
-        {invalid && <p className="mt-2 text-sm text-destructive">That token was rejected. Try again.</p>}
+        {invalid && (
+          <p className="mt-2 text-sm text-destructive">
+            That token was rejected. Try again.
+          </p>
+        )}
         <button
           type="submit"
           disabled={busy}

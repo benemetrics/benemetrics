@@ -38,7 +38,10 @@ async function adminRequest(
   });
 }
 
-async function waitForEvent(eventId: string, timeoutMs = 5000): Promise<EventRecord | null> {
+async function waitForEvent(
+  eventId: string,
+  timeoutMs = 5000,
+): Promise<EventRecord | null> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const response = await adminRequest("GET", `/events/${eventId}`);
@@ -59,9 +62,13 @@ beforeAll(async () => {
   expect(projectResponse.status).toBe(200);
   const project = (await projectResponse.json()) as { id: string };
 
-  const appResponse = await adminRequest("POST", `/api/admin/projects/${project.id}/apps`, {
-    name: "SDK DSN App",
-  });
+  const appResponse = await adminRequest(
+    "POST",
+    `/api/admin/projects/${project.id}/apps`,
+    {
+      name: "SDK DSN App",
+    },
+  );
   expect(appResponse.status).toBe(200);
   created = (await appResponse.json()) as AppResponse;
 
@@ -100,7 +107,9 @@ describe("Official Sentry SDK connects with the provided app DSN", () => {
   });
 
   it("ingests an event captured through the provided DSN", async () => {
-    const eventId = Sentry.captureException(new Error("Captured via the provided app DSN"));
+    const eventId = Sentry.captureException(
+      new Error("Captured via the provided app DSN"),
+    );
     expect(eventId).toBeDefined();
 
     await Sentry.flush(5000);
@@ -108,6 +117,8 @@ describe("Official Sentry SDK connects with the provided app DSN", () => {
 
     expect(event).not.toBeNull();
     expect(event?.event_id).toBe(eventId);
-    expect(event?.exception?.values?.[0]?.value).toBe("Captured via the provided app DSN");
+    expect(event?.exception?.values?.[0]?.value).toBe(
+      "Captured via the provided app DSN",
+    );
   });
 });

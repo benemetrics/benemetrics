@@ -26,7 +26,7 @@ In development mode, Bun will surface errors in-browser with a built-in error pa
 
 To handle server-side errors, implement an `error` handler. This function should return a `Response` to serve to the client when an error occurs. This response will supersede Bun's default error page in `development` mode.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.serve({
   fetch(req) {
     throw new Error("woops!");

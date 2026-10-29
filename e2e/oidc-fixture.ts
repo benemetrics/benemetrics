@@ -50,9 +50,10 @@ export async function ensureSigningKey(): Promise<CryptoKey> {
 /** The published JWK (the stub's `/jwks`). */
 export function readPublicJwk(): Record<string, unknown> {
   return {
-    ...(JSON.parse(
-      readFileSync(OIDC_SIGNING_PUBLIC_PATH, "utf8"),
-    ) as Record<string, unknown>),
+    ...(JSON.parse(readFileSync(OIDC_SIGNING_PUBLIC_PATH, "utf8")) as Record<
+      string,
+      unknown
+    >),
     kid: "e2e-key",
     alg: "RS256",
     use: "sig",

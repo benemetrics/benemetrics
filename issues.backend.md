@@ -11,14 +11,14 @@ The admin surface itself typechecks clean.
 
 **Deleted by the ongoing rebuild** (tracked → gone, plus the earlier deletions):
 
-| File | Status |
-|---|---|
-| `backend/auth.ts` | deleted — 2 **non-admin** importers remain (§1.1) |
+| File                       | Status                                                        |
+| -------------------------- | ------------------------------------------------------------- |
+| `backend/auth.ts`          | deleted — 2 **non-admin** importers remain (§1.1)             |
 | `backend/storage/index.ts` | deleted — replaced by 9-line `backend/storage.ts` stub (§1.2) |
-| `backend/retry.ts` | deleted — 2 importers (§1.3, new) |
-| `db/json.ts` | deleted — 2 importers (§1.4, new) |
-| `db/pg-errors.ts` | deleted — 3 importers (§1.4, new) |
-| `db/index.ts` | rewritten again — 8 lines (§1.5) |
+| `backend/retry.ts`         | deleted — 2 importers (§1.3, new)                             |
+| `db/json.ts`               | deleted — 2 importers (§1.4, new)                             |
+| `db/pg-errors.ts`          | deleted — 3 importers (§1.4, new)                             |
+| `db/index.ts`              | rewritten again — 8 lines (§1.5)                              |
 
 Evidence: `bun run typecheck` → **15 errors in 14 files**.
 
@@ -26,13 +26,13 @@ Evidence: `bun run typecheck` → **15 errors in 14 files**.
 
 ## 1. Blockers
 
-### 1.1 `backend/auth.ts` deleted; the two *non-admin* auth checks still point at it (2 errors)
+### 1.1 `backend/auth.ts` deleted; the two _non-admin_ auth checks still point at it (2 errors)
 
 - `backend/events/ingestion.ts:4` — `validateAuth` (SDK `sentry_key` / DSN public-key check)
 - `backend/api0/source-maps/index.ts:4` — `validateUploadAuth` (hashed, scoped, expiring upload tokens)
 
 These are ingestion/upload-token checks, not admin token checks, so they are correctly
-*not* part of the admin move — but they need a home now that `auth.ts` is gone.
+_not_ part of the admin move — but they need a home now that `auth.ts` is gone.
 Restore `auth.ts` (it still holds both functions at HEAD) or relocate the two functions.
 
 ### 1.2 `backend/storage/index.ts` deleted; `backend/storage.ts` stub lacks the required exports (4 errors)
@@ -90,10 +90,10 @@ NEVER reintroduce … 'provider configured ⇒ admin token ignored'."
 
 The moved code still implements the forbidden behavior: once any of `OIDC_ISSUER` /
 `OIDC_CLIENT_ID` / `OAUTH_ISSUER` / `OAUTH_CLIENT_ID` is set, `validateAdminToken()`
-rejects *every* token and `logAuthMode()` prints "ADMIN_TOKEN is ignored".
+rejects _every_ token and `logAuthMode()` prints "ADMIN_TOKEN is ignored".
 `e2e/19-admin-guard.test.ts:97-118` pins that behavior today, so changing it is a
 contract change: update the tests together with the code. Target per docs: ADMIN_TOKEN
-always accepted; a verified provider JWT is an *additional* identity; JWT verification
+always accepted; a verified provider JWT is an _additional_ identity; JWT verification
 in `backend/oidc.ts` (discovery → JWKS → WebCrypto, **no new dependencies**).
 
 ### 2.2 The documented permission model is absent

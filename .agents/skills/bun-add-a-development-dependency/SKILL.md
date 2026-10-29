@@ -12,11 +12,11 @@ bun add zod --dev
 bun add zod -d # shorthand
 ```
 
-***
+---
 
 This will add the package to `devDependencies` in `package.json`.
 
-```json  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```json theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
   "devDependencies": {
     "zod": "^3.0.0" // [!code ++]
@@ -24,6 +24,6 @@ This will add the package to `devDependencies` in `package.json`.
 }
 ```
 
-***
+---
 
 See [Docs > Package manager](/pm/cli/install) for complete documentation of Bun's package manager.

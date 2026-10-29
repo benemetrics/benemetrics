@@ -56,21 +56,32 @@ export function useEventsTtl() {
 
   useEffect(() => {
     let alive = true;
-    api["api/admin/settings"]["events-ttl"].get().then((res: { error?: unknown; data?: unknown }) => {
-      if (!alive) return;
-      if (res.error) setError("Failed to read the event retention — the admin token is required.");
-      else setTtl((res.data as EventsTtl) ?? null);
-    });
+    api["api/admin/settings"]["events-ttl"]
+      .get()
+      .then((res: { error?: unknown; data?: unknown }) => {
+        if (!alive) return;
+        if (res.error)
+          setError(
+            "Failed to read the event retention — the admin token is required.",
+          );
+        else setTtl((res.data as EventsTtl) ?? null);
+      });
     return () => {
       alive = false;
     };
   }, [tick]);
 
-  const saveTtl = useCallback(async (amount: number, unit: string) => {
-    const res = await api["api/admin/settings"]["events-ttl"].put({ amount, unit });
-    if (res.error) throw new Error("Failed to update the event retention");
-    reload();
-  }, [reload]);
+  const saveTtl = useCallback(
+    async (amount: number, unit: string) => {
+      const res = await api["api/admin/settings"]["events-ttl"].put({
+        amount,
+        unit,
+      });
+      if (res.error) throw new Error("Failed to update the event retention");
+      reload();
+    },
+    [reload],
+  );
 
   return { ttl, error, saveTtl };
 }
@@ -79,7 +90,9 @@ export function usePermissions() {
   const [rules, setRules] = useState<PermissionRuleRecord[] | null>(null);
   const [grants, setGrants] = useState<PermissionGrantRecord[] | null>(null);
   const [audit, setAudit] = useState<PermissionAuditRecord[] | null>(null);
-  const [identities, setIdentities] = useState<PermissionIdentityRecord[] | null>(null);
+  const [identities, setIdentities] = useState<
+    PermissionIdentityRecord[] | null
+  >(null);
   const [forbidden, setForbidden] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
@@ -96,12 +109,30 @@ export function usePermissions() {
     ]).then(([rulesRes, grantsRes, auditRes, identitiesRes]) => {
       if (!alive) return;
       // The whole surface is admin-token-only: one 403 means all of them are.
-      const anyForbidden = [rulesRes, grantsRes, auditRes, identitiesRes].some((r) => (r as { status?: number }).status === 403);
+      const anyForbidden = [rulesRes, grantsRes, auditRes, identitiesRes].some(
+        (r) => (r as { status?: number }).status === 403,
+      );
       setForbidden(anyForbidden);
-      setRules(rulesRes.error ? [] : (rulesRes.data as { data: PermissionRuleRecord[] }).data);
-      setGrants(grantsRes.error ? [] : (grantsRes.data as { data: PermissionGrantRecord[] }).data);
-      setAudit(auditRes.error ? [] : (auditRes.data as { data: PermissionAuditRecord[] }).data);
-      setIdentities(identitiesRes.error ? [] : (identitiesRes.data as { data: PermissionIdentityRecord[] }).data);
+      setRules(
+        rulesRes.error
+          ? []
+          : (rulesRes.data as { data: PermissionRuleRecord[] }).data,
+      );
+      setGrants(
+        grantsRes.error
+          ? []
+          : (grantsRes.data as { data: PermissionGrantRecord[] }).data,
+      );
+      setAudit(
+        auditRes.error
+          ? []
+          : (auditRes.data as { data: PermissionAuditRecord[] }).data,
+      );
+      setIdentities(
+        identitiesRes.error
+          ? []
+          : (identitiesRes.data as { data: PermissionIdentityRecord[] }).data,
+      );
       setLoading(false);
     });
     return () => {
@@ -109,47 +140,96 @@ export function usePermissions() {
     };
   }, [tick]);
 
-  const createRule = useCallback(async (draft: { name: string; projectIds: string[]; appPrefixes: string[] }) => {
-    const res = await api["api/admin/permissions"].rules.post({ name: draft.name.trim(), projectIds: draft.projectIds, appPrefixes: draft.appPrefixes });
-    if (res.error) throw new Error("Failed to create the permission rule");
-    reload();
-  }, [reload]);
+  const createRule = useCallback(
+    async (draft: {
+      name: string;
+      projectIds: string[];
+      appPrefixes: string[];
+    }) => {
+      const res = await api["api/admin/permissions"].rules.post({
+        name: draft.name.trim(),
+        projectIds: draft.projectIds,
+        appPrefixes: draft.appPrefixes,
+      });
+      if (res.error) throw new Error("Failed to create the permission rule");
+      reload();
+    },
+    [reload],
+  );
 
-  const toggleRule = useCallback(async (ruleId: string, isEnabled: boolean) => {
-    const res = await api["api/admin/permissions"].rules[ruleId].patch({ isEnabled });
-    if (res.error) throw new Error("Failed to update the permission rule");
-    reload();
-  }, [reload]);
+  const toggleRule = useCallback(
+    async (ruleId: string, isEnabled: boolean) => {
+      const res = await api["api/admin/permissions"].rules[ruleId].patch({
+        isEnabled,
+      });
+      if (res.error) throw new Error("Failed to update the permission rule");
+      reload();
+    },
+    [reload],
+  );
 
-  const deleteRule = useCallback(async (ruleId: string) => {
-    const res = await api["api/admin/permissions"].rules[ruleId].delete();
-    if (res.error) throw new Error("Failed to delete the permission rule");
-    reload();
-  }, [reload]);
+  const deleteRule = useCallback(
+    async (ruleId: string) => {
+      const res = await api["api/admin/permissions"].rules[ruleId].delete();
+      if (res.error) throw new Error("Failed to delete the permission rule");
+      reload();
+    },
+    [reload],
+  );
 
-  const createGrant = useCallback(async (draft: { identityId: string; label?: string; projectIds: string[]; appPrefixes: string[]; canWrite: boolean }) => {
-    const res = await api["api/admin/permissions"].grants.post({
-      identityId: draft.identityId.trim(),
-      label: draft.label?.trim() || undefined,
-      projectIds: draft.projectIds,
-      appPrefixes: draft.appPrefixes,
-      canWrite: draft.canWrite,
-    });
-    if (res.error) throw new Error("Failed to create the permission grant");
-    reload();
-  }, [reload]);
+  const createGrant = useCallback(
+    async (draft: {
+      identityId: string;
+      label?: string;
+      projectIds: string[];
+      appPrefixes: string[];
+      canWrite: boolean;
+    }) => {
+      const res = await api["api/admin/permissions"].grants.post({
+        identityId: draft.identityId.trim(),
+        label: draft.label?.trim() || undefined,
+        projectIds: draft.projectIds,
+        appPrefixes: draft.appPrefixes,
+        canWrite: draft.canWrite,
+      });
+      if (res.error) throw new Error("Failed to create the permission grant");
+      reload();
+    },
+    [reload],
+  );
 
-  const toggleGrant = useCallback(async (grantId: string, isEnabled: boolean) => {
-    const res = await api["api/admin/permissions"].grants[grantId].patch({ isEnabled });
-    if (res.error) throw new Error("Failed to update the permission grant");
-    reload();
-  }, [reload]);
+  const toggleGrant = useCallback(
+    async (grantId: string, isEnabled: boolean) => {
+      const res = await api["api/admin/permissions"].grants[grantId].patch({
+        isEnabled,
+      });
+      if (res.error) throw new Error("Failed to update the permission grant");
+      reload();
+    },
+    [reload],
+  );
 
-  const deleteGrant = useCallback(async (grantId: string) => {
-    const res = await api["api/admin/permissions"].grants[grantId].delete();
-    if (res.error) throw new Error("Failed to delete the permission grant");
-    reload();
-  }, [reload]);
+  const deleteGrant = useCallback(
+    async (grantId: string) => {
+      const res = await api["api/admin/permissions"].grants[grantId].delete();
+      if (res.error) throw new Error("Failed to delete the permission grant");
+      reload();
+    },
+    [reload],
+  );
 
-  return { rules, grants, audit, identities, forbidden, loading, createRule, toggleRule, deleteRule, createGrant, toggleGrant, deleteGrant };
+  return {
+    rules,
+    grants,
+    audit,
+    identities,
+    forbidden,
+    loading,
+    createRule,
+    toggleRule,
+    deleteRule,
+    createGrant,
+    toggleGrant,
+    deleteGrant,
+  };
 }

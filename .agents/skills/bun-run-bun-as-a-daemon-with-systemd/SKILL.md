@@ -7,16 +7,16 @@ description: Run Bun as a daemon with systemd
 
 [systemd](https://systemd.io) is an init system and service manager for Linux operating systems that manages the startup and control of system processes and services.
 
-***
+---
 
-To run a Bun application as a daemon using **systemd** you'll need to create a *service file* in `/lib/systemd/system/`.
+To run a Bun application as a daemon using **systemd** you'll need to create a _service file_ in `/lib/systemd/system/`.
 
 ```sh terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 cd /lib/systemd/system
 touch my-app.service
 ```
 
-***
+---
 
 Here is a typical service file that runs an application on system start. You can use this as a template for your own service. Replace `YOUR_USER` with the name of the user you want to run the application as. To run as `root`, replace `YOUR_USER` with `root`, though this is generally not recommended for security reasons.
 
@@ -49,7 +49,7 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-***
+---
 
 If your application starts a webserver, note that non-`root` users are not able to listen on ports 80 or 443 by default. To permanently allow Bun to listen on these ports when executed by a non-`root` user, use the following command. This step isn't necessary when running as `root`.
 
@@ -57,23 +57,23 @@ If your application starts a webserver, note that non-`root` users are not able 
 setcap CAP_NET_BIND_SERVICE=+eip ~/.bun/bin/bun
 ```
 
-***
+---
 
-With the service file configured, you can now *enable* the service. Once enabled, it will start automatically on reboot. This requires `sudo` permissions.
+With the service file configured, you can now _enable_ the service. Once enabled, it will start automatically on reboot. This requires `sudo` permissions.
 
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 systemctl enable my-app
 ```
 
-***
+---
 
-To start the service without rebooting, you can manually *start* it.
+To start the service without rebooting, you can manually _start_ it.
 
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 systemctl start my-app
 ```
 
-***
+---
 
 Check the status of your application with `systemctl status`. If you've started your app successfully, you should see something like this:
 
@@ -81,7 +81,7 @@ Check the status of your application with `systemctl status`. If you've started 
 systemctl status my-app
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 ● my-app.service - My App
      Loaded: loaded (/lib/systemd/system/my-app.service; enabled; preset: enabled)
      Active: active (running) since Thu 2023-10-12 11:34:08 UTC; 1h 8min ago
@@ -93,7 +93,7 @@ systemctl status my-app
              └─309641 /home/YOUR_USER/.bun/bin/bun run /home/YOUR_USER/application/index.ts
 ```
 
-***
+---
 
 To update the service, edit the contents of the service file, then reload the daemon.
 
@@ -101,7 +101,7 @@ To update the service, edit the contents of the service file, then reload the da
 systemctl daemon-reload
 ```
 
-***
+---
 
 For a complete guide on the service unit configuration, you can check [this page](https://www.freedesktop.org/software/systemd/man/systemd.service.html). Or refer to this cheatsheet of common commands:
 

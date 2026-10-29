@@ -24,9 +24,24 @@ export type IssueQueryTerm =
   | { kind: "level"; value: string; negated: boolean }
   | { kind: "eventType"; value: "error" | "message"; negated: boolean }
   | { kind: "release"; value: string; negated: boolean }
-  | { kind: "firstSeen"; operator: TimeOperator | null; value: TimeValue; negated: boolean }
-  | { kind: "lastSeen"; operator: TimeOperator | null; value: TimeValue; negated: boolean }
-  | { kind: "timesSeen"; operator: NumberOperator; value: number; negated: boolean }
+  | {
+      kind: "firstSeen";
+      operator: TimeOperator | null;
+      value: TimeValue;
+      negated: boolean;
+    }
+  | {
+      kind: "lastSeen";
+      operator: TimeOperator | null;
+      value: TimeValue;
+      negated: boolean;
+    }
+  | {
+      kind: "timesSeen";
+      operator: NumberOperator;
+      value: number;
+      negated: boolean;
+    }
   | { kind: "user"; value: string; negated: boolean }
   | { kind: "tag"; key: string; value: string; negated: boolean }
   | { kind: "text"; value: string; negated: boolean };
@@ -47,12 +62,7 @@ const KEYS = {
   timesseen: "timesSeen",
 } as const;
 
-const RESERVED = new Set([
-  "assigned",
-  "bookmarked",
-  "has",
-  "url",
-]);
+const RESERVED = new Set(["assigned", "bookmarked", "has", "url"]);
 
 const STATUSES = new Set(["unresolved", "resolved"]);
 const LEVELS = new Set(["fatal", "error", "warning", "info", "debug"]);
@@ -95,7 +105,10 @@ function tokenize(input: string): string[] {
 }
 
 // The atom of a value: quoted (literal) or unquoted.
-function readAtom(raw: string, term: string): { value: string; quoted: boolean } {
+function readAtom(
+  raw: string,
+  term: string,
+): { value: string; quoted: boolean } {
   if (raw.startsWith('"')) {
     if (!raw.endsWith('"') || raw.length < 2) fail("unterminated quote", term);
     return { value: raw.slice(1, -1), quoted: true };
@@ -161,7 +174,11 @@ function parsePair(
     case "status": {
       const status = value.toLowerCase();
       if (!STATUSES.has(status)) fail("unknown status", term);
-      return { kind: "status", value: status as "unresolved" | "resolved", negated: false };
+      return {
+        kind: "status",
+        value: status as "unresolved" | "resolved",
+        negated: false,
+      };
     }
     case "level": {
       const level = value.toLowerCase();
@@ -171,7 +188,11 @@ function parsePair(
     case "eventType": {
       const type = value.toLowerCase();
       if (!EVENT_TYPES.has(type)) fail("unknown event type", term);
-      return { kind: "eventType", value: type as "error" | "message", negated: false };
+      return {
+        kind: "eventType",
+        value: type as "error" | "message",
+        negated: false,
+      };
     }
     case "app":
       if (!value) fail("empty value", term);
@@ -256,11 +277,12 @@ export function summarizeTerm(term: IssueQueryTerm): {
       break;
     case "firstSeen":
     case "lastSeen":
-      summary.value = term.value.type === "relative"
-        ? `-${term.value.amount}${term.value.unit}`
-        : term.value.type === "date"
-          ? term.value.date
-          : term.value.at;
+      summary.value =
+        term.value.type === "relative"
+          ? `-${term.value.amount}${term.value.unit}`
+          : term.value.type === "date"
+            ? term.value.date
+            : term.value.at;
       break;
     case "timesSeen":
       summary.value = String(term.value);
@@ -282,7 +304,8 @@ export function parseIssueQuery(input: string): IssueQueryTerm[][] {
   const groups: IssueQueryTerm[][] = [[]];
   for (const token of tokenize(input.trim())) {
     if (token === OR_SEPARATOR) {
-      if (groups[groups.length - 1]!.length === 0) fail("empty OR group", token);
+      if (groups[groups.length - 1]!.length === 0)
+        fail("empty OR group", token);
       groups.push([]);
       continue;
     }

@@ -4,8 +4,6 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
 import { cursorAfter, cursorLimit } from "./cursor";
 
-type ReleaseCreateInput = Omit<ReleaseInsert, "id"> & { id?: string };
-
 // Every release field is part of the API response; the projection keeps
 // the response shape stable if the table grows more columns.
 const releaseFields = {
@@ -146,7 +144,8 @@ export const releaseDAO = {
       options.cursor,
     );
     if (empty) return { data: [] };
-    const where = scope && condition ? and(scope, condition) : (scope ?? condition);
+    const where =
+      scope && condition ? and(scope, condition) : (scope ?? condition);
 
     const data = await db
       .select(releaseFields)

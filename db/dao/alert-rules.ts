@@ -1,8 +1,5 @@
 import { db } from "db";
-import {
-  alertRules,
-  type AlertRuleInsert,
-} from "db/schema/alert-rules";
+import { alertRules, type AlertRuleInsert } from "db/schema/alert-rules";
 import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
 import { uniqueViolationConstraint } from "db/pg-errors";
@@ -35,7 +32,10 @@ function scopeCondition(scope: AlertScope | null) {
   if (!scope) return isNull(alertRules.appId);
   if (scope.appId) return eq(alertRules.appId, scope.appId);
   if (scope.projectId) {
-    return and(isNull(alertRules.appId), eq(alertRules.projectId, scope.projectId));
+    return and(
+      isNull(alertRules.appId),
+      eq(alertRules.projectId, scope.projectId),
+    );
   }
   return isNull(alertRules.appId);
 }
@@ -114,10 +114,7 @@ export const alertRuleDAO = {
   // Every rule, whatever its scope — the export and the import need them
   // all; `list` is the scoped read.
   listAll: async (): Promise<AlertRule[]> =>
-    db
-      .select(ruleFields)
-      .from(alertRules)
-      .orderBy(desc(alertRules.createdAt)),
+    db.select(ruleFields).from(alertRules).orderBy(desc(alertRules.createdAt)),
 
   list: async (scope: AlertScope | null): Promise<AlertRule[]> =>
     db
@@ -133,7 +130,10 @@ export const alertRuleDAO = {
     limit?: number;
   }): Promise<CursorPage<AlertRule>> => {
     const limit = cursorLimit(options.limit);
-    const scope = scopeCondition({ appId: options.appId, projectId: options.projectId });
+    const scope = scopeCondition({
+      appId: options.appId,
+      projectId: options.projectId,
+    });
     const { condition, empty } = await cursorAfter(
       alertRules,
       alertRules.id,

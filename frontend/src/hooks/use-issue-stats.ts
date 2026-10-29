@@ -10,12 +10,17 @@ export function useIssueStats(issueId: string | undefined, enabled = true) {
   useEffect(() => {
     if (!issueId || !enabled) return;
     let alive = true;
-    api["api/admin/issues"][issueId].stats.get().then((res: { error?: unknown; data?: unknown }) => {
-      if (!alive || res.error) return;
-      const data = res.data as { points: { eventCount: number; userCount: number }[]; totals?: { userCount?: number } };
-      setPoints(data.points.map((p) => p.eventCount));
-      setUserTotal(data.totals?.userCount ?? null);
-    });
+    api["api/admin/issues"][issueId].stats
+      .get()
+      .then((res: { error?: unknown; data?: unknown }) => {
+        if (!alive || res.error) return;
+        const data = res.data as {
+          points: { eventCount: number; userCount: number }[];
+          totals?: { userCount?: number };
+        };
+        setPoints(data.points.map((p) => p.eventCount));
+        setUserTotal(data.totals?.userCount ?? null);
+      });
     return () => {
       alive = false;
     };

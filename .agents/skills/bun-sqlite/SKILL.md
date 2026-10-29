@@ -17,7 +17,7 @@ const query = db.query("select 'Hello world' as message;");
 query.get();
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 { message: "Hello world" }
 ```
 
@@ -25,14 +25,14 @@ The API is simple, synchronous, and fast. Credit to [better-sqlite3](https://git
 
 Features include:
 
-* Transactions
-* Parameters (named & positional)
-* Prepared statements
-* Datatype conversions (`BLOB` becomes `Uint8Array`)
-* Map query results to classes without an ORM - `query.as(MyClass)`
-* The fastest performance of any SQLite driver for JavaScript
-* `bigint` support
-* Multi-query statements (e.g. `SELECT 1; SELECT 2;`) in a single call to database.run(query)
+- Transactions
+- Parameters (named & positional)
+- Prepared statements
+- Datatype conversions (`BLOB` becomes `Uint8Array`)
+- Map query results to classes without an ORM - `query.as(MyClass)`
+- The fastest performance of any SQLite driver for JavaScript
+- `bigint` support
+- Multi-query statements (e.g. `SELECT 1; SELECT 2;`) in a single call to database.run(query)
 
 The `bun:sqlite` module is roughly 3-6x faster than `better-sqlite3` and 8-9x faster than `deno.land/x/sqlite` for read queries. Each driver was benchmarked against the [Northwind Traders](https://github.com/jpwhite3/northwind-SQLite3/blob/46d5f8a64f396f87cd374d1600dbf521523980e8/Northwind_large.sqlite.zip) dataset. View and run the [benchmark source](https://github.com/oven-sh/bun/tree/main/bench/sqlite).
 
@@ -41,7 +41,7 @@ The `bun:sqlite` module is roughly 3-6x faster than `better-sqlite3` and 8-9x fa
   deno.land/x/sqlite](https://user-images.githubusercontent.com/709451/168459263-8cd51ca3-a924-41e9-908d-cf3478a3b7f3.png)
 </Frame>
 
-***
+---
 
 ## Database
 
@@ -151,7 +151,7 @@ import { Database } from "bun:sqlite";
 }
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 { message: "Hello world" }
 ```
 
@@ -169,7 +169,7 @@ Internally, `.serialize()` calls [`sqlite3_serialize`](https://www.sqlite.org/c3
 
 ### `.query()`
 
-Use the `db.query()` method on your `Database` instance to [prepare](https://www.sqlite.org/c3ref/prepare.html) a SQL query. The result is a `Statement` instance that will be cached on the `Database` instance. *The query will not be executed.*
+Use the `db.query()` method on your `Database` instance to [prepare](https://www.sqlite.org/c3ref/prepare.html) a SQL query. The result is a `Statement` instance that will be cached on the `Database` instance. _The query will not be executed._
 
 ```ts db.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 const query = db.query(`select "Hello world" as message`);
@@ -178,26 +178,27 @@ const query = db.query(`select "Hello world" as message`);
 <Note>
   **What does "cached" mean?**
 
-  The caching refers to the **compiled prepared statement** (the SQL bytecode), not the query results. When you call `db.query()` with the same SQL string multiple times, Bun returns the same cached `Statement` object instead of recompiling the SQL.
+The caching refers to the **compiled prepared statement** (the SQL bytecode), not the query results. When you call `db.query()` with the same SQL string multiple times, Bun returns the same cached `Statement` object instead of recompiling the SQL.
 
-  It is completely safe to reuse a cached statement with different parameter values:
+It is completely safe to reuse a cached statement with different parameter values:
 
-  ```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-  const query = db.query("SELECT * FROM users WHERE id = ?");
-  query.get(1); // ✓ Works
-  query.get(2); // ✓ Also works - parameters are bound fresh each time
-  query.get(3); // ✓ Still works
-  ```
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+const query = db.query("SELECT * FROM users WHERE id = ?");
+query.get(1); // ✓ Works
+query.get(2); // ✓ Also works - parameters are bound fresh each time
+query.get(3); // ✓ Still works
+```
 
-  Use `.prepare()` instead of `.query()` when you want a fresh `Statement` instance that isn't cached, for example if you're dynamically generating SQL and don't want to fill the cache with one-off queries.
+Use `.prepare()` instead of `.query()` when you want a fresh `Statement` instance that isn't cached, for example if you're dynamically generating SQL and don't want to fill the cache with one-off queries.
 
-  ```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-  // compile the prepared statement without caching
-  const query = db.prepare("SELECT * FROM foo WHERE bar = ?");
-  ```
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+// compile the prepared statement without caching
+const query = db.prepare("SELECT * FROM foo WHERE bar = ?");
+```
+
 </Note>
 
-***
+---
 
 ## WAL mode
 
@@ -212,14 +213,14 @@ db.run("PRAGMA journal_mode = WAL;");
 <Accordion title="What is WAL mode?">
   In WAL mode, writes to the database are written directly to a separate file called the "WAL file" (write-ahead log). This file will be later integrated into the main database file. Think of it as a buffer for pending writes. Refer to the [SQLite docs](https://www.sqlite.org/wal.html) for a more detailed overview.
 
-  On macOS, WAL files may be persistent by default. This is not a bug, it is how macOS configured the system version of SQLite.
+On macOS, WAL files may be persistent by default. This is not a bug, it is how macOS configured the system version of SQLite.
 </Accordion>
 
-***
+---
 
 ## Statements
 
-A `Statement` is a *prepared query*, which means it's been parsed and compiled into an efficient binary form. It can be executed multiple times in a performant way.
+A `Statement` is a _prepared query_, which means it's been parsed and compiled into an efficient binary form. It can be executed multiple times in a performant way.
 
 Create a statement with the `.query` method on your `Database` instance.
 
@@ -282,7 +283,7 @@ const query = db.query(`select $message;`);
 query.all({ $message: "Hello world" });
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 [{ message: "Hello world" }]
 ```
 
@@ -297,7 +298,7 @@ const query = db.query(`select $message;`);
 query.get({ $message: "Hello world" });
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 { $message: "Hello world" }
 ```
 
@@ -312,7 +313,7 @@ const query = db.query(`create table foo;`);
 query.run();
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
   lastInsertRowid: 0,
   changes: 0,
@@ -345,7 +346,7 @@ console.log(movies[0].isMarvel);
 console.log(first.isMarvel);
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 true
 true
 ```
@@ -385,7 +386,7 @@ query.values({ $message: "Hello world" });
 query.values(2);
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 [
   [ "Iron Man", 2008 ],
   [ "The Avengers", 2012 ],
@@ -437,7 +438,7 @@ const results = query.all({
 });
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 [{ "$bar": "bar" }]
 ```
 
@@ -448,7 +449,7 @@ const query = db.query("SELECT ?1, ?2");
 const results = query.all("hello", "goodbye");
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 [
 	{
 		"?1": "hello",
@@ -457,7 +458,7 @@ const results = query.all("hello", "goodbye");
 ];
 ```
 
-***
+---
 
 ## Integers
 
@@ -475,13 +476,15 @@ When `safeIntegers` is `true`, `bun:sqlite` will return integers as `bigint` typ
 import { Database } from "bun:sqlite";
 
 const db = new Database(":memory:", { safeIntegers: true });
-const query = db.query(`SELECT ${BigInt(Number.MAX_SAFE_INTEGER) + 102n} as max_int`);
+const query = db.query(
+  `SELECT ${BigInt(Number.MAX_SAFE_INTEGER) + 102n} as max_int`,
+);
 const result = query.get();
 
 console.log(result.max_int);
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 9007199254741093n
 ```
 
@@ -502,7 +505,7 @@ try {
 }
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 BigInt value '81129638414606663681390495662081' is out of range
 ```
 
@@ -514,40 +517,46 @@ When `safeIntegers` is `false`, `bun:sqlite` will return integers as `number` ty
 import { Database } from "bun:sqlite";
 
 const db = new Database(":memory:", { safeIntegers: false });
-const query = db.query(`SELECT ${BigInt(Number.MAX_SAFE_INTEGER) + 102n} as max_int`);
+const query = db.query(
+  `SELECT ${BigInt(Number.MAX_SAFE_INTEGER) + 102n} as max_int`,
+);
 const result = query.get();
 console.log(result.max_int);
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 9007199254741092
 ```
 
-***
+---
 
 ## Transactions
 
-Transactions are a mechanism for executing multiple queries in an *atomic* way; that is, either all of the queries succeed or none of them do. Create a transaction with the `db.transaction()` method:
+Transactions are a mechanism for executing multiple queries in an _atomic_ way; that is, either all of the queries succeed or none of them do. Create a transaction with the `db.transaction()` method:
 
 ```ts db.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" highlight={2} theme={"theme":{"light":"github-light","dark":"dracula"}}
 const insertCat = db.prepare("INSERT INTO cats (name) VALUES ($name)");
-const insertCats = db.transaction(cats => {
+const insertCats = db.transaction((cats) => {
   for (const cat of cats) insertCat.run(cat);
 });
 ```
 
-At this stage, we haven't inserted any cats! The call to `db.transaction()` returns a new function (`insertCats`) that *wraps* the function that executes the queries.
+At this stage, we haven't inserted any cats! The call to `db.transaction()` returns a new function (`insertCats`) that _wraps_ the function that executes the queries.
 
 To execute the transaction, call this function. All arguments will be passed through to the wrapped function; the return value of the wrapped function will be returned by the transaction function. The wrapped function also has access to the `this` context as defined where the transaction is executed.
 
 ```ts db.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" highlight={3} theme={"theme":{"light":"github-light","dark":"dracula"}}
 const insert = db.prepare("INSERT INTO cats (name) VALUES ($name)");
-const insertCats = db.transaction(cats => {
+const insertCats = db.transaction((cats) => {
   for (const cat of cats) insert.run(cat);
   return cats.length;
 });
 
-const count = insertCats([{ $name: "Keanu" }, { $name: "Salem" }, { $name: "Crookshanks" }]);
+const count = insertCats([
+  { $name: "Keanu" },
+  { $name: "Salem" },
+  { $name: "Crookshanks" },
+]);
 
 console.log(`Inserted ${count} cats`);
 ```
@@ -581,12 +590,13 @@ The driver will automatically [`begin`](https://www.sqlite.org/lang_transaction.
       { $name: "Junior", $age: 1 },
     ]);
     ```
+
   </Accordion>
 </Note>
 
 Transactions also come with `deferred`, `immediate`, and `exclusive` versions.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 insertCats(cats); // uses "BEGIN"
 insertCats.deferred(cats); // uses "BEGIN DEFERRED"
 insertCats.immediate(cats); // uses "BEGIN IMMEDIATE"
@@ -607,21 +617,22 @@ db.loadExtension("myext");
 <Note>
   **MacOS users** By default, macOS ships with Apple's proprietary build of SQLite, which doesn't support extensions. To use extensions, you'll need to install a vanilla build of SQLite.
 
-  ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  brew install sqlite
-  which sqlite # get path to binary
-  ```
+```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
+brew install sqlite
+which sqlite # get path to binary
+```
 
-  To point `bun:sqlite` to the new build, call `Database.setCustomSQLite(path)` before creating any `Database` instances. (On other operating systems, this is a no-op.) Pass a path to the SQLite `.dylib` file, *not* the executable. With recent versions of Homebrew this is something like `/opt/homebrew/Cellar/sqlite/<version>/libsqlite3.dylib`.
+To point `bun:sqlite` to the new build, call `Database.setCustomSQLite(path)` before creating any `Database` instances. (On other operating systems, this is a no-op.) Pass a path to the SQLite `.dylib` file, _not_ the executable. With recent versions of Homebrew this is something like `/opt/homebrew/Cellar/sqlite/<version>/libsqlite3.dylib`.
 
-  ```ts db.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" highlight={3} theme={"theme":{"light":"github-light","dark":"dracula"}}
-  import { Database } from "bun:sqlite";
+```ts db.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" highlight={3} theme={"theme":{"light":"github-light","dark":"dracula"}}
+import { Database } from "bun:sqlite";
 
-  Database.setCustomSQLite("/path/to/libsqlite.dylib");
+Database.setCustomSQLite("/path/to/libsqlite.dylib");
 
-  const db = new Database();
-  db.loadExtension("myext");
-  ```
+const db = new Database();
+db.loadExtension("myext");
+```
+
 </Note>
 
 ### `.fileControl(cmd: number, value: any)`
@@ -639,11 +650,11 @@ db.fileControl(constants.SQLITE_FCNTL_PERSIST_WAL, 0);
 
 `value` can be:
 
-* `number`
-* `TypedArray`
-* `undefined` or `null`
+- `number`
+- `TypedArray`
+- `undefined` or `null`
 
-***
+---
 
 ## Reference
 
@@ -663,8 +674,13 @@ class Database {
   );
 
   query<ReturnType, ParamsType>(sql: string): Statement<ReturnType, ParamsType>;
-  prepare<ReturnType, ParamsType>(sql: string): Statement<ReturnType, ParamsType>;
-  run(sql: string, params?: SQLQueryBindings): { lastInsertRowid: number; changes: number };
+  prepare<ReturnType, ParamsType>(
+    sql: string,
+  ): Statement<ReturnType, ParamsType>;
+  run(
+    sql: string,
+    params?: SQLQueryBindings,
+  ): { lastInsertRowid: number; changes: number };
   exec = this.run;
 
   transaction(insideTransaction: (...args: any) => void): CallableFunction & {

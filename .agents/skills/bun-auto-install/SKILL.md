@@ -19,7 +19,7 @@ foo();
 
 The first time you run this script, Bun will auto-install `"foo"` and cache it. The next time you run the script, it will use the cached version.
 
-***
+---
 
 ## Version resolution
 
@@ -29,23 +29,23 @@ To determine which version to install, Bun follows the following algorithm:
 2. Otherwise, scan up the tree for a `package.json` that includes `"foo"` as a dependency. If found, use the specified semver version or version range.
 3. Otherwise, use `latest`.
 
-***
+---
 
 ## Cache behavior
 
 Once a version or version range has been determined, Bun will:
 
 1. Check the module cache for a compatible version. If one exists, use it.
-2. When resolving `latest`, Bun will check if `package@latest` has been downloaded and cached in the last *24 hours*. If so, use it.
+2. When resolving `latest`, Bun will check if `package@latest` has been downloaded and cached in the last _24 hours_. If so, use it.
 3. Otherwise, download and install the appropriate version from the `npm` registry.
 
-***
+---
 
 ## Installation
 
 Packages are installed and cached into `<cache>/<pkg>@<version>`, so multiple versions of the same package can be cached at once. Additionally, a symlink is created under `<cache>/<pkg>/<version>` to make it faster to look up all versions of a package that exist in the cache.
 
-***
+---
 
 ## Version specifiers
 
@@ -57,25 +57,25 @@ import { z } from "zod@next"; // npm tag
 import { z } from "zod@^3.20.0"; // semver range
 ```
 
-***
+---
 
 ## Benefits
 
 This auto-installation approach is useful for a few reasons:
 
-* **Space efficiency** — Each version of a dependency only exists in one place on disk. This is a huge space and time savings compared to redundant per-project installations.
-* **Portability** — To share simple scripts and gists, your source file is *self-contained*. No need to `zip` together a directory containing your code and config files. With version specifiers in `import` statements, even a `package.json` isn't necessary.
-* **Convenience** — There's no need to run `npm install` or `bun install` before running a file or script. Just `bun run` it.
-* **Backwards compatibility** — Because Bun still respects the versions specified in `package.json` if one exists, you can switch to Bun-style resolution with a single command: `rm -rf node_modules`.
+- **Space efficiency** — Each version of a dependency only exists in one place on disk. This is a huge space and time savings compared to redundant per-project installations.
+- **Portability** — To share simple scripts and gists, your source file is _self-contained_. No need to `zip` together a directory containing your code and config files. With version specifiers in `import` statements, even a `package.json` isn't necessary.
+- **Convenience** — There's no need to run `npm install` or `bun install` before running a file or script. Just `bun run` it.
+- **Backwards compatibility** — Because Bun still respects the versions specified in `package.json` if one exists, you can switch to Bun-style resolution with a single command: `rm -rf node_modules`.
 
-***
+---
 
 ## Limitations
 
-* No Intellisense. TypeScript auto-completion in IDEs relies on the existence of type declaration files inside `node_modules`. We are investigating various solutions to this.
-* No [patch-package](https://github.com/ds300/patch-package) support
+- No Intellisense. TypeScript auto-completion in IDEs relies on the existence of type declaration files inside `node_modules`. We are investigating various solutions to this.
+- No [patch-package](https://github.com/ds300/patch-package) support
 
-***
+---
 
 ## FAQ
 
@@ -88,6 +88,7 @@ This auto-installation approach is useful for a few reasons:
     With Yarn, you must run `yarn install` before you run a script. By contrast, Bun resolves dependencies on the fly when you run a file; there's no need to run any `install` command ahead of time.
 
     Yarn Plug'N'Play also uses zip files to store dependencies. This makes dependency loading [slower at runtime](https://twitter.com/jarredsumner/status/1458207919636287490), as random access reads on zip files tend to be slower than the equivalent disk lookup.
+
   </Accordion>
 
   <Accordion title="How is this different from what Deno does?">

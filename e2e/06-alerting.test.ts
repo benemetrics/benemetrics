@@ -6,8 +6,20 @@
  */
 
 import * as Sentry from "@sentry/bun";
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
-import { startTestServer, waitForEventListItem, ADMIN_TOKEN, type TestServer } from "./test-helpers";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+} from "bun:test";
+import {
+  startTestServer,
+  waitForEventListItem,
+  ADMIN_TOKEN,
+  type TestServer,
+} from "./test-helpers";
 
 let SERVER_URL = "";
 let testServer: TestServer | null = null;
@@ -21,7 +33,7 @@ interface TestResult {
 async function apiRequest(
   method: string,
   path: string,
-  body?: unknown
+  body?: unknown,
 ): Promise<Response> {
   const url = new URL(`${SERVER_URL}${path}`);
   const options: RequestInit = {
@@ -45,11 +57,15 @@ async function fetchEvent(eventId: string): Promise<TestResult | null> {
 
 async function fetchAllEvents(): Promise<TestResult[]> {
   const response = await apiRequest("GET", "/events");
-  const body = (await response.json()) as { data?: TestResult[] } | TestResult[];
+  const body = (await response.json()) as
+    { data?: TestResult[] } | TestResult[];
   return Array.isArray(body) ? body : (body.data ?? []);
 }
 
-async function waitForEvent(eventId: string, timeout: number = 5000): Promise<TestResult | null> {
+async function waitForEvent(
+  eventId: string,
+  timeout: number = 5000,
+): Promise<TestResult | null> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const event = await fetchEvent(eventId);
@@ -151,18 +167,21 @@ describe("Alerting (06-alerting.md)", () => {
   });
 
   it("sends error that should trigger alert rule and fetches it", async () => {
-    const eventId = Sentry.captureException(new Error("Critical: Payment service unavailable"), {
-      level: "fatal",
-      tags: {
-        service: "payments",
-        severity: "critical",
-        alert: "true",
+    const eventId = Sentry.captureException(
+      new Error("Critical: Payment service unavailable"),
+      {
+        level: "fatal",
+        tags: {
+          service: "payments",
+          severity: "critical",
+          alert: "true",
+        },
+        extra: {
+          affected_users: 1000,
+          revenue_impact_usd: 50000,
+        },
       },
-      extra: {
-        affected_users: 1000,
-        revenue_impact_usd: 50000,
-      },
-    });
+    );
     expect(eventId).toBeDefined();
 
     await Sentry.flush(5000);
@@ -176,19 +195,22 @@ describe("Alerting (06-alerting.md)", () => {
   });
 
   it("sends span with slow performance for alerting and fetches it", async () => {
-    await Sentry.startSpanManual({
-      name: "GET /api/slow-endpoint",
-      op: "http.server",
-    }, async (span) => {
-      expect(span).toBeDefined();
+    await Sentry.startSpanManual(
+      {
+        name: "GET /api/slow-endpoint",
+        op: "http.server",
+      },
+      async (span) => {
+        expect(span).toBeDefined();
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
-      span.setAttribute("performance.alert", "slow");
-      span.setAttribute("duration_ms", 5000);
-      span.setStatus({ code: 1, message: "ok" });
-      span.end();
-    });
+        span.setAttribute("performance.alert", "slow");
+        span.setAttribute("duration_ms", 5000);
+        span.setStatus({ code: 1, message: "ok" });
+        span.end();
+      },
+    );
 
     await Sentry.flush(5000);
 
@@ -234,7 +256,11 @@ describe("Alerting (06-alerting.md)", () => {
     expect(feedback).toBeDefined();
     // Feedback data is nested under contexts.feedback
     expect((feedback as any).contexts?.feedback?.name).toBe("John Doe");
-    expect((feedback as any).contexts?.feedback?.contact_email).toBe("john@example.com");
-    expect((feedback as any).contexts?.feedback?.message).toBe("The checkout page crashed when I clicked pay");
+    expect((feedback as any).contexts?.feedback?.contact_email).toBe(
+      "john@example.com",
+    );
+    expect((feedback as any).contexts?.feedback?.message).toBe(
+      "The checkout page crashed when I clicked pay",
+    );
   });
 });

@@ -40,7 +40,10 @@ export function RootLayout({
     <>
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-12 max-w-6xl items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2 font-mono text-sm font-bold">
+          <Link
+            to="/"
+            className="flex items-center gap-2 font-mono text-sm font-bold"
+          >
             <Bug className="h-4 w-4 text-primary" />
             glitchlog<span className="blink text-primary">_</span>
           </Link>
@@ -50,14 +53,24 @@ export function RootLayout({
                 settings
               </Link>
             )}
-            {claims.name && <span className="hidden md:inline">{claims.name}</span>}
-            {claims.email && <span className="hidden sm:inline">{claims.email}</span>}
-            {!claims.name && !claims.email && label && <span className="hidden sm:inline">{label}</span>}
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground">{initials}</span>
+            {claims.name && (
+              <span className="hidden md:inline">{claims.name}</span>
+            )}
+            {claims.email && (
+              <span className="hidden sm:inline">{claims.email}</span>
+            )}
+            {!claims.name && !claims.email && label && (
+              <span className="hidden sm:inline">{label}</span>
+            )}
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground">
+              {initials}
+            </span>
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">{children ?? <Outlet />}</main>
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        {children ?? <Outlet />}
+      </main>
     </>
   );
 }

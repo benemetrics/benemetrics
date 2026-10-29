@@ -5,7 +5,10 @@ import {
 } from "db/schema/alert-silences";
 import { and, desc, eq, inArray, lte, or, sql } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
-import type { AlertSilence, AlertSilenceScope } from "backend/protocol/alerting";
+import type {
+  AlertSilence,
+  AlertSilenceScope,
+} from "backend/protocol/alerting";
 import { cursorAfter, cursorLimit, type CursorPage } from "./cursor";
 import type { Executor } from "./executor";
 
@@ -102,7 +105,10 @@ export const alertSilenceDAO = {
         and(
           or(...scopes),
           lte(alertSilences.startsAt, now),
-          or(sql`${alertSilences.endsAt} is null`, sql`${alertSilences.endsAt} >= ${now}`),
+          or(
+            sql`${alertSilences.endsAt} is null`,
+            sql`${alertSilences.endsAt} >= ${now}`,
+          ),
         ),
       );
   },

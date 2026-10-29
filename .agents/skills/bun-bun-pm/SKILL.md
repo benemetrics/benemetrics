@@ -35,7 +35,7 @@ TARBALL=$(bun pm pack --quiet)
 echo "Created: $TARBALL"
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Created: my-package-1.0.0.tgz
 ```
 
@@ -48,12 +48,12 @@ bun pm pack --destination ./dist
 
 ## Options
 
-* `--dry-run`: Perform all tasks except writing the tarball to disk. Shows what would be included.
-* `--destination <dir>`: Specify the directory where the tarball will be saved.
-* `--filename <name>`: Specify an exact file name for the tarball to be saved at.
-* `--ignore-scripts`: Skip running pre/postpack and prepare scripts.
-* `--gzip-level <0-9>`: Set a custom compression level for gzip, ranging from 0 to 9 (default is 9).
-* `--quiet`: Only output the tarball filename, suppressing verbose output. Ideal for scripts and automation.
+- `--dry-run`: Perform all tasks except writing the tarball to disk. Shows what would be included.
+- `--destination <dir>`: Specify the directory where the tarball will be saved.
+- `--filename <name>`: Specify an exact file name for the tarball to be saved at.
+- `--ignore-scripts`: Skip running pre/postpack and prepare scripts.
+- `--gzip-level <0-9>`: Set a custom compression level for gzip, ranging from 0 to 9 (default is 9).
+- `--quiet`: Only output the tarball filename, suppressing verbose output. Ideal for scripts and automation.
 
 > **Note:** `--filename` and `--destination` cannot be used at the same time.
 
@@ -65,7 +65,7 @@ bun pm pack --destination ./dist
 bun pm pack
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun pack v1.2.19
 
 packed 131B package.json
@@ -85,7 +85,7 @@ Packed size: 249B
 bun pm pack --quiet
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 my-package-1.0.0.tgz
 ```
 
@@ -99,7 +99,7 @@ To print the path to the `bin` directory for the local project:
 bun pm bin
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 /path/to/current/project/node_modules/.bin
 ```
 
@@ -109,7 +109,7 @@ To print the path to the global `bin` directory:
 bun pm bin -g
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 <$HOME>/.bun/bin
 ```
 
@@ -123,7 +123,7 @@ bun pm ls
 bun list
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 /path/to/project node_modules (135)
 ├── eslint@8.38.0
 ├── react@18.2.0
@@ -140,7 +140,7 @@ bun pm ls --all
 bun list --all
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 /path/to/project node_modules (135)
 ├── @eslint-community/eslint-utils@4.4.0
 ├── @eslint-community/regexpp@4.5.0
@@ -214,7 +214,7 @@ To print current untrusted dependencies with scripts:
 bun pm untrusted
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 ./node_modules/@biomejs/biome @1.8.3
  » [postinstall]: node scripts/postinstall.js
 
@@ -231,7 +231,7 @@ bun pm trust <names>
 
 Options for the `trust` command:
 
-* `--all`: Trust all untrusted dependencies.
+- `--all`: Trust all untrusted dependencies.
 
 ## default-trusted
 
@@ -251,7 +251,7 @@ To display current package version and help:
 bun pm version
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun pm version v1.3.3 (ca7428e9)
 Current package version: v1.0.0
 
@@ -285,7 +285,7 @@ To bump the version in `package.json`:
 bun pm version patch
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 v1.0.1
 ```
 

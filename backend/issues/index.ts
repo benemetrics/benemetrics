@@ -22,7 +22,12 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
   .resolve(resolveAdminId)
   .get(
     "/",
-    async ({ query: { query, sort, cursor, limit }, request, isAdmin, adminScope }) => {
+    async ({
+      query: { query, sort, cursor, limit },
+      request,
+      isAdmin,
+      adminScope,
+    }) => {
       const groups = parseIssueQuery(query ?? "");
       const view = await scopedViewFor({ request, isAdmin, adminScope });
       // A scoped identity gets an empty list for a name that does not
@@ -36,7 +41,9 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
       // `sort=users` orders on the distinct-user count, which the issues
       // table only knows after it is synced from the ClickHouse issue index.
       if (sortValue === "users") {
-        const appIds = view ? [...view.appIds] : (await appDAO.listAll()).map((app) => app.id);
+        const appIds = view
+          ? [...view.appIds]
+          : (await appDAO.listAll()).map((app) => app.id);
         const counts = await clickHouseIssueUserCounts({ appIds });
         await issueDAO.syncUserCounts(counts, appIds);
       }
@@ -83,7 +90,10 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
         appId: issue.appId,
         fingerprint: issue.fingerprint,
         cursor: query.cursor,
-        limit: Math.min(Math.max(query.limit ?? DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE),
+        limit: Math.min(
+          Math.max(query.limit ?? DEFAULT_PAGE_SIZE, 1),
+          MAX_PAGE_SIZE,
+        ),
       });
       return { data: page.data };
     },
@@ -102,13 +112,18 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
       const view = await scopedViewFor({ request, isAdmin, adminScope });
       if (view && !view.appIds.has(issue.appId)) throw notFound("Issue", id);
       const to = query.to ? new Date(query.to) : new Date();
-      const from = query.from ? new Date(query.from) : new Date(issue.firstSeen);
-      if (Number.isNaN(from.getTime())) throw badRequest('"from" is not a valid date');
-      if (Number.isNaN(to.getTime())) throw badRequest('"to" is not a valid date');
+      const from = query.from
+        ? new Date(query.from)
+        : new Date(issue.firstSeen);
+      if (Number.isNaN(from.getTime()))
+        throw badRequest('"from" is not a valid date');
+      if (Number.isNaN(to.getTime()))
+        throw badRequest('"to" is not a valid date');
       if (from.getTime() > to.getTime()) {
         throw badRequest('"from" must not be after "to"');
       }
-      const stepSeconds = query.stepSeconds ?? autoStepSeconds(to.getTime() - from.getTime());
+      const stepSeconds =
+        query.stepSeconds ?? autoStepSeconds(to.getTime() - from.getTime());
       const stats = await clickHouseIssueStats({
         appId: issue.appId,
         fingerprint: issue.fingerprint,
@@ -135,7 +150,8 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
   )
   .patch(
     "/:id",
-    async ({ params: { id }, body }) => issueDAO.updateOrThrow(id, { status: body.status }),
+    async ({ params: { id }, body }) =>
+      issueDAO.updateOrThrow(id, { status: body.status }),
     {
       params: arktype({ id: "string.uuid" }),
       body: arktype({ status: "'unresolved' | 'resolved'" }),

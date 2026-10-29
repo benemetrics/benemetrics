@@ -21,7 +21,8 @@ let webhookServer: any;
 let webhookUrl = "";
 const webhookCalls: Array<{ url: string; body: Record<string, unknown> }> = [];
 
-const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+const uniq = () =>
+  Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
 async function apiRequest(
   method: string,
@@ -50,9 +51,15 @@ interface TestApp {
 
 async function makeApp(): Promise<TestApp> {
   const project = await json<{ id: string }>(
-    await apiRequest("POST", "/api/admin/projects", { name: `IssueProj-${uniq()}` }),
+    await apiRequest("POST", "/api/admin/projects", {
+      name: `IssueProj-${uniq()}`,
+    }),
   );
-  const appRecord = await json<{ id: string; ingestKey: string; publicKey: string }>(
+  const appRecord = await json<{
+    id: string;
+    ingestKey: string;
+    publicKey: string;
+  }>(
     await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `IssueApp-${uniq()}`,
     }),
@@ -61,7 +68,11 @@ async function makeApp(): Promise<TestApp> {
 }
 
 async function makeAppInProject(projectId: string): Promise<TestApp> {
-  const appRecord = await json<{ id: string; ingestKey: string; publicKey: string }>(
+  const appRecord = await json<{
+    id: string;
+    ingestKey: string;
+    publicKey: string;
+  }>(
     await apiRequest("POST", `/api/admin/projects/${projectId}/apps`, {
       name: `IssueApp-${uniq()}`,
     }),
@@ -69,7 +80,10 @@ async function makeAppInProject(projectId: string): Promise<TestApp> {
   return { projectId, ...appRecord };
 }
 
-async function ingestEvent(t: TestApp, event: Record<string, unknown>): Promise<Response> {
+async function ingestEvent(
+  t: TestApp,
+  event: Record<string, unknown>,
+): Promise<Response> {
   return fetch(
     `${baseUrl}/api/${t.ingestKey}/store/?sentry_key=${encodeURIComponent(t.publicKey)}`,
     {
@@ -133,7 +147,8 @@ async function listIssues(appId: string, status?: string): Promise<IssueDto[]> {
   const terms = [`app:${appId}`];
   if (status) terms.push(`is:${status}`);
   const query = `/api/admin/issues?query=${encodeURIComponent(terms.join(" "))}`;
-  return (await json<{ data: IssueDto[] }>(await apiRequest("GET", query))).data;
+  return (await json<{ data: IssueDto[] }>(await apiRequest("GET", query)))
+    .data;
 }
 
 async function listIncidents(appId: string): Promise<IncidentDto[]> {
@@ -482,13 +497,23 @@ describe("Issue alerting (new issue / regression)", () => {
 
       // First regression on issue A fires...
       await ingestEvent(t, errorEvent(messageA));
-      const [issueA] = await waitFor(() => listIssues(t.id), (issues) => issues.length === 1);
-      await apiRequest("PATCH", `/api/admin/issues/${issueA!.id}`, { status: "resolved" });
+      const [issueA] = await waitFor(
+        () => listIssues(t.id),
+        (issues) => issues.length === 1,
+      );
+      await apiRequest("PATCH", `/api/admin/issues/${issueA!.id}`, {
+        status: "resolved",
+      });
       await ingestEvent(t, errorEvent(messageA));
-      await waitFor(() => listIncidents(t.id), (data) => data.length === 1);
+      await waitFor(
+        () => listIncidents(t.id),
+        (data) => data.length === 1,
+      );
 
       // ...a second regression on issue A within the cooldown does not...
-      await apiRequest("PATCH", `/api/admin/issues/${issueA!.id}`, { status: "resolved" });
+      await apiRequest("PATCH", `/api/admin/issues/${issueA!.id}`, {
+        status: "resolved",
+      });
       await ingestEvent(t, errorEvent(messageA));
 
       // ...but issue B regressing in the same window still fires.
@@ -497,19 +522,24 @@ describe("Issue alerting (new issue / regression)", () => {
       // response; wait for the new issue before resolving it.
       const issuesB = await waitFor(
         () => listIssues(t.id),
-        (issues) => issues.some((issue) => issue.fingerprint === `msg:${messageB}`),
+        (issues) =>
+          issues.some((issue) => issue.fingerprint === `msg:${messageB}`),
       );
-      const issueB = issuesB.find((issue) => issue.fingerprint === `msg:${messageB}`)!;
-      await apiRequest("PATCH", `/api/admin/issues/${issueB.id}`, { status: "resolved" });
+      const issueB = issuesB.find(
+        (issue) => issue.fingerprint === `msg:${messageB}`,
+      )!;
+      await apiRequest("PATCH", `/api/admin/issues/${issueB.id}`, {
+        status: "resolved",
+      });
       await ingestEvent(t, errorEvent(messageB));
 
       const incidents = await waitFor(
         () => listIncidents(t.id),
         (data) => data.length === 2,
       );
-      expect(incidents.map((incident) => incident.issueFingerprint).sort()).toEqual(
-        [`msg:${messageA}`, `msg:${messageB}`].sort(),
-      );
+      expect(
+        incidents.map((incident) => incident.issueFingerprint).sort(),
+      ).toEqual([`msg:${messageA}`, `msg:${messageB}`].sort());
 
       // Nothing further lands for the suppressed issue A repeat.
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -531,13 +561,19 @@ describe("Issue alerting (new issue / regression)", () => {
 
       const message = `scoped problem ${uniq()}`;
       await ingestEvent(appB, errorEvent(message));
-      await waitFor(() => listIssues(appB.id), (issues) => issues.length === 1);
+      await waitFor(
+        () => listIssues(appB.id),
+        (issues) => issues.length === 1,
+      );
 
       await new Promise((resolve) => setTimeout(resolve, 300));
       expect((await listIncidents(appB.id)).length).toBe(0);
 
       await ingestEvent(appA, errorEvent(message));
-      const incidentsA = await waitFor(() => listIncidents(appA.id), (data) => data.length === 1);
+      const incidentsA = await waitFor(
+        () => listIncidents(appA.id),
+        (data) => data.length === 1,
+      );
       expect(incidentsA[0]!.appId).toBe(appA.id);
     });
   });
@@ -559,7 +595,12 @@ describe("Issue alerting (new issue / regression)", () => {
               value: "cannot read id",
               stacktrace: {
                 frames: [
-                  { filename: "app.js", lineno: 12, function: "boom", in_app: true },
+                  {
+                    filename: "app.js",
+                    lineno: 12,
+                    function: "boom",
+                    in_app: true,
+                  },
                 ],
               },
             },
@@ -571,7 +612,10 @@ describe("Issue alerting (new issue / regression)", () => {
       const issues = await waitFor(
         async () =>
           json<{ data: IssueDto[] }>(
-            await apiRequest("GET", `/api/admin/issues?query=${encodeURIComponent(`app:${t.id}`)}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/issues?query=${encodeURIComponent(`app:${t.id}`)}`,
+            ),
           ),
         (body) => body.data.length === 1,
       );
@@ -598,7 +642,12 @@ describe("Issue alerting (new issue / regression)", () => {
               value: "still broken",
               stacktrace: {
                 frames: [
-                  { filename: "app.js", lineno: 20, function: "boom", in_app: true },
+                  {
+                    filename: "app.js",
+                    lineno: 20,
+                    function: "boom",
+                    in_app: true,
+                  },
                 ],
               },
             },
@@ -609,7 +658,10 @@ describe("Issue alerting (new issue / regression)", () => {
       const updated = await waitFor(
         async () =>
           json<{ data: IssueDto[] }>(
-            await apiRequest("GET", `/api/admin/issues?query=${encodeURIComponent(`app:${t.id}`)}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/issues?query=${encodeURIComponent(`app:${t.id}`)}`,
+            ),
           ),
         (body) => body.data[0]?.lastRelease === "1.3.0",
       );
@@ -619,19 +671,33 @@ describe("Issue alerting (new issue / regression)", () => {
     });
 
     it("requires admin auth", async () => {
-      const response = await apiRequest("GET", "/api/admin/issues", undefined, "");
+      const response = await apiRequest(
+        "GET",
+        "/api/admin/issues",
+        undefined,
+        "",
+      );
       expect(response.status).toBe(401);
     });
 
     it("404s unknown issues and treats unknown list filters as empty", async () => {
-      const missing = await apiRequest("GET", `/api/admin/issues/${crypto.randomUUID()}`);
+      const missing = await apiRequest(
+        "GET",
+        `/api/admin/issues/${crypto.randomUUID()}`,
+      );
       expect(missing.status).toBe(404);
 
-      const badFilter = await apiRequest("GET", "/api/admin/issues?query=is%3Anope");
+      const badFilter = await apiRequest(
+        "GET",
+        "/api/admin/issues?query=is%3Anope",
+      );
       expect(badFilter.status).toBe(400);
 
       // A name that does not resolve is a 404, not a parse error.
-      const badApp = await apiRequest("GET", "/api/admin/issues?query=app%3Anot-a-uuid");
+      const badApp = await apiRequest(
+        "GET",
+        "/api/admin/issues?query=app%3Anot-a-uuid",
+      );
       expect(badApp.status).toBe(404);
 
       // An unknown app is a 404: the name does not resolve to anything.
@@ -641,9 +707,13 @@ describe("Issue alerting (new issue / regression)", () => {
       );
       expect(unknownApp.status).toBe(404);
 
-      const badPatch = await apiRequest("PATCH", `/api/admin/issues/${crypto.randomUUID()}`, {
-        status: "closed",
-      });
+      const badPatch = await apiRequest(
+        "PATCH",
+        `/api/admin/issues/${crypto.randomUUID()}`,
+        {
+          status: "closed",
+        },
+      );
       expect(badPatch.status).toBe(400);
 
       const missingPatch = await apiRequest(
@@ -662,13 +732,20 @@ describe("Issue alerting (new issue / regression)", () => {
       await ingestEvent(t, errorEvent(message));
       await ingestEvent(other, errorEvent(`other app problem ${uniq()}`));
 
-      const [issue] = await waitFor(() => listIssues(t.id), (issues) => issues.length === 1);
+      const [issue] = await waitFor(
+        () => listIssues(t.id),
+        (issues) => issues.length === 1,
+      );
 
       const unresolved = await listIssues(t.id, "unresolved");
       expect(unresolved.map((i) => i.id)).toEqual([issue!.id]);
 
-      await apiRequest("PATCH", `/api/admin/issues/${issue!.id}`, { status: "resolved" });
-      expect((await listIssues(t.id, "resolved")).map((i) => i.id)).toEqual([issue!.id]);
+      await apiRequest("PATCH", `/api/admin/issues/${issue!.id}`, {
+        status: "resolved",
+      });
+      expect((await listIssues(t.id, "resolved")).map((i) => i.id)).toEqual([
+        issue!.id,
+      ]);
       expect((await listIssues(t.id, "unresolved")).length).toBe(0);
 
       // The other app's issue is not listed for this app.
@@ -684,7 +761,10 @@ describe("Issue alerting (new issue / regression)", () => {
       const secondId = crypto.randomUUID();
 
       await ingestEvent(t, { ...errorEvent(message), event_id: firstId });
-      const [issue] = await waitFor(() => listIssues(t.id), (issues) => issues.length === 1);
+      const [issue] = await waitFor(
+        () => listIssues(t.id),
+        (issues) => issues.length === 1,
+      );
       expect(issue!.latestEventId).toBe(firstId);
 
       await ingestEvent(t, { ...errorEvent(message), event_id: secondId });
@@ -747,7 +827,12 @@ describe("Issue alerting (new issue / regression)", () => {
               type: "ZodError",
               value: "bad input",
               stacktrace: {
-                frames: [{ filename: "src/checkout/cart.ts", function: "validateCart" }],
+                frames: [
+                  {
+                    filename: "src/checkout/cart.ts",
+                    function: "validateCart",
+                  },
+                ],
               },
             },
           ],
@@ -756,7 +841,10 @@ describe("Issue alerting (new issue / regression)", () => {
 
       await ingestEvent(t, errorEvent(message));
       await ingestEvent(t, exception);
-      await waitFor(() => listIssues(t.id), (issues) => issues.length === 2);
+      await waitFor(
+        () => listIssues(t.id),
+        (issues) => issues.length === 2,
+      );
 
       const byTitle = await json<{ data: IssueDto[] }>(
         await apiRequest(
@@ -768,7 +856,10 @@ describe("Issue alerting (new issue / regression)", () => {
 
       // The frame-derived fingerprint matches even though the title does not.
       const byFingerprint = await json<{ data: IssueDto[] }>(
-        await apiRequest("GET", `/api/admin/issues?query=${encodeURIComponent(`app:${t.id} validateCart`)}`),
+        await apiRequest(
+          "GET",
+          `/api/admin/issues?query=${encodeURIComponent(`app:${t.id} validateCart`)}`,
+        ),
       );
       expect(byFingerprint.data.length).toBe(1);
       expect(byFingerprint.data[0]!.fingerprint).toBe(
@@ -793,7 +884,11 @@ describe("Issue alerting (new issue / regression)", () => {
           frames: [
             { filename: entry, function: "bootstrap", in_app: true },
             { filename: "src/cart.ts", function: "checkout", in_app: true },
-            { filename: "node_modules/payments-sdk.js", function: "charge", in_app: false },
+            {
+              filename: "node_modules/payments-sdk.js",
+              function: "charge",
+              in_app: false,
+            },
           ],
         },
       });

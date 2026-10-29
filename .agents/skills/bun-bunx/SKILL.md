@@ -20,7 +20,7 @@ bunx cowsay "Hello world!"
   faster](https://twitter.com/jarredsumner/status/1606163655527059458) than `npx` for locally installed packages.
 </Note>
 
-Packages can declare executables in the `"bin"` field of their `package.json`. These are known as *package executables* or *package binaries*.
+Packages can declare executables in the `"bin"` field of their `package.json`. These are known as _package executables_ or _package binaries_.
 
 ```json package.json icon="file-json" theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
@@ -32,7 +32,7 @@ Packages can declare executables in the `"bin"` field of their `package.json`. T
 }
 ```
 
-These executables are commonly plain JavaScript files marked with a [shebang line](https://en.wikipedia.org/wiki/Shebang_\(Unix\)) to indicate which program should be used to execute them. The following file indicates that it should be executed with `node`.
+These executables are commonly plain JavaScript files marked with a [shebang line](<https://en.wikipedia.org/wiki/Shebang_(Unix)>) to indicate which program should be used to execute them. The following file indicates that it should be executed with `node`.
 
 ```js dist/index.js icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/javascript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=dd7b5268d2e9410910a69804de702737" theme={"theme":{"light":"github-light","dark":"dracula"}}
 #!/usr/bin/env node
@@ -56,7 +56,7 @@ To pass additional command-line flags and arguments through to the executable, p
 bunx my-cli --foo bar
 ```
 
-***
+---
 
 ## Shebangs
 
@@ -66,7 +66,7 @@ By default, Bun respects shebangs. If an executable is marked with `#!/usr/bin/e
 bunx --bun my-cli
 ```
 
-The `--bun` flag must occur *before* the executable name. Flags that appear *after* the name are passed through to the executable.
+The `--bun` flag must occur _before_ the executable name. Flags that appear _after_ the name are passed through to the executable.
 
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 bunx --bun my-cli # good
@@ -88,11 +88,11 @@ To force bun to always be used with a script, use a shebang.
 #!/usr/bin/env bun
 ```
 
-***
+---
 
 ## Usage
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bunx [flags] <package>[@version] [flags and arguments for the package]
 ```
 

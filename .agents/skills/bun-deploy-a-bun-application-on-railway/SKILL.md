@@ -17,16 +17,16 @@ You can either follow this guide step-by-step or simply deploy the pre-configure
   <img src="https://railway.com/button.svg" alt="Deploy on Railway" />
 </a>
 
-***
+---
 
 **Prerequisites**:
 
-* A Bun application ready for deployment
-* A [Railway account](https://railway.app/)
-* Railway CLI (for CLI deployment method)
-* A GitHub account (for Dashboard deployment method)
+- A Bun application ready for deployment
+- A [Railway account](https://railway.app/)
+- Railway CLI (for CLI deployment method)
+- A GitHub account (for Dashboard deployment method)
 
-***
+---
 
 ## Method 1: Deploy via CLI
 
@@ -37,6 +37,7 @@ You can either follow this guide step-by-step or simply deploy the pre-configure
     ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
     bun install -g @railway/cli
     ```
+
   </Step>
 
   <Step title="Step 2">
@@ -45,6 +46,7 @@ You can either follow this guide step-by-step or simply deploy the pre-configure
     ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
     railway login
     ```
+
   </Step>
 
   <Step title="Step 3">
@@ -53,6 +55,7 @@ You can either follow this guide step-by-step or simply deploy the pre-configure
     ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
     railway init
     ```
+
   </Step>
 
   <Step title="Step 4">
@@ -67,6 +70,7 @@ You can either follow this guide step-by-step or simply deploy the pre-configure
     # Add your application service.
     railway add --service bun-react-db --variables DATABASE_URL=\${{Postgres.DATABASE_URL}}
     ```
+
   </Step>
 
   <Step title="Step 5">
@@ -79,12 +83,13 @@ You can either follow this guide step-by-step or simply deploy the pre-configure
     # Generate public domain
     railway domain
     ```
+
   </Step>
 </Steps>
 
 Your app is now live! Railway auto-deploys on every GitHub push.
 
-***
+---
 
 ## Method 2: Deploy via Dashboard
 
@@ -95,6 +100,7 @@ Your app is now live! Railway auto-deploys on every GitHub push.
     1. Go to [Railway Dashboard](http://railway.com/dashboard?utm_medium=integration\&utm_source=docs\&utm_campaign=bun)
     2. Click **"+ New"** → **"GitHub repo"**
     3. Choose your repository
+
   </Step>
 
   <Step title="Step 2">
@@ -107,6 +113,7 @@ Your app is now live! Railway auto-deploys on every GitHub push.
     3. Go to **"Variables"** tab
     4. Click **"+ New Variable"** → **"Add Reference"**
     5. Select `DATABASE_URL` from postgres
+
   </Step>
 
   <Step title="Step 3">
@@ -115,12 +122,13 @@ Your app is now live! Railway auto-deploys on every GitHub push.
     1. Select your service
     2. Go to **"Settings"** tab
     3. Under **"Networking"**, click **"Generate Domain"**
+
   </Step>
 </Steps>
 
 Your app is now live! Railway auto-deploys on every GitHub push.
 
-***
+---
 
 ## Configuration (Optional)
 

@@ -6,11 +6,7 @@
 
 import { env } from "bun";
 import type { NatsConnection, Msg } from "@nats-io/transport-node";
-import {
-  decode,
-  encodeAuthorizationResponse,
-  encodeUser,
-} from "@nats-io/jwt";
+import { decode, encodeAuthorizationResponse, encodeUser } from "@nats-io/jwt";
 import { resolveIdentity } from "./auth";
 import {
   computeScopedView,
@@ -134,7 +130,10 @@ async function handleAuthRequest(
   const serverId = request.server_id?.id;
   if (!userNkey || !serverId) return; // deny by silence
 
-  const subjects = await admit(request.connect_opts?.auth_token, await getAdminTokenHash());
+  const subjects = await admit(
+    request.connect_opts?.auth_token,
+    await getAdminTokenHash(),
+  );
   if (!subjects || subjects.length === 0) return;
 
   const expires = Math.floor(Date.now() / 1000) + MAX_CLAIM_TTL_SECONDS;
@@ -176,13 +175,15 @@ export function startAuthCallout(
     queue: "auth-callout",
     callback: (err, msg) => {
       if (err || !msg.respond) return;
-      void handleAuthRequest(msg, issuerSeed, getAdminTokenHash).catch((error) => {
-        // A failed verdict denies the connection (no reply); log server-side.
-        console.error(
-          "[auth-callout] Failed to answer an authorization request:",
-          error instanceof Error ? error.message : error,
-        );
-      });
+      void handleAuthRequest(msg, issuerSeed, getAdminTokenHash).catch(
+        (error) => {
+          // A failed verdict denies the connection (no reply); log server-side.
+          console.error(
+            "[auth-callout] Failed to answer an authorization request:",
+            error instanceof Error ? error.message : error,
+          );
+        },
+      );
     },
   });
   console.log("[NATS] Auth callout service subscribed");

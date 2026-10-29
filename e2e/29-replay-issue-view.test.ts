@@ -15,7 +15,12 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { startTestServer, ADMIN_TOKEN, ADMIN_TOKEN_RAW, type TestServer } from "./test-helpers";
+import {
+  startTestServer,
+  ADMIN_TOKEN,
+  ADMIN_TOKEN_RAW,
+  type TestServer,
+} from "./test-helpers";
 const REPLAY_ID = "4f9a4f9a4f9a4f9a4f9a4f9a4f9a4f9a";
 // The later segment's message id sorts before the earlier one; only the
 // start-time prefix in the object key keeps playback order correct.
@@ -52,7 +57,10 @@ function buildEnvelope(
   for (const item of items) {
     const payloadText = JSON.stringify(item.payload);
     lines.push(
-      JSON.stringify({ ...item.header, length: Buffer.byteLength(payloadText, "utf8") }),
+      JSON.stringify({
+        ...item.header,
+        length: Buffer.byteLength(payloadText, "utf8"),
+      }),
     );
     lines.push(payloadText);
   }
@@ -149,7 +157,9 @@ function replayRecording(
                   id: 3,
                   tagName: "body",
                   attributes: {},
-                  childNodes: [{ type: 3, id: 4, textContent: label, isStyle: false }],
+                  childNodes: [
+                    { type: 3, id: 4, textContent: label, isStyle: false },
+                  ],
                 },
               ],
             },
@@ -160,7 +170,12 @@ function replayRecording(
       timestamp: timestamp + 1,
       delay: 1,
     },
-    { type: 3, data: { source: 0, texts: label }, timestamp: timestamp + 2, delay: 2 },
+    {
+      type: 3,
+      data: { source: 0, texts: label },
+      timestamp: timestamp + 2,
+      delay: 2,
+    },
   ];
 }
 
@@ -176,11 +191,16 @@ function eventPayload(
     platform: "javascript",
     timestamp: 1700000000.5,
     ...(contexts ? { contexts } : {}),
-    exception: { values: [{ type: "TypeError", value: "Cannot read 'id' of null" }] },
+    exception: {
+      values: [{ type: "TypeError", value: "Cannot read 'id' of null" }],
+    },
   };
 }
 
-async function sendEvent(eventId: string, payload: Record<string, unknown>): Promise<void> {
+async function sendEvent(
+  eventId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
   const response = await sendEnvelope(
     buildEnvelope({ event_id: eventId, sent_at: new Date().toISOString() }, [
       { header: { type: "event", content_type: "application/json" }, payload },
@@ -211,7 +231,10 @@ async function sendRecording(
   expect(response.status).toBe(200);
 }
 
-async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string> {
+async function waitForTextInUI(
+  text: string,
+  timeoutMs = 15000,
+): Promise<string> {
   const start = Date.now();
   let body = "";
   while (Date.now() - start < timeoutMs) {
@@ -226,11 +249,16 @@ async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string>
   );
 }
 
-async function waitForSelector(selector: string, timeoutMs = 15000): Promise<boolean> {
+async function waitForSelector(
+  selector: string,
+  timeoutMs = 15000,
+): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const found =
-      (await view.evaluate(`!!document.querySelector(${JSON.stringify(selector)})`)) ?? false;
+      (await view.evaluate(
+        `!!document.querySelector(${JSON.stringify(selector)})`,
+      )) ?? false;
     if (found) return true;
     await Bun.sleep(400);
   }
@@ -255,24 +283,37 @@ describe("Session replay on the issue details page", () => {
       EARLY_SEGMENT_ID,
       REPLAY_ID,
       0,
-      replayRecording("https://example.com/checkout", EARLY_START_MS, "checkout"),
+      replayRecording(
+        "https://example.com/checkout",
+        EARLY_START_MS,
+        "checkout",
+      ),
       EARLY_START_MS / 1000,
     );
     await sendRecording(
       LATE_SEGMENT_ID,
       REPLAY_ID,
       1,
-      replayRecording("https://example.com/thank-you", LATE_START_MS, "thank-you"),
+      replayRecording(
+        "https://example.com/thank-you",
+        LATE_START_MS,
+        "thank-you",
+      ),
       LATE_START_MS / 1000,
     );
 
     // An occurrence without any replay link, for the empty state.
     plainEventId = crypto.randomUUID();
-    await sendEvent(plainEventId, eventPayload(plainEventId, `Plain error ${plainEventId}`));
+    await sendEvent(
+      plainEventId,
+      eventPayload(plainEventId, `Plain error ${plainEventId}`),
+    );
 
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
-    await view.evaluate(`sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`);
+    await view.evaluate(
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
+    );
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
   }, 30000);
 
@@ -296,11 +337,15 @@ describe("Session replay on the issue details page", () => {
     expect(replay.segments[0]!.key).toContain(EARLY_SEGMENT_ID);
     expect(replay.segments[1]!.key).toContain(LATE_SEGMENT_ID);
 
-    const early = (await (await fetch(replay.segments[0]!.url)).json()) as Array<{
+    const early = (await (
+      await fetch(replay.segments[0]!.url)
+    ).json()) as Array<{
       timestamp: number;
       data?: { href?: string };
     }>;
-    const late = (await (await fetch(replay.segments[1]!.url)).json()) as Array<{
+    const late = (await (
+      await fetch(replay.segments[1]!.url)
+    ).json()) as Array<{
       data?: { texts?: string };
     }>;
     expect(early[0]!.timestamp).toBe(EARLY_START_MS);
@@ -327,7 +372,11 @@ describe("Session replay on the issue details page", () => {
     expect(second.hasMore).toBe(false);
     expect(second.nextCursor).toBeNull();
 
-    const invalid = await replayRequest(errorEventId, REPLAY_ID, "?cursor=replays/other");
+    const invalid = await replayRequest(
+      errorEventId,
+      REPLAY_ID,
+      "?cursor=replays/other",
+    );
     expect(invalid.status).toBe(400);
   }, 30000);
 
@@ -349,7 +398,9 @@ describe("Session replay on the issue details page", () => {
   }, 30000);
 
   it("leaves events without a replay link unlinked", async () => {
-    const detail = await apiGet<{ replay_id?: string }>(`/events/${plainEventId}`);
+    const detail = await apiGet<{ replay_id?: string }>(
+      `/events/${plainEventId}`,
+    );
     expect(detail.replay_id).toBeUndefined();
   }, 30000);
 
@@ -367,13 +418,18 @@ describe("Session replay on the issue details page", () => {
     expect(body).toContain(`replay ${REPLAY_ID.slice(0, 8)}`);
 
     // rrweb renders the replay into an iframe inside the stage.
-    const rendered = await waitForSelector(".replay-stage .rr-player, .replay-stage iframe", 20000);
+    const rendered = await waitForSelector(
+      ".replay-stage .rr-player, .replay-stage iframe",
+      20000,
+    );
     expect(rendered).toBe(true);
   }, 40000);
 
   it("keeps the section with an empty state for events without a replay", async () => {
     await view.navigate(`${testServer.baseUrl}/ui/issues/${plainEventId}`);
-    const body = await waitForTextInUI("No session replay is linked to this issue");
+    const body = await waitForTextInUI(
+      "No session replay is linked to this issue",
+    );
     expect(body).toContain("Session replay");
   }, 30000);
 });

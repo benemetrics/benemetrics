@@ -14,11 +14,11 @@ await fetch("https://example.com", {
 });
 ```
 
-***
+---
 
 The `proxy` option can be a URL string or an object with `url` and optional `headers`. The URL can include the username and password if the proxy requires authentication. It can be `http://` or `https://`.
 
-***
+---
 
 ## Custom proxy headers
 
@@ -40,7 +40,7 @@ The `headers` property accepts a plain object or a `Headers` instance. These hea
 
 If you provide a `Proxy-Authorization` header, it will override any credentials specified in the proxy URL.
 
-***
+---
 
 ## Environment variables
 

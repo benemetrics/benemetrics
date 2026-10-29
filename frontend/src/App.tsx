@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
 import IndexPage from "./routes/index";
-import ProjectPage from "./routes/projects/[projectId]/page";import AppIssuesPage from "./routes/projects/[projectId]/apps/[appId]/page";
+import ProjectPage from "./routes/projects/[projectId]/page";
+import AppIssuesPage from "./routes/projects/[projectId]/apps/[appId]/page";
 import AlertsPage from "./routes/projects/[projectId]/apps/[appId]/alerts/page";
 import EventsPage from "./routes/projects/[projectId]/apps/[appId]/events/page";
 import FlagsPage from "./routes/projects/[projectId]/apps/[appId]/flags/page";
@@ -21,7 +22,8 @@ import { useSession } from "./hooks/use-session";
 function SessionGate() {
   const { status, session, submitAdminToken } = useSession();
   if (status === "loading") return <LoadingScreen />;
-  if (status === "unauthenticated") return <TokenPrompt onSubmit={submitAdminToken} />;
+  if (status === "unauthenticated")
+    return <TokenPrompt onSubmit={submitAdminToken} />;
   return (
     <RootLayout session={session}>
       <Outlet />
@@ -42,14 +44,38 @@ const router = createBrowserRouter(
         // reloads before the router renders, so the element stays empty.
         { path: "/auth/callback", element: null },
         { path: "/projects/:projectId", element: <ProjectPage /> },
-        { path: "/projects/:projectId/apps/:appId", element: <AppIssuesPage /> },
-        { path: "/projects/:projectId/apps/:appId/alerts", element: <AlertsPage /> },
-        { path: "/projects/:projectId/apps/:appId/events", element: <EventsPage /> },
-        { path: "/projects/:projectId/apps/:appId/flags", element: <FlagsPage /> },
-        { path: "/projects/:projectId/apps/:appId/issues/:issueId", element: <IssuePage /> },
-        { path: "/projects/:projectId/apps/:appId/performance", element: <PerformancePage /> },
-        { path: "/projects/:projectId/apps/:appId/releases", element: <ReleasesPage /> },
-        { path: "/projects/:projectId/apps/:appId/source-maps", element: <SourceMapsPage /> },
+        {
+          path: "/projects/:projectId/apps/:appId",
+          element: <AppIssuesPage />,
+        },
+        {
+          path: "/projects/:projectId/apps/:appId/alerts",
+          element: <AlertsPage />,
+        },
+        {
+          path: "/projects/:projectId/apps/:appId/events",
+          element: <EventsPage />,
+        },
+        {
+          path: "/projects/:projectId/apps/:appId/flags",
+          element: <FlagsPage />,
+        },
+        {
+          path: "/projects/:projectId/apps/:appId/issues/:issueId",
+          element: <IssuePage />,
+        },
+        {
+          path: "/projects/:projectId/apps/:appId/performance",
+          element: <PerformancePage />,
+        },
+        {
+          path: "/projects/:projectId/apps/:appId/releases",
+          element: <ReleasesPage />,
+        },
+        {
+          path: "/projects/:projectId/apps/:appId/source-maps",
+          element: <SourceMapsPage />,
+        },
         { path: "/settings", element: <SettingsPage /> },
         { path: "*", element: <NotFoundPage /> },
       ],

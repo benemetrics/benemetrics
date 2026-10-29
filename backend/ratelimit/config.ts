@@ -58,7 +58,10 @@ export function rateLimitConfig(): RateLimitConfig {
     burstSeconds: numberEnv("INGEST_RATE_LIMIT_BURST_SECONDS", 2),
     maxEnvelopeBytes: numberEnv("INGEST_MAX_ENVELOPE_BYTES", MIB),
     maxDecompressedBytes: numberEnv("INGEST_MAX_DECOMPRESSED_BYTES", 4 * MIB),
-    maxLargeEnvelopeBytes: numberEnv("INGEST_MAX_LARGE_ENVELOPE_BYTES", 20 * MIB),
+    maxLargeEnvelopeBytes: numberEnv(
+      "INGEST_MAX_LARGE_ENVELOPE_BYTES",
+      20 * MIB,
+    ),
     maxOtlpBytes: numberEnv("INGEST_MAX_OTLP_BYTES", 4 * MIB),
     maxEnvelopeItems: numberEnv("INGEST_MAX_ENVELOPE_ITEMS", 100),
     maxReplayItems: numberEnv("INGEST_MAX_REPLAY_ITEMS", 500),

@@ -6,7 +6,12 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
+import {
+  app,
+  ADMIN_TOKEN,
+  ADMIN_HEADERS,
+  ADMIN_TOKEN_RAW,
+} from "./test-helpers";
 const GROUP_NAME = `backend-team-${Date.now()}`;
 
 let baseUrl = "";
@@ -24,7 +29,10 @@ async function adminRequest(
   });
 }
 
-async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string> {
+async function waitForTextInUI(
+  text: string,
+  timeoutMs = 15000,
+): Promise<string> {
   const start = Date.now();
   let body = "";
   while (Date.now() - start < timeoutMs) {
@@ -42,7 +50,8 @@ async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string>
 async function clickText(text: string, timeoutMs = 15000): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const clicked = (await view.evaluate(`(() => {
+    const clicked =
+      (await view.evaluate(`(() => {
       const target = Array.from(document.querySelectorAll("button, .action, [role=button]"))
         .find((el) => (el.innerText || "").trim() === ${JSON.stringify(text)});
       if (!target) return false;
@@ -56,7 +65,8 @@ async function clickText(text: string, timeoutMs = 15000): Promise<boolean> {
 }
 
 async function fillField(placeholder: string, value: string): Promise<boolean> {
-  return (await view.evaluate(`(() => {
+  return (
+    (await view.evaluate(`(() => {
     const input = Array.from(document.querySelectorAll("input"))
       .find((el) => el.placeholder === ${JSON.stringify(placeholder)});
     if (!input) return false;
@@ -64,7 +74,8 @@ async function fillField(placeholder: string, value: string): Promise<boolean> {
     setter.call(input, ${JSON.stringify(value)});
     input.dispatchEvent(new Event("input", { bubbles: true }));
     return true;
-  })()`)) ?? false;
+  })()`)) ?? false
+  );
 }
 
 describe("Permissions UI", () => {
@@ -75,7 +86,9 @@ describe("Permissions UI", () => {
 
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${baseUrl}/ui/overview`);
-    await view.evaluate(`sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`);
+    await view.evaluate(
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
+    );
     await view.navigate(`${baseUrl}/ui/permissions`);
     await waitForTextInUI("Permissions");
   }, 40000);
@@ -101,7 +114,8 @@ describe("Permissions UI", () => {
 
   it("deletes the group rule", async () => {
     // The delete action lives in the rule's row.
-    const removed = (await view.evaluate(`(() => {
+    const removed =
+      (await view.evaluate(`(() => {
       const row = Array.from(document.querySelectorAll(".permission-rule"))
         .find((el) => (el.innerText || "").includes(${JSON.stringify(GROUP_NAME)}));
       if (!row) return false;
@@ -115,7 +129,8 @@ describe("Permissions UI", () => {
 
     const deadline = Date.now() + 15000;
     while (Date.now() < deadline) {
-      const body = ((await view.evaluate("document.body.innerText")) ?? "") as string;
+      const body = ((await view.evaluate("document.body.innerText")) ??
+        "") as string;
       if (!body.includes(GROUP_NAME)) return;
       await Bun.sleep(400);
     }

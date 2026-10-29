@@ -36,7 +36,7 @@ This launches an interactive terminal interface that shows all outdated packages
 
 The interface displays packages grouped by dependency type:
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 ? Select packages to update - Space to toggle, Enter to confirm, a to select all, n to select none, i to invert, l to toggle latest
 
   dependencies                Current  Target   Latest
@@ -53,51 +53,51 @@ The interface displays packages grouped by dependency type:
 
 **Sections:**
 
-* Packages are grouped under section headers: `dependencies`, `devDependencies`, `peerDependencies`, `optionalDependencies`
-* Each section shows column headers aligned with the package data
+- Packages are grouped under section headers: `dependencies`, `devDependencies`, `peerDependencies`, `optionalDependencies`
+- Each section shows column headers aligned with the package data
 
 **Columns:**
 
-* **Package**: Package name (may have suffix like ` dev`, ` peer`, ` optional` for clarity)
-* **Current**: Currently installed version
-* **Target**: Version that would be installed (respects semver constraints)
-* **Latest**: Latest available version
+- **Package**: Package name (may have suffix like ` dev`, ` peer`, ` optional` for clarity)
+- **Current**: Currently installed version
+- **Target**: Version that would be installed (respects semver constraints)
+- **Latest**: Latest available version
 
 ### Keyboard Controls
 
 **Selection:**
 
-* **Space**: Toggle package selection
-* **Enter**: Confirm selections and update
-* **a/A**: Select all packages
-* **n/N**: Select none
-* **i/I**: Invert selection
+- **Space**: Toggle package selection
+- **Enter**: Confirm selections and update
+- **a/A**: Select all packages
+- **n/N**: Select none
+- **i/I**: Invert selection
 
 **Navigation:**
 
-* **↑/↓ Arrow keys** or **j/k**: Move cursor
-* **l/L**: Toggle between target and latest version for current package
+- **↑/↓ Arrow keys** or **j/k**: Move cursor
+- **l/L**: Toggle between target and latest version for current package
 
 **Exit:**
 
-* **Ctrl+C** or **Ctrl+D**: Cancel without updating
+- **Ctrl+C** or **Ctrl+D**: Cancel without updating
 
 ### Visual Indicators
 
-* **☑** Selected packages (will be updated)
-* **□** Unselected packages
-* **>** Current cursor position
-* **Colors**: Red (major), yellow (minor), green (patch) version changes
-* **Underlined**: Currently selected update target
+- **☑** Selected packages (will be updated)
+- **□** Unselected packages
+- **>** Current cursor position
+- **Colors**: Red (major), yellow (minor), green (patch) version changes
+- **Underlined**: Currently selected update target
 
 ### Package Grouping
 
 Packages are organized in sections by dependency type:
 
-* **dependencies** - Regular runtime dependencies
-* **devDependencies** - Development dependencies
-* **peerDependencies** - Peer dependencies
-* **optionalDependencies** - Optional dependencies
+- **dependencies** - Regular runtime dependencies
+- **devDependencies** - Development dependencies
+- **peerDependencies** - Peer dependencies
+- **optionalDependencies** - Optional dependencies
 
 Within each section, individual packages may have additional suffixes (` dev`, ` peer`, ` optional`) for extra clarity.
 
@@ -134,10 +134,10 @@ For example, with the following `package.json`:
 }
 ```
 
-* `bun update` would update to a version that matches `17.x`.
-* `bun update --latest` would update to a version that matches `18.x` or later.
+- `bun update` would update to a version that matches `17.x`.
+- `bun update --latest` would update to a version that matches `18.x` or later.
 
-***
+---
 
 ## CLI Usage
 

@@ -1,4 +1,10 @@
-import { pgTable, text, integer, index, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  integer,
+  index,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
 
@@ -32,8 +38,12 @@ export const issues = pgTable(
     lastSeen: isoTimestamp("last_seen").notNull(),
     // Stored event id of the most recent occurrence; the UI drills into it.
     latestEventId: text("latest_event_id"),
-    createdAt: isoTimestamp("created_at").notNull().default(sql`now()`),
-    updatedAt: isoTimestamp("updated_at").notNull().default(sql`now()`),
+    createdAt: isoTimestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: isoTimestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
   },
   (table) => ({
     appIdIdx: index("issues_app_id_idx").on(table.appId),

@@ -4,9 +4,11 @@ import {
   integer,
   index,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
+import { apps } from "./app";
 
 // A release is a deployable version of an app. It is normally
 // auto-created when the first event carrying its version is
@@ -15,28 +17,26 @@ import { isoTimestamp } from "./timestamps";
 export const releases = pgTable(
   "releases",
   {
-    id: text("id").primaryKey(),
-    appId: text("app_id").notNull(),
+    id: uuid("id")
+      .default(sql`uuidv7()`)
+      .primaryKey(),
+    appId: uuid("app_id")
+      .notNull()
+      .references(() => apps.id),
     version: text("version").notNull(),
-    ref: text("ref"),
-    url: text("url"),
-    owner: text("owner"),
-    status: text("status").notNull().default("draft"),
     firstSeen: isoTimestamp("first_seen"),
     lastSeen: isoTimestamp("last_seen"),
     eventCount: integer("event_count").notNull().default(0),
     latestEventId: text("latest_event_id"),
-    createdAt: isoTimestamp("created_at").notNull().default(sql`now()`),
-    updatedAt: isoTimestamp("updated_at").notNull().default(sql`now()`),
+    createdAt: isoTimestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: isoTimestamp("updated_at")
+      .notNull()
+      .default(sql`now()`)
+      .$onUpdate(() => sql`now()`),
   },
-  (table) => ({
-    appIdIdx: index("releases_app_id_idx").on(table.appId),
-    lastSeenIdx: index("releases_last_seen_idx").on(table.lastSeen),
-    appVersionUnique: uniqueIndex("releases_app_version_idx").on(
-      table.appId,
-      table.version,
-    ),
-  }),
+  (table) => [index().on(table.appId)],
 );
 
 export type Release = typeof releases.$inferSelect;

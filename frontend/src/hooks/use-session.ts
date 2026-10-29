@@ -10,7 +10,9 @@ export interface SessionInfo {
 export type SessionStatus = "loading" | "unauthenticated" | "ready";
 
 export function useSession() {
-  const [status, setStatus] = useState<SessionStatus>(getToken() ? "loading" : "unauthenticated");
+  const [status, setStatus] = useState<SessionStatus>(
+    getToken() ? "loading" : "unauthenticated",
+  );
   const [session, setSession] = useState<SessionInfo | null>(null);
 
   const refresh = useCallback(async () => {
@@ -19,7 +21,7 @@ export function useSession() {
       setSession(null);
       return false;
     }
-    setSession({ id: 'local-admin', isAdmin: true, scope: '' });
+    setSession({ id: "local-admin", isAdmin: true, scope: "" });
     setStatus("ready");
     return true;
   }, []);

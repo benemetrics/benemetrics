@@ -6,7 +6,14 @@
  */
 
 import * as Sentry from "@sentry/bun";
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+} from "bun:test";
 import { startTestServer, ADMIN_TOKEN, type TestServer } from "./test-helpers";
 
 let SERVER_URL = "";
@@ -20,7 +27,7 @@ interface TestResult {
 async function apiRequest(
   method: string,
   path: string,
-  body?: unknown
+  body?: unknown,
 ): Promise<Response> {
   const url = new URL(`${SERVER_URL}${path}`);
   const options: RequestInit = {
@@ -44,11 +51,15 @@ async function fetchEvent(eventId: string): Promise<TestResult | null> {
 
 async function fetchAllEvents(): Promise<TestResult[]> {
   const response = await apiRequest("GET", "/events");
-  const body = (await response.json()) as { data?: TestResult[] } | TestResult[];
+  const body = (await response.json()) as
+    { data?: TestResult[] } | TestResult[];
   return Array.isArray(body) ? body : (body.data ?? []);
 }
 
-async function waitForEvent(eventId: string, timeout: number = 5000): Promise<TestResult | null> {
+async function waitForEvent(
+  eventId: string,
+  timeout: number = 5000,
+): Promise<TestResult | null> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const event = await fetchEvent(eventId);
@@ -111,7 +122,9 @@ describe("Breadcrumbs (05-breadcrumbs.md)", () => {
     expect(event).toBeDefined();
     expect((event as any).breadcrumbs).toBeDefined();
     expect((event as any).breadcrumbs.length).toBeGreaterThan(0);
-    const breadcrumb = (event as any).breadcrumbs.find((b: any) => b.message === "User clicked submit button");
+    const breadcrumb = (event as any).breadcrumbs.find(
+      (b: any) => b.message === "User clicked submit button",
+    );
     expect(breadcrumb).toBeDefined();
     expect(breadcrumb.data.buttonId).toBe("submit-btn");
   });
@@ -130,7 +143,9 @@ describe("Breadcrumbs (05-breadcrumbs.md)", () => {
       },
     });
 
-    const eventId = Sentry.captureException(new Error("Failed to process user"));
+    const eventId = Sentry.captureException(
+      new Error("Failed to process user"),
+    );
     expect(eventId).toBeDefined();
 
     await Sentry.flush(5000);
@@ -138,7 +153,9 @@ describe("Breadcrumbs (05-breadcrumbs.md)", () => {
 
     expect(event).toBeDefined();
     expect((event as any).breadcrumbs).toBeDefined();
-    const breadcrumb = (event as any).breadcrumbs.find((b: any) => b.category === "http.request");
+    const breadcrumb = (event as any).breadcrumbs.find(
+      (b: any) => b.category === "http.request",
+    );
     expect(breadcrumb).toBeDefined();
     expect(breadcrumb.data.status_code).toBe(200);
   });
@@ -164,7 +181,9 @@ describe("Breadcrumbs (05-breadcrumbs.md)", () => {
 
     expect(event).toBeDefined();
     expect((event as any).breadcrumbs).toBeDefined();
-    const breadcrumb = (event as any).breadcrumbs.find((b: any) => b.category === "db.query");
+    const breadcrumb = (event as any).breadcrumbs.find(
+      (b: any) => b.category === "db.query",
+    );
     expect(breadcrumb).toBeDefined();
     expect(breadcrumb.data.duration_ms).toBe(45);
   });
@@ -189,7 +208,9 @@ describe("Breadcrumbs (05-breadcrumbs.md)", () => {
 
     expect(event).toBeDefined();
     expect((event as any).breadcrumbs).toBeDefined();
-    const breadcrumb = (event as any).breadcrumbs.find((b: any) => b.category === "navigation");
+    const breadcrumb = (event as any).breadcrumbs.find(
+      (b: any) => b.category === "navigation",
+    );
     expect(breadcrumb).toBeDefined();
     expect(breadcrumb.data.from).toBe("/login");
     expect(breadcrumb.data.to).toBe("/dashboard");
@@ -214,7 +235,9 @@ describe("Breadcrumbs (05-breadcrumbs.md)", () => {
 
     expect(event).toBeDefined();
     expect((event as any).breadcrumbs).toBeDefined();
-    const breadcrumb = (event as any).breadcrumbs.find((b: any) => b.category === "console");
+    const breadcrumb = (event as any).breadcrumbs.find(
+      (b: any) => b.category === "console",
+    );
     expect(breadcrumb).toBeDefined();
     expect(breadcrumb.level).toBe("warning");
   });
@@ -271,7 +294,10 @@ describe("Breadcrumbs (05-breadcrumbs.md)", () => {
       timestamp: customTime,
     });
 
-    const eventId = Sentry.captureMessage("Event with historical breadcrumb", "info");
+    const eventId = Sentry.captureMessage(
+      "Event with historical breadcrumb",
+      "info",
+    );
     expect(eventId).toBeDefined();
 
     await Sentry.flush(5000);
@@ -279,7 +305,9 @@ describe("Breadcrumbs (05-breadcrumbs.md)", () => {
 
     expect(event).toBeDefined();
     expect((event as any).breadcrumbs).toBeDefined();
-    const breadcrumb = (event as any).breadcrumbs.find((b: any) => b.category === "custom");
+    const breadcrumb = (event as any).breadcrumbs.find(
+      (b: any) => b.category === "custom",
+    );
     expect(breadcrumb).toBeDefined();
     expect(breadcrumb.timestamp).toBeCloseTo(customTime, 0);
   });
@@ -295,7 +323,10 @@ describe("Breadcrumbs (05-breadcrumbs.md)", () => {
     const isolationScope = Sentry.getIsolationScope();
     isolationScope.clearBreadcrumbs();
 
-    const eventId = Sentry.captureMessage("Event after breadcrumb clear", "info");
+    const eventId = Sentry.captureMessage(
+      "Event after breadcrumb clear",
+      "info",
+    );
     expect(eventId).toBeDefined();
 
     await Sentry.flush(5000);

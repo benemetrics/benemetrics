@@ -20,7 +20,7 @@ interface TestResult {
 async function apiRequest(
   method: string,
   path: string,
-  body?: unknown
+  body?: unknown,
 ): Promise<Response> {
   const url = new URL(`${SERVER_URL}${path}`);
   const options: RequestInit = {
@@ -44,11 +44,15 @@ async function fetchEvent(eventId: string): Promise<TestResult | null> {
 
 async function fetchAllEvents(): Promise<TestResult[]> {
   const response = await apiRequest("GET", "/events");
-  const body = (await response.json()) as { data?: TestResult[] } | TestResult[];
+  const body = (await response.json()) as
+    { data?: TestResult[] } | TestResult[];
   return Array.isArray(body) ? body : (body.data ?? []);
 }
 
-async function waitForEvent(eventId: string, timeout: number = 5000): Promise<TestResult | null> {
+async function waitForEvent(
+  eventId: string,
+  timeout: number = 5000,
+): Promise<TestResult | null> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const event = await fetchEvent(eventId);
@@ -88,7 +92,9 @@ describe("Error Tracking (01-error-tracking.md)", () => {
   });
 
   it("captures a generic Error exception and fetches it by ID", async () => {
-    const eventId = Sentry.captureException(new Error("Test error from 01-error-tracking"));
+    const eventId = Sentry.captureException(
+      new Error("Test error from 01-error-tracking"),
+    );
     expect(eventId).toBeDefined();
 
     await Sentry.flush(5000);
@@ -96,7 +102,9 @@ describe("Error Tracking (01-error-tracking.md)", () => {
 
     expect(event).toBeDefined();
     expect((event as any).event_id).toBe(eventId);
-    expect((event as any).exception?.values?.[0]?.value).toContain("Test error from 01-error-tracking");
+    expect((event as any).exception?.values?.[0]?.value).toContain(
+      "Test error from 01-error-tracking",
+    );
   });
 
   it("captures a TypeError with stack trace and fetches it", async () => {
@@ -136,7 +144,10 @@ describe("Error Tracking (01-error-tracking.md)", () => {
   });
 
   it("captures a message event and fetches it", async () => {
-    const eventId = Sentry.captureMessage("Something noteworthy happened", "warning");
+    const eventId = Sentry.captureMessage(
+      "Something noteworthy happened",
+      "warning",
+    );
     expect(eventId).toBeDefined();
 
     await Sentry.flush(5000);
@@ -149,7 +160,11 @@ describe("Error Tracking (01-error-tracking.md)", () => {
   });
 
   it("captures event with user context and fetches it", async () => {
-    Sentry.setUser({ id: "user-456", email: "test@example.com", username: "testuser" });
+    Sentry.setUser({
+      id: "user-456",
+      email: "test@example.com",
+      username: "testuser",
+    });
     const eventId = Sentry.captureMessage("User action tracked");
     expect(eventId).toBeDefined();
 
@@ -215,6 +230,8 @@ describe("Error Tracking (01-error-tracking.md)", () => {
     expect(event).toBeDefined();
     expect((event as any).request?.url).toBe("https://api.example.com/orders");
     expect((event as any).request?.method).toBe("POST");
-    expect((event as any).request?.data).toEqual({ items: [{ id: 1, qty: 2 }] });
+    expect((event as any).request?.data).toEqual({
+      items: [{ id: 1, qty: 2 }],
+    });
   });
 });

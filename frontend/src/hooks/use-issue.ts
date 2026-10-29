@@ -34,16 +34,18 @@ export function useIssue(issueId: string | undefined) {
     let alive = true;
     setLoading(true);
     setNotFound(false);
-    api["api/admin/issues"][issueId].get().then((res: { error?: unknown; data?: unknown; status?: number }) => {
-      if (!alive) return;
-      if (res.error) {
-        if ((res.status ?? 500) === 404) setNotFound(true);
-        else setIssue(null);
-      } else {
-        setIssue(res.data as IssueDetail);
-      }
-      setLoading(false);
-    });
+    api["api/admin/issues"][issueId]
+      .get()
+      .then((res: { error?: unknown; data?: unknown; status?: number }) => {
+        if (!alive) return;
+        if (res.error) {
+          if ((res.status ?? 500) === 404) setNotFound(true);
+          else setIssue(null);
+        } else {
+          setIssue(res.data as IssueDetail);
+        }
+        setLoading(false);
+      });
     return () => {
       alive = false;
     };

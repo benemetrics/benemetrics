@@ -11,7 +11,7 @@ Bun supports directly adding GitHub repositories as dependencies of your project
 bun add github:lodash/lodash
 ```
 
-***
+---
 
 This will add the following line to your `package.json`:
 
@@ -23,7 +23,7 @@ This will add the following line to your `package.json`:
 }
 ```
 
-***
+---
 
 Bun supports a number of protocols for specifying Git dependencies.
 
@@ -36,6 +36,6 @@ bun add github:colinhacks/zod
 
 **Note:** GitHub dependencies download via HTTP tarball when possible for faster installation.
 
-***
+---
 
 See [Docs > Package manager](/pm/cli/install) for complete documentation of Bun's package manager.

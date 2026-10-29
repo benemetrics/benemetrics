@@ -56,7 +56,7 @@ bun --inspect=localhost:4000 server.ts
 bun --inspect=localhost:4000/prefix server.ts
 ```
 
-***
+---
 
 ## Debuggers
 
@@ -107,10 +107,10 @@ In the upper left of the Sources pane, we can control the execution of the progr
 
 Here's a cheat sheet explaining the functions of the control flow buttons.
 
-* *Continue script execution* — continue running the program until the next breakpoint or exception.
-* *Step over* — The program will continue to the next line.
-* *Step into* — If the current statement contains a function call, the debugger will "step into" the called function.
-* *Step out* — If the current statement is a function call, the debugger will finish executing the call, then "step out" of the function to the location where it was called.
+- _Continue script execution_ — continue running the program until the next breakpoint or exception.
+- _Step over_ — The program will continue to the next line.
+- _Step into_ — If the current statement contains a function call, the debugger will "step into" the called function.
+- _Step out_ — If the current statement is a function call, the debugger will finish executing the call, then "step out" of the function to the location where it was called.
 
 <Frame>
   ![Bun debugger execution
@@ -121,7 +121,7 @@ Here's a cheat sheet explaining the functions of the control flow buttons.
 
 Experimental support for debugging Bun scripts is available in Visual Studio Code. To use it, you'll need to install the [Bun VSCode extension](/guides/runtime/vscode-debugger).
 
-***
+---
 
 ## Debugging Network Requests
 
@@ -149,7 +149,7 @@ await fetch("https://example.com", {
 });
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 [fetch] $ curl --http1.1 "https://example.com/" -X POST -H "content-type: application/json" -H "Connection: keep-alive" -H "User-Agent: Bun/1.3.3" -H "Accept: */*" -H "Host: example.com" -H "Accept-Encoding: gzip, deflate, br" --compressed -H "Content-Length: 13" --data-raw "{\"foo\":\"bar\"}"
 [fetch] > HTTP/1.1 POST https://example.com/
 [fetch] > content-type: application/json
@@ -190,7 +190,7 @@ await fetch("https://example.com", {
 });
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 [fetch] > HTTP/1.1 POST https://example.com/
 [fetch] > content-type: application/json
 [fetch] > Connection: keep-alive
@@ -212,7 +212,7 @@ await fetch("https://example.com", {
 [fetch] < Content-Length: 1256
 ```
 
-***
+---
 
 ## Stacktraces & sourcemaps
 
@@ -224,7 +224,7 @@ Bun automatically loads sourcemaps both at runtime when transpiling files on-dem
 
 To help with debugging, Bun automatically prints a small source-code preview when an unhandled exception or rejection occurs. You can simulate this behavior by calling `Bun.inspect(error)`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Create an error
 const err = new Error("Something went wrong");
 console.log(Bun.inspect(err, { colors: true }));
@@ -254,9 +254,9 @@ Bun implements the [V8 Stack Trace API](https://v8.dev/docs/stack-trace-api), wh
 
 The `Error.prepareStackTrace` function is a global function that lets you customize the stack trace output. This function is called with the error object and an array of `CallSite` objects and lets you return a custom stack trace.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Error.prepareStackTrace = (err, stack) => {
-  return stack.map(callSite => {
+  return stack.map((callSite) => {
     return callSite.getFileName();
   });
 };
@@ -320,7 +320,7 @@ const fn = () => {
 fn();
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Error: here!
     at myInner (file.js:4:15)
     at fn (file.js:8:5)

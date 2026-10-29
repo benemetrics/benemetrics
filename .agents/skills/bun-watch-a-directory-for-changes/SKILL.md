@@ -7,9 +7,9 @@ description: Watch a directory for changes
 
 Bun implements the `node:fs` module, including the `fs.watch` function for listening for file system changes.
 
-This code block listens for changes to files in the current directory. By default this operation is *shallow*, meaning that changes to files in subdirectories will not be detected.
+This code block listens for changes to files in the current directory. By default this operation is _shallow_, meaning that changes to files in subdirectories will not be detected.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { watch } from "fs";
 
 const watcher = watch(import.meta.dir, (event, filename) => {
@@ -17,23 +17,27 @@ const watcher = watch(import.meta.dir, (event, filename) => {
 });
 ```
 
-***
+---
 
 To listen to changes in subdirectories, pass the `recursive: true` option to `fs.watch`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { watch } from "fs";
 
-const watcher = watch(import.meta.dir, { recursive: true }, (event, relativePath) => {
-  console.log(`Detected ${event} in ${relativePath}`);
-});
+const watcher = watch(
+  import.meta.dir,
+  { recursive: true },
+  (event, relativePath) => {
+    console.log(`Detected ${event} in ${relativePath}`);
+  },
+);
 ```
 
-***
+---
 
 Using the `node:fs/promises` module, you can listen for changes using `for await...of` instead of a callback.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { watch } from "fs/promises";
 
 const watcher = watch(import.meta.dir);
@@ -42,11 +46,11 @@ for await (const event of watcher) {
 }
 ```
 
-***
+---
 
 To stop listening for changes, call `watcher.close()`. It's common to do this when the process receives a `SIGINT` signal, such as when the user presses Ctrl-C.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { watch } from "fs";
 
 const watcher = watch(import.meta.dir, (event, filename) => {
@@ -62,6 +66,6 @@ process.on("SIGINT", () => {
 });
 ```
 
-***
+---
 
 Refer to [API > Binary data > Typed arrays](/runtime/binary-data#typedarray) for more information on working with `Uint8Array` and other binary data formats in Bun.

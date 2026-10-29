@@ -22,8 +22,11 @@ export interface SentryException {
   stacktrace?: { frames?: SentryFrame[] };
 }
 
-export function exceptionsFromPayload(payload: Record<string, unknown> | null): SentryException[] {
-  const exc = payload?.["exception"] as { values?: SentryException[] } | undefined;
+export function exceptionsFromPayload(
+  payload: Record<string, unknown> | null,
+): SentryException[] {
+  const exc = payload?.["exception"] as
+    { values?: SentryException[] } | undefined;
   if (exc?.values?.length) return exc.values;
   // Transaction/span payloads carry a plain stacktrace instead.
   const st = payload?.["stacktrace"] as { frames?: SentryFrame[] } | undefined;
@@ -46,10 +49,26 @@ export function Stacktrace({ exceptions }: { exceptions: SentryException[] }) {
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Stack trace</h3>
+        <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          Stack trace
+        </h3>
         <div className="flex gap-1 rounded-md bg-muted p-0.5 text-xs">
-          {([["App only", true], ["Full", false]] as const).map(([l, v]) => (
-            <button key={l} onClick={() => setAppOnly(v)} className={cn("rounded-sm px-2 py-0.5", appOnly === v ? "bg-card shadow-sm" : "text-muted-foreground")}>{l}</button>
+          {(
+            [
+              ["App only", true],
+              ["Full", false],
+            ] as const
+          ).map(([l, v]) => (
+            <button
+              key={l}
+              onClick={() => setAppOnly(v)}
+              className={cn(
+                "rounded-sm px-2 py-0.5",
+                appOnly === v ? "bg-card shadow-sm" : "text-muted-foreground",
+              )}
+            >
+              {l}
+            </button>
           ))}
         </div>
       </div>
@@ -60,28 +79,58 @@ export function Stacktrace({ exceptions }: { exceptions: SentryException[] }) {
             {header.value}
           </div>
         )}
-        {shown.length === 0 && <div className="px-3 py-2 text-muted-foreground">No in-app frames.</div>}
+        {shown.length === 0 && (
+          <div className="px-3 py-2 text-muted-foreground">
+            No in-app frames.
+          </div>
+        )}
         {shown.map((f, idx) => {
           const file = f.filename ?? f.abs_path ?? f.module ?? "unknown";
           const context = [
-            ...(f.precontext ?? []).map((code, i) => ({ line: (f.lineno ?? 0) - (f.precontext?.length ?? 0) + i, code })),
-            ...(f.context_line != null && f.lineno != null ? [{ line: f.lineno, code: f.context_line }] : []),
-            ...(f.postcontext ?? []).map((code, i) => ({ line: (f.lineno ?? 0) + 1 + i, code })),
+            ...(f.precontext ?? []).map((code, i) => ({
+              line: (f.lineno ?? 0) - (f.precontext?.length ?? 0) + i,
+              code,
+            })),
+            ...(f.context_line != null && f.lineno != null
+              ? [{ line: f.lineno, code: f.context_line }]
+              : []),
+            ...(f.postcontext ?? []).map((code, i) => ({
+              line: (f.lineno ?? 0) + 1 + i,
+              code,
+            })),
           ];
           return (
             <div key={idx} className="border-b last:border-0">
-              <div className={cn("flex flex-wrap gap-x-2 px-3 py-2", f.in_app === false && "opacity-50")}>
+              <div
+                className={cn(
+                  "flex flex-wrap gap-x-2 px-3 py-2",
+                  f.in_app === false && "opacity-50",
+                )}
+              >
                 <span className="text-muted-foreground">at</span>
-                <span className="font-semibold text-warning">{f.function ?? f.module ?? "unknown"}</span>
+                <span className="font-semibold text-warning">
+                  {f.function ?? f.module ?? "unknown"}
+                </span>
                 <span className="text-muted-foreground">
-                  ({file}:<span className="text-foreground">{f.lineno ?? "?"}</span>:{f.colno ?? "?"})
+                  ({file}:
+                  <span className="text-foreground">{f.lineno ?? "?"}</span>:
+                  {f.colno ?? "?"})
                 </span>
               </div>
               {context.length > 0 && (
                 <pre className="overflow-x-auto bg-card py-1">
                   {context.map((c) => (
-                    <div key={c.line} className={cn("px-3", c.line === f.lineno && "bg-destructive/10 text-foreground")}>
-                      <span className="mr-4 inline-block w-8 text-right text-muted-foreground">{c.line}</span>
+                    <div
+                      key={c.line}
+                      className={cn(
+                        "px-3",
+                        c.line === f.lineno &&
+                          "bg-destructive/10 text-foreground",
+                      )}
+                    >
+                      <span className="mr-4 inline-block w-8 text-right text-muted-foreground">
+                        {c.line}
+                      </span>
                       {c.code}
                     </div>
                   ))}

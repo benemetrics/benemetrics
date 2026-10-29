@@ -15,7 +15,7 @@ This downloads and installs the latest stable version of Bun, replacing the curr
 
 <Note>To see the current version of Bun, run `bun --version`.</Note>
 
-***
+---
 
 ## Verify the upgrade
 
@@ -30,7 +30,7 @@ bun --revision
 # Output: 1.x.y+abc123def
 ```
 
-***
+---
 
 ## Upgrade to canary builds
 
@@ -42,7 +42,7 @@ bun upgrade --canary
 
 <Warning>Canary builds are not recommended for production use. They may contain bugs or breaking changes.</Warning>
 
-***
+---
 
 ## Switch back to stable
 
@@ -52,7 +52,7 @@ If you're on a canary build and want to return to the latest stable release:
 bun upgrade --stable
 ```
 
-***
+---
 
 ## Install a specific version
 
@@ -72,7 +72,7 @@ To install a specific version of Bun, use the install script with a version tag:
   </Tab>
 </Tabs>
 
-***
+---
 
 ## Package manager users
 
@@ -82,13 +82,13 @@ If you installed Bun via a package manager, use that package manager to upgrade 
   **Homebrew users** <br />
   To avoid conflicts with Homebrew, use `brew upgrade bun` instead.
 
-  **Scoop users** <br />
-  To avoid conflicts with Scoop, use `scoop update bun` instead.
+**Scoop users** <br />
+To avoid conflicts with Scoop, use `scoop update bun` instead.
 </Tip>
 
-***
+---
 
 ## See also
 
-* [Installation](/installation) — Install Bun for the first time
-* [Update packages](/pm/cli/update) — Update dependencies to latest versions
+- [Installation](/installation) — Install Bun for the first time
+- [Update packages](/pm/cli/update) — Update dependencies to latest versions

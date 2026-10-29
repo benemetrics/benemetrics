@@ -17,7 +17,7 @@ Bun.serve({
 });
 ```
 
-***
+---
 
 To enable compression for individual messages, pass `true` as the second parameter to `ws.send()`.
 

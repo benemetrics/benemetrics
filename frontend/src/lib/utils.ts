@@ -6,7 +6,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function timeAgo(iso: string) {
-  const m = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  const m = Math.max(
+    1,
+    Math.round((Date.now() - new Date(iso).getTime()) / 60000),
+  );
   if (m < 60) return `${m}m ago`;
   const h = Math.round(m / 60);
   if (h < 48) return `${h}h ago`;

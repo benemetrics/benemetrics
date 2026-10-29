@@ -7,7 +7,7 @@ description: Control metadependency versions with npm overrides and Yarn resolut
 
 > Control metadependency versions with npm overrides and Yarn resolutions
 
-Bun supports npm's `"overrides"` and Yarn's `"resolutions"` in `package.json`. These are mechanisms for specifying a version range for *metadependencies*—the dependencies of your dependencies.
+Bun supports npm's `"overrides"` and Yarn's `"resolutions"` in `package.json`. These are mechanisms for specifying a version range for _metadependencies_—the dependencies of your dependencies.
 
 ```json package.json icon="file-json" theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
@@ -15,13 +15,14 @@ Bun supports npm's `"overrides"` and Yarn's `"resolutions"` in `package.json`. T
   "dependencies": {
     "foo": "^2.0.0"
   },
-  "overrides": { // [!code ++]
+  "overrides": {
+    // [!code ++]
     "bar": "~4.4.0" // [!code ++]
   } // [!code ++]
 }
 ```
 
-By default, Bun will install the latest version of all dependencies and metadependencies, according to the ranges specified in each package's `package.json`. Let's say you have a project with one dependency, `foo`, which in turn has a dependency on `bar`. This means `bar` is a *metadependency* of our project.
+By default, Bun will install the latest version of all dependencies and metadependencies, according to the ranges specified in each package's `package.json`. Let's say you have a project with one dependency, `foo`, which in turn has a dependency on `bar`. This means `bar` is a _metadependency_ of our project.
 
 ```json package.json icon="file-json" theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
@@ -42,7 +43,7 @@ node_modules
 
 But what if a security vulnerability was introduced in `bar@4.5.6`? We may want a way to pin `bar` to an older version that doesn't have the vulnerability. This is where `"overrides"`/`"resolutions"` come in.
 
-***
+---
 
 ## `"overrides"`
 
@@ -59,7 +60,8 @@ Add `bar` to the `"overrides"` field in `package.json`. Bun will defer to the sp
   "dependencies": {
     "foo": "^2.0.0"
   },
-  "overrides": { // [!code ++]
+  "overrides": {
+    // [!code ++]
     "bar": "~4.4.0" // [!code ++]
   } // [!code ++]
 }
@@ -69,7 +71,7 @@ Add `bar` to the `"overrides"` field in `package.json`. Bun will defer to the sp
 
 The syntax is similar for `"resolutions"`, which is Yarn's alternative to `"overrides"`. Bun supports this feature to make migration from Yarn easier.
 
-As with `"overrides"`, *nested resolutions* are not currently supported.
+As with `"overrides"`, _nested resolutions_ are not currently supported.
 
 ```json package.json icon="file-json" theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
@@ -77,7 +79,8 @@ As with `"overrides"`, *nested resolutions* are not currently supported.
   "dependencies": {
     "foo": "^2.0.0"
   },
-  "resolutions": { // [!code ++]
+  "resolutions": {
+    // [!code ++]
     "bar": "~4.4.0" // [!code ++]
   } // [!code ++]
 }

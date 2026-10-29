@@ -11,7 +11,7 @@ Use the `--bail` flag to bail on a test run after a single failure. This is usef
 bun test --bail
 ```
 
-***
+---
 
 To bail after a certain threshold of failures, optionally specify a number after the flag.
 
@@ -20,6 +20,6 @@ To bail after a certain threshold of failures, optionally specify a number after
 bun test --bail=10
 ```
 
-***
+---
 
 See [Docs > Test runner](/test) for complete documentation of `bun test`.

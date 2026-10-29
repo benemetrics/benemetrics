@@ -7,6 +7,8 @@ export default defineConfig({
   schema: "./db/schema/index.ts",
   out: "./db/migrations",
   dbCredentials: {
-    url: process.env.DATABASE_URL || "postgresql://postgres:mysecretpassword@localhost:5432/sentry",
+    url:
+      process.env.DATABASE_URL ||
+      "postgresql://postgres:mysecretpassword@localhost:5432/sentry",
   },
 });

@@ -6,12 +6,12 @@ Proactive notification when errors spike, performance degrades, or cron jobs fai
 
 ## Alert Types Overview
 
-| Alert Type | Trigger | Use Case |
-|------------|---------|----------|
-| **Issue Alert** | New issue, regression, frequency spike | "New bug deployed" |
-| **Metric Alert** | Custom metric threshold | "Error rate > 5%", "p95 > 2s" |
-| **Cron Monitor** | Job missed/late/failed | "Nightly backup didn't run" |
-| **Uptime Monitor** | Endpoint down/SSL expiry | "API unreachable" |
+| Alert Type         | Trigger                                | Use Case                      |
+| ------------------ | -------------------------------------- | ----------------------------- |
+| **Issue Alert**    | New issue, regression, frequency spike | "New bug deployed"            |
+| **Metric Alert**   | Custom metric threshold                | "Error rate > 5%", "p95 > 2s" |
+| **Cron Monitor**   | Job missed/late/failed                 | "Nightly backup didn't run"   |
+| **Uptime Monitor** | Endpoint down/SSL expiry               | "API unreachable"             |
 
 ## 1. Issue Alerts
 
@@ -53,12 +53,12 @@ curl -X POST "https://sentry.io/api/0/projects/{org}/{project}/alert-rules/" \
 
 ### Recommended Issue Alert Rules
 
-| Rule Name | Conditions | Action | Purpose |
-|-----------|------------|--------|---------|
-| **New Critical Errors** | New issue, level=fatal | PagerDuty | Wake up for crashes |
-| **Regressions** | Issue regressed | Slack #team | Catch re-introduced bugs |
-| **Error Spike** | >50 events/5min | Slack #team | Detect cascading failures |
-| **New in Release** | New issue, release=current | GitHub Issue | Track deploy quality |
+| Rule Name               | Conditions                 | Action       | Purpose                   |
+| ----------------------- | -------------------------- | ------------ | ------------------------- |
+| **New Critical Errors** | New issue, level=fatal     | PagerDuty    | Wake up for crashes       |
+| **Regressions**         | Issue regressed            | Slack #team  | Catch re-introduced bugs  |
+| **Error Spike**         | >50 events/5min            | Slack #team  | Detect cascading failures |
+| **New in Release**      | New issue, release=current | GitHub Issue | Track deploy quality      |
 
 ## 2. Metric Alerts
 
@@ -101,14 +101,14 @@ Sentry.metrics.gauge("queue.depth", 42, {
 
 ### Example Metric Alerts
 
-| Metric | Aggregation | Threshold | Window | Purpose |
-|--------|-------------|-----------|--------|---------|
-| `http.server.duration` | p95 | > 2000ms | 5m | API latency spike |
-| `http.server.duration` | p99 | > 5000ms | 1m | Severe latency |
-| `error.rate` | sum | > 0.05 (5%) | 5m | Error rate spike |
-| `orders.created` | sum | < 10 | 10m | Business metric drop |
-| `queue.depth` | max | > 1000 | 5m | Queue backlog |
-| `db.query.duration` | p95 | > 1000ms | 5m | Slow queries |
+| Metric                 | Aggregation | Threshold   | Window | Purpose              |
+| ---------------------- | ----------- | ----------- | ------ | -------------------- |
+| `http.server.duration` | p95         | > 2000ms    | 5m     | API latency spike    |
+| `http.server.duration` | p99         | > 5000ms    | 1m     | Severe latency       |
+| `error.rate`           | sum         | > 0.05 (5%) | 5m     | Error rate spike     |
+| `orders.created`       | sum         | < 10        | 10m    | Business metric drop |
+| `queue.depth`          | max         | > 1000      | 5m     | Queue backlog        |
+| `db.query.duration`    | p95         | > 1000ms    | 5m     | Slow queries         |
 
 ## 3. Cron Monitors
 
@@ -121,7 +121,7 @@ Sentry.metrics.gauge("queue.depth", 42, {
 
 ### Instrument in Your Application
 
-```typescript
+````typescript
 // scripts/nightly-backup.ts
 import * as Sentry from "@sentry/<your-platform>";
 import { initSentry } from "../sentry.config";
@@ -148,7 +148,7 @@ async function runBackup() {
 }
 
 runBackup().catch(() => process.exit(1));```
-```
+````
 
 ### Manual Check-ins (for non-scheduled jobs)
 
@@ -195,19 +195,19 @@ export default {
       checkRedis(),
       checkExternalAPI(),
     ]);
-    
-    const healthy = checks.every(c => c.status === "fulfilled");
+
+    const healthy = checks.every((c) => c.status === "fulfilled");
     const details = checks.map((c, i) => ({
       check: ["database", "redis", "external"][i],
       status: c.status,
       ...(c.status === "rejected" ? { error: c.reason.message } : {}),
     }));
-    
+
     return new Response(JSON.stringify({ healthy, checks: details }), {
       status: healthy ? 200 : 503,
       headers: { "content-type": "application/json" },
     });
-  }
+  },
 };
 
 async function checkDatabase() {
@@ -228,16 +228,16 @@ async function checkExternalAPI() {
 
 ### Action Types
 
-| Action | Configuration |
-|--------|---------------|
-| **Slack** | Channel, mention (@here/@channel/@user), message template |
-| **PagerDuty** | Service key, severity, deduplication key |
-| **Opsgenie** | API key, priority, responders |
-| **Email** | Recipients, subject template |
-| **Webhook** | URL, headers, payload template |
-| **Microsoft Teams** | Webhook URL, message format |
-| **VictorOps** | Routing key, message type |
-| **Custom** | Webhook to your own system |
+| Action              | Configuration                                             |
+| ------------------- | --------------------------------------------------------- |
+| **Slack**           | Channel, mention (@here/@channel/@user), message template |
+| **PagerDuty**       | Service key, severity, deduplication key                  |
+| **Opsgenie**        | API key, priority, responders                             |
+| **Email**           | Recipients, subject template                              |
+| **Webhook**         | URL, headers, payload template                            |
+| **Microsoft Teams** | Webhook URL, message format                               |
+| **VictorOps**       | Routing key, message type                                 |
+| **Custom**          | Webhook to your own system                                |
 
 ### Slack Message Template
 
@@ -246,7 +246,7 @@ async function checkExternalAPI() {
   "type": "slack",
   "target": "#alerts-api",
   "options": {
-    "tags": {"service": "api"},
+    "tags": { "service": "api" },
     "includeTags": true,
     "includeRules": true
   }
@@ -336,7 +336,8 @@ Sentry.init({
   beforeSend(event) {
     // Group validation errors by field
     if (event.exception?.values?.[0]?.type === "ValidationError") {
-      const field = event.exception.values[0].value?.match(/field '(\w+)'/)?.[1];
+      const field =
+        event.exception.values[0].value?.match(/field '(\w+)'/)?.[1];
       if (field) event.fingerprint = ["validation-error", field];
     }
     return event;
@@ -447,11 +448,11 @@ resource "sentry_alert_rule" "high_error_rate" {
 
 ### Meta-Alerts (Alert on Alerts)
 
-| Meta-Alert | Purpose |
-|------------|---------|
-| "No alerts fired in 24h" | Alerting system broken |
-| "Alert X fired >10x in 1h" | Flapping alert, needs tuning |
-| "Alert X not resolved in 4h" | Stuck incident |
+| Meta-Alert                   | Purpose                      |
+| ---------------------------- | ---------------------------- |
+| "No alerts fired in 24h"     | Alerting system broken       |
+| "Alert X fired >10x in 1h"   | Flapping alert, needs tuning |
+| "Alert X not resolved in 4h" | Stuck incident               |
 
 ### Dashboard: Alert Effectiveness
 
@@ -480,7 +481,11 @@ Sentry.metrics.gauge(name, value, tags);
 Sentry.metrics.set(name, value, tags); // Unique values
 
 // Cron
-const monitor = Sentry.cron.monitor(slug, { schedule, checkinMargin, maxRuntime });
+const monitor = Sentry.cron.monitor(slug, {
+  schedule,
+  checkinMargin,
+  maxRuntime,
+});
 const checkin = monitor.checkIn({ status: "in_progress" });
 checkin.complete({ status: "ok" | "error" });
 
@@ -511,14 +516,14 @@ Sentry.cron.checkIn(slug, { status: "in_progress", monitorSlug });
 
 You now have documentation for all 6 core features:
 
-| Doc | Feature | Key Files |
-|-----|---------|-----------|
-| [01](./01-error-tracking.md) | Error Tracking | `sentry.config.ts`, middleware |
-| [02](./02-release-tracking.md) | Release Tracking | CI/CD, `sentry-cli`, source maps |
-| [03](./03-performance-monitoring.md) | Performance | Transactions, spans, profiling |
-| [04](./04-session-replay.md) | Session Replay | Trace propagation, frontend link |
-| [05](./05-breadcrumbs.md) | Breadcrumbs | Auto + custom, middleware |
-| [06](./06-alerting.md) | Alerting | Rules, metrics, cron, uptime |
+| Doc                                  | Feature          | Key Files                        |
+| ------------------------------------ | ---------------- | -------------------------------- |
+| [01](./01-error-tracking.md)         | Error Tracking   | `sentry.config.ts`, middleware   |
+| [02](./02-release-tracking.md)       | Release Tracking | CI/CD, `sentry-cli`, source maps |
+| [03](./03-performance-monitoring.md) | Performance      | Transactions, spans, profiling   |
+| [04](./04-session-replay.md)         | Session Replay   | Trace propagation, frontend link |
+| [05](./05-breadcrumbs.md)            | Breadcrumbs      | Auto + custom, middleware        |
+| [06](./06-alerting.md)               | Alerting         | Rules, metrics, cron, uptime     |
 
 ## Next Steps
 

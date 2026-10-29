@@ -5,7 +5,9 @@ import { targetingRuleSchema } from "backend/protocol/feature-flags";
 import { resolveAdminId } from "../auth";
 
 // ── oidc surface: the admin reads and writes ─────────────
-export const segmentRoutes = new Elysia({ prefix: "/api/admin/feature-flags/segments" })
+export const segmentRoutes = new Elysia({
+  prefix: "/api/admin/feature-flags/segments",
+})
   .resolve(resolveAdminId)
   .post(
     "/",
@@ -23,16 +25,12 @@ export const segmentRoutes = new Elysia({ prefix: "/api/admin/feature-flags/segm
       }),
     },
   )
-  .get(
-    "/",
-    async ({ query }) => segmentDAO.list({ ...query }),
-    {
-      query: arktype({
-        cursor: "string?",
-        limit: "string.integer.parse?",
-      }),
-    },
-  )
+  .get("/", async ({ query }) => segmentDAO.list({ ...query }), {
+    query: arktype({
+      cursor: "string?",
+      limit: "string.integer.parse?",
+    }),
+  })
   .get("/:id", async ({ params: { id } }) => segmentDAO.findByIdOrThrow(id), {
     params: arktype({ id: "string.uuid" }),
   });

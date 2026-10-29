@@ -26,6 +26,7 @@ Bun ships as a single, dependency-free executable. You can install it via script
     <Note>
       **Linux users**  The `unzip` package is required to install Bun. Use `sudo apt install unzip` to install the unzip package. Kernel version 5.6 or higher is strongly recommended, but the minimum is 5.1. Use `uname -r` to check Kernel version.
     </Note>
+
   </Tab>
 
   <Tab title="Windows">
@@ -40,6 +41,7 @@ Bun ships as a single, dependency-free executable. You can install it via script
     </Warning>
 
     For support and discussion, please join the **#windows** channel on our [Discord](https://bun.com/discord).
+
   </Tab>
 
   <Tab title="Package Managers">
@@ -56,6 +58,7 @@ Bun ships as a single, dependency-free executable. You can install it via script
       scoop install bun
       ```
     </CodeGroup>
+
   </Tab>
 
   <Tab title="Docker">
@@ -76,6 +79,7 @@ Bun ships as a single, dependency-free executable. You can install it via script
     docker pull oven/bun:distroless
     docker pull oven/bun:alpine
     ```
+
   </Tab>
 </Tabs>
 
@@ -156,10 +160,11 @@ bun --revision
         </Step>
       </Steps>
     </Tab>
+
   </Tabs>
 </Accordion>
 
-***
+---
 
 ## Upgrading
 
@@ -173,11 +178,11 @@ bun upgrade
   **Homebrew users** <br />
   To avoid conflicts with Homebrew, use `brew upgrade bun` instead.
 
-  **Scoop users** <br />
-  To avoid conflicts with Scoop, use `scoop update bun` instead.
+**Scoop users** <br />
+To avoid conflicts with Scoop, use `scoop update bun` instead.
 </Tip>
 
-***
+---
 
 ## Canary Builds
 
@@ -195,7 +200,7 @@ bun upgrade --stable
 
 The canary build is useful for testing new features and bug fixes before they're released in a stable build. To help the Bun team fix bugs faster, canary builds automatically upload crash reports to Bun's team.
 
-***
+---
 
 ## Installing Older Versions
 
@@ -208,6 +213,7 @@ Since Bun is a single binary, you can install older versions by re-running the i
     ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
     curl -fsSL https://bun.com/install | bash -s "bun-v1.3.3"
     ```
+
   </Tab>
 
   <Tab title="Windows">
@@ -216,10 +222,11 @@ Since Bun is a single binary, you can install older versions by re-running the i
     ```powershell PowerShell icon="windows" theme={"theme":{"light":"github-light","dark":"dracula"}}
     iex "& {$(irm https://bun.com/install.ps1)} -Version 1.3.3"
     ```
+
   </Tab>
 </Tabs>
 
-***
+---
 
 ## Direct Downloads
 
@@ -261,16 +268,16 @@ To download Bun binaries directly, visit the [releases page on GitHub](https://g
 
 For distributions without `glibc` (Alpine Linux, Void Linux):
 
-* [Linux x64 musl](https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64-musl.zip)
-* [Linux x64 musl baseline](https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64-musl-baseline.zip)
-* [Linux ARM64 musl](https://github.com/oven-sh/bun/releases/latest/download/bun-linux-aarch64-musl.zip)
+- [Linux x64 musl](https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64-musl.zip)
+- [Linux x64 musl baseline](https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64-musl-baseline.zip)
+- [Linux ARM64 musl](https://github.com/oven-sh/bun/releases/latest/download/bun-linux-aarch64-musl.zip)
 
 <Note>
   If you encounter an error like `bun: /lib/x86_64-linux-gnu/libm.so.6: version GLIBC_2.29 not found`, try using the
   musl binary. Bun's install script automatically chooses the correct binary for your system.
 </Note>
 
-***
+---
 
 ## CPU Requirements
 
@@ -283,6 +290,7 @@ Bun has specific CPU requirements based on the binary you're using:
     | Platform | Intel Requirement               | AMD Requirement    |
     | -------- | ------------------------------- | ------------------ |
     | x64      | Haswell (4th gen Core) or newer | Excavator or newer |
+
   </Tab>
 
   <Tab title="Baseline Builds">
@@ -296,6 +304,7 @@ Bun has specific CPU requirements based on the binary you're using:
       Baseline builds are slower than regular builds. Use them only if you encounter an "Illegal
       Instruction" error.
     </Warning>
+
   </Tab>
 </Tabs>
 
@@ -304,7 +313,7 @@ Bun has specific CPU requirements based on the binary you're using:
   13.0 or later.
 </Note>
 
-***
+---
 
 ## Uninstall
 
@@ -337,5 +346,6 @@ To remove Bun from your system:
       scoop uninstall bun
       ```
     </CodeGroup>
+
   </Tab>
 </Tabs>

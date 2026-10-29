@@ -23,7 +23,7 @@ Ingestion (DSN) and source-map uploads use separate authentication and are not p
 
 Auth is enforced on **every** request to every surface — there is no open mode. `/api/admin/*` and the UI surface (`/events/*`) both require an admin token or a verified provider JWT; without either, the answer is 401.
 
-What changes is only *how* identity is established: the master admin token, a verified OIDC/OAuth2 JWT, or (once implemented) an anonymous identity scoped by `backend/permissions.ts`. None of them exempts a surface from authentication.
+What changes is only _how_ identity is established: the master admin token, a verified OIDC/OAuth2 JWT, or (once implemented) an anonymous identity scoped by `backend/permissions.ts`. None of them exempts a surface from authentication.
 
 An identity provider is considered **configured** only when **both** an issuer (`OIDC_ISSUER`/`OAUTH_ISSUER`) **and** an audience (`OIDC_AUDIENCE`/`OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID`) are set. Audience without issuer (or issuer without audience) is a misconfiguration: JWT verification fails closed and only the admin token works.
 
@@ -152,15 +152,15 @@ A verified identity with no matching grant and no matching group rules has **no 
 
 **Filtering behavior for scoped reads:**
 
-| Endpoint | Behavior |
-|----------|----------|
-| Projects list | Returns only visible projects; app counts reflect visible apps only |
-| Project detail | 404 if project not visible; nested apps filtered to visible |
-| Project apps | 404 if project not visible; returns only visible apps |
-| Environments list | Unknown/out-of-scope `projectId` filter → empty list; returns only visible environments |
-| Environment detail | 404 if environment not visible |
-| Issues list | Unknown/out-of-scope `appId`/`projectId` filters → empty list; otherwise filtered to visible apps |
-| Issue detail | 404 if issue's app not visible |
+| Endpoint           | Behavior                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
+| Projects list      | Returns only visible projects; app counts reflect visible apps only                               |
+| Project detail     | 404 if project not visible; nested apps filtered to visible                                       |
+| Project apps       | 404 if project not visible; returns only visible apps                                             |
+| Environments list  | Unknown/out-of-scope `projectId` filter → empty list; returns only visible environments           |
+| Environment detail | 404 if environment not visible                                                                    |
+| Issues list        | Unknown/out-of-scope `appId`/`projectId` filters → empty list; otherwise filtered to visible apps |
+| Issue detail       | 404 if issue's app not visible                                                                    |
 
 **Consistency rule:** For list endpoints, unknown filter IDs and out-of-scope IDs return **identical responses** (empty list). For detail endpoints, both return 404. This prevents existence probing.
 
@@ -172,7 +172,7 @@ Always requires credentials — the admin token or a verified provider JWT (same
 
 - **Events list** — App filter intersected with visible apps; explicit out-of-scope filter yields empty list
 - **Event detail** — 404 unless event's app is visible
-- **Live feed** — There is **no backend WebSocket**: the browser subscribes to NATS directly over the WebSocket listener and the backend does not fan the events out. The feed **does** honor the permission scope: the NATS auth callout (`docs/nats.md`) sends every connection to the backend, which verifies the credential (Keycloak JWT or the master admin token) and signs a sub-only user claim for exactly `sentry.events.<appNumber>` of the apps the identity's scope resolves to — an identity whose scope resolves to no app is denied. Publishing is denied for every reader connection. The events the UI *polls* (`/events/*`) are scoped as described above.
+- **Live feed** — There is **no backend WebSocket**: the browser subscribes to NATS directly over the WebSocket listener and the backend does not fan the events out. The feed **does** honor the permission scope: the NATS auth callout (`docs/nats.md`) sends every connection to the backend, which verifies the credential (Keycloak JWT or the master admin token) and signs a sub-only user claim for exactly `sentry.events.<appNumber>` of the apps the identity's scope resolves to — an identity whose scope resolves to no app is denied. Publishing is denied for every reader connection. The events the UI _polls_ (`/events/*`) are scoped as described above.
 - **Replays** — read under `/api/admin/events/:eventId/replay/:replayId`; follows the event's app scope via the admin guard; 404 for out-of-scope (indistinguishable from missing). The browser fetches the returned presigned object-store URLs directly; there is no `/storage/*` proxy surface.
 
 ### Environments Exposure
@@ -217,12 +217,12 @@ An admin (holding the admin token) grants read access to OIDC users through two 
 
 ### Scope Resolution Summary
 
-| User has an enabled grant? | Result |
-|-----------------------------------|--------|
-| Yes (non-empty scope) | The grant scope is used exclusively (groups ignored) |
-| Yes (empty scope) | Valid "read nothing" grant — empty lists, 404 on detail |
-| No | Union of all matching enabled group rules |
-| No match | No grant → 401 with "ask an admin" message |
+| User has an enabled grant? | Result                                                  |
+| -------------------------- | ------------------------------------------------------- |
+| Yes (non-empty scope)      | The grant scope is used exclusively (groups ignored)    |
+| Yes (empty scope)          | Valid "read nothing" grant — empty lists, 404 on detail |
+| No                         | Union of all matching enabled group rules               |
+| No match                   | No grant → 401 with "ask an admin" message              |
 
 ### Visibility Expansion (Automatic)
 
@@ -271,16 +271,16 @@ Same shape as rules, with the identity id (unique) instead of the group name, pl
 **Prefix:** `/api/admin/permissions`  
 **Access:** Admin token only (scoped identities rejected by the allowlist)
 
-| Operation | Description |
-|-----------|-------------|
-| GET /rules | The group rules (cursor-paginated `{ data }`) |
-| POST /rules | Create group rule; 409 on duplicate group name |
-| PATCH /rules/:id | Partial update; rename into existing group → 409 |
-| DELETE /rules/:id | Remove by ID |
-| GET /grants | The identity grants (cursor-paginated `{ data }`) |
-| POST /grants | Create identity grant; 409 on duplicate identity id |
-| PATCH /grants/:id | Partial update |
-| DELETE /grants/:id | Remove by ID |
+| Operation          | Description                                         |
+| ------------------ | --------------------------------------------------- |
+| GET /rules         | The group rules (cursor-paginated `{ data }`)       |
+| POST /rules        | Create group rule; 409 on duplicate group name      |
+| PATCH /rules/:id   | Partial update; rename into existing group → 409    |
+| DELETE /rules/:id  | Remove by ID                                        |
+| GET /grants        | The identity grants (cursor-paginated `{ data }`)   |
+| POST /grants       | Create identity grant; 409 on duplicate identity id |
+| PATCH /grants/:id  | Partial update                                      |
+| DELETE /grants/:id | Remove by ID                                        |
 
 **Input hardening:** Scope lists trimmed, empties dropped, case-insensitive deduplication, max 100 entries, each max 128 chars. Group name min 1 char; the identity id min 1 char. The group name and the identity id are stored lowercased. All inputs validated via schema (no ad-hoc checks).
 
@@ -308,15 +308,15 @@ Same shape as rules, with the identity id (unique) instead of the group name, pl
 
 ## 9. Configuration Reference
 
-| Setting | Effect |
-|---------|--------|
-| Admin token | Master credential; always accepted. Generated at boot, held only as its `Bun.password` hash, rotated daily at 00:00 UTC (Elysia cron in `backend/index.ts`) — `bnm_`-prefixed mixed-case groups, no env var, no file |
-| `OIDC_ISSUER` / `OAUTH_ISSUER` | Issuer + discovery base; provider considered configured. **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
-| `OIDC_JWKS_URL` | JWKS override (skips discovery). **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`. |
-| `OIDC_ALLOW_INSECURE_HTTP` | `true` allows a plain-HTTP issuer (local providers only). The signature, audience, issuer and `azp` checks are unchanged. |
-| `OIDC_AUDIENCE` / `OIDC_CLIENT_ID` / `OAUTH_CLIENT_ID` | Expected audience. **Critical:** Without this, any token from the configured issuer is accepted. `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID` also enable the browser login flow. |
-| `OIDC_SCOPES` | Scopes requested by the browser login flow (default `openid email profile`). |
-| `OIDC_EMAIL_CLAIM` / `OIDC_GROUPS_CLAIM` / `OIDC_NAME_CLAIM` | Claim mapping (defaults: email, groups, name). Groups claim split on `/[\s,;|]+/`. |
+| Setting                                                      | Effect                                                                                                                                                                                                               |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin token                                                  | Master credential; always accepted. Generated at boot, held only as its `Bun.password` hash, rotated daily at 00:00 UTC (Elysia cron in `backend/index.ts`) — `bnm_`-prefixed mixed-case groups, no env var, no file |
+| `OIDC_ISSUER` / `OAUTH_ISSUER`                               | Issuer + discovery base; provider considered configured. **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`.                                                                        |
+| `OIDC_JWKS_URL`                                              | JWKS override (skips discovery). **HTTPS in production** — a plain-HTTP issuer needs `OIDC_ALLOW_INSECURE_HTTP=true`.                                                                                                |
+| `OIDC_ALLOW_INSECURE_HTTP`                                   | `true` allows a plain-HTTP issuer (local providers only). The signature, audience, issuer and `azp` checks are unchanged.                                                                                            |
+| `OIDC_AUDIENCE` / `OIDC_CLIENT_ID` / `OAUTH_CLIENT_ID`       | Expected audience. **Critical:** Without this, any token from the configured issuer is accepted. `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID` also enable the browser login flow.                                              |
+| `OIDC_SCOPES`                                                | Scopes requested by the browser login flow (default `openid email profile`).                                                                                                                                         |
+| `OIDC_EMAIL_CLAIM` / `OIDC_GROUPS_CLAIM` / `OIDC_NAME_CLAIM` | Claim mapping (defaults: email, groups, name). Groups claim split on `/[\s,;                                                                                                                                         | ]+/`. |
 
 Startup never prints secrets.
 

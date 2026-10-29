@@ -9,17 +9,17 @@ description: Use Bun's built-in support for YAML files through both runtime APIs
 
 In Bun, YAML is a first-class citizen alongside JSON and TOML. You can:
 
-* Parse YAML strings with `Bun.YAML.parse`
-* `import` & `require` YAML files as modules at runtime (including hot reloading & watch mode support)
-* `import` & `require` YAML files in frontend apps via bun's bundler
+- Parse YAML strings with `Bun.YAML.parse`
+- `import` & `require` YAML files as modules at runtime (including hot reloading & watch mode support)
+- `import` & `require` YAML files in frontend apps via bun's bundler
 
-***
+---
 
 ## Conformance
 
 Bun's YAML parser currently passes over 90% of the official YAML test suite. While we're actively working on reaching 100% conformance, the current implementation covers the vast majority of real-world use cases. The parser is written in Zig for optimal performance and is continuously being improved.
 
-***
+---
 
 ## Runtime API
 
@@ -27,7 +27,7 @@ Bun's YAML parser currently passes over 90% of the official YAML test suite. Whi
 
 Parse a YAML string into a JavaScript object.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { YAML } from "bun";
 const text = `
 name: John Doe
@@ -53,7 +53,7 @@ console.log(data);
 
 When parsing YAML with multiple documents (separated by `---`), `Bun.YAML.parse()` returns an array:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const multiDoc = `
 ---
 name: Document 1
@@ -76,15 +76,15 @@ console.log(docs);
 
 Bun's YAML parser supports the full YAML 1.2 specification, including:
 
-* **Scalars**: strings, numbers, booleans, null values
-* **Collections**: sequences (arrays) and mappings (objects)
-* **Anchors and Aliases**: reusable nodes with `&` and `*`
-* **Tags**: type hints like `!!str`, `!!int`, `!!float`, `!!bool`, `!!null`
-* **Multi-line strings**: literal (`|`) and folded (`>`) scalars
-* **Comments**: using `#`
-* **Directives**: `%YAML` and `%TAG`
+- **Scalars**: strings, numbers, booleans, null values
+- **Collections**: sequences (arrays) and mappings (objects)
+- **Anchors and Aliases**: reusable nodes with `&` and `*`
+- **Tags**: type hints like `!!str`, `!!int`, `!!float`, `!!bool`, `!!null`
+- **Multi-line strings**: literal (`|`) and folded (`>`) scalars
+- **Comments**: using `#`
+- **Directives**: `%YAML` and `%TAG`
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const yaml = `
 # Employee record
 employee: &emp
@@ -117,7 +117,7 @@ const data = Bun.YAML.parse(yaml);
 
 `Bun.YAML.parse()` throws a `SyntaxError` if the YAML is invalid:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 try {
   Bun.YAML.parse("invalid: yaml: content:");
 } catch (error) {
@@ -125,7 +125,7 @@ try {
 }
 ```
 
-***
+---
 
 ## Module Import
 
@@ -197,7 +197,7 @@ const { database, redis } = require("./config.yaml");
 console.log(database.port); // 5432
 ```
 
-***
+---
 
 ## Hot Reloading with YAML
 
@@ -245,12 +245,12 @@ bun --hot server.ts
 
 Now when you modify `config.yaml`, the changes are immediately reflected in your running application. This is perfect for:
 
-* Adjusting configuration during development
-* Testing different settings without restarts
-* Live debugging with configuration changes
-* Feature flag toggling
+- Adjusting configuration during development
+- Testing different settings without restarts
+- Live debugging with configuration changes
+- Feature flag toggling
 
-***
+---
 
 ## Configuration Management
 
@@ -344,7 +344,10 @@ features:
 ```ts feature-flags.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { features } from "./features.yaml";
 
-export function isFeatureEnabled(featureName: string, userEmail?: string): boolean {
+export function isFeatureEnabled(
+  featureName: string,
+  userEmail?: string,
+): boolean {
   const feature = features[featureName];
 
   if (!feature?.enabled) {
@@ -449,9 +452,9 @@ bun build app.ts --outdir=dist
 
 This means:
 
-* Zero runtime YAML parsing overhead in production
-* Smaller bundle sizes
-* Tree-shaking support for unused configuration (named imports)
+- Zero runtime YAML parsing overhead in production
+- Smaller bundle sizes
+- Tree-shaking support for unused configuration (named imports)
 
 ### Dynamic Imports
 

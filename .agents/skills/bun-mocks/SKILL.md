@@ -498,14 +498,14 @@ The mock factory callback is only evaluated when the module is actually imported
 
 Bun automatically resolves the module specifier as though you were doing an import, supporting:
 
-* Relative paths (`'./module'`)
-* Absolute paths (`'/path/to/module'`)
-* Package names (`'lodash'`)
+- Relative paths (`'./module'`)
+- Absolute paths (`'/path/to/module'`)
+- Package names (`'lodash'`)
 
 ### Import Timing Effects
 
-* **When mocking before first import**: No side effects from the original module occur
-* **When mocking after import**: The original module's side effects have already happened
+- **When mocking before first import**: No side effects from the original module occur
+- **When mocking after import**: The original module's side effects have already happened
 
 For this reason, using `--preload` is recommended for mocks that need to prevent side effects.
 
@@ -532,7 +532,9 @@ function createMockUser(overrides = {}) {
 const mockUserService = {
   getUser: mock(async (id: string) => createMockUser({ id })),
   createUser: mock(async (data: any) => createMockUser(data)),
-  updateUser: mock(async (id: string, data: any) => createMockUser({ id, ...data })),
+  updateUser: mock(async (id: string, data: any) =>
+    createMockUser({ id, ...data }),
+  ),
 };
 ```
 
@@ -587,11 +589,11 @@ afterEach(() => {
 ```ts title="test.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Good: Simple, focused mock
 const mockUserApi = {
-  getUser: mock(async id => ({ id, name: "Test User" })),
+  getUser: mock(async (id) => ({ id, name: "Test User" })),
 };
 
 // Avoid: Overly complex mock behavior
-const complexMock = mock(input => {
+const complexMock = mock((input) => {
   if (input.type === "A") {
     return processTypeA(input);
   } else if (input.type === "B") {
@@ -603,7 +605,7 @@ const complexMock = mock(input => {
 
 ### Use Type-Safe Mocks
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 interface UserService {
   getUser(id: string): Promise<User>;
   createUser(data: CreateUserData): Promise<User>;
@@ -611,7 +613,7 @@ interface UserService {
 
 const mockUserService: UserService = {
   getUser: mock(async (id: string) => ({ id, name: "Test User" })),
-  createUser: mock(async data => ({ id: "new-id", ...data })),
+  createUser: mock(async (data) => ({ id: "new-id", ...data })),
 };
 ```
 

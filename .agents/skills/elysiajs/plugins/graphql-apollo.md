@@ -3,6 +3,7 @@
 Plugin for Elysia to use GraphQL Apollo.
 
 ## Installation
+
 ```bash
 bun add graphql @elysiajs/apollo @apollo/server
 ```
@@ -10,37 +11,37 @@ bun add graphql @elysiajs/apollo @apollo/server
 ## Basic Usage
 
 ```typescript
-import { Elysia } from 'elysia'
-import { apollo, gql } from '@elysiajs/apollo'
+import { Elysia } from "elysia";
+import { apollo, gql } from "@elysiajs/apollo";
 
 const app = new Elysia()
-	.use(
-		apollo({
-			typeDefs: gql`
-				type Book {
-					title: String
-					author: String
-				}
+  .use(
+    apollo({
+      typeDefs: gql`
+        type Book {
+          title: String
+          author: String
+        }
 
-				type Query {
-					books: [Book]
-				}
-			`,
-			resolvers: {
-				Query: {
-					books: () => {
-						return [
-							{
-								title: 'Elysia',
-								author: 'saltyAom'
-							}
-						]
-					}
-				}
-			}
-		})
-	)
-	.listen(3000)
+        type Query {
+          books: [Book]
+        }
+      `,
+      resolvers: {
+        Query: {
+          books: () => {
+            return [
+              {
+                title: "Elysia",
+                author: "saltyAom",
+              },
+            ];
+          },
+        },
+      },
+    }),
+  )
+  .listen(3000);
 ```
 
 Accessing `/graphql` should show Apollo GraphQL playground work with.
@@ -53,20 +54,20 @@ Because of this, Elysia replaces both with `context` like route parameters.
 
 ```typescript
 const app = new Elysia()
-	.use(
-		apollo({
-			typeDefs,
-			resolvers,
-			context: async ({ request }) => {
-				const authorization = request.headers.get('Authorization')
+  .use(
+    apollo({
+      typeDefs,
+      resolvers,
+      context: async ({ request }) => {
+        const authorization = request.headers.get("Authorization");
 
-				return {
-					authorization
-				}
-			}
-		})
-	)
-	.listen(3000)
+        return {
+          authorization,
+        };
+      },
+    }),
+  )
+  .listen(3000);
 ```
 
 ## Config

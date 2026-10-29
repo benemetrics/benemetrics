@@ -15,7 +15,10 @@ export interface AppDetail extends ProjectRecord {
   apps: AppRecord[];
 }
 
-export function useApp(projectId: string | undefined, appId: string | undefined) {
+export function useApp(
+  projectId: string | undefined,
+  appId: string | undefined,
+) {
   const [app, setApp] = useState<AppRecord | null>(null);
   const [project, setProject] = useState<ProjectRecord | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -26,23 +29,35 @@ export function useApp(projectId: string | undefined, appId: string | undefined)
     let alive = true;
     setLoading(true);
     setNotFound(false);
-    api["api/admin/projects"][projectId].get().then((res: { error?: unknown; data?: unknown }) => {
-      if (!alive) return;
-      if (res.error) {
-        setNotFound(true);
+    api["api/admin/projects"][projectId]
+      .get()
+      .then((res: { error?: unknown; data?: unknown }) => {
+        if (!alive) return;
+        if (res.error) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+        const data = res.data as {
+          apps: AppRecord[];
+          name: string;
+          slug: string;
+          description: string;
+        };
+        const found = data.apps.find((a) => a.id === appId) ?? null;
+        if (!found) {
+          setNotFound(true);
+        } else {
+          setApp(found);
+          setProject({
+            id: projectId,
+            name: data.name,
+            slug: data.slug,
+            description: data.description,
+          });
+        }
         setLoading(false);
-        return;
-      }
-      const data = res.data as { apps: AppRecord[]; name: string; slug: string; description: string };
-      const found = data.apps.find((a) => a.id === appId) ?? null;
-      if (!found) {
-        setNotFound(true);
-      } else {
-        setApp(found);
-        setProject({ id: projectId, name: data.name, slug: data.slug, description: data.description });
-      }
-      setLoading(false);
-    });
+      });
     return () => {
       alive = false;
     };
@@ -52,23 +67,35 @@ export function useApp(projectId: string | undefined, appId: string | undefined)
     if (!projectId || !appId) return;
     let alive = true;
     setLoading(true);
-    api["api/admin/projects"][projectId].get().then((res: { error?: unknown; data?: unknown }) => {
-      if (!alive) return;
-      if (res.error) {
-        setNotFound(true);
+    api["api/admin/projects"][projectId]
+      .get()
+      .then((res: { error?: unknown; data?: unknown }) => {
+        if (!alive) return;
+        if (res.error) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+        const data = res.data as {
+          apps: AppRecord[];
+          name: string;
+          slug: string;
+          description: string;
+        };
+        const found = data.apps.find((a) => a.id === appId) ?? null;
+        if (!found) {
+          setNotFound(true);
+        } else {
+          setApp(found);
+          setProject({
+            id: projectId,
+            name: data.name,
+            slug: data.slug,
+            description: data.description,
+          });
+        }
         setLoading(false);
-        return;
-      }
-      const data = res.data as { apps: AppRecord[]; name: string; slug: string; description: string };
-      const found = data.apps.find((a) => a.id === appId) ?? null;
-      if (!found) {
-        setNotFound(true);
-      } else {
-        setApp(found);
-        setProject({ id: projectId, name: data.name, slug: data.slug, description: data.description });
-      }
-      setLoading(false);
-    });
+      });
     return () => {
       alive = false;
     };

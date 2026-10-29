@@ -58,7 +58,9 @@ export function readIdTokenClaims(): { name?: string; email?: string } {
 function authHeaders(): Record<string, string> {
   const token = getToken();
   if (!token) return {};
-  return { authorization: `${isIdToken(token) ? "Bearer" : "API-Key"} ${token}` };
+  return {
+    authorization: `${isIdToken(token) ? "Bearer" : "API-Key"} ${token}`,
+  };
 }
 
 // The composed route tree does not flow through treaty's type-level mapping
@@ -71,7 +73,9 @@ export const api = treaty(window.location.origin, {
 // Cursor pages: a full page means there may be more (db/dao/cursor.ts).
 export const PAGE_SIZE = 100;
 
-export function isHttpError(res: { status?: number }): res is { status: number } {
+export function isHttpError(res: {
+  status?: number;
+}): res is { status: number } {
   return typeof res.status === "number" && res.status >= 400;
 }
 

@@ -15,6 +15,6 @@ const file = Bun.file(path);
 await Bun.write(Bun.stdout, file);
 ```
 
-***
+---
 
 See [Docs > API > File I/O](/runtime/file-io#writing-files-bun-write) for complete documentation of `Bun.write()`.

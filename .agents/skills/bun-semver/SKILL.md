@@ -21,7 +21,7 @@ Returns `true` if `version` satisfies `range`, otherwise `false`.
 
 Example:
 
-```typescript  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```typescript theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { semver } from "bun";
 
 semver.satisfies("1.0.0", "^1.0.0"); // true
@@ -46,7 +46,7 @@ Returns `0` if `versionA` and `versionB` are equal, `1` if `versionA` is greater
 
 Example:
 
-```typescript  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```typescript theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { semver } from "bun";
 
 semver.order("1.0.0", "1.0.0"); // 0

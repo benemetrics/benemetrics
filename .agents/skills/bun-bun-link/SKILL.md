@@ -15,7 +15,7 @@ cat package.json
 bun link
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun link v1.3.3 (7416672e)
 Success! Registered "cool-pkg"
 
@@ -54,15 +54,15 @@ cd /path/to/cool-pkg
 bun unlink
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun unlink v1.3.3 (7416672e)
 ```
 
-***
+---
 
 # CLI Usage
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun link <packages>
 ```
 

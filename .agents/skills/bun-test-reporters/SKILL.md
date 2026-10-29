@@ -7,7 +7,7 @@ description: Test Reporters
 
 bun test supports different output formats through reporters. This document covers both built-in reporters and how to implement your own custom reporters.
 
-***
+---
 
 ## Built-in Reporters
 
@@ -93,8 +93,8 @@ This makes it easier to track which environment and commit a particular test run
 
 The JUnit reporter currently has a few limitations that will be addressed in future updates:
 
-* `stdout` and `stderr` output from individual tests are not included in the report
-* Precise timestamp fields per test case are not included
+- `stdout` and `stderr` output from individual tests are not included in the report
+- Precise timestamp fields per test case are not included
 
 ### GitHub Actions reporter
 
@@ -102,7 +102,7 @@ Bun test automatically detects when it's running inside GitHub Actions and emits
 
 For a GitHub Actions workflow configuration example, see the [CI/CD integration](/pm/cli/install#ci%2Fcd) section of the CLI documentation.
 
-***
+---
 
 ## Custom Reporters
 
@@ -121,8 +121,8 @@ These extensions allow you to build custom reporting tools that can receive deta
 
 Custom reporters can listen for these key events:
 
-* `TestReporter.found`: Emitted when a test is discovered
-* `TestReporter.start`: Emitted when a test starts running
-* `TestReporter.end`: Emitted when a test completes
-* `Console.messageAdded`: Emitted when console output occurs during a test
-* `LifecycleReporter.error`: Emitted when an error or exception occurs
+- `TestReporter.found`: Emitted when a test is discovered
+- `TestReporter.start`: Emitted when a test starts running
+- `TestReporter.end`: Emitted when a test completes
+- `Console.messageAdded`: Emitted when console output occurs during a test
+- `LifecycleReporter.error`: Emitted when an error or exception occurs

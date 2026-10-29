@@ -1,9 +1,4 @@
-import {
-  pgTable,
-  text,
-  index,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { isoTimestamp } from "./timestamps";
 
 export const experimentAssignments = pgTable(

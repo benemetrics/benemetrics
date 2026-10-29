@@ -17,10 +17,10 @@ Isolated installs create a non-hoisted dependency structure where packages can o
 
 ### Key benefits
 
-* **Prevents phantom dependencies** — Packages cannot accidentally import dependencies they haven't declared
-* **Deterministic resolution** — Same dependency tree regardless of what else is installed
-* **Better for monorepos** — Workspace isolation prevents cross-contamination between packages
-* **Reproducible builds** — More predictable resolution behavior across environments
+- **Prevents phantom dependencies** — Packages cannot accidentally import dependencies they haven't declared
+- **Deterministic resolution** — Same dependency tree regardless of what else is installed
+- **Better for monorepos** — Workspace isolation prevents cross-contamination between packages
+- **Reproducible builds** — More predictable resolution behavior across environments
 
 ## Using isolated installs
 
@@ -51,10 +51,10 @@ The default linker strategy depends on your project's lockfile `configVersion`:
 
 | `configVersion` | Using workspaces? | Default Linker |
 | --------------- | ----------------- | -------------- |
-| `1`             | ✅                 | `isolated`     |
-| `1`             | ❌                 | `hoisted`      |
-| `0`             | ✅                 | `hoisted`      |
-| `0`             | ❌                 | `hoisted`      |
+| `1`             | ✅                | `isolated`     |
+| `1`             | ❌                | `hoisted`      |
+| `0`             | ✅                | `hoisted`      |
+| `0`             | ❌                | `hoisted`      |
 
 **New projects**: Default to `configVersion = 1`. In workspaces, v1 uses the isolated linker by default; otherwise it uses hoisted linking.
 
@@ -62,8 +62,8 @@ The default linker strategy depends on your project's lockfile `configVersion`:
 
 **Migrations from other package managers**:
 
-* From pnpm: `configVersion = 1` (using isolated installs in workspaces)
-* From npm or yarn: `configVersion = 0` (using hoisted installs)
+- From pnpm: `configVersion = 1` (using isolated installs in workspaces)
+- From npm or yarn: `configVersion = 0` (using hoisted installs)
 
 You can override the default behavior by explicitly specifying the `--linker` flag or setting it in your configuration file.
 
@@ -98,19 +98,19 @@ node_modules/
 
 In monorepos, workspace dependencies are handled specially:
 
-* **Workspace packages** — Symlinked directly to their source directories, not the store
-* **Workspace dependencies** — Can access other workspace packages in the monorepo
-* **External dependencies** — Installed in the isolated store with proper isolation
+- **Workspace packages** — Symlinked directly to their source directories, not the store
+- **Workspace dependencies** — Can access other workspace packages in the monorepo
+- **External dependencies** — Installed in the isolated store with proper isolation
 
 ## Comparison with hoisted installs
 
 | Aspect                    | Hoisted (npm/Yarn)                         | Isolated (pnpm-like)                    |
 | ------------------------- | ------------------------------------------ | --------------------------------------- |
 | **Dependency access**     | Packages can access any hoisted dependency | Packages only see declared dependencies |
-| **Phantom dependencies**  | ❌ Possible                                 | ✅ Prevented                             |
-| **Disk usage**            | ✅ Lower (shared installs)                  | ✅ Similar (uses symlinks)               |
-| **Determinism**           | ❌ Less deterministic                       | ✅ More deterministic                    |
-| **Node.js compatibility** | ✅ Standard behavior                        | ✅ Compatible via symlinks               |
+| **Phantom dependencies**  | ❌ Possible                                | ✅ Prevented                            |
+| **Disk usage**            | ✅ Lower (shared installs)                 | ✅ Similar (uses symlinks)              |
+| **Determinism**           | ❌ Less deterministic                      | ✅ More deterministic                   |
+| **Node.js compatibility** | ✅ Standard behavior                       | ✅ Compatible via symlinks              |
 | **Best for**              | Single projects, legacy code               | Monorepos, strict dependency management |
 
 ## Advanced features
@@ -130,9 +130,9 @@ The directory name encodes both the package version and its peer dependency vers
 
 Bun uses different file operation strategies for performance:
 
-* **Clonefile** (macOS) — Copy-on-write filesystem clones for maximum efficiency
-* **Hardlink** (Linux/Windows) — Hardlinks to save disk space
-* **Copyfile** (fallback) — Full file copies when other methods aren't available
+- **Clonefile** (macOS) — Copy-on-write filesystem clones for maximum efficiency
+- **Hardlink** (Linux/Windows) — Hardlinks to save disk space
+- **Copyfile** (fallback) — Full file copies when other methods aren't available
 
 ### Debugging isolated installs
 
@@ -144,10 +144,10 @@ bun install --linker isolated --verbose
 
 This shows:
 
-* Store entry creation
-* Symlink operations
-* Peer dependency resolution
-* Deduplication decisions
+- Store entry creation
+- Symlink operations
+- Peer dependency resolution
+- Deduplication decisions
 
 ## Troubleshooting
 
@@ -155,9 +155,9 @@ This shows:
 
 Some packages may not work correctly with isolated installs due to:
 
-* **Hardcoded paths** — Packages that assume a flat `node_modules` structure
-* **Dynamic imports** — Runtime imports that don't follow Node.js resolution
-* **Build tools** — Tools that scan `node_modules` directly
+- **Hardcoded paths** — Packages that assume a flat `node_modules` structure
+- **Dynamic imports** — Runtime imports that don't follow Node.js resolution
+- **Build tools** — Tools that scan `node_modules` directly
 
 If you encounter issues, you can:
 
@@ -171,9 +171,9 @@ If you encounter issues, you can:
 
 ### Performance considerations
 
-* **Install time** — May be slightly slower due to symlink operations
-* **Disk usage** — Similar to hoisted (uses symlinks, not file copies)
-* **Memory usage** — Higher during install due to complex peer resolution
+- **Install time** — May be slightly slower due to symlink operations
+- **Disk usage** — Similar to hoisted (uses symlinks, not file copies)
+- **Memory usage** — Higher during install due to complex peer resolution
 
 ## Migration guide
 
@@ -205,20 +205,20 @@ The main difference is that Bun uses symlinks in `node_modules` while pnpm uses 
 
 **Use isolated installs when:**
 
-* Working in monorepos with multiple packages
-* Strict dependency management is required
-* Preventing phantom dependencies is important
-* Building libraries that need deterministic dependencies
+- Working in monorepos with multiple packages
+- Strict dependency management is required
+- Preventing phantom dependencies is important
+- Building libraries that need deterministic dependencies
 
 **Use hoisted installs when:**
 
-* Working with legacy code that assumes flat `node_modules`
-* Compatibility with existing build tools is required
-* Working in environments where symlinks aren't well supported
-* You prefer the simpler traditional npm behavior
+- Working with legacy code that assumes flat `node_modules`
+- Compatibility with existing build tools is required
+- Working in environments where symlinks aren't well supported
+- You prefer the simpler traditional npm behavior
 
 ## Related documentation
 
-* [Package manager > Workspaces](/pm/workspaces) — Monorepo workspace management
-* [Package manager > Lockfile](/pm/lockfile) — Understanding Bun's lockfile format
-* [CLI > install](/pm/cli/install) — Complete `bun install` command reference
+- [Package manager > Workspaces](/pm/workspaces) — Monorepo workspace management
+- [Package manager > Lockfile](/pm/lockfile) — Understanding Bun's lockfile format
+- [CLI > install](/pm/cli/install) — Complete `bun install` command reference

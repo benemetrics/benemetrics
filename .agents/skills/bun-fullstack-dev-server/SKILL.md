@@ -33,11 +33,12 @@ const server = serve({
       },
       async POST(req) {
         const { name, email } = await req.json();
-        const [user] = await sql`INSERT INTO users (name, email) VALUES (${name}, ${email})`;
+        const [user] =
+          await sql`INSERT INTO users (name, email) VALUES (${name}, ${email})`;
         return Response.json(user);
       },
     },
-    "/api/users/:id": async req => {
+    "/api/users/:id": async (req) => {
       const { id } = req.params;
       const [user] = await sql`SELECT * FROM users WHERE id = ${id}`;
       return Response.json(user);
@@ -132,55 +133,56 @@ To use React in your client-side code, import `react-dom/client` and render your
   import dashboard from "../public/dashboard.html";
   import { serve } from "bun";
 
-  serve({
-  routes: {
-  "/": dashboard,
-  },
-  async fetch(req) {
-  // ...api requests
-  return new Response("hello world");
-  },
-  });
+serve({
+routes: {
+"/": dashboard,
+},
+async fetch(req) {
+// ...api requests
+return new Response("hello world");
+},
+});
 
-  ```
+````
 
-  ```tsx title="src/frontend.tsx" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  import { createRoot } from 'react-dom/client';
-  import App from './app';
+```tsx title="src/frontend.tsx" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
+import { createRoot } from 'react-dom/client';
+import App from './app';
 
-  const container = document.getElementById('root');
-  const root = createRoot(container!);
-  root.render(<App />);
-  ```
+const container = document.getElementById('root');
+const root = createRoot(container!);
+root.render(<App />);
+````
 
-  ```html title="public/dashboard.html" icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  <!DOCTYPE html>
-  <html>
-    <head>
-      <title>Dashboard</title>
-      <link rel="stylesheet" href="../src/styles.css" />
-    </head>
-    <body>
-      <div id="root"></div>
-      <script type="module" src="../src/frontend.tsx"></script>
-    </body>
-  </html>
-  ```
+```html title="public/dashboard.html" icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="../src/styles.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="../src/frontend.tsx"></script>
+  </body>
+</html>
+```
 
-  ```tsx title="src/app.tsx" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  import { useState } from "react";
+```tsx title="src/app.tsx" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
+import { useState } from "react";
 
-  export default function App() {
-    const [count, setCount] = useState(0);
+export default function App() {
+  const [count, setCount] = useState(0);
 
-    return (
-      <div>
-        <h1>Dashboard</h1>
-        <button onClick={() => setCount(count + 1)}>Count: {count}</button>
-      </div>
-    );
-  }
-  ```
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <button onClick={() => setCount(count + 1)}>Count: {count}</button>
+    </div>
+  );
+}
+```
+
 </CodeGroup>
 
 ## Development Mode
@@ -209,11 +211,11 @@ Bun.serve({
 
 When `development` is `true`, Bun will:
 
-* Include the SourceMap header in the response so that devtools can show the original source code
-* Disable minification
-* Re-bundle assets on each request to a `.html` file
-* Enable hot module reloading (unless `hmr: false` is set)
-* Echo console logs from browser to terminal
+- Include the SourceMap header in the response so that devtools can show the original source code
+- Disable minification
+- Re-bundle assets on each request to a `.html` file
+- Enable hot module reloading (unless `hmr: false` is set)
+- Echo console logs from browser to terminal
 
 ### Advanced Development Configuration
 
@@ -244,14 +246,14 @@ When `console: true` is set, Bun will stream console logs from the browser to th
 
 ### Development vs Production
 
-| Feature             | Development            | Production |
-| ------------------- | ---------------------- | ---------- |
-| **Source maps**     | ✅ Enabled              | ❌ Disabled |
-| **Minification**    | ❌ Disabled             | ✅ Enabled  |
-| **Hot reloading**   | ✅ Enabled              | ❌ Disabled |
-| **Asset bundling**  | 🔄 On each request     | 💾 Cached  |
+| Feature             | Development           | Production  |
+| ------------------- | --------------------- | ----------- |
+| **Source maps**     | ✅ Enabled            | ❌ Disabled |
+| **Minification**    | ❌ Disabled           | ✅ Enabled  |
+| **Hot reloading**   | ✅ Enabled            | ❌ Disabled |
+| **Asset bundling**  | 🔄 On each request    | 💾 Cached   |
 | **Console logging** | 🖥️ Browser → Terminal | ❌ Disabled |
-| **Error details**   | 📝 Detailed            | 🔒 Minimal |
+| **Error details**   | 📝 Detailed           | 🔒 Minimal  |
 
 ## Production Mode
 
@@ -282,9 +284,9 @@ When adding a build step is too complicated, you can set `development: false` in
 
 This will:
 
-* Enable in-memory caching of bundled assets. Bun will bundle assets lazily on the first request to an `.html` file, and cache the result in memory until the server restarts.
-* Enable `Cache-Control` headers and `ETag` headers
-* Minify JavaScript/TypeScript/TSX/JSX files
+- Enable in-memory caching of bundled assets. Bun will bundle assets lazily on the first request to an `.html` file, and cache the result in memory until the server restarts.
+- Enable `Cache-Control` headers and `ETag` headers
+- Minify JavaScript/TypeScript/TSX/JSX files
 
 ```ts title="src/backend.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { serve } from "bun";
@@ -350,21 +352,21 @@ Use URL parameters in your routes:
 serve({
   routes: {
     // Single parameter
-    "/api/users/:id": async req => {
+    "/api/users/:id": async (req) => {
       const { id } = req.params;
       const user = await getUserById(id);
       return Response.json(user);
     },
 
     // Multiple parameters
-    "/api/users/:userId/posts/:postId": async req => {
+    "/api/users/:userId/posts/:postId": async (req) => {
       const { userId, postId } = req.params;
       const post = await getPostByUser(userId, postId);
       return Response.json(post);
     },
 
     // Wildcard routes
-    "/api/files/*": async req => {
+    "/api/files/*": async (req) => {
       const filePath = req.params["*"];
       const file = await getFile(filePath);
       return new Response(file);
@@ -474,7 +476,7 @@ const myPlugin: BunPlugin = {
   name: "my-custom-plugin",
   setup(build) {
     // Plugin implementation
-    build.onLoad({ filter: /\.custom$/ }, async args => {
+    build.onLoad({ filter: /\.custom$/ }, async (args) => {
       const text = await Bun.file(args.path).text();
       return {
         contents: `export default ${JSON.stringify(text)};`,
@@ -510,7 +512,7 @@ env = "PUBLIC_*"  # only inline env vars starting with PUBLIC_ (recommended)
   This only works with literal `process.env.FOO` references, not `import.meta.env` or indirect access like `const env =
     process.env; env.FOO`.
 
-  If an environment variable is not set, you may see runtime errors like `ReferenceError: process
+If an environment variable is not set, you may see runtime errors like `ReferenceError: process
     is not defined` in the browser.
 </Note>
 
@@ -532,6 +534,7 @@ Bun uses `HTMLRewriter` to scan for `<script>` and `<link>` tags in HTML files, 
     ```html title="index.html" icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
     <script type="module" src="./counter.tsx"></script>
     ```
+
   </Step>
 
   <Step title="2. <link> Processing">
@@ -542,6 +545,7 @@ Bun uses `HTMLRewriter` to scan for `<script>` and `<link>` tags in HTML files, 
     ```html title="index.html" icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
     <link rel="stylesheet" href="./styles.css" />
     ```
+
   </Step>
 
   <Step title="3. <img> & Asset Processing">
@@ -599,11 +603,16 @@ const server = serve({
         const { name, email } = await req.json();
 
         try {
-          const result = db.query("INSERT INTO users (name, email) VALUES (?, ?) RETURNING *").get(name, email);
+          const result = db
+            .query("INSERT INTO users (name, email) VALUES (?, ?) RETURNING *")
+            .get(name, email);
 
           return Response.json(result, { status: 201 });
         } catch (error) {
-          return Response.json({ error: "Email already exists" }, { status: 400 });
+          return Response.json(
+            { error: "Email already exists" },
+            { status: 400 },
+          );
         }
       },
     },
@@ -756,8 +765,20 @@ export function App() {
       <h1>User Management</h1>
 
       <form onSubmit={createUser} className="form">
-        <input type="text" placeholder="Name" value={name} onChange={e => setName(e.target.value)} required />
-        <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+        <input
+          type="text"
+          placeholder="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
         <button type="submit" disabled={loading}>
           {loading ? "Creating..." : "Create User"}
         </button>
@@ -765,7 +786,7 @@ export function App() {
 
       <div className="users">
         <h2>Users ({users.length})</h2>
-        {users.map(user => (
+        {users.map((user) => (
           <div key={user.id} className="user-card">
             <div>
               <strong>{user.name}</strong>
@@ -1076,15 +1097,15 @@ export default function handler(req, res) {
 
 ### Current Limitations
 
-* `bun build` CLI integration is not yet available for fullstack apps
-* Auto-discovery of API routes is not implemented
-* Server-side rendering (SSR) is not built-in
+- `bun build` CLI integration is not yet available for fullstack apps
+- Auto-discovery of API routes is not implemented
+- Server-side rendering (SSR) is not built-in
 
 ### Planned Features
 
-* Integration with `bun build` CLI
-* File-based routing for API endpoints
-* Built-in SSR support
-* Enhanced plugin ecosystem
+- Integration with `bun build` CLI
+- File-based routing for API endpoints
+- Built-in SSR support
+- Enhanced plugin ecosystem
 
 <Note>This is a work in progress. Features and APIs may change as Bun continues to evolve.</Note>

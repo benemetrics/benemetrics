@@ -25,13 +25,14 @@ const app = new Elysia({
     },
   },
 })
-  .state('allowedGroups', await permissionGrantDAO.getAllowedGroups())
+  .state("allowedGroups", await permissionGrantDAO.getAllowedGroups())
   .onError(({ code, error, set }) => {
     if (error instanceof ApiError) {
       set.status = error.httpStatus;
       if (error.rateLimit) {
         set.headers["Retry-After"] = String(error.rateLimit.retryAfter);
-        set.headers["X-Sentry-Rate-Limits"] = `${error.rateLimit.retryAfter}:${error.rateLimit.categories}:${error.rateLimit.scope}`;
+        set.headers["X-Sentry-Rate-Limits"] =
+          `${error.rateLimit.retryAfter}:${error.rateLimit.categories}:${error.rateLimit.scope}`;
       }
       return { error: error.message };
     }
@@ -43,14 +44,28 @@ const app = new Elysia({
       set.status = 404;
       return { error: "Not found" };
     }
-    console.error(`[${code}] ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `[${code}] ${error instanceof Error ? error.message : String(error)}`,
+    );
     set.status = 500;
     return { error: "Internal Server Error" };
   })
   .get("/", () => Response.redirect("/ui"))
   // public/ assets referenced from the root (favicon, robots.txt)
-  .get("/favicon.ico", () => new Response(Bun.file(join(import.meta.dir, "../frontend/public/favicon.ico"))))
-  .get("/robots.txt", () => new Response(Bun.file(join(import.meta.dir, "../frontend/public/robots.txt"))))
+  .get(
+    "/favicon.ico",
+    () =>
+      new Response(
+        Bun.file(join(import.meta.dir, "../frontend/public/favicon.ico")),
+      ),
+  )
+  .get(
+    "/robots.txt",
+    () =>
+      new Response(
+        Bun.file(join(import.meta.dir, "../frontend/public/robots.txt")),
+      ),
+  )
   .use(apiRoutes);
 
 if (import.meta.main) {

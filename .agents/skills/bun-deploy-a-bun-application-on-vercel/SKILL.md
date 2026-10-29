@@ -17,7 +17,7 @@ description: Deploy a Bun application on Vercel
   Express, Hono, or Nitro.
 </Note>
 
-***
+---
 
 <Steps>
   <Step title="Configure Bun in vercel.json">
@@ -32,6 +32,7 @@ description: Deploy a Bun application on Vercel
     Vercel automatically detects this configuration and runs your application on Bun. The value has to be `"1.x"`, Vercel handles the minor version internally.
 
     For best results, match your local Bun version with the version used by Vercel.
+
   </Step>
 
   <Step title="Next.js configuration">
@@ -51,6 +52,7 @@ description: Deploy a Bun application on Vercel
     </Note>
 
     This ensures both local development and builds use Bun.
+
   </Step>
 
   <Step title="Deploy your app">
@@ -71,6 +73,7 @@ description: Deploy a Bun application on Vercel
     ```
 
     [Learn more in the Vercel Deploy CLI documentation →](https://vercel.com/docs/cli/deploy)
+
   </Step>
 
   <Step title="Verify the runtime">
@@ -85,13 +88,14 @@ description: Deploy a Bun application on Vercel
     ```
 
     [See the Vercel Bun Runtime documentation for feature support →](https://vercel.com/docs/functions/runtimes/bun#feature-support)
+
   </Step>
 </Steps>
 
-***
+---
 
-* [Fluid compute](https://vercel.com/docs/fluid-compute): Both Bun and Node.js runtimes run on Fluid compute and support the same core Vercel Functions features.
-* [Middleware](https://vercel.com/docs/routing-middleware): To run Routing Middleware with Bun, set the runtime to `nodejs`:
+- [Fluid compute](https://vercel.com/docs/fluid-compute): Both Bun and Node.js runtimes run on Fluid compute and support the same core Vercel Functions features.
+- [Middleware](https://vercel.com/docs/routing-middleware): To run Routing Middleware with Bun, set the runtime to `nodejs`:
 
 ```ts middleware.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 export const config = { runtime: "nodejs" }; // [!code ++]

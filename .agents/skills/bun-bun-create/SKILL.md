@@ -12,7 +12,7 @@ description: Create a new Bun project from a React component, a `create-<templat
   started a bit quicker and easier.
 </Note>
 
-***
+---
 
 Template a new Bun project with `bun create`. This is a flexible command that can be used to create a new project from a React component, a `create-<template>` npm package, a GitHub repo, or a local template.
 
@@ -22,7 +22,7 @@ If you're looking to create a brand new empty project, use [`bun init`](/runtime
 
 `bun create ./MyComponent.tsx` turns an existing React component into a complete dev environment with hot reload and production builds in one command.
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun create ./MyComponent.jsx # .tsx also supported
 ```
 
@@ -46,9 +46,9 @@ When you run `bun create <component>`, Bun:
 4. Generates a `package.json` file with the dependencies and scripts needed to run the component.
 5. Installs any missing dependencies using [`bun install --only-missing`](/pm/cli/install).
 6. Generates the following files:
-   * `${component}.html`
-   * `${component}.client.tsx` (entry point for the frontend)
-   * `${component}.css` (css file)
+   - `${component}.html`
+   - `${component}.client.tsx` (entry point for the frontend)
+   - `${component}.css` (css file)
 7. Starts a frontend dev server automatically.
 
 ### Using TailwindCSS with Bun
@@ -96,10 +96,10 @@ Since `shadcn/ui` itself uses TailwindCSS, `bun create` also adds the necessary 
 
 Additionally, we setup the following:
 
-* `tsconfig.json` to alias `"@/*"` to `"src/*"` or `.` (depending on if there is a `src/` directory)
-* `components.json` so that shadcn/ui knows its a shadcn/ui project
-* `styles/globals.css` file that configures Tailwind v4 in the way that shadcn/ui expects
-* `${component}.build.ts` file that builds the component for production with `bun-plugin-tailwind` configured
+- `tsconfig.json` to alias `"@/*"` to `"src/*"` or `.` (depending on if there is a `src/` directory)
+- `components.json` so that shadcn/ui knows its a shadcn/ui project
+- `styles/globals.css` file that configures Tailwind v4 in the way that shadcn/ui expects
+- `${component}.build.ts` file that builds the component for production with `bun-plugin-tailwind` configured
 
 `bun create ./MyComponent.jsx` is one of the easiest ways to run code generated from LLMs like [Claude](https://claude.ai) or ChatGPT locally.
 
@@ -136,13 +136,13 @@ bun create github.com/<user>/<repo> mydir
 
 Bun will perform the following steps:
 
-* Download the template
-* Copy all template files into the destination folder
-* Install dependencies with `bun install`.
-* Initialize a fresh Git repo. Opt out with the `--no-git` flag.
-* Run the template's configured `start` script, if defined.
+- Download the template
+- Copy all template files into the destination folder
+- Install dependencies with `bun install`.
+- Initialize a fresh Git repo. Opt out with the `--no-git` flag.
+- Run the template's configured `start` script, if defined.
 
-<Note>By default Bun will *not overwrite* any existing files. Use the `--force` flag to overwrite existing files.</Note>
+<Note>By default Bun will _not overwrite_ any existing files. Use the `--force` flag to overwrite existing files.</Note>
 
 ## From a local template
 
@@ -153,14 +153,14 @@ Bun will perform the following steps:
 
 Bun's templater can be extended to support custom templates defined on your local file system. These templates should live in one of the following directories:
 
-* `$HOME/.bun-create/<name>`: global templates
-* `<project root>/.bun-create/<name>`: project-specific templates
+- `$HOME/.bun-create/<name>`: global templates
+- `<project root>/.bun-create/<name>`: project-specific templates
 
 <Note>You can customize the global template path by setting the `BUN_CREATE_DIR` environment variable.</Note>
 
 To create a local template, navigate to `$HOME/.bun-create` and create a new directory with the desired name of your template.
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 cd $HOME/.bun-create
 mkdir foo
 cd foo
@@ -225,44 +225,44 @@ After cloning a template, `bun create` will automatically remove the `"bun-creat
 | `GITHUB_TOKEN` (or `GITHUB_ACCESS_TOKEN`) | This lets `bun create` work with private repositories or if you get rate-limited. `GITHUB_TOKEN` is chosen over `GITHUB_ACCESS_TOKEN` if both exist. |
 
 <Accordion title={<span>How <code>bun create</code> works</span>}>
-  When you run `bun create ${template} ${destination}`, here’s what happens:
+When you run `bun create ${template} ${destination}`, here’s what happens:
 
-  IF remote template
+IF remote template
 
-  1. GET `registry.npmjs.org/@bun-examples/${template}/latest` and parse it
-  2. GET `registry.npmjs.org/@bun-examples/${template}/-/${template}-${latestVersion}.tgz`
-  3. Decompress & extract `${template}-${latestVersion}.tgz` into `${destination}`
-     * If there are files that would overwrite, warn and exit unless `--force` is passed
+1. GET `registry.npmjs.org/@bun-examples/${template}/latest` and parse it
+2. GET `registry.npmjs.org/@bun-examples/${template}/-/${template}-${latestVersion}.tgz`
+3. Decompress & extract `${template}-${latestVersion}.tgz` into `${destination}`
+   - If there are files that would overwrite, warn and exit unless `--force` is passed
 
-  IF GitHub repo
+IF GitHub repo
 
-  1. Download the tarball from GitHub’s API
-  2. Decompress & extract into `${destination}`
-     * If there are files that would overwrite, warn and exit unless `--force` is passed
+1. Download the tarball from GitHub’s API
+2. Decompress & extract into `${destination}`
+   - If there are files that would overwrite, warn and exit unless `--force` is passed
 
-  ELSE IF local template
+ELSE IF local template
 
-  1. Open local template folder
+1. Open local template folder
 
-  2. Delete destination directory recursively
+2. Delete destination directory recursively
 
-  3. Copy files recursively using the fastest system calls available (on macOS `fcopyfile` and Linux, `copy_file_range`). Do not copy or traverse into `node_modules` folder if exists (this alone makes it faster than `cp`)
+3. Copy files recursively using the fastest system calls available (on macOS `fcopyfile` and Linux, `copy_file_range`). Do not copy or traverse into `node_modules` folder if exists (this alone makes it faster than `cp`)
 
-  4. Parse the `package.json` (again!), update `name` to be `${basename(destination)}`, remove the `bun-create` section from the `package.json` and save the updated `package.json` to disk.
-     * IF Next.js is detected, add `bun-framework-next` to the list of dependencies
-     * IF Create React App is detected, add the entry point in `/src/index.{js,jsx,ts,tsx}` to `public/index.html`
-     * IF Relay is detected, add `bun-macro-relay` so that Relay works
+4. Parse the `package.json` (again!), update `name` to be `${basename(destination)}`, remove the `bun-create` section from the `package.json` and save the updated `package.json` to disk.
+   - IF Next.js is detected, add `bun-framework-next` to the list of dependencies
+   - IF Create React App is detected, add the entry point in `/src/index.{js,jsx,ts,tsx}` to `public/index.html`
+   - IF Relay is detected, add `bun-macro-relay` so that Relay works
 
-  5. Auto-detect the npm client, preferring `pnpm`, `yarn` (v1), and lastly `npm`
+5. Auto-detect the npm client, preferring `pnpm`, `yarn` (v1), and lastly `npm`
 
-  6. Run any tasks defined in `"bun-create": { "preinstall" }` with the npm client
+6. Run any tasks defined in `"bun-create": { "preinstall" }` with the npm client
 
-  7. Run `${npmClient} install` unless `--no-install` is passed OR no dependencies are in package.json
+7. Run `${npmClient} install` unless `--no-install` is passed OR no dependencies are in package.json
 
-  8. Run any tasks defined in `"bun-create": { "postinstall" }` with the npm client
+8. Run any tasks defined in `"bun-create": { "postinstall" }` with the npm client
 
-  9. Run `git init; git add -A .; git commit -am "Initial Commit";`
-     * Rename `gitignore` to `.gitignore`. NPM automatically removes `.gitignore` files from appearing in packages.
-     * If there are dependencies, this runs in a separate thread concurrently while node\_modules are being installed
-     * Using libgit2 if available was tested and performed 3x slower in microbenchmarks
-</Accordion>
+9. Run `git init; git add -A .; git commit -am "Initial Commit";`
+   - Rename `gitignore` to `.gitignore`. NPM automatically removes `.gitignore` files from appearing in packages.
+   - If there are dependencies, this runs in a separate thread concurrently while node\_modules are being installed
+   - Using libgit2 if available was tested and performed 3x slower in microbenchmarks
+   </Accordion>

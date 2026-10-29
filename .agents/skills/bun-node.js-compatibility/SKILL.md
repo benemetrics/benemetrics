@@ -11,7 +11,7 @@ Every day, Bun gets closer to 100% Node.js API compatibility. Today, popular fra
 
 **If a package works in Node.js but doesn't work in Bun, we consider it a bug in Bun.** Please [open an issue](https://bun.com/issues) and we'll fix it.
 
-This page is updated regularly to reflect compatibility status of the latest version of Bun. The information below reflects Bun's compatibility with *Node.js v23*.
+This page is updated regularly to reflect compatibility status of the latest version of Bun. The information below reflects Bun's compatibility with _Node.js v23_.
 
 ## Built-in Node.js modules
 
@@ -65,7 +65,7 @@ This page is updated regularly to reflect compatibility status of the latest ver
 
 ### [`node:punycode`](https://nodejs.org/api/punycode.html)
 
-🟢 Fully implemented. 100% of Node.js's test suite passes, *deprecated by Node.js*.
+🟢 Fully implemented. 100% of Node.js's test suite passes, _deprecated by Node.js_.
 
 ### [`node:querystring`](https://nodejs.org/api/querystring.html)
 

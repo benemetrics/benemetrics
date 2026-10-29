@@ -13,7 +13,14 @@ export const releaseRoutes = new Elysia({ prefix: "/api/admin/releases" })
     "/",
     async ({ body }) => {
       await appDAO.findByIdOrThrow(body.appId);
-      return releaseDAO.create({ appId: body.appId, version: body.version, ref: body.ref ?? null, url: body.url ?? null, owner: body.owner ?? null, status: body.status ?? "draft" });
+      return releaseDAO.create({
+        appId: body.appId,
+        version: body.version,
+        ref: body.ref ?? null,
+        url: body.url ?? null,
+        owner: body.owner ?? null,
+        status: body.status ?? "draft",
+      });
     },
     {
       body: arktype({
@@ -45,18 +52,19 @@ export const releaseRoutes = new Elysia({ prefix: "/api/admin/releases" })
       }),
     },
   )
-  .get(
-    "/:id",
-    async ({ params: { id } }) => releaseDAO.findByIdOrThrow(id),
-    {
-      params: arktype({ id: "string.uuid" }),
-    },
-  )
+  .get("/:id", async ({ params: { id } }) => releaseDAO.findByIdOrThrow(id), {
+    params: arktype({ id: "string.uuid" }),
+  })
   .patch(
     "/:id",
     async ({ params: { id }, body }) => {
       const current = await releaseDAO.findByIdOrThrow(id);
-      return releaseDAO.updateOrThrow(id, { ref: body.ref ?? current.ref, url: body.url ?? current.url, owner: body.owner ?? current.owner, status: body.status ?? current.status });
+      return releaseDAO.updateOrThrow(id, {
+        ref: body.ref ?? current.ref,
+        url: body.url ?? current.url,
+        owner: body.owner ?? current.owner,
+        status: body.status ?? current.status,
+      });
     },
     {
       params: arktype({ id: "string.uuid" }),
@@ -82,7 +90,9 @@ export const releaseRoutes = new Elysia({ prefix: "/api/admin/releases" })
     "/:id/finalize",
     async ({ params: { id } }) => {
       await releaseDAO.findByIdOrThrow(id);
-      const finalized = await releaseDAO.updateOrThrow(id, { status: "finalized" });
+      const finalized = await releaseDAO.updateOrThrow(id, {
+        status: "finalized",
+      });
       return finalized;
     },
     {

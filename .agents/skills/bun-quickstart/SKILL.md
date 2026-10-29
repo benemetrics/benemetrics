@@ -13,7 +13,7 @@ Build a minimal HTTP server with `Bun.serve`, run it locally, then evolve it by 
 
 <Info>Prerequisites: Bun installed and available on your `PATH`. See [installation](/installation) for setup.</Info>
 
-***
+---
 
 <Steps>
   <Step title="Step 1">
@@ -41,6 +41,7 @@ Build a minimal HTTP server with `Bun.serve`, run it locally, then evolve it by 
     ```
 
     This automatically creates a `my-app` directory with a basic Bun app.
+
   </Step>
 
   <Step title="Step 2">
@@ -56,6 +57,7 @@ Build a minimal HTTP server with `Bun.serve`, run it locally, then evolve it by 
     ```
 
     You should see a console output saying `"Hello via Bun!"`.
+
   </Step>
 
   <Step title="Step 3">
@@ -110,6 +112,7 @@ Build a minimal HTTP server with `Bun.serve`, run it locally, then evolve it by 
       }
       ```
     </Accordion>
+
   </Step>
 
   <Step title="Step 4">
@@ -158,6 +161,7 @@ Build a minimal HTTP server with `Bun.serve`, run it locally, then evolve it by 
     | |_) | |_| | | | |_|
     |____/ \__,_|_| |_(_)
     ```
+
   </Step>
 
   <Step title="Step 5">
@@ -208,12 +212,13 @@ Build a minimal HTTP server with `Bun.serve`, run it locally, then evolve it by 
     ```
 
     Visit [`http://localhost:3000`](http://localhost:3000) to test the server. You should see the static HTML page.
+
   </Step>
 </Steps>
 
 🎉 Congratulations! You've built a simple HTTP server with Bun and installed a package.
 
-***
+---
 
 ## Run a script
 
@@ -225,7 +230,8 @@ Bun can also execute `"scripts"` from your `package.json`. Add the following scr
   "module": "index.ts",
   "type": "module",
   "private": true,
-  "scripts": { // [!code ++]
+  "scripts": {
+    // [!code ++]
     "start": "bun run index.ts" // [!code ++]
   }, // [!code ++]
   "devDependencies": {
@@ -243,7 +249,7 @@ Then run it with `bun run start`.
 bun run start
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Listening on http://localhost:3000
 ```
 

@@ -10,7 +10,9 @@ export interface SourceMapUpload {
 
 // Reads the multipart upload: the `.map` file, the artifact name and the
 // optional dist. The file must be a version 3 source map.
-export async function readSourceMapUpload(form: FormData): Promise<SourceMapUpload> {
+export async function readSourceMapUpload(
+  form: FormData,
+): Promise<SourceMapUpload> {
   const [file, name] = [form.get("file"), form.get("name")];
   if (!file || typeof file === "string" || !name || typeof name !== "string") {
     throw badRequest("Multipart upload requires 'file' and 'name' fields");

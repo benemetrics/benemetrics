@@ -107,15 +107,16 @@ export const experimentAssignmentDAO = {
       .select(assignmentListFields)
       .from(experimentAssignments)
       .where(and(...conditions))
-      .orderBy(desc(experimentAssignments.assignedAt), desc(experimentAssignments.id))
+      .orderBy(
+        desc(experimentAssignments.assignedAt),
+        desc(experimentAssignments.id),
+      )
       .limit(limit);
 
     return { data };
   },
 
-  countByVariant: async (
-    flagId: string,
-  ): Promise<VariantCount[]> => {
+  countByVariant: async (flagId: string): Promise<VariantCount[]> => {
     const rows = await db
       .select({
         variantKey: experimentAssignments.variantKey,

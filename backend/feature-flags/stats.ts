@@ -39,7 +39,8 @@ function normalCdf(z: number): number {
   const p =
     d *
     t *
-    (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+    (0.3193815 +
+      t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
   return z > 0 ? 1 - p : p;
 }
 
@@ -91,7 +92,11 @@ export function buildVariantStats(
   return {
     ...input,
     conversionRate,
-    confidenceInterval: wilsonInterval(input.conversions, input.participants, confidenceLevel),
+    confidenceInterval: wilsonInterval(
+      input.conversions,
+      input.participants,
+      confidenceLevel,
+    ),
   };
 }
 

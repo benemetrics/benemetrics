@@ -11,7 +11,7 @@ Bun supports [Nuxt](https://nuxt.com) out of the box. Initialize a Nuxt app with
 bunx nuxi init my-nuxt-app
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 ✔ Which package manager would you like to use?
 bun
 ◐ Installing dependencies...
@@ -26,7 +26,7 @@ bun install v1.3.3 (16b4bf34)
  › Start development server with bun run dev
 ```
 
-***
+---
 
 To start the dev server, run `bun --bun run dev` from the project root. This will execute the `nuxt dev` command (as defined in the `"dev"` script in `package.json`).
 
@@ -39,7 +39,7 @@ cd my-nuxt-app
 bun --bun run dev
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 nuxt dev
 Nuxi 3.6.5
 Nuxt 3.6.5 with Nitro 2.5.2
@@ -52,7 +52,7 @@ Nuxt 3.6.5 with Nitro 2.5.2
 ✔ Nitro built in 244 ms
 ```
 
-***
+---
 
 Once the dev server spins up, open [http://localhost:3000](http://localhost:3000) to see the app. The app will render Nuxt's built-in `NuxtWelcome` template component.
 
@@ -63,7 +63,7 @@ To start developing your app, replace `<NuxtWelcome />` in `app.vue` with your o
   localhost](https://github.com/oven-sh/bun/assets/3084745/2c683ecc-3298-4bb0-b8c0-cf4cfaea1daa)
 </Frame>
 
-***
+---
 
 For production build, while the default preset is already compatible with Bun, you can also use [Bun preset](https://nitro.build/deploy/runtimes/bun) to generate better optimized builds.
 
@@ -92,6 +92,6 @@ After building with bun, run:
 bun run ./.output/server/index.mjs
 ```
 
-***
+---
 
 Refer to the [Nuxt website](https://nuxt.com/docs) for complete documentation.

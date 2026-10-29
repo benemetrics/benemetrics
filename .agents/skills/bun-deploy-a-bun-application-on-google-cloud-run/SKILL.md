@@ -12,12 +12,12 @@ In this guide, we will deploy a Bun HTTP server to Google Cloud Run using a `Doc
 <Note>
   Before continuing, make sure you have:
 
-  * A Bun application ready for deployment
-  * A [Google Cloud account](https://cloud.google.com/) with billing enabled
-  * [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) installed and configured
+- A Bun application ready for deployment
+- A [Google Cloud account](https://cloud.google.com/) with billing enabled
+- [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) installed and configured
 </Note>
 
-***
+---
 
 <Steps>
   <Step title={<span>Initialize <code>gcloud</code> by select/creating a project</span>}>
@@ -46,6 +46,7 @@ In this guide, we will deploy a Bun HTTP server to Google Cloud Run using a `Doc
 
     The Google Cloud CLI is configured and ready to use!
     ```
+
   </Step>
 
   <Step title="(Optional) Store your project info in environment variables">
@@ -61,6 +62,7 @@ In this guide, we will deploy a Bun HTTP server to Google Cloud Run using a `Doc
     ```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
     my-bun-app-... [PROJECT_NUMBER]
     ```
+
   </Step>
 
   <Step title="Link a billing account">
@@ -87,6 +89,7 @@ In this guide, we will deploy a Bun HTTP server to Google Cloud Run using a `Doc
     name: projects/my-bun-app-.../billingInfo
     projectId: my-bun-app-...
     ```
+
   </Step>
 
   <Step title="Enable APIs and configure IAM roles">
@@ -104,6 +107,7 @@ In this guide, we will deploy a Bun HTTP server to Google Cloud Run using a `Doc
 
       The IAM binding grants the Compute Engine service account (`$PROJECT_NUMBER-compute@developer.gserviceaccount.com`) permission to build and deploy images on your behalf.
     </Note>
+
   </Step>
 
   <Step title="Add a Dockerfile">
@@ -147,6 +151,7 @@ In this guide, we will deploy a Bun HTTP server to Google Cloud Run using a `Doc
     .env
     # Any other files or directories you want to exclude
     ```
+
   </Step>
 
   <Step title="Deploy your service">
@@ -179,11 +184,13 @@ In this guide, we will deploy a Bun HTTP server to Google Cloud Run using a `Doc
     Service [my-bun-app] revision [my-bun-app-...] has been deployed and is serving 100 percent of traffic.
     Service URL: https://my-bun-app-....us-west1.run.app
     ```
+
   </Step>
 
   <Step title="Visit your live application">
     🎉 Your Bun application is now live!
 
     Visit the Service URL (`https://my-bun-app-....us-west1.run.app`) to confirm everything works as expected.
+
   </Step>
 </Steps>

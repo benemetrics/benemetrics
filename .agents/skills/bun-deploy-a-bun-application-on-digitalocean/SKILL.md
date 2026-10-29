@@ -12,13 +12,13 @@ In this guide, we will deploy a Bun HTTP server to DigitalOcean using a `Dockerf
 <Note>
   Before continuing, make sure you have:
 
-  * A Bun application ready for deployment
-  * A [DigitalOcean account](https://www.digitalocean.com/)
-  * [DigitalOcean CLI](https://docs.digitalocean.com/reference/doctl/how-to/install/#step-1-install-doctl) installed and configured
-  * [Docker](https://docs.docker.com/get-started/get-docker/) installed and added to your `PATH`
+- A Bun application ready for deployment
+- A [DigitalOcean account](https://www.digitalocean.com/)
+- [DigitalOcean CLI](https://docs.digitalocean.com/reference/doctl/how-to/install/#step-1-install-doctl) installed and configured
+- [Docker](https://docs.docker.com/get-started/get-docker/) installed and added to your `PATH`
 </Note>
 
-***
+---
 
 <Steps>
   <Step title="Create a new DigitalOcean Container Registry">
@@ -52,6 +52,7 @@ In this guide, we will deploy a Bun HTTP server to DigitalOcean using a `Dockerf
     <Frame>
             <img src="https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-1.png?fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=e4a3dd728868d106a62ec6d4268a508b" alt="DigitalOcean registry dashboard" data-og-width="2636" width="2636" data-og-height="1414" height="1414" data-path="images/guides/digitalocean-1.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-1.png?w=280&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=cc5388db2eda9b7fb2c2a0f76edd296b 280w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-1.png?w=560&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=6ff10221098b5980fc6c103ed023ee69 560w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-1.png?w=840&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=903064b4a07e961c26754ed0a3f2c294 840w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-1.png?w=1100&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=a9197eb37047b47393c4bae7e6695091 1100w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-1.png?w=1650&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=47651c0f96748a5d235eb176b5f4d677 1650w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-1.png?w=2500&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=66b961845357efc825476cbaaddb5d48 2500w" />
     </Frame>
+
   </Step>
 
   <Step title="Create a new Dockerfile">
@@ -100,6 +101,7 @@ In this guide, we will deploy a Bun HTTP server to DigitalOcean using a `Dockerf
     .env
     # Any other files or directories you want to exclude
     ```
+
   </Step>
 
   <Step title="Authenticate Docker with DigitalOcean registry">
@@ -116,6 +118,7 @@ In this guide, we will deploy a Bun HTTP server to DigitalOcean using a `Dockerf
     <Note>
       This command authenticates Docker with DigitalOcean's registry using your DigitalOcean credentials. Without this step, the build and push command will fail with a 401 authentication error.
     </Note>
+
   </Step>
 
   <Step title="Build and push the Docker image to the DigitalOcean registry">
@@ -134,6 +137,7 @@ In this guide, we will deploy a Bun HTTP server to DigitalOcean using a `Dockerf
     <Frame>
             <img src="https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-2.png?fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=f60f8f2d8b6c60c319267693b89298da" alt="DigitalOcean registry dashboard" data-og-width="2636" width="2636" data-og-height="1414" height="1414" data-path="images/guides/digitalocean-2.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-2.png?w=280&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=862c1b67054a4a3efbb0a9d8ae26a498 280w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-2.png?w=560&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=da9a4634b026017fc46447b369a19f99 560w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-2.png?w=840&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=98ae1da8904194ce3c52937e6235fe7c 840w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-2.png?w=1100&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=454c4066d7333c671cbc9a398f38a255 1100w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-2.png?w=1650&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=0250a9f1fd7f2f0a72f01128ce359bca 1650w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-2.png?w=2500&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=44691a1cc9c0878b50ee215ab4f8a6d5 2500w" />
     </Frame>
+
   </Step>
 
   <Step title="Create a new DigitalOcean App Platform project">
@@ -154,6 +158,7 @@ In this guide, we will deploy a Bun HTTP server to DigitalOcean using a `Dockerf
     <Frame>
             <img src="https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-6.png?fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=f14ad53fb062419b9970bb3b1d970e43" alt="DigitalOcean App Platform service dashboard" data-og-width="5036" width="5036" data-og-height="2688" height="2688" data-path="images/guides/digitalocean-6.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-6.png?w=280&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=adca27a6e469312b762ba014123d0182 280w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-6.png?w=560&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=f759a11619c6ca414590af00292e88d4 560w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-6.png?w=840&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=debb071a49c1f0ead8de2b7250ca3435 840w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-6.png?w=1100&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=2a957db16fdd06cc3ae8c43545eab886 1100w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-6.png?w=1650&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=4ee794d2504b63e16c410bd1d48b329e 1650w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-6.png?w=2500&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=2b095223b3bac5db5d37b0532c02b7b1 2500w" />
     </Frame>
+
   </Step>
 
   <Step title="Visit your live application">
@@ -162,5 +167,6 @@ In this guide, we will deploy a Bun HTTP server to DigitalOcean using a `Dockerf
     <Frame>
             <img src="https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-5.png?fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=155602e07d2a55d62fc2c1ccf01a3903" alt="DigitalOcean App Platform app dashboard" data-og-width="5036" width="5036" data-og-height="2688" height="2688" data-path="images/guides/digitalocean-5.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-5.png?w=280&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=cb08825444bd33300dfa03a9d17011d0 280w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-5.png?w=560&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=8fc3f29014c4783083be8b36f065058e 560w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-5.png?w=840&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=ec468abadee2a0c4dc0f6445f33058e2 840w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-5.png?w=1100&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=0ebe95291e367125ec62d2530c8eb0ba 1100w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-5.png?w=1650&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=f46959e3d5e6eed4dc1c4a21912dea8c 1650w, https://mintcdn.com/bun-1dd33a4e/TVJ0wXBZobUdB01H/images/guides/digitalocean-5.png?w=2500&fit=max&auto=format&n=TVJ0wXBZobUdB01H&q=85&s=21948e30cf8c83ec2136e79fd3cba6a2 2500w" />
     </Frame>
+
   </Step>
 </Steps>

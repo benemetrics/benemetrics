@@ -9,21 +9,22 @@ description: Parse newline-delimited JSON (JSONL) with Bun's built-in streaming 
 
 Bun has built-in support for parsing [JSONL](https://jsonlines.org/) (newline-delimited JSON), where each line is a separate JSON value. The parser is implemented in C++ using JavaScriptCore's optimized JSON parser and supports streaming use cases.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const results = Bun.JSONL.parse('{"name":"Alice"}\n{"name":"Bob"}\n');
 // [{ name: "Alice" }, { name: "Bob" }]
 ```
 
-***
+---
 
 ## `Bun.JSONL.parse()`
 
 Parse a complete JSONL input and return an array of all parsed values.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { JSONL } from "bun";
 
-const input = '{"id":1,"name":"Alice"}\n{"id":2,"name":"Bob"}\n{"id":3,"name":"Charlie"}\n';
+const input =
+  '{"id":1,"name":"Alice"}\n{"id":2,"name":"Bob"}\n{"id":3,"name":"Charlie"}\n';
 const records = JSONL.parse(input);
 console.log(records);
 // [
@@ -35,7 +36,7 @@ console.log(records);
 
 Input can be a string or a `Uint8Array`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const buffer = new TextEncoder().encode('{"a":1}\n{"b":2}\n');
 const results = Bun.JSONL.parse(buffer);
 // [{ a: 1 }, { b: 2 }]
@@ -47,7 +48,7 @@ When passed a `Uint8Array`, a UTF-8 BOM at the start of the buffer is automatica
 
 If the input contains invalid JSON, `Bun.JSONL.parse()` throws a `SyntaxError`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 try {
   Bun.JSONL.parse('{"valid":true}\n{invalid}\n');
 } catch (error) {
@@ -55,13 +56,13 @@ try {
 }
 ```
 
-***
+---
 
 ## `Bun.JSONL.parseChunk()`
 
 For streaming scenarios, `parseChunk` parses as many complete values as possible from the input and reports how far it got. This is useful when receiving data incrementally (e.g., from a network stream) and you need to know where to resume parsing.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const chunk = '{"id":1}\n{"id":2}\n{"id":3';
 
 const result = Bun.JSONL.parseChunk(chunk);
@@ -86,7 +87,7 @@ console.log(result.error); // null — no parse error
 
 Use `read` to slice off consumed input and carry forward the remainder:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 let buffer = "";
 
 async function processStream(stream: ReadableStream<string>) {
@@ -119,7 +120,7 @@ async function processStream(stream: ReadableStream<string>) {
 
 When the input is a `Uint8Array`, you can pass optional `start` and `end` byte offsets:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const buf = new TextEncoder().encode('{"a":1}\n{"b":2}\n{"c":3}\n');
 
 // Parse starting from byte 8
@@ -134,7 +135,7 @@ console.log(partial.values); // [{ a: 1 }]
 
 The `read` value is always a byte offset into the original buffer, making it easy to use with `TypedArray.subarray()` for zero-copy streaming:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 let buf = new Uint8Array(0);
 
 async function processBinaryStream(stream: ReadableStream<Uint8Array>) {
@@ -161,7 +162,7 @@ async function processBinaryStream(stream: ReadableStream<Uint8Array>) {
 
 Unlike `parse()`, `parseChunk()` does not throw on invalid JSON. Instead, it returns the error in the `error` property, along with any values that were successfully parsed before the error:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const input = '{"a":1}\n{invalid}\n{"b":2}\n';
 const result = Bun.JSONL.parseChunk(input);
 
@@ -170,23 +171,23 @@ console.log(result.error); // SyntaxError
 console.log(result.read); // 7 — position up to last successful parse
 ```
 
-***
+---
 
 ## Supported value types
 
 Each line can be any valid JSON value, not just objects:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const input = '42\n"hello"\ntrue\nnull\n[1,2,3]\n{"key":"value"}\n';
 const values = Bun.JSONL.parse(input);
 // [42, "hello", true, null, [1, 2, 3], { key: "value" }]
 ```
 
-***
+---
 
 ## Performance notes
 
-* **ASCII fast path**: Pure ASCII input is parsed directly without copying, using a zero-allocation `StringView`.
-* **UTF-8 support**: Non-ASCII `Uint8Array` input is decoded to UTF-16 using SIMD-accelerated conversion.
-* **BOM handling**: UTF-8 BOM (`0xEF 0xBB 0xBF`) at the start of a `Uint8Array` is automatically skipped.
-* **Pre-built object shape**: The result object from `parseChunk` uses a cached structure for fast property access.
+- **ASCII fast path**: Pure ASCII input is parsed directly without copying, using a zero-allocation `StringView`.
+- **UTF-8 support**: Non-ASCII `Uint8Array` input is decoded to UTF-16 using SIMD-accelerated conversion.
+- **BOM handling**: UTF-8 BOM (`0xEF 0xBB 0xBF`) at the start of a `Uint8Array` is automatically skipped.
+- **Pre-built object shape**: The result object from `parseChunk` uses a cached structure for fast property access.

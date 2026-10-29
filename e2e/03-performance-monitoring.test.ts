@@ -7,7 +7,12 @@
 
 import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { startTestServer, waitForEventListItem, ADMIN_TOKEN, type TestServer } from "./test-helpers";
+import {
+  startTestServer,
+  waitForEventListItem,
+  ADMIN_TOKEN,
+  type TestServer,
+} from "./test-helpers";
 
 let SERVER_URL = "";
 let testServer: TestServer | null = null;
@@ -25,7 +30,7 @@ interface EventListItem extends TestResult {
 async function apiRequest(
   method: string,
   path: string,
-  body?: unknown
+  body?: unknown,
 ): Promise<Response> {
   const url = new URL(`${SERVER_URL}${path}`);
   const options: RequestInit = {
@@ -49,11 +54,15 @@ async function fetchEvent(eventId: string): Promise<TestResult | null> {
 
 async function fetchAllEvents(): Promise<TestResult[]> {
   const response = await apiRequest("GET", "/events");
-  const body = (await response.json()) as { data?: TestResult[] } | TestResult[];
+  const body = (await response.json()) as
+    { data?: TestResult[] } | TestResult[];
   return Array.isArray(body) ? body : (body.data ?? []);
 }
 
-async function waitForEvent(eventId: string, timeout: number = 5000): Promise<TestResult | null> {
+async function waitForEvent(
+  eventId: string,
+  timeout: number = 5000,
+): Promise<TestResult | null> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const event = await fetchEvent(eventId);
@@ -95,14 +104,17 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
   it("creates and finishes a span (transaction) and fetches it", async () => {
     let traceId = "";
-    await Sentry.startSpanManual({
-      name: "GET /api/users/:id",
-      op: "http.server",
-    }, (span) => {
-      expect(span).toBeDefined();
-      traceId = span.spanContext().traceId;
-      span.end();
-    });
+    await Sentry.startSpanManual(
+      {
+        name: "GET /api/users/:id",
+        op: "http.server",
+      },
+      (span) => {
+        expect(span).toBeDefined();
+        traceId = span.spanContext().traceId;
+        span.end();
+      },
+    );
 
     await Sentry.flush(5000);
 
@@ -124,34 +136,37 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
   it("creates span with child spans and fetches them", async () => {
     let traceId = "";
-    await Sentry.startSpanManual({
-      name: "POST /api/orders",
-      op: "http.server",
-    }, async (parentSpan) => {
-      expect(parentSpan).toBeDefined();
-      traceId = parentSpan.spanContext().traceId;
+    await Sentry.startSpanManual(
+      {
+        name: "POST /api/orders",
+        op: "http.server",
+      },
+      async (parentSpan) => {
+        expect(parentSpan).toBeDefined();
+        traceId = parentSpan.spanContext().traceId;
 
-      const dbSpan = Sentry.startInactiveSpan({
-        name: "INSERT INTO orders ...",
-        op: "db.query",
-        parentSpan: parentSpan,
-      });
-      expect(dbSpan).toBeDefined();
-      expect(dbSpan.spanContext().traceId).toBe(traceId);
-      await new Promise((resolve) => setTimeout(resolve, 5));
-      dbSpan.end();
+        const dbSpan = Sentry.startInactiveSpan({
+          name: "INSERT INTO orders ...",
+          op: "db.query",
+          parentSpan: parentSpan,
+        });
+        expect(dbSpan).toBeDefined();
+        expect(dbSpan.spanContext().traceId).toBe(traceId);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        dbSpan.end();
 
-      const cacheSpan = Sentry.startInactiveSpan({
-        name: "SET order:123",
-        op: "cache.redis",
-        parentSpan: parentSpan,
-      });
-      expect(cacheSpan).toBeDefined();
-      await new Promise((resolve) => setTimeout(resolve, 3));
-      cacheSpan.end();
+        const cacheSpan = Sentry.startInactiveSpan({
+          name: "SET order:123",
+          op: "cache.redis",
+          parentSpan: parentSpan,
+        });
+        expect(cacheSpan).toBeDefined();
+        await new Promise((resolve) => setTimeout(resolve, 3));
+        cacheSpan.end();
 
-      parentSpan.end();
-    });
+        parentSpan.end();
+      },
+    );
 
     await Sentry.flush(5000);
 
@@ -172,20 +187,23 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
   });
 
   it("creates span with measurements and fetches it", async () => {
-    await Sentry.startSpanManual({
-      name: "GET /dashboard",
-      op: "http.server",
-    }, (span) => {
-      expect(span).toBeDefined();
+    await Sentry.startSpanManual(
+      {
+        name: "GET /dashboard",
+        op: "http.server",
+      },
+      (span) => {
+        expect(span).toBeDefined();
 
-      span.setAttribute("sentry.measurement.fp", 1200.5);
-      span.setAttribute("sentry.measurement.fcp", 1350.2);
-      span.setAttribute("sentry.measurement.lcp", 2100.8);
-      span.setAttribute("sentry.measurement.cls", 0.05);
-      span.setAttribute("sentry.measurement.fid", 12.3);
+        span.setAttribute("sentry.measurement.fp", 1200.5);
+        span.setAttribute("sentry.measurement.fcp", 1350.2);
+        span.setAttribute("sentry.measurement.lcp", 2100.8);
+        span.setAttribute("sentry.measurement.cls", 0.05);
+        span.setAttribute("sentry.measurement.fid", 12.3);
 
-      span.end();
-    });
+        span.end();
+      },
+    );
 
     await Sentry.flush(5000);
 
@@ -205,19 +223,22 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
   });
 
   it("creates span with custom tags and data and fetches it", async () => {
-    await Sentry.startSpanManual({
-      name: "GET /api/products",
-      op: "http.server",
-    }, (span) => {
-      expect(span).toBeDefined();
+    await Sentry.startSpanManual(
+      {
+        name: "GET /api/products",
+        op: "http.server",
+      },
+      (span) => {
+        expect(span).toBeDefined();
 
-      span.setAttribute("service", "catalog");
-      span.setAttribute("region", "us-east-1");
-      span.setAttribute("user.tier", "premium");
-      span.setAttribute("cache.hit", true);
+        span.setAttribute("service", "catalog");
+        span.setAttribute("region", "us-east-1");
+        span.setAttribute("user.tier", "premium");
+        span.setAttribute("cache.hit", true);
 
-      span.end();
-    });
+        span.end();
+      },
+    );
 
     await Sentry.flush(5000);
 
@@ -236,15 +257,18 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
   });
 
   it("creates span with error status and fetches it", async () => {
-    await Sentry.startSpanManual({
-      name: "GET /api/failing",
-      op: "http.server",
-    }, (span) => {
-      expect(span).toBeDefined();
+    await Sentry.startSpanManual(
+      {
+        name: "GET /api/failing",
+        op: "http.server",
+      },
+      (span) => {
+        expect(span).toBeDefined();
 
-      span.setStatus({ code: 2, message: "internal_error" });
-      span.end();
-    });
+        span.setStatus({ code: 2, message: "internal_error" });
+        span.end();
+      },
+    );
 
     await Sentry.flush(5000);
 
@@ -287,21 +311,25 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
   it("continues trace from incoming headers - SDK level test", async () => {
     // This tests the Sentry SDK's ability to continue a trace from incoming headers
     // Note: Current SDK version may generate new trace IDs instead of preserving incoming ones
-    const traceparent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
+    const traceparent =
+      "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
 
     const result = Sentry.continueTrace(
       { sentryTrace: traceparent, baggage: "" },
       () => {
-        return Sentry.startSpanManual({
-          name: "GET /api/continued",
-          op: "http.server",
-        }, (span) => {
-          expect(span).toBeDefined();
-          // SDK may or may not preserve incoming trace ID - just verify it creates a span
-          span.end();
-          return span;
-        });
-      }
+        return Sentry.startSpanManual(
+          {
+            name: "GET /api/continued",
+            op: "http.server",
+          },
+          (span) => {
+            expect(span).toBeDefined();
+            // SDK may or may not preserve incoming trace ID - just verify it creates a span
+            span.end();
+            return span;
+          },
+        );
+      },
     );
 
     expect(result).toBeDefined();

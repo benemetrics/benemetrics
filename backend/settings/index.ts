@@ -14,8 +14,14 @@ export const settingsRoutes = new Elysia({ prefix: "/api/admin/settings" })
   .put(
     "/events-ttl",
     async ({ body }) => {
-      if (!Number.isInteger(body.amount) || body.amount < 0 || body.amount > MAX_AMOUNT) {
-        throw badRequest(`"amount" must be an integer between 0 and ${MAX_AMOUNT}`);
+      if (
+        !Number.isInteger(body.amount) ||
+        body.amount < 0 ||
+        body.amount > MAX_AMOUNT
+      ) {
+        throw badRequest(
+          `"amount" must be an integer between 0 and ${MAX_AMOUNT}`,
+        );
       }
       return await setEventsTtl(body.amount, body.unit as TtlUnit);
     },

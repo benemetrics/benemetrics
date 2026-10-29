@@ -58,7 +58,7 @@ persisted `ingest_blocks` plus DSN rotation. Enforcement is local, fail-open and
 
 ### The proxy's configuration (the rate dimension)
 
-The request *rate* is the one axis the caps cannot cover: a client sending ten thousand small
+The request _rate_ is the one axis the caps cannot cover: a client sending ten thousand small
 requests a second pays the per-request cost ten thousand times. Only a rate limit bounds that, and
 the proxy is the right place for it — it knows the real client IP without trusting a header, and it
 can drop the connection before the application is involved at all.
@@ -94,14 +94,14 @@ first is a quota, the second is attribution.
 
 ## 0. Threat model
 
-| # | Abuse | Baseline | Target |
-|---|-------|-------|--------|
-| A | Stolen/reused DSN: one key, bulk spam | accepted (401 only for unknown keys) | per-key token bucket → 429 |
-| B | Key-hopping: many public DSNs from one source to bypass per-key limits | unlimited | per-source (IP) bucket across all apps (`client`/`unknown` traffic) |
-| C | Shared-limiter DoS: trip the legit app's limit so its events drop | structural risk of any per-key limit | per-source limits + source blocks; victim can rotate the DSN |
-| D | Resource exhaustion: PG/CH rows, S3/local replay segments, NATS disk | unbounded | size caps, item caps, per-key quotas |
-| E | Envelope bombs: huge body / gzip bomb | `readBody` gunzips unbounded | content-length + decompressed-size caps |
-| F | Key brute force | 32-char random key, fast 401 | per-source bucket (`client`/`unknown`) + global ceiling |
+| #   | Abuse                                                                  | Baseline                             | Target                                                              |
+| --- | ---------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------- |
+| A   | Stolen/reused DSN: one key, bulk spam                                  | accepted (401 only for unknown keys) | per-key token bucket → 429                                          |
+| B   | Key-hopping: many public DSNs from one source to bypass per-key limits | unlimited                            | per-source (IP) bucket across all apps (`client`/`unknown` traffic) |
+| C   | Shared-limiter DoS: trip the legit app's limit so its events drop      | structural risk of any per-key limit | per-source limits + source blocks; victim can rotate the DSN        |
+| D   | Resource exhaustion: PG/CH rows, S3/local replay segments, NATS disk   | unbounded                            | size caps, item caps, per-key quotas                                |
+| E   | Envelope bombs: huge body / gzip bomb                                  | `readBody` gunzips unbounded         | content-length + decompressed-size caps                             |
+| F   | Key brute force                                                        | 32-char random key, fast 401         | per-source bucket (`client`/`unknown`) + global ceiling             |
 
 Non-goals: authenticating senders (impossible for a public DSN), blocking determined spoofers
 (fingerprints are attribution/cost, not identity), storing raw IPs beyond the live bucket (hash
@@ -268,7 +268,7 @@ the header still announces `default`; finer per-item-type categories are a later
 ## 5. Escalation & recovery (the "stop abusers" part)
 
 - **Auto-block (narrow, evidence-based, never volume-only):** a source/fingerprint gets a persisted
-  block for `INGEST_BLOCK_TTL_HOURS` only on abnormal *behaviour*:
+  block for `INGEST_BLOCK_TTL_HOURS` only on abnormal _behaviour_:
   (a) keeps exceeding the limit **after** receiving 429s (a real SDK honors the headers, so ignoring
   them is a signal), (b) key-hopping (one source, many keys), (c) invalid-key floods, (d) envelope
   bombs. A single server host pushing a big incident burst under its per-key quota is **never**
@@ -364,7 +364,7 @@ a short-TTL cache (§8).
 - **Auto-block alerts:** when a source/fingerprint block is created (auto or manual) or an app is
   manually blocked (§5), the involved apps **and** the global channels get a warning — the app-level
   alert plus the global alert system, deduplicated, each with its cooldown; a source block spanning
-  N apps notifies all N (bounded) + global. Per-source/per-fingerprint *bucket overflow alone* does
+  N apps notifies all N (bounded) + global. Per-source/per-fingerprint _bucket overflow alone_ does
   not notify (too noisy); it surfaces in the overview counters.
 - Optional "recovered" follow-up when the app drops back under its limit — see the backlog in [`TODO.md`](../TODO.md).
 
@@ -402,21 +402,21 @@ One admin-token-only screen, same patterns as the existing Settings pages
 
 ## 8. Config (env, read lazily in `backend/ratelimit/config.ts`)
 
-| Var | Default (proposed) | Meaning |
-|---|---|---|
-| `INGEST_RATE_LIMIT_PER_IP_PER_SEC` | 10/s | per-source bucket, `client`/`unknown` only (server-class exempt, §2) |
-| `INGEST_RATE_LIMIT_PER_FP_PER_SEC` | 5/s | per-fingerprint bucket (**`client` class only**) |
-| `INGEST_RATE_LIMIT_GLOBAL_PER_SEC` | 200/s | process-wide ingress ceiling (plain `429`, §2.4) |
-| `INGEST_RATE_LIMIT_BURST_SECONDS` | 2s | burst = rate × seconds |
-| `INGEST_MAX_ENVELOPE_BYTES` | 1 MiB | default envelope cap (streamed in `readBody`) |
-| `INGEST_MAX_DECOMPRESSED_BYTES` | 4 MiB | default gzip-bomb cap in `readBody` |
-| `INGEST_MAX_LARGE_ENVELOPE_BYTES` | 20 MiB | replaces both caps when `attachment`/`replay_recording` items are declared (also the `Content-Length` outer bound) |
-| `INGEST_MAX_OTLP_BYTES` | 4 MiB | OTLP body cap (batches run larger than envelopes) |
-| `INGEST_MAX_ENVELOPE_ITEMS` | 100 | item-count cap per envelope (`/store/` = 1) |
-| `INGEST_MAX_REPLAY_ITEMS` | 500 | replay envelopes use this instead of the general item cap |
-| `INGEST_MAX_OTLP_SPANS` | 1000 | span-count cap per OTLP request |
-| `TRUST_PROXY` | off | read `X-Forwarded-For` / `X-Real-IP` |
-| `INGEST_BLOCK_TTL_HOURS` | 24h | auto-block duration (behaviour-based, §5) |
+| Var                                | Default (proposed) | Meaning                                                                                                            |
+| ---------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `INGEST_RATE_LIMIT_PER_IP_PER_SEC` | 10/s               | per-source bucket, `client`/`unknown` only (server-class exempt, §2)                                               |
+| `INGEST_RATE_LIMIT_PER_FP_PER_SEC` | 5/s                | per-fingerprint bucket (**`client` class only**)                                                                   |
+| `INGEST_RATE_LIMIT_GLOBAL_PER_SEC` | 200/s              | process-wide ingress ceiling (plain `429`, §2.4)                                                                   |
+| `INGEST_RATE_LIMIT_BURST_SECONDS`  | 2s                 | burst = rate × seconds                                                                                             |
+| `INGEST_MAX_ENVELOPE_BYTES`        | 1 MiB              | default envelope cap (streamed in `readBody`)                                                                      |
+| `INGEST_MAX_DECOMPRESSED_BYTES`    | 4 MiB              | default gzip-bomb cap in `readBody`                                                                                |
+| `INGEST_MAX_LARGE_ENVELOPE_BYTES`  | 20 MiB             | replaces both caps when `attachment`/`replay_recording` items are declared (also the `Content-Length` outer bound) |
+| `INGEST_MAX_OTLP_BYTES`            | 4 MiB              | OTLP body cap (batches run larger than envelopes)                                                                  |
+| `INGEST_MAX_ENVELOPE_ITEMS`        | 100                | item-count cap per envelope (`/store/` = 1)                                                                        |
+| `INGEST_MAX_REPLAY_ITEMS`          | 500                | replay envelopes use this instead of the general item cap                                                          |
+| `INGEST_MAX_OTLP_SPANS`            | 1000               | span-count cap per OTLP request                                                                                    |
+| `TRUST_PROXY`                      | off                | read `X-Forwarded-For` / `X-Real-IP`                                                                               |
+| `INGEST_BLOCK_TTL_HOURS`           | 24h                | auto-block duration (behaviour-based, §5)                                                                          |
 
 Events/s and the notification settings live in `rate_limit_settings` (panel) — there are no env
 fallbacks for them, and there is no master switch (the limiter is always on).

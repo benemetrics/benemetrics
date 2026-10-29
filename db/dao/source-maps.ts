@@ -1,65 +1,36 @@
 import { db } from "db";
 import {
+  artifactPublicFields,
   sourceMaps,
   type SourceMapInsert,
 } from "db/schema/source-maps";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
-import { cursorAfter, cursorLimit } from "./cursor";
-
-type SourceMapCreateInput = Omit<SourceMapInsert, "id" | "createdAt">;
-
-export interface SourceMapContent {
-  id: string;
-  filename: string;
-  mapJson: string;
-  createdAt: string;
-}
+import { cursorLimit } from "./cursor";
+import { apps } from "db/schema/app";
+import { whereNotNull } from "db/utils";
 
 // The artifact metadata never carries the (potentially large) map body;
 // `size` is derived in the database from the stored text.
-const artifactFields = {
-  id: sourceMaps.id,
-  projectId: sourceMaps.projectId,
-  appId: sourceMaps.appId,
-  release: sourceMaps.release,
-  dist: sourceMaps.dist,
-  name: sourceMaps.filename,
-  size: sql<number>`octet_length(${sourceMaps.mapJson})`,
-  createdAt: sourceMaps.createdAt,
-};
-
 export const sourceMapDAO = {
-  create: async (data: SourceMapCreateInput) => {
-    const now = new Date().toISOString();
+  create: async (data: SourceMapInsert) => {
     const [created] = await db
       .insert(sourceMaps)
-      .values({
-        ...data,
-        id: crypto.randomUUID(),
-        createdAt: now,
-      })
+      .values(data)
       // Re-uploading the same artifact updates it in place.
       .onConflictDoUpdate({
         target: [sourceMaps.projectId, sourceMaps.release, sourceMaps.filename],
-        set: {
-          appId: data.appId,
-          dist: data.dist ?? null,
-          mapJson: data.mapJson,
-          createdAt: now,
-        },
+        set: data,
       })
-      .returning(artifactFields);
-    if (!created) {
-      throw internalError("Failed to create source map");
-    }
+      .returning(artifactPublicFields);
+    if (!created) throw internalError("Failed to create source map");
     return created;
   },
 
   findById: async (id: string) =>
     (
       await db
-        .select(artifactFields)
+        .select(artifactPublicFields)
         .from(sourceMaps)
         .where(eq(sourceMaps.id, id))
         .limit(1)
@@ -71,23 +42,8 @@ export const sourceMapDAO = {
     return map;
   },
 
-  // The admin detail endpoint only fetches the body when explicitly asked
-  // (`?include=content`).
-  findWithContentOrThrow: async (id: string) => {
-    const [map] = await db
-      .select({ ...artifactFields, mapJson: sourceMaps.mapJson })
-      .from(sourceMaps)
-      .where(eq(sourceMaps.id, id))
-      .limit(1);
-    if (!map) throw notFound("Source map", id);
-    return map;
-  },
-
   // Symbolication only needs the artifact identity and its body.
-  findByRelease: async (
-    projectId: string,
-    release: string,
-  ): Promise<SourceMapContent[]> =>
+  findByRelease: async (projectId: string, release: string) =>
     db
       .select({
         id: sourceMaps.id,
@@ -97,44 +53,23 @@ export const sourceMapDAO = {
       })
       .from(sourceMaps)
       .where(
-        and(eq(sourceMaps.projectId, projectId), eq(sourceMaps.release, release)),
+        and(
+          eq(sourceMaps.projectId, projectId),
+          eq(sourceMaps.release, release),
+        ),
       )
       .orderBy(desc(sourceMaps.createdAt)),
 
-  list: async (options: {
-    projectId?: string;
-    appId?: string;
-    release?: string;
-    cursor?: string;
-    limit?: number;
-  }) => {
-    const limit = cursorLimit(options.limit);
-    const conditions = [
-      ...(options.projectId
-        ? [eq(sourceMaps.projectId, options.projectId)]
-        : []),
-      ...(options.appId ? [eq(sourceMaps.appId, options.appId)] : []),
-      ...(options.release ? [eq(sourceMaps.release, options.release)] : []),
-    ];
-    const { condition, empty } = await cursorAfter(
-      sourceMaps,
-      sourceMaps.id,
-      sourceMaps.createdAt,
-      options.cursor,
-    );
-    if (empty) return { data: [] };
-    if (condition) conditions.push(condition);
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
-
-    const data = await db
-      .select(artifactFields)
+  list: async (
+    options: { appId?: (typeof apps)["id"] },
+    page: { cursor?: string; limit?: number },
+  ) =>
+    db
+      .select(artifactPublicFields)
       .from(sourceMaps)
-      .where(where)
+      .where(and(whereNotNull(eq, sourceMaps.appId, options.appId)))
       .orderBy(desc(sourceMaps.createdAt), desc(sourceMaps.id))
-      .limit(limit);
-
-    return { data };
-  },
+      .limit(cursorLimit(page?.limit)),
 
   delete: async (id: string) => {
     const deleted = await db

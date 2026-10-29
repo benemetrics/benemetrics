@@ -60,7 +60,7 @@ describe("Projects & Apps Management", () => {
       description: "Payments and billing services",
     });
     expect(created.status).toBe(200);
-    const data = await created.json() as ProjectResponse;
+    const data = (await created.json()) as ProjectResponse;
     expect(data.id).toBeDefined();
     expect(data.name).toBe("Checkout Platform");
     expect(data.slug).toBe("checkout-platform");
@@ -75,7 +75,10 @@ describe("Projects & Apps Management", () => {
     const detail = await apiRequest("GET", `/api/admin/projects/${data.id}`);
     expect(detail.status).toBe(200);
 
-    const deleted = await apiRequest("DELETE", `/api/admin/projects/${data.id}`);
+    const deleted = await apiRequest(
+      "DELETE",
+      `/api/admin/projects/${data.id}`,
+    );
     expect(deleted.status).toBe(200);
 
     const gone = await apiRequest("GET", `/api/admin/projects/${data.id}`);
@@ -88,7 +91,7 @@ describe("Projects & Apps Management", () => {
       slug: "mobile-app",
     });
     expect(response.status).toBe(200);
-    const data = await response.json() as ProjectResponse;
+    const data = (await response.json()) as ProjectResponse;
     expect(data.slug).toBe("mobile-app");
   });
 
@@ -123,7 +126,7 @@ describe("Projects & Apps Management", () => {
       name: "App Project",
     });
     expect(project.status).toBe(200);
-    const projectData = await project.json() as { id: string };
+    const projectData = (await project.json()) as { id: string };
 
     const app = await apiRequest(
       "POST",
@@ -131,7 +134,7 @@ describe("Projects & Apps Management", () => {
       { name: "Checkout App" },
     );
     expect(app.status).toBe(200);
-    const appData = await app.json() as AppResponse;
+    const appData = (await app.json()) as AppResponse;
     expect(appData.id).toBeDefined();
     expect(appData.projectId).toBe(projectData.id);
     expect(appData.name).toBe("Checkout App");
@@ -145,7 +148,7 @@ describe("Projects & Apps Management", () => {
       name: "Platform Project",
     });
     expect(project.status).toBe(200);
-    const projectData = await project.json() as { id: string };
+    const projectData = (await project.json()) as { id: string };
 
     const app = await apiRequest(
       "POST",
@@ -153,7 +156,7 @@ describe("Projects & Apps Management", () => {
       { name: "iOS App", platform: "objc" },
     );
     expect(app.status).toBe(200);
-    const appData = await app.json() as AppResponse;
+    const appData = (await app.json()) as AppResponse;
     expect(appData.platform).toBe("objc");
   });
 
@@ -162,7 +165,7 @@ describe("Projects & Apps Management", () => {
       name: "List Apps Project",
     });
     expect(project.status).toBe(200);
-    const projectData = await project.json() as { id: string };
+    const projectData = (await project.json()) as { id: string };
 
     await apiRequest("POST", `/api/admin/projects/${projectData.id}/apps`, {
       name: "App One",
@@ -171,8 +174,13 @@ describe("Projects & Apps Management", () => {
       name: "App Two",
     });
 
-    const detail = await apiRequest("GET", `/api/admin/projects/${projectData.id}`);
-    const projectDetail = await detail.json() as ProjectResponse & { apps: AppResponse[] };
+    const detail = await apiRequest(
+      "GET",
+      `/api/admin/projects/${projectData.id}`,
+    );
+    const projectDetail = (await detail.json()) as ProjectResponse & {
+      apps: AppResponse[];
+    };
     expect(projectDetail.apps).toHaveLength(2);
   });
 
@@ -181,7 +189,7 @@ describe("Projects & Apps Management", () => {
       name: "Delete App Project",
     });
     expect(project.status).toBe(200);
-    const projectData = await project.json() as { id: string };
+    const projectData = (await project.json()) as { id: string };
 
     const app = await apiRequest(
       "POST",
@@ -189,13 +197,18 @@ describe("Projects & Apps Management", () => {
       { name: "To Delete" },
     );
     expect(app.status).toBe(200);
-    const appData = await app.json() as { id: string };
+    const appData = (await app.json()) as { id: string };
 
     const deleted = await apiRequest("DELETE", `/api/admin/apps/${appData.id}`);
     expect(deleted.status).toBe(200);
 
-    const detail = await apiRequest("GET", `/api/admin/projects/${projectData.id}`);
-    const projectDetail = await detail.json() as ProjectResponse & { apps: AppResponse[] };
+    const detail = await apiRequest(
+      "GET",
+      `/api/admin/projects/${projectData.id}`,
+    );
+    const projectDetail = (await detail.json()) as ProjectResponse & {
+      apps: AppResponse[];
+    };
     expect(projectDetail.apps.some((a) => a.id === appData.id)).toBe(false);
   });
 
@@ -204,21 +217,30 @@ describe("Projects & Apps Management", () => {
       name: "Source Project",
     });
     expect(source.status).toBe(200);
-    const sourceData = await source.json() as { id: string };
+    const sourceData = (await source.json()) as { id: string };
 
     await apiRequest("POST", `/api/admin/projects/${sourceData.id}/apps`, {
       name: "Source App",
     });
 
-    const copied = await apiRequest("POST", `/api/admin/projects/${sourceData.id}/duplicate`, {
-      name: "Copy Project",
-    });
+    const copied = await apiRequest(
+      "POST",
+      `/api/admin/projects/${sourceData.id}/duplicate`,
+      {
+        name: "Copy Project",
+      },
+    );
     expect(copied.status).toBe(200);
-    const copyData = await copied.json() as { id: string; appCount: number };
+    const copyData = (await copied.json()) as { id: string; appCount: number };
     expect(copyData.appCount).toBe(1);
 
-    const copyDetail = await apiRequest("GET", `/api/admin/projects/${copyData.id}`);
-    const copyProject = await copyDetail.json() as ProjectResponse & { apps: AppResponse[] };
+    const copyDetail = await apiRequest(
+      "GET",
+      `/api/admin/projects/${copyData.id}`,
+    );
+    const copyProject = (await copyDetail.json()) as ProjectResponse & {
+      apps: AppResponse[];
+    };
     expect(copyProject.apps).toHaveLength(1);
     expect(copyProject.apps[0]!.name).toBe("Source App");
   });
@@ -228,7 +250,7 @@ describe("Projects & Apps Management", () => {
       name: "Ingest Project",
     });
     expect(project.status).toBe(200);
-    const projectData = await project.json() as { id: string };
+    const projectData = (await project.json()) as { id: string };
 
     const app = await apiRequest(
       "POST",
@@ -236,20 +258,23 @@ describe("Projects & Apps Management", () => {
       { name: "Ingest App" },
     );
     expect(app.status).toBe(200);
-    const appData = await app.json() as AppResponse;
+    const appData = (await app.json()) as AppResponse;
 
     const dsn = `http://${appData.publicKey}@test.local/${appData.number}`;
     const eventId = crypto.randomUUID();
-    const ingested = await fetch(`${baseUrl}/api/${appData.ingestKey}/store/?sentry_key=${appData.publicKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event_id: eventId,
-        level: "error",
-        message: "dsn ingestion test",
-        environment: "test",
-      }),
-    });
+    const ingested = await fetch(
+      `${baseUrl}/api/${appData.ingestKey}/store/?sentry_key=${appData.publicKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          level: "error",
+          message: "dsn ingestion test",
+          environment: "test",
+        }),
+      },
+    );
     expect(ingested.ok).toBe(true);
 
     const stored = await waitForStoredEvent(eventId);

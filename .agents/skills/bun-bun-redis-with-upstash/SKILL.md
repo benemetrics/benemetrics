@@ -9,7 +9,7 @@ description: Bun Redis with Upstash
 
 <Note>TLS is enabled by default for all Upstash Redis databases.</Note>
 
-***
+---
 
 <Steps>
   <Step title="Create a new project">
@@ -19,6 +19,7 @@ description: Bun Redis with Upstash
     bun init bun-upstash-redis
     cd bun-upstash-redis
     ```
+
   </Step>
 
   <Step title="Create an Upstash Redis database">
@@ -29,6 +30,7 @@ description: Bun Redis with Upstash
     <Frame>
             <img src="https://mintcdn.com/bun-1dd33a4e/ONaGWxnTD93zNXCt/images/guides/upstash-1.png?fit=max&auto=format&n=ONaGWxnTD93zNXCt&q=85&s=bf927cfe3f0c675c100ae9a2af1d687c" alt="Upstash Redis database page" data-og-width="3972" width="3972" data-og-height="1024" height="1024" data-path="images/guides/upstash-1.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/bun-1dd33a4e/ONaGWxnTD93zNXCt/images/guides/upstash-1.png?w=280&fit=max&auto=format&n=ONaGWxnTD93zNXCt&q=85&s=512af46f5b587f814914cb5ad7d79ee6 280w, https://mintcdn.com/bun-1dd33a4e/ONaGWxnTD93zNXCt/images/guides/upstash-1.png?w=560&fit=max&auto=format&n=ONaGWxnTD93zNXCt&q=85&s=40dd2f78d8f60b59f24ab5160fc265cf 560w, https://mintcdn.com/bun-1dd33a4e/ONaGWxnTD93zNXCt/images/guides/upstash-1.png?w=840&fit=max&auto=format&n=ONaGWxnTD93zNXCt&q=85&s=e4b82c4ea36c2c04effd217639cd81f7 840w, https://mintcdn.com/bun-1dd33a4e/ONaGWxnTD93zNXCt/images/guides/upstash-1.png?w=1100&fit=max&auto=format&n=ONaGWxnTD93zNXCt&q=85&s=770b433ea87e69ef8a48fbecf962bd04 1100w, https://mintcdn.com/bun-1dd33a4e/ONaGWxnTD93zNXCt/images/guides/upstash-1.png?w=1650&fit=max&auto=format&n=ONaGWxnTD93zNXCt&q=85&s=cb8a2bd1eab3106bbca0e5bbc82480f9 1650w, https://mintcdn.com/bun-1dd33a4e/ONaGWxnTD93zNXCt/images/guides/upstash-1.png?w=2500&fit=max&auto=format&n=ONaGWxnTD93zNXCt&q=85&s=65612bc443777fefb30094d32879aa4a 2500w" />
     </Frame>
+
   </Step>
 
   <Step title="Connect using Bun's Redis client">
@@ -56,6 +58,7 @@ description: Bun Redis with Upstash
 
     const redis = new RedisClient(process.env.REDIS_URL); // [!code ++]
     ```
+
   </Step>
 
   <Step title="Use the Redis client">
@@ -85,5 +88,6 @@ description: Bun Redis with Upstash
     ```
 
     The Redis client automatically handles connections in the background. No need to manually connect or disconnect for basic operations.
+
   </Step>
 </Steps>

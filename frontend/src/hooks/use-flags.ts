@@ -9,11 +9,26 @@ export interface FlagRecord {
   description: string;
   type: string;
   defaultValue: unknown;
-  variants: Array<{ key: string; name: string; value: unknown; weight: number }>;
-  targetingRules: Array<{ id?: string; attribute: string; operator: string; value: unknown; variantKey?: string }>;
+  variants: Array<{
+    key: string;
+    name: string;
+    value: unknown;
+    weight: number;
+  }>;
+  targetingRules: Array<{
+    id?: string;
+    attribute: string;
+    operator: string;
+    value: unknown;
+    variantKey?: string;
+  }>;
   status: "draft" | "active" | "paused" | "archived";
   rolloutPercentage: number;
-  experiment?: { enabled: boolean; status?: string; primaryMetric?: string } | null;
+  experiment?: {
+    enabled: boolean;
+    status?: string;
+    primaryMetric?: string;
+  } | null;
   projectId: string | null;
   appId: string | null;
   createdAt: string;
@@ -47,9 +62,14 @@ interface FlagChangeEventMessage {
   flag?: { appId?: string; id?: string } | null;
 }
 
-export function useFlags(projectId: string | undefined, appId: string | undefined) {
+export function useFlags(
+  projectId: string | undefined,
+  appId: string | undefined,
+) {
   const [flags, setFlags] = useState<FlagRecord[] | null>(null);
-  const [results, setResults] = useState<Record<string, ExperimentResultRecord>>({});
+  const [results, setResults] = useState<
+    Record<string, ExperimentResultRecord>
+  >({});
   const [loading, setLoading] = useState(true);
   const [live, setLive] = useState<LiveFeedStatus>("closed");
   const [reloadTick, setReloadTick] = useState(0);
@@ -72,11 +92,21 @@ export function useFlags(projectId: string | undefined, appId: string | undefine
       const entries = await Promise.all(
         experimentFlags.map(async (f) => {
           const r = await api["api/admin/experiments"][f.id]["results"].get();
-          return [f.id, r.error ? null : (r.data as ExperimentResultRecord)] as const;
+          return [
+            f.id,
+            r.error ? null : (r.data as ExperimentResultRecord),
+          ] as const;
         }),
       );
       if (!alive) return;
-      setResults(Object.fromEntries(entries.filter((entry): entry is readonly [string, ExperimentResultRecord] => entry[1] !== null)));
+      setResults(
+        Object.fromEntries(
+          entries.filter(
+            (entry): entry is readonly [string, ExperimentResultRecord] =>
+              entry[1] !== null,
+          ),
+        ),
+      );
     }
     setLoading(false);
   }, [projectId, appId]);
@@ -98,7 +128,8 @@ export function useFlags(projectId: string | undefined, appId: string | undefine
           // this app (or a delete of one) is relevant.
           const relevant = flag
             ? flag.appId === appId
-            : event.type === "delete" && (flags?.some((f) => f.key === event.flagKey) ?? false);
+            : event.type === "delete" &&
+              (flags?.some((f) => f.key === event.flagKey) ?? false);
           if (relevant) setReloadTick((t) => t + 1);
         } catch {
           // not a flag change event
@@ -108,29 +139,71 @@ export function useFlags(projectId: string | undefined, appId: string | undefine
     return close;
   }, [appId, flags]);
 
-  const setStatus = useCallback(async (flagId: string, status: FlagRecord["status"]) => {
-    const res = await api["api/admin/feature-flags"][flagId]["status"].post({ status });
-    if (res.error) return false;
-    setFlags((prev) => prev?.map((f) => (f.id === flagId ? { ...f, status } : f)) ?? prev);
-    return true;
-  }, []);
-
-  const setRollout = useCallback(async (flagId: string, rolloutPercentage: number) => {
-    const res = await api["api/admin/feature-flags"][flagId].patch({ rolloutPercentage });
-    if (res.error) return false;
-    setFlags((prev) => prev?.map((f) => (f.id === flagId ? { ...f, rolloutPercentage } : f)) ?? prev);
-    return true;
-  }, []);
-
-  const setTargetingRules = useCallback(
-    async (flagId: string, rules: Array<{ attribute: string; operator: string; value: unknown; variantKey?: string }>) => {
-      const res = await api["api/admin/feature-flags"][flagId].patch({ targetingRules: rules });
+  const setStatus = useCallback(
+    async (flagId: string, status: FlagRecord["status"]) => {
+      const res = await api["api/admin/feature-flags"][flagId]["status"].post({
+        status,
+      });
       if (res.error) return false;
-      setFlags((prev) => prev?.map((f) => (f.id === flagId ? { ...f, targetingRules: rules } : f)) ?? prev);
+      setFlags(
+        (prev) =>
+          prev?.map((f) => (f.id === flagId ? { ...f, status } : f)) ?? prev,
+      );
       return true;
     },
     [],
   );
 
-  return { flags, results, loading, live, reload: load, setStatus, setRollout, setTargetingRules };
+  const setRollout = useCallback(
+    async (flagId: string, rolloutPercentage: number) => {
+      const res = await api["api/admin/feature-flags"][flagId].patch({
+        rolloutPercentage,
+      });
+      if (res.error) return false;
+      setFlags(
+        (prev) =>
+          prev?.map((f) =>
+            f.id === flagId ? { ...f, rolloutPercentage } : f,
+          ) ?? prev,
+      );
+      return true;
+    },
+    [],
+  );
+
+  const setTargetingRules = useCallback(
+    async (
+      flagId: string,
+      rules: Array<{
+        attribute: string;
+        operator: string;
+        value: unknown;
+        variantKey?: string;
+      }>,
+    ) => {
+      const res = await api["api/admin/feature-flags"][flagId].patch({
+        targetingRules: rules,
+      });
+      if (res.error) return false;
+      setFlags(
+        (prev) =>
+          prev?.map((f) =>
+            f.id === flagId ? { ...f, targetingRules: rules } : f,
+          ) ?? prev,
+      );
+      return true;
+    },
+    [],
+  );
+
+  return {
+    flags,
+    results,
+    loading,
+    live,
+    reload: load,
+    setStatus,
+    setRollout,
+    setTargetingRules,
+  };
 }

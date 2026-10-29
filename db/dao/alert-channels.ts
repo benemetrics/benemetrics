@@ -28,7 +28,10 @@ function scopeCondition(scope: AlertScope | null) {
   if (!scope) return isNull(alertChannels.appId);
   if (scope.appId) return eq(alertChannels.appId, scope.appId);
   if (scope.projectId) {
-    return and(isNull(alertChannels.appId), eq(alertChannels.projectId, scope.projectId));
+    return and(
+      isNull(alertChannels.appId),
+      eq(alertChannels.projectId, scope.projectId),
+    );
   }
   return isNull(alertChannels.appId);
 }
@@ -61,7 +64,9 @@ export const alertChannelDAO = {
       .onConflictDoNothing()
       .returning(channelFields);
     if (!created) {
-      throw conflict(`Alert channel already exists in this scope: ${data.name}`);
+      throw conflict(
+        `Alert channel already exists in this scope: ${data.name}`,
+      );
     }
     return created;
   },
@@ -105,7 +110,10 @@ export const alertChannelDAO = {
     limit?: number;
   }): Promise<CursorPage<AlertChannel>> => {
     const limit = cursorLimit(options.limit);
-    const scope = scopeCondition({ appId: options.appId, projectId: options.projectId });
+    const scope = scopeCondition({
+      appId: options.appId,
+      projectId: options.projectId,
+    });
     const { condition, empty } = await cursorAfter(
       alertChannels,
       alertChannels.id,
@@ -143,7 +151,9 @@ export const alertChannelDAO = {
         (constraint === SCOPE_NAME_CONSTRAINT ||
           constraint === GLOBAL_NAME_CONSTRAINT)
       ) {
-        throw conflict(`Alert channel already exists in this scope: ${data.name}`);
+        throw conflict(
+          `Alert channel already exists in this scope: ${data.name}`,
+        );
       }
       throw err;
     }

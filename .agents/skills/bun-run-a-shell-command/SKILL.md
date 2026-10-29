@@ -15,7 +15,7 @@ import { $ } from "bun";
 await $`echo Hello, world!`; // => "Hello, world!"
 ```
 
-***
+---
 
 The `$` function is a tagged template literal that runs the command and returns a promise that resolves with the command's output.
 
@@ -26,7 +26,7 @@ const output = await $`ls -l`.text();
 console.log(output);
 ```
 
-***
+---
 
 To get each line of the output as an array, use the `lines` method.
 
@@ -38,6 +38,6 @@ for await (const line of $`ls -l`.lines()) {
 }
 ```
 
-***
+---
 
 See [Docs > API > Shell](/runtime/shell) for complete documentation.

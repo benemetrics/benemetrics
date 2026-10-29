@@ -17,7 +17,7 @@ It is strongly recommended to use [PowerShell 7 (`pwsh.exe`)](https://learn.micr
 
 By default, running unverified scripts are blocked.
 
-```ps1  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ps1 theme={"theme":{"light":"github-light","dark":"dracula"}}
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Unrestricted
 ```
 
@@ -25,7 +25,7 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Unrestricted
 
 Bun v1.1 or later. We use Bun to run it's own code generators.
 
-```ps1  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ps1 theme={"theme":{"light":"github-light","dark":"dracula"}}
 irm bun.sh/install.ps1 | iex
 ```
 
@@ -33,19 +33,19 @@ irm bun.sh/install.ps1 | iex
 
 Visual Studio can be installed graphically using the wizard or through WinGet:
 
-```ps1  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ps1 theme={"theme":{"light":"github-light","dark":"dracula"}}
 winget install "Visual Studio Community 2022" --override "--add Microsoft.VisualStudio.Workload.NativeDesktop Microsoft.VisualStudio.Component.Git " -s msstore
 ```
 
 After Visual Studio, you need the following:
 
-* LLVM 21.1.8
-* Go
-* Rust
-* NASM
-* Perl
-* Ruby
-* Node.js
+- LLVM 21.1.8
+- Go
+- Rust
+- NASM
+- Perl
+- Ruby
+- Node.js
 
 <Note>The Zig compiler is automatically downloaded, installed, and updated by the building process.</Note>
 
@@ -82,13 +82,13 @@ scoop install make cygwin python
 
 From here on out, it is **expected you use a PowerShell Terminal with `.\scripts\vs-shell.ps1` sourced**. This script is available in the Bun repository and can be loaded by executing it:
 
-```ps1  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ps1 theme={"theme":{"light":"github-light","dark":"dracula"}}
 .\scripts\vs-shell.ps1
 ```
 
 To verify, you can check for an MSVC-only command line such as `mt.exe`
 
-```ps1  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ps1 theme={"theme":{"light":"github-light","dark":"dracula"}}
 Get-Command mt
 ```
 
@@ -99,7 +99,7 @@ Get-Command mt
 
 ## Building
 
-```ps1  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ps1 theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run build
 
 # after the initial `bun run build` you can use the following to build
@@ -108,7 +108,7 @@ ninja -Cbuild/debug
 
 If this was successful, you should have a `bun-debug.exe` in the `build/debug` folder.
 
-```ps1  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ps1 theme={"theme":{"light":"github-light","dark":"dracula"}}
 .\build\debug\bun-debug.exe --revision
 ```
 
@@ -116,14 +116,14 @@ You should add this to `$Env:PATH`. The simplest way to do so is to open the sta
 
 ## Extra paths
 
-* WebKit is extracted to `build/debug/cache/webkit/`
-* Zig is extracted to `build/debug/cache/zig/bin/zig.exe`
+- WebKit is extracted to `build/debug/cache/webkit/`
+- Zig is extracted to `build/debug/cache/zig/bin/zig.exe`
 
 ## Tests
 
 You can run the test suite either using `bun test <path>` or by using the wrapper script `bun node:test <path>`. The `bun node:test` command runs every test file in a separate instance of bun.exe, to prevent a crash in the test runner from stopping the entire suite.
 
-```ps1  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ps1 theme={"theme":{"light":"github-light","dark":"dracula"}}
 # Setup
 bun i --cwd packages\bun-internal-test
 

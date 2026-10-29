@@ -31,7 +31,7 @@ The following compiler options are respected.
 
 How JSX constructs are transformed into vanilla JavaScript internally. The table below lists the possible values of `jsx`, along with their transpilation of the following simple JSX component:
 
-```tsx  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```tsx theme={"theme":{"light":"github-light","dark":"dracula"}}
 <Box width={5}>Hello</Box>
 ```
 
@@ -76,7 +76,7 @@ The module from which the component factory function (`createElement`, `jsx`, `j
 
 ### JSX pragma
 
-All of these values can be set on a per-file basis using *pragmas*. A pragma is a special comment that sets a compiler option in a particular file.
+All of these values can be set on a per-file basis using _pragmas_. A pragma is a special comment that sets a compiler option in a particular file.
 
 | Pragma                                   | Equivalent config                                                  |
 | ---------------------------------------- | ------------------------------------------------------------------ |

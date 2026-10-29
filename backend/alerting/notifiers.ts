@@ -51,7 +51,8 @@ function optionalRecord(
   key: string,
 ): Record<string, unknown> | undefined {
   const value = config[key];
-  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return undefined;
   return value as Record<string, unknown>;
 }
 
@@ -95,7 +96,11 @@ export const webhookNotifier: Notifier = {
       "Content-Type": "application/json",
     };
     const configured = config.headers;
-    if (configured && typeof configured === "object" && !Array.isArray(configured)) {
+    if (
+      configured &&
+      typeof configured === "object" &&
+      !Array.isArray(configured)
+    ) {
       for (const [name, value] of Object.entries(configured)) {
         if (typeof value === "string") headers[name] = value;
       }
@@ -114,7 +119,9 @@ export const webhookNotifier: Notifier = {
       body,
     });
     if (!response.ok) {
-      throw new Error(`webhook ${url} responded with status ${response.status}`);
+      throw new Error(
+        `webhook ${url} responded with status ${response.status}`,
+      );
     }
   },
 };
@@ -234,7 +241,10 @@ export const emailNotifier: Notifier = {
 
     await transport.sendMail({
       from,
-      to: to.split(",").map((address) => address.trim()).filter(Boolean),
+      to: to
+        .split(",")
+        .map((address) => address.trim())
+        .filter(Boolean),
       subject: notification.title,
       text: [
         notification.message,
@@ -275,7 +285,9 @@ export const pagerDutyNotifier: Notifier = {
   type: "pagerduty",
   async send(notification, config) {
     const routingKey = requireString(config, "routing_key", "pagerduty");
-    const severity = optionalString(config, "severity") ?? pagerDutySeverity(notification.severity);
+    const severity =
+      optionalString(config, "severity") ??
+      pagerDutySeverity(notification.severity);
     const customDetails = optionalRecord(config, "custom_details");
     const response = await fetch("https://events.pagerduty.com/v2/envelopes", {
       method: "POST",
@@ -312,7 +324,9 @@ export const opsgenieNotifier: Notifier = {
   type: "opsgenie",
   async send(notification, config) {
     const apiKey = requireString(config, "api_key", "opsgenie");
-    const priority = optionalString(config, "priority") ?? opsgeniePriority(notification.severity);
+    const priority =
+      optionalString(config, "priority") ??
+      opsgeniePriority(notification.severity);
     const responders = optionalRecord(config, "responders");
     const tags = optionalStringList(config, "tags");
     const response = await fetch("https://api.opsgenie.com/v2/alerts", {
@@ -339,7 +353,9 @@ export const opsgenieNotifier: Notifier = {
       }),
     });
     if (!response.ok) {
-      throw new Error(`opsgenie alerts API responded with status ${response.status}`);
+      throw new Error(
+        `opsgenie alerts API responded with status ${response.status}`,
+      );
     }
   },
 };
@@ -615,20 +631,22 @@ function pumpDeliveries(): void {
   ) {
     const job = pendingDeliveries.shift()!;
     activeDeliveries += 1;
-    void deliverNotificationToChannel(job.channel, job.notification).then(
-      (result) => job.resolve(result),
-      () =>
-        job.resolve({
-          channelId: job.channel.id,
-          channelName: job.channel.name,
-          type: job.channel.type,
-          ok: false,
-          error: "the delivery failed",
-        }),
-    ).finally(() => {
-      activeDeliveries -= 1;
-      pumpDeliveries();
-    });
+    void deliverNotificationToChannel(job.channel, job.notification)
+      .then(
+        (result) => job.resolve(result),
+        () =>
+          job.resolve({
+            channelId: job.channel.id,
+            channelName: job.channel.name,
+            type: job.channel.type,
+            ok: false,
+            error: "the delivery failed",
+          }),
+      )
+      .finally(() => {
+        activeDeliveries -= 1;
+        pumpDeliveries();
+      });
   }
 }
 

@@ -28,7 +28,9 @@ export function normalizeIp(address: string): string {
  */
 export function clientSource(
   request: Request,
-  server?: { requestIP?: (request: Request) => { address: string } | null } | null,
+  server?: {
+    requestIP?: (request: Request) => { address: string } | null;
+  } | null,
 ): string | null {
   const socketAddress = server?.requestIP?.(request)?.address;
   if (socketAddress) return normalizeIp(socketAddress);

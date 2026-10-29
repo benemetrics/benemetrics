@@ -15,34 +15,34 @@ Bun includes a fast JavaScript and TypeScript minifier that can reduce bundle si
 
 Use the `--minify` flag to enable all minification modes:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun build ./index.ts --minify --outfile=out.js
 ```
 
 The `--minify` flag automatically enables:
 
-* Whitespace minification
-* Syntax minification
-* Identifier minification
+- Whitespace minification
+- Syntax minification
+- Identifier minification
 
 ### Production mode
 
 The `--production` flag automatically enables minification:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun build ./index.ts --production --outfile=out.js
 ```
 
 The `--production` flag also:
 
-* Sets `process.env.NODE_ENV` to `production`
-* Enables the production-mode JSX import & transform
+- Sets `process.env.NODE_ENV` to `production`
+- Enables the production-mode JSX import & transform
 
 ### Granular control
 
 You can enable specific minification modes individually:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 # Only remove whitespace
 bun build ./index.ts --minify-whitespace --outfile=out.js
 
@@ -60,7 +60,7 @@ bun build ./index.ts --minify-whitespace --minify-syntax --outfile=out.js
 
 When using Bun's bundler programmatically, configure minification through the `minify` option:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 await Bun.build({
   entrypoints: ["./index.ts"],
   outdir: "./out",
@@ -70,7 +70,7 @@ await Bun.build({
 
 For granular control, pass an object:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 await Bun.build({
   entrypoints: ["./index.ts"],
   outdir: "./out",
@@ -107,13 +107,13 @@ Renames local variables and function names to shorter identifiers using frequenc
 Converts boolean literals to shorter expressions.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-true
-false
+true;
+false;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-!0
-!1
+!0;
+!1;
 ```
 
 ### Boolean algebra optimizations
@@ -123,21 +123,21 @@ false
 Simplifies boolean expressions using logical rules.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-!!x
-x === true
-x && true
-x || false
-!true
-!false
+!!x;
+x === true;
+x && true;
+x || false;
+!true;
+!false;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-x
-x
-x
-x
-!1
-!0
+x;
+x;
+x;
+x;
+!1;
+!0;
 ```
 
 ### Undefined shortening
@@ -147,13 +147,13 @@ x
 Replaces `undefined` with shorter equivalent.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-undefined
+undefined;
 let x = undefined;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-void 0
-let x=void 0;
+void 0;
+let x = void 0;
 ```
 
 ### Undefined equality optimization
@@ -163,13 +163,13 @@ let x=void 0;
 Optimizes loose equality checks with undefined.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-x == undefined
-x != undefined
+x == undefined;
+x != undefined;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-x == null
-x != null
+x == null;
+x != null;
 ```
 
 ### Infinity shortening
@@ -179,13 +179,11 @@ x != null
 Converts Infinity to mathematical expressions.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-Infinity
--Infinity
+Infinity - Infinity;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-1/0
--1/0
+1 / 0 - 1 / 0;
 ```
 
 ### Typeof optimizations
@@ -195,25 +193,25 @@ Infinity
 Optimizes typeof comparisons and evaluates constant typeof expressions.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-typeof x === 'undefined'
-typeof x !== 'undefined'
-typeof require
-typeof null
-typeof true
-typeof 123
-typeof "str"
-typeof 123n
+typeof x === "undefined";
+typeof x !== "undefined";
+typeof require;
+typeof null;
+typeof true;
+typeof 123;
+typeof "str";
+typeof 123n;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-typeof x>'u'
-typeof x<'u'
-"function"
-"object"
-"boolean"
-"number"
-"string"
-"bigint"
+typeof x > "u";
+typeof x < "u";
+("function");
+("object");
+("boolean");
+("number");
+("string");
+("bigint");
 ```
 
 ### Number formatting
@@ -223,19 +221,17 @@ typeof x<'u'
 Formats numbers in the most compact representation.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-10000
-100000
-1000000
-1.0
--42.0
+10000;
+100000;
+1000000;
+1.0 - 42.0;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-1e4
-1e5
-1e6
-1
--42
+1e4;
+1e5;
+1e6;
+1 - 42;
 ```
 
 ### Arithmetic constant folding
@@ -245,21 +241,21 @@ Formats numbers in the most compact representation.
 Evaluates arithmetic operations at compile time.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-1 + 2
-10 - 5
-3 * 4
-10 / 2
-10 % 3
-2 ** 3
+1 + 2;
+10 - 5;
+3 * 4;
+10 / 2;
+10 % 3;
+2 ** 3;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-3
-5
-12
-5
-1
-8
+3;
+5;
+12;
+5;
+1;
+8;
 ```
 
 ### Bitwise constant folding
@@ -269,21 +265,20 @@ Evaluates arithmetic operations at compile time.
 Evaluates bitwise operations at compile time.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-5 & 3
-5 | 3
-5 ^ 3
-8 << 2
-32 >> 2
-~5
+5 & 3;
+5 | 3;
+5 ^ 3;
+8 << 2;
+32 >> 2;
+~5;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-1
-7
-6
-32
-8
--6
+1;
+7;
+6;
+32;
+8 - 6;
 ```
 
 ### String concatenation
@@ -293,15 +288,15 @@ Evaluates bitwise operations at compile time.
 Combines string literals at compile time.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-"a" + "b"
-"x" + 123
-"foo" + "bar" + "baz"
+"a" + "b";
+"x" + 123;
+"foo" + "bar" + "baz";
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-"ab"
-"x123"
-"foobarbaz"
+"ab";
+"x123";
+"foobarbaz";
 ```
 
 ### String indexing
@@ -311,13 +306,13 @@ Combines string literals at compile time.
 Evaluates string character access at compile time.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-"foo"[2]
-"hello"[0]
+"foo"[2];
+"hello"[0];
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-"o"
-"h"
+"o";
+"h";
 ```
 
 ### Template literal folding
@@ -327,13 +322,12 @@ Evaluates string character access at compile time.
 Evaluates template literals with constant expressions.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-`a${123}b`
-`result: ${5 + 10}`
+`a${123}b``result: ${5 + 10}`;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-"a123b"
-"result: 15"
+"a123b";
+"result: 15";
 ```
 
 ### Template literal to string conversion
@@ -343,14 +337,13 @@ Evaluates template literals with constant expressions.
 Converts simple template literals to regular strings.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-`Hello World`
-`Line 1
-Line 2`
+`Hello World``Line 1
+Line 2`;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-"Hello World"
-"Line 1\nLine 2"
+"Hello World";
+"Line 1\nLine 2";
 ```
 
 ### String quote optimization
@@ -360,15 +353,14 @@ Line 2`
 Chooses the optimal quote character to minimize escapes.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-"It's a string"
-'He said "hello"'
-`Simple string`
+"It's a string";
+'He said "hello"'`Simple string`;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-"It's a string"
-'He said "hello"'
-"Simple string"
+"It's a string";
+'He said "hello"';
+"Simple string";
 ```
 
 ### Array spread inlining
@@ -383,8 +375,7 @@ Inlines array spread operations with constant arrays.
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-[1,2,3,4]
-[a,b]
+[1, 2, 3, 4][(a, b)];
 ```
 
 ### Array indexing
@@ -400,9 +391,9 @@ Evaluates constant array access at compile time.
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-x
-'b'
-void 0
+x;
+("b");
+void 0;
 ```
 
 ### Property access optimization
@@ -412,17 +403,17 @@ void 0
 Converts bracket notation to dot notation when possible.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-obj["property"]
-obj["validName"]
-obj["123"]
-obj["invalid-name"]
+obj["property"];
+obj["validName"];
+obj["123"];
+obj["invalid-name"];
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-obj.property
-obj.validName
-obj["123"]
-obj["invalid-name"]
+obj.property;
+obj.validName;
+obj["123"];
+obj["invalid-name"];
 ```
 
 ### Comparison folding
@@ -432,19 +423,19 @@ obj["invalid-name"]
 Evaluates constant comparisons at compile time.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-3 < 5
-5 > 3
-3 <= 3
-5 >= 6
-"a" < "b"
+3 < 5;
+5 > 3;
+3 <= 3;
+5 >= 6;
+"a" < "b";
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-!0
-!0
-!0
-!1
-!0
+!0;
+!0;
+!0;
+!1;
+!0;
 ```
 
 ### Logical operation folding
@@ -454,17 +445,17 @@ Evaluates constant comparisons at compile time.
 Simplifies logical operations with constant values.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-true && x
-false && x
-true || x
-false || x
+true && x;
+false && x;
+true || x;
+false || x;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-x
-!1
-!0
-x
+x;
+!1;
+!0;
+x;
 ```
 
 ### Nullish coalescing folding
@@ -474,15 +465,15 @@ x
 Evaluates nullish coalescing with known values.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-null ?? x
-undefined ?? x
-42 ?? x
+null ?? x;
+undefined ?? x;
+42 ?? x;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-x
-x
-42
+x;
+x;
+42;
 ```
 
 ### Comma expression simplification
@@ -492,13 +483,12 @@ x
 Removes side-effect-free expressions from comma sequences.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-(0, x)
-(123, "str", x)
+(0, x)(123, "str", x);
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-x
-x
+x;
+x;
 ```
 
 ### Ternary conditional folding
@@ -508,17 +498,17 @@ x
 Evaluates conditional expressions with constant conditions.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-true ? a : b
-false ? a : b
-x ? true : false
-x ? false : true
+true ? a : b;
+false ? a : b;
+x ? true : false;
+x ? false : true;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-a
-b
-x ? !0 : !1
-x ? !1 : !0
+a;
+b;
+x ? !0 : !1;
+x ? !1 : !0;
 ```
 
 ### Unary expression folding
@@ -528,22 +518,20 @@ x ? !1 : !0
 Simplifies unary operations.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-+123
-+"123"
--(-x)
-~~x
-!!x
++123 + "123" - -x;
+~~x;
+!!x;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-123
-123
-123
-123
-x
-~~x
-!!x
-x
+123;
+123;
+123;
+123;
+x;
+~~x;
+!!x;
+x;
 ```
 
 ### Double negation removal
@@ -553,13 +541,13 @@ x
 Removes unnecessary double negations.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-!!x
-!!!x
+!!x;
+!!!x;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-x
-!x
+x;
+!x;
 ```
 
 ### If statement optimization
@@ -571,15 +559,18 @@ Optimizes if statements with constant conditions.
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
 if (true) x;
 if (false) x;
-if (x) { a; }
-if (x) {} else y;
+if (x) {
+  a;
+}
+if (x) {
+} else y;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
 x;
 // removed
-if(x)a;
-if(!x)y;
+if (x) a;
+if (!x) y;
 ```
 
 ### Dead code elimination
@@ -599,7 +590,9 @@ function foo() {
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-function foo(){return x}
+function foo() {
+  return x;
+}
 ```
 
 ### Unreachable branch removal
@@ -625,12 +618,13 @@ while (false) {
 Removes empty blocks and unnecessary braces.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-{ }
-if (x) { }
+{
+}
+if (x) {
+}
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-;
 // removed
 ```
 
@@ -647,7 +641,7 @@ if (condition) {
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-if(condition)doSomething();
+if (condition) doSomething();
 ```
 
 ### TypeScript enum inlining
@@ -657,12 +651,16 @@ if(condition)doSomething();
 Inlines TypeScript enum values at compile time.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-enum Color { Red, Green, Blue }
+enum Color {
+  Red,
+  Green,
+  Blue,
+}
 const x = Color.Red;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-const x=0;
+const x = 0;
 ```
 
 ### Pure annotation support
@@ -694,22 +692,25 @@ function calculateSum(firstNumber, secondNumber) {
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-function a(b,c){const d=b+c;return d}
+function a(b, c) {
+  const d = b + c;
+  return d;
+}
 ```
 
 **Naming strategy:**
 
-* Most frequently used identifiers get the shortest names (a, b, c...)
-* Single letters: a-z (26 names)
-* Double letters: aa-zz (676 names)
-* Triple letters and beyond as needed
+- Most frequently used identifiers get the shortest names (a, b, c...)
+- Single letters: a-z (26 names)
+- Double letters: aa-zz (676 names)
+- Triple letters and beyond as needed
 
 **Preserved identifiers:**
 
-* JavaScript keywords and reserved words
-* Global identifiers
-* Named exports (to maintain API)
-* CommonJS names: `exports`, `module`
+- JavaScript keywords and reserved words
+- Global identifiers
+- Named exports (to maintain API)
+- CommonJS names: `exports`, `module`
 
 ### Whitespace removal
 
@@ -719,13 +720,16 @@ Removes all unnecessary whitespace.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
 function add(a, b) {
-    return a + b;
+  return a + b;
 }
 let x = 10;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-function add(a,b){return a+b;}let x=10;
+function add(a, b) {
+  return a + b;
+}
+let x = 10;
 ```
 
 ### Semicolon optimization
@@ -741,7 +745,9 @@ return a + b;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-let a=1;let b=2;return a+b
+let a = 1;
+let b = 2;
+return a + b;
 ```
 
 ### Operator spacing removal
@@ -751,15 +757,15 @@ let a=1;let b=2;return a+b
 Removes spaces around operators.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-a + b
-x = y * z
-foo && bar || baz
+a + b;
+x = y * z;
+(foo && bar) || baz;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-a+b
-x=y*z
-foo&&bar||baz
+a + b;
+x = y * z;
+(foo && bar) || baz;
 ```
 
 ### Comment removal
@@ -772,12 +778,14 @@ Removes comments except important license comments.
 // This comment is removed
 /* So is this */
 /*! But this license comment is kept */
-function test() { /* inline comment */ }
+function test() {
+  /* inline comment */
+}
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
 /*! But this license comment is kept */
-function test(){}
+function test() {}
 ```
 
 ### Object and array formatting
@@ -788,14 +796,15 @@ Removes whitespace in object and array literals.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
 const obj = {
-    name: "John",
-    age: 30
+  name: "John",
+  age: 30,
 };
 const arr = [1, 2, 3];
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-const obj={name:"John",age:30};const arr=[1,2,3];
+const obj = { name: "John", age: 30 };
+const arr = [1, 2, 3];
 ```
 
 ### Control flow formatting
@@ -806,15 +815,16 @@ Removes whitespace in control structures.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
 if (condition) {
-    doSomething();
+  doSomething();
 }
 for (let i = 0; i < 10; i++) {
-    console.log(i);
+  console.log(i);
 }
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-if(condition)doSomething();for(let i=0;i<10;i++)console.log(i);
+if (condition) doSomething();
+for (let i = 0; i < 10; i++) console.log(i);
 ```
 
 ### Function formatting
@@ -825,13 +835,16 @@ Removes whitespace in function declarations.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
 function myFunction(param1, param2) {
-    return param1 + param2;
+  return param1 + param2;
 }
 const arrow = (a, b) => a + b;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-function myFunction(a,b){return a+b}const arrow=(a,b)=>a+b;
+function myFunction(a, b) {
+  return a + b;
+}
+const arrow = (a, b) => a + b;
 ```
 
 ### Parentheses minimization
@@ -841,15 +854,14 @@ function myFunction(a,b){return a+b}const arrow=(a,b)=>a+b;
 Only adds parentheses when necessary for operator precedence.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-(a + b) * c
-a + (b * c)
-((x))
+(a + b) * c;
+a + (b * c)(x);
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-(a+b)*c
-a+b*c
-x
+(a + b) * c;
+a + b * c;
+x;
 ```
 
 ### Property mangling
@@ -859,11 +871,11 @@ x
 Renames object properties to shorter names when configured.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-obj.longPropertyName
+obj.longPropertyName;
 ```
 
 ```js Output (with property mangling enabled) theme={"theme":{"light":"github-light","dark":"dracula"}}
-obj.a
+obj.a;
 ```
 
 ### Template literal value folding
@@ -873,19 +885,15 @@ obj.a
 Converts non-string interpolated values to strings and folds them into the template.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-`hello ${123}`
-`value: ${true}`
-`result: ${null}`
-`status: ${undefined}`
-`big: ${10n}`
+`hello ${123}``value: ${true}``result: ${null}``status: ${undefined}``big: ${10n}`;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-"hello 123"
-"value: true"
-"result: null"
-"status: undefined"
-"big: 10"
+"hello 123";
+"value: true";
+"result: null";
+"status: undefined";
+"big: 10";
 ```
 
 ### String length constant folding
@@ -895,13 +903,13 @@ Converts non-string interpolated values to strings and folds them into the templ
 Evaluates `.length` property on string literals at compile time.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-"hello world".length
-"test".length
+"hello world".length;
+"test".length;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-11
-4
+11;
+4;
 ```
 
 ### Constructor call simplification
@@ -911,19 +919,22 @@ Evaluates `.length` property on string literals at compile time.
 Simplifies constructor calls for built-in types.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-new Object()
-new Object(null)
-new Object({a: 1})
-new Array()
-new Array(x, y)
+new Object();
+new Object(null);
+new Object({ a: 1 });
+new Array();
+new Array(x, y);
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-{}
-{}
-{a:1}
-[]
-[x,y]
+{
+}
+{
+}
+{
+  a: 1;
+}
+[][(x, y)];
 ```
 
 ### Single property object inlining
@@ -933,11 +944,11 @@ new Array(x, y)
 Inlines property access for objects with a single property.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-({fn: () => console.log('hi')}).fn()
+({ fn: () => console.log("hi") }).fn();
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-(() => console.log('hi'))()
+(() => console.log("hi"))();
 ```
 
 ### String charCodeAt constant folding
@@ -947,13 +958,13 @@ Inlines property access for objects with a single property.
 Evaluates `charCodeAt()` on string literals for ASCII characters.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-"hello".charCodeAt(1)
-"A".charCodeAt(0)
+"hello".charCodeAt(1);
+"A".charCodeAt(0);
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-101
-65
+101;
+65;
 ```
 
 ### Void 0 equality to null equality
@@ -963,13 +974,13 @@ Evaluates `charCodeAt()` on string literals for ASCII characters.
 Converts loose equality checks with `void 0` to `null` since they're equivalent.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-x == void 0
-x != void 0
+x == void 0;
+x != void 0;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-x == null
-x != null
+x == null;
+x != null;
 ```
 
 ### Negation operator optimization
@@ -979,13 +990,12 @@ x != null
 Moves negation operator through comma expressions.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
--(a, b)
--(x, y, z)
+-(a, b) - (x, y, z);
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-a,-b
-x,y,-z
+(a, -b);
+(x, y, -z);
 ```
 
 ### Import.meta property inlining
@@ -995,17 +1005,17 @@ x,y,-z
 Inlines `import.meta` properties at build time when values are known.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-import.meta.dir
-import.meta.file
-import.meta.path
-import.meta.url
+import.meta.dir;
+import.meta.file;
+import.meta.path;
+import.meta.url;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-"/path/to/directory"
-"filename.js"
-"/full/path/to/file.js"
-"file:///full/path/to/file.js"
+"/path/to/directory";
+"filename.js";
+"/full/path/to/file.js";
+"file:///full/path/to/file.js";
 ```
 
 ### Variable declaration merging
@@ -1022,8 +1032,10 @@ const d = 4;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-let a=1,b=2;
-const c=3,d=4;
+let a = 1,
+  b = 2;
+const c = 3,
+  d = 4;
 ```
 
 ### Expression statement merging
@@ -1039,7 +1051,7 @@ console.log(3);
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-console.log(1),console.log(2),console.log(3);
+(console.log(1), console.log(2), console.log(3));
 ```
 
 ### Return statement merging
@@ -1054,7 +1066,7 @@ return y;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-return console.log(x),y;
+return (console.log(x), y);
 ```
 
 ### Throw statement merging
@@ -1069,7 +1081,7 @@ throw new Error();
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-throw(console.log(x),new Error());
+throw (console.log(x), new Error());
 ```
 
 ### TypeScript enum cross-module inlining
@@ -1080,15 +1092,19 @@ Inlines enum values across module boundaries.
 
 ```ts Input  theme={"theme":{"light":"github-light","dark":"dracula"}}
 // lib.ts
-export enum Color { Red, Green, Blue }
+export enum Color {
+  Red,
+  Green,
+  Blue,
+}
 
 // Input (main.ts)
-import { Color } from './lib';
+import { Color } from "./lib";
 const x = Color.Red;
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-const x=0;
+const x = 0;
 ```
 
 ### Computed property enum inlining
@@ -1098,12 +1114,14 @@ const x=0;
 Inlines enum values used as computed object properties.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-enum Keys { FOO = 'foo' }
-const obj = { [Keys.FOO]: value }
+enum Keys {
+  FOO = "foo",
+}
+const obj = { [Keys.FOO]: value };
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-const obj={foo:value}
+const obj = { foo: value };
 ```
 
 ### String number to numeric index
@@ -1113,13 +1131,13 @@ const obj={foo:value}
 Converts string numeric property access to numeric index.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-obj["0"]
-arr["5"]
+obj["0"];
+arr["5"];
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-obj[0]
-arr[5]
+obj[0];
+arr[5];
 ```
 
 ### Arrow function body shortening
@@ -1129,13 +1147,17 @@ arr[5]
 Uses expression body syntax when an arrow function only returns a value.
 
 ```ts Input theme={"theme":{"light":"github-light","dark":"dracula"}}
-() => { return x; }
-(a) => { return a + 1; }
+() => {
+  return x;
+};
+(a) => {
+  return a + 1;
+};
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-() => x
-a => a + 1
+() => x;
+(a) => a + 1;
 ```
 
 ### Object property shorthand
@@ -1150,8 +1172,12 @@ Uses shorthand syntax when property name and value identifier match.
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-{ x, y }
-{ name, age }
+{
+  (x, y);
+}
+{
+  (name, age);
+}
 ```
 
 ### Method shorthand
@@ -1188,7 +1214,9 @@ function test() {
 ```
 
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
-function test(){return x}
+function test() {
+  return x;
+}
 ```
 
 ### Drop console calls
@@ -1206,7 +1234,7 @@ x = console.error("error");
 ```js Output theme={"theme":{"light":"github-light","dark":"dracula"}}
 void 0;
 void 0;
-x=void 0;
+x = void 0;
 ```
 
 ### Drop custom function calls
@@ -1229,13 +1257,13 @@ void 0;
 
 When minifying identifiers, you may want to preserve original function and class names for debugging purposes. Use the `--keep-names` flag:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun build ./index.ts --minify --keep-names --outfile=out.js
 ```
 
 Or in the JavaScript API:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 await Bun.build({
   entrypoints: ["./index.ts"],
   outdir: "./out",
@@ -1266,25 +1294,31 @@ const output = myFunction();
 
 ```js output.js theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Output with --minify (49 bytes, 69% reduction)
-const a=42,b=()=>{const c=!0,d=void 0;return c?a:d},e=b();
+const a = 42,
+  b = () => {
+    const c = !0,
+      d = void 0;
+    return c ? a : d;
+  },
+  e = b();
 ```
 
 ## When to Use Minification
 
 **Use `--minify` for:**
 
-* Production bundles
-* Reducing CDN bandwidth costs
-* Improving page load times
+- Production bundles
+- Reducing CDN bandwidth costs
+- Improving page load times
 
 **Use individual modes for:**
 
-* **`--minify-whitespace`:** Quick size reduction without semantic changes
-* **`--minify-syntax`:** Smaller output while keeping readable identifiers for debugging
-* **`--minify-identifiers`:** Maximum size reduction (combine with `--keep-names` for better stack traces)
+- **`--minify-whitespace`:** Quick size reduction without semantic changes
+- **`--minify-syntax`:** Smaller output while keeping readable identifiers for debugging
+- **`--minify-identifiers`:** Maximum size reduction (combine with `--keep-names` for better stack traces)
 
 **Avoid minification for:**
 
-* Development builds (harder to debug)
-* When you need readable error messages
-* Libraries where consumers may read the source
+- Development builds (harder to debug)
+- When you need readable error messages
+- Libraries where consumers may read the source

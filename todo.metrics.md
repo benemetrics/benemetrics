@@ -28,6 +28,7 @@ One CH row per `(event, metric, dimension)`; `dimension` = transaction name (rou
 ## 2. Topology & ClickHouse schema
 
 Subjects on the `SENTRIES` stream:
+
 - `sentry.events` — one JSON object per message (`id, projectId, appId?, envelopeHeader, envelopeItems, receivedAt, type`); consumed by CH (→ `sentry_events`) **and** by the app side-effects consumer.
 - `sentry.metrics` — JSONEachRow sample rows; consumed by CH (→ `sentry_metrics`).
 - `sentry.flags.changed` — unchanged.

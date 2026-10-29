@@ -13,12 +13,12 @@ Sometimes, you need to make a small change to a package in `node_modules/` to fi
 
 Features:
 
-* Generates `.patch` files applied to dependencies in `node_modules` on install
-* `.patch` files can be committed to your repository, reused across multiple installs, projects, and machines
-* `"patchedDependencies"` in `package.json` keeps track of patched packages
-* `bun patch` lets you patch packages in `node_modules/` while preserving the integrity of Bun's [Global Cache](/pm/global-cache)
-* Test your changes locally before committing them with `bun patch --commit <pkg>`
-* To preserve disk space and keep `bun install` fast, patched packages are committed to the Global Cache and shared across projects where possible
+- Generates `.patch` files applied to dependencies in `node_modules` on install
+- `.patch` files can be committed to your repository, reused across multiple installs, projects, and machines
+- `"patchedDependencies"` in `package.json` keeps track of patched packages
+- `bun patch` lets you patch packages in `node_modules/` while preserving the integrity of Bun's [Global Cache](/pm/global-cache)
+- Test your changes locally before committing them with `bun patch --commit <pkg>`
+- To preserve disk space and keep `bun install` fast, patched packages are committed to the Global Cache and shared across projects where possible
 
 #### Step 1. Prepare the package for patching
 
@@ -38,7 +38,7 @@ bun patch node_modules/react
 <Note>
   Don't forget to call `bun patch <pkg>`! This ensures the package folder in `node_modules/` contains a fresh copy of the package with no symlinks/hardlinks to Bun's cache.
 
-  If you forget to do this, you might end up editing the package globally in the cache!
+If you forget to do this, you might end up editing the package globally in the cache!
 </Note>
 
 #### Step 2. Test your changes locally
@@ -65,11 +65,11 @@ bun patch --commit react --patches-dir=mypatches
 bun patch-commit react
 ```
 
-***
+---
 
 # CLI Usage
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun patch <package>@<version>
 ```
 

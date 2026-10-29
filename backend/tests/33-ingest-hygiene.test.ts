@@ -9,9 +9,14 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { gzipSync } from "node:zlib";
-import { handleFetch as fetch, startTestApp, TEST_ORIGIN } from "./test-helpers";
+import {
+  handleFetch as fetch,
+  startTestApp,
+  TEST_ORIGIN,
+} from "./test-helpers";
 
-const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+const uniq = () =>
+  Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
 let app: Awaited<ReturnType<typeof startTestApp>>;
 
@@ -50,9 +55,15 @@ function envelopeWithItems(count: number, itemSize = 10): string {
   const lines: string[] = [JSON.stringify({ event_id: crypto.randomUUID() })];
   for (let index = 0; index < count; index += 1) {
     const id = crypto.randomUUID();
-    lines.push(JSON.stringify({ type: "event", content_type: "application/json" }));
     lines.push(
-      JSON.stringify({ event_id: id, message: "x".repeat(itemSize), level: "error" }),
+      JSON.stringify({ type: "event", content_type: "application/json" }),
+    );
+    lines.push(
+      JSON.stringify({
+        event_id: id,
+        message: "x".repeat(itemSize),
+        level: "error",
+      }),
     );
   }
   return lines.join("\n");
@@ -75,7 +86,9 @@ describe("Ingest hygiene caps", () => {
 
   it("rejects a gzip body whose decompressed size is over the cap with 413", async () => {
     setEnv("INGEST_MAX_DECOMPRESSED_BYTES", "512");
-    const response = await ingestEnvelope(envelopeWithItems(1, 2000), { gzip: true });
+    const response = await ingestEnvelope(envelopeWithItems(1, 2000), {
+      gzip: true,
+    });
     expect(response.status).toBe(413);
   });
 
@@ -93,7 +106,13 @@ describe("Ingest hygiene caps", () => {
     const body = [
       JSON.stringify({ event_id: id }),
       JSON.stringify({ type: "replay_recording" }),
-      JSON.stringify({ id: "segment", segment_id: "0", replay_id: "r1", timestamp: 1, data: { x: "y".repeat(2000) } }),
+      JSON.stringify({
+        id: "segment",
+        segment_id: "0",
+        replay_id: "r1",
+        timestamp: 1,
+        data: { x: "y".repeat(2000) },
+      }),
     ].join("\n");
     const response = await ingestEnvelope(body);
     expect(response.status).toBe(200);
@@ -135,8 +154,14 @@ describe("Ingest hygiene caps", () => {
             scopeSpans: [
               {
                 spans: [
-                  { traceId: crypto.randomUUID().replace(/-/g, ""), spanId: "a" },
-                  { traceId: crypto.randomUUID().replace(/-/g, ""), spanId: "b" },
+                  {
+                    traceId: crypto.randomUUID().replace(/-/g, ""),
+                    spanId: "a",
+                  },
+                  {
+                    traceId: crypto.randomUUID().replace(/-/g, ""),
+                    spanId: "b",
+                  },
                 ],
               },
             ],

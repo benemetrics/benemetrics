@@ -13,7 +13,7 @@ Use `bun outdated` to check for outdated dependencies in your project. This comm
 bun outdated
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 | Package                        | Current | Update    | Latest     |
 | ------------------------------ | ------- | --------- | ---------- |
 | @sinclair/typebox              | 0.34.15 | 0.34.16   | 0.34.16    |
@@ -32,9 +32,9 @@ bun outdated
 
 The output table shows three version columns:
 
-* **Current**: The version currently installed
-* **Update**: The latest version that satisfies your package.json version range
-* **Latest**: The latest version published to the registry
+- **Current**: The version currently installed
+- **Update**: The latest version that satisfies your package.json version range
+- **Latest**: The latest version published to the registry
 
 ### Dependency Filters
 
@@ -46,7 +46,7 @@ To check if specific dependencies are outdated, pass the package names as positi
 bun outdated eslint-plugin-security eslint-plugin-sonarjs
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 | Package                        | Current | Update | Latest    |
 | ------------------------------ | ------- | ------ | --------- |
 | eslint-plugin-security (dev)   | 2.1.1   | 2.1.1  | 3.0.1     |
@@ -60,7 +60,7 @@ You can also pass glob patterns to check for outdated packages:
 bun outdated 'eslint*'
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 | Package                        | Current | Update | Latest     |
 | ------------------------------ | ------- | ------ | ---------- |
 | eslint (dev)                   | 8.57.1  | 8.57.1 | 9.20.0     |
@@ -74,7 +74,7 @@ For example, to check for outdated `@types/*` packages:
 bun outdated '@types/*'
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 | Package            | Current | Update | Latest |
 | ------------------ | ------- | ------ | ------ |
 | @types/bun (dev)   | 1.3.0   | 1.3.3  | 1.3.3 |
@@ -86,7 +86,7 @@ Or to exclude all `@types/*` packages:
 bun outdated '!@types/*'
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 | Package                        | Current | Update    | Latest     |
 | ------------------------------ | ------- | --------- | ---------- |
 | @sinclair/typebox              | 0.34.15 | 0.34.16   | 0.34.16    |
@@ -107,7 +107,7 @@ Use the `--filter` flag to check for outdated dependencies in a different worksp
 bun outdated --filter='@monorepo/types'
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 | Package            | Current | Update | Latest |
 | ------------------ | ------- | ------ | ------ |
 | tsup (dev)         | 8.3.5   | 8.3.6  | 8.3.6  |
@@ -120,7 +120,7 @@ You can pass multiple `--filter` flags to check multiple workspaces:
 bun outdated --filter @monorepo/types --filter @monorepo/cli
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 | Package                        | Current | Update | Latest     |
 | ------------------------------ | ------- | ------ | ---------- |
 | eslint (dev)                 	 | 8.57.1  | 8.57.1 | 9.20.0     |
@@ -137,7 +137,7 @@ You can also pass glob patterns to filter by workspace names:
 bun outdated --filter='@monorepo/{types,cli}'
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 | Package                        | Current | Update | Latest     |
 | ------------------------------ | ------- | ------ | ---------- |
 | eslint (dev)                   | 8.57.1  | 8.57.1 | 9.20.0     |
@@ -156,7 +156,7 @@ bun outdated --filter='@monorepo/{types,cli}'
 bun outdated -r
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 ┌────────────────────┬─────────┬─────────┬─────────┬────────────────────────────────┐
 │ Package            │ Current │ Update  │ Latest  │ Workspace                      │
 ├────────────────────┼─────────┼─────────┼─────────┼────────────────────────────────┤
@@ -194,7 +194,7 @@ bun outdated -r
 └────────────────────┴─────────┴─────────┴─────────┴────────────────────────────────┘
 ```
 
-***
+---
 
 ## CLI Usage
 

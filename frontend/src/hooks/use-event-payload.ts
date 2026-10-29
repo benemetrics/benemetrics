@@ -15,16 +15,18 @@ export function useEventPayload(eventId: string | undefined) {
     let alive = true;
     setLoading(true);
     setNotFound(false);
-    api["events"][eventId].get().then((res: { error?: unknown; data?: unknown; status?: number }) => {
-      if (!alive) return;
-      if (res.error) {
-        if ((res.status ?? 500) === 404) setNotFound(true);
-        setPayload(null);
-      } else {
-        setPayload(res.data as Record<string, unknown>);
-      }
-      setLoading(false);
-    });
+    api["events"][eventId]
+      .get()
+      .then((res: { error?: unknown; data?: unknown; status?: number }) => {
+        if (!alive) return;
+        if (res.error) {
+          if ((res.status ?? 500) === 404) setNotFound(true);
+          setPayload(null);
+        } else {
+          setPayload(res.data as Record<string, unknown>);
+        }
+        setLoading(false);
+      });
     return () => {
       alive = false;
     };

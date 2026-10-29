@@ -16,27 +16,29 @@ Session replays are recorded by the client SDK (via rrweb) and uploaded as `repl
 
 There is **no replay index in Postgres**. A replay session is identified by:
 
-| Field | Source |
-|-------|--------|
-| `replayId` | From `replay_event` item payload `replay_id` or error event `contexts.replay.replay_id` |
-| `projectId` | From the event's resolved app/project |
-| `appId` | From the event's resolved app |
-| Segments | Object store keys under `replays/<projectId>/<appId>/<replayId>/` |
+| Field       | Source                                                                                  |
+| ----------- | --------------------------------------------------------------------------------------- |
+| `replayId`  | From `replay_event` item payload `replay_id` or error event `contexts.replay.replay_id` |
+| `projectId` | From the event's resolved app/project                                                   |
+| `appId`     | From the event's resolved app                                                           |
+| Segments    | Object store keys under `replays/<projectId>/<appId>/<replayId>/`                       |
 
 ### Recording Segment (Object Store)
 
-| Property | Description |
-|----------|-------------|
+| Property        | Description                                                                     |
+| --------------- | ------------------------------------------------------------------------------- |
 | **Key pattern** | `replays/<projectId>/<appId>/<replayId>/<startedAtMs>-<messageId>-<index>.json` |
-| **Content** | rrweb event array (JSON) |
-| **Written by** | Ingestion offload (`offloadReplayItems`) |
-| **Read by** | `GET /api/admin/events/:eventId/replay/:replayId` |
-| **Backend** | S3 / RustFS via `S3_*` config (the object store is S3-required) |
+| **Content**     | rrweb event array (JSON)                                                        |
+| **Written by**  | Ingestion offload (`offloadReplayItems`)                                        |
+| **Read by**     | `GET /api/admin/events/:eventId/replay/:replayId`                               |
+| **Backend**     | S3 / RustFS via `S3_*` config (the object store is S3-required)                 |
 
 ### Offloaded Item Pointer (in Envelope)
 
 ```json
-{ "key": "replays/proj-123/app-456/replay-789/00001700000000000-msg-abc-0.json" }
+{
+  "key": "replays/proj-123/app-456/replay-789/00001700000000000-msg-abc-0.json"
+}
 ```
 
 Replaces the inline rrweb array when offload succeeds. Shape validated by readers: offloaded payload is an object with `key`; inline payload is an array.
@@ -46,6 +48,7 @@ Replaces the inline rrweb array when offload succeeds. Shape validated by reader
 ## 3. Ingestion Pipeline (Offload)
 
 ### Trigger
+
 - Envelope contains item with `header.type === "replay_recording"`
 
 ### Offload Process (`offloadReplayItems`)
@@ -60,6 +63,7 @@ Replaces the inline rrweb array when offload succeeds. Shape validated by reader
    - On failure/timeout: **keep payload inline**, log error, ingestion continues
 
 ### Key Sanitization
+
 - Object key parts sanitized: `[^A-Za-z0-9_-]` → `_`, max 128 chars
 
 ---
@@ -67,6 +71,7 @@ Replaces the inline rrweb array when offload succeeds. Shape validated by reader
 ## 4. Storage Backends
 
 ### S3-Compatible (Required)
+
 - Configured via `S3_BUCKET` (and `S3_ENDPOINT`, `S3_REGION`, credentials); `AWS_*` env vars as fallbacks
 - Bun's native S3 client (`backend/storage.ts` → `s3`), configured from the `S3_*` env at boot
 - Recommended: dedicated bucket `sentry-replays`
@@ -74,6 +79,7 @@ Replaces the inline rrweb array when offload succeeds. Shape validated by reader
 - The bucket must allow `GET`/`HEAD` from the UI origin (CORS): the browser fetches the presigned URLs directly. The compose `rustfs-init` applies a wildcard rule for local dev
 
 ### Backend Switching
+
 - The object store is configured from `S3_*` at boot; segment pointers stay backend-agnostic
 - Objects **must be migrated** when switching object stores
 
@@ -82,11 +88,13 @@ Replaces the inline rrweb array when offload succeeds. Shape validated by reader
 ## 5. Read Path (Playback Assembly)
 
 ### Endpoint
+
 ```
 GET /api/admin/events/:eventId/replay/:replayId?cursor=&limit=
 ```
 
 ### Auth
+
 - Admin token or read-granted provider identity (the `/api/admin/*` aggregator)
 - Scoped read: filters by the event's app visibility (404 if out of scope)
 
@@ -106,21 +114,20 @@ GET /api/admin/events/:eventId/replay/:replayId?cursor=&limit=
   "replayId": "string",
   "available": true,
   "expiresAt": "2026-01-15T10:30:00.000Z",
-  "segments": [
-    { "key": "...", "url": "https://…presigned…", "bytes": 8192 }
-  ],
+  "segments": [{ "key": "...", "url": "https://…presigned…", "bytes": 8192 }],
   "nextCursor": "replays/…/…json",
   "hasMore": true
 }
 ```
 
 ### Degradation (Never Fail the Issue Page)
-| Failure Mode | Response |
-|--------------|----------|
-| No replay link on event | Client renders the empty state (`replayId` null) |
-| Object listing fails | `available: false`, empty |
-| Invalid cursor | `400` |
-| Page bounds | default 10, max 50 segments per page; walk `nextCursor` |
+
+| Failure Mode            | Response                                                |
+| ----------------------- | ------------------------------------------------------- |
+| No replay link on event | Client renders the empty state (`replayId` null)        |
+| Object listing fails    | `available: false`, empty                               |
+| Invalid cursor          | `400`                                                   |
+| Page bounds             | default 10, max 50 segments per page; walk `nextCursor` |
 
 ---
 
@@ -132,16 +139,16 @@ The object store is **S3-required** (local dev runs RustFS through the same `S3_
 
 ## 7. Invariants (Must Not Break)
 
-| Invariant | Enforcement |
-|-----------|-------------|
-| Recording payloads never in Postgres | Offload runs before NATS publish; pointer replaces payload |
-| Ingestion never blocked by object store | 5s timeout; failure keeps payload inline |
-| Object store backend not recorded in pointer | Keys are backend-agnostic; readers resolve at read time |
-| Replay linked only via event metadata | No separate replay index; `replayId` from envelope |
-| Segment ordering by key | Keys embed the segment start ms, so listing is playback order |
-| Read bounds protect the API | 10 segments per page (max 50); `nextCursor` walks the session |
-| Storage failures degrade gracefully | `available: false` when listing fails; client shows the empty state |
-| Scoped reads filter by app visibility | `scopedViewFor` on event's app; 404 for out-of-scope |
+| Invariant                                    | Enforcement                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------- |
+| Recording payloads never in Postgres         | Offload runs before NATS publish; pointer replaces payload          |
+| Ingestion never blocked by object store      | 5s timeout; failure keeps payload inline                            |
+| Object store backend not recorded in pointer | Keys are backend-agnostic; readers resolve at read time             |
+| Replay linked only via event metadata        | No separate replay index; `replayId` from envelope                  |
+| Segment ordering by key                      | Keys embed the segment start ms, so listing is playback order       |
+| Read bounds protect the API                  | 10 segments per page (max 50); `nextCursor` walks the session       |
+| Storage failures degrade gracefully          | `available: false` when listing fails; client shows the empty state |
+| Scoped reads filter by app visibility        | `scopedViewFor` on event's app; 404 for out-of-scope                |
 
 ---
 

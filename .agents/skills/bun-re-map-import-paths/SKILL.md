@@ -18,7 +18,7 @@ Bun reads the `paths` field in your `tsconfig.json` to re-write import paths. Th
 }
 ```
 
-***
+---
 
 With the above `tsconfig.json`, the following imports will be re-written:
 
@@ -27,6 +27,6 @@ import { z } from "my-custom-name"; // imports from "zod"
 import { Button } from "@components/Button"; // imports from "./src/components/Button"
 ```
 
-***
+---
 
 See [Docs > Runtime > TypeScript](/runtime/typescript) for more information on using TypeScript with Bun.

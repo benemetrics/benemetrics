@@ -3,7 +3,20 @@ import { drizzle as pgliteDrizzle } from "drizzle-orm/pglite";
 import { migrate as pgliteMigrate } from "drizzle-orm/pglite/migrator";
 import { drizzle as pgDrizzle } from "drizzle-orm/bun-sql";
 import { migrate as pgMigrate } from "drizzle-orm/bun-sql/migrator";
-import { projects, apps, featureFlags, segments, releases, experimentAssignments, experimentMetrics, alertChannels, alertRules, alertIncidents, sourceMapTokens, sourceMaps } from "./schema/index";
+import {
+  projects,
+  apps,
+  featureFlags,
+  segments,
+  releases,
+  experimentAssignments,
+  experimentMetrics,
+  alertChannels,
+  alertRules,
+  alertIncidents,
+  sourceMapTokens,
+  sourceMaps,
+} from "./schema/index";
 
 type Database = ReturnType<typeof pgliteDrizzle>;
 
@@ -49,7 +62,8 @@ async function createPostgresDatabase(url: string): Promise<Database> {
 
 async function getDbInstance(): Promise<Database> {
   if (process.env.NODE_ENV === "test") return createTestDatabase();
-  if (process.env.DATABASE_URL) return createPostgresDatabase(process.env.DATABASE_URL);
+  if (process.env.DATABASE_URL)
+    return createPostgresDatabase(process.env.DATABASE_URL);
   return createDevDatabase();
 }
 
@@ -62,4 +76,17 @@ export async function closeDb(): Promise<void> {
   await client.close();
 }
 
-export { projects, apps, featureFlags, segments, releases, experimentAssignments, experimentMetrics, alertChannels, alertRules, alertIncidents, sourceMapTokens, sourceMaps };
+export {
+  projects,
+  apps,
+  featureFlags,
+  segments,
+  releases,
+  experimentAssignments,
+  experimentMetrics,
+  alertChannels,
+  alertRules,
+  alertIncidents,
+  sourceMapTokens,
+  sourceMaps,
+};

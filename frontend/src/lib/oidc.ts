@@ -13,19 +13,28 @@ const SCOPE = [
   "groups",
   ...(authEnv["OIDC_SCOPES"] ?? "").split(/\s+/),
 ]
-  .filter((scope, index, all) => scope.length > 0 && all.indexOf(scope) === index)
+  .filter(
+    (scope, index, all) => scope.length > 0 && all.indexOf(scope) === index,
+  )
   .join(" ");
 
 const ALLOW_INSECURE_HTTP = true;
 
-const configuration = ISSUER && CLIENT_ID && await client.discovery(
-  new URL(ISSUER), CLIENT_ID, undefined,
-  client.None(),
-  {
-    timeout: 10,
-    ...(ALLOW_INSECURE_HTTP ? { execute: [client.allowInsecureRequests] } : {}),
-  },
-);
+const configuration =
+  ISSUER &&
+  CLIENT_ID &&
+  (await client.discovery(
+    new URL(ISSUER),
+    CLIENT_ID,
+    undefined,
+    client.None(),
+    {
+      timeout: 10,
+      ...(ALLOW_INSECURE_HTTP
+        ? { execute: [client.allowInsecureRequests] }
+        : {}),
+    },
+  ));
 
 async function startOidcLogin(): Promise<void> {
   if (!configuration) return;
@@ -46,14 +55,15 @@ async function startOidcLogin(): Promise<void> {
   window.location.assign(url.href);
 }
 
-
 const refresh = async (refreshToken: string) => {
   if (!configuration) return;
   const tokens = await client.refreshTokenGrant(configuration, refreshToken);
-  await new Promise((res) => setTimeout(res, (tokens.expiresIn() ?? 1) * 1000 / 2));
+  await new Promise((res) =>
+    setTimeout(res, ((tokens.expiresIn() ?? 1) * 1000) / 2),
+  );
   setToken(tokens.id_token!);
-  refresh(tokens.refresh_token!)
-}
+  refresh(tokens.refresh_token!);
+};
 
 async function completeOidcLogin(): Promise<boolean> {
   if (!configuration) return false;
@@ -65,7 +75,7 @@ async function completeOidcLogin(): Promise<boolean> {
   const verifier = sessionStorage.getItem(VERIFIER_KEY);
   sessionStorage.removeItem(STATE_KEY);
   sessionStorage.removeItem(VERIFIER_KEY);
-  
+
   if (!code || !state || !verifier || state !== expectedState) {
     return false;
   }
@@ -79,9 +89,9 @@ async function completeOidcLogin(): Promise<boolean> {
       pkceCodeVerifier: verifier,
     },
   );
-  
-  history.replaceState(undefined, "", "/ui")
-  refresh(tokens.refresh_token!)
+
+  history.replaceState(undefined, "", "/ui");
+  refresh(tokens.refresh_token!);
   setToken(tokens.id_token!);
   return true;
 }
@@ -91,9 +101,7 @@ export async function bootstrapOidc(): Promise<void> {
   try {
     const completed = await completeOidcLogin();
     if (completed) return;
-    if (getToken()?.startsWith('bmn_')) return;
+    if (getToken()?.startsWith("bmn_")) return;
     await startOidcLogin();
-  } catch {
-
-  }
+  } catch {}
 }

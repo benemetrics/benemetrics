@@ -84,17 +84,17 @@ Computed in the ingest handler from normalized items (after `span → transactio
 
 ### Digest Fields
 
-| Field | Source |
-|-------|--------|
-| `eventId` | `payload.event_id` → envelope `event_id` → generated UUID |
-| `fingerprint` | Grouping protocol output |
-| `title` | Grouping protocol output |
-| `culprit` | Grouping protocol output |
-| `level` | Normalized lowercase |
-| `type` | `error` \| `message` |
-| `release` | Straight from payload, `null` when absent |
-| `environment` | Straight from payload, `null` when absent |
-| `user` | `user.id` → `user.email` → `user.username`, else `null` |
+| Field         | Source                                                    |
+| ------------- | --------------------------------------------------------- |
+| `eventId`     | `payload.event_id` → envelope `event_id` → generated UUID |
+| `fingerprint` | Grouping protocol output                                  |
+| `title`       | Grouping protocol output                                  |
+| `culprit`     | Grouping protocol output                                  |
+| `level`       | Normalized lowercase                                      |
+| `type`        | `error` \| `message`                                      |
+| `release`     | Straight from payload, `null` when absent                 |
+| `environment` | Straight from payload, `null` when absent                 |
+| `user`        | `user.id` → `user.email` → `user.username`, else `null`   |
 
 - The array is stringified when published — `issueEvents` is JSON **text** in the message — and parsed once by the consumer; the materialized view expands it with `JSONExtractArrayRaw`.
 - `issueEvents` is optional so messages published by a pre-digest instance still work during rollout: the consumer falls back to extracting digests from `envelopeItems`; the fallback is deleted when the digest lands everywhere.
@@ -146,23 +146,23 @@ WHERE app_id = :appId AND fingerprint = :fingerprint
 
 One row per fingerprint, unique `(app_id, fingerprint)`.
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | text PK | Generated UUID |
-| `app_id` | text | Indexed; the grouping boundary |
-| `fingerprint` | text | Grouping key |
-| `title` | text | Latest occurrence's title |
-| `status` | text | `unresolved` (default) / `resolved` |
-| `event_count` | integer | Increments per occurrence, guarded by NATS message id |
-| `user_count` | integer | Distinct users, synced from the issue index on a `sort=users` read |
-| `first_seen` / `last_seen` | timestamptz | ISO-8601 UTC strings, written at ingestion |
-| `latest_event_id` | text | NATS message id of the latest occurrence; enables UI drill-down |
-| `culprit` | text | Nullable |
-| `level` | text | Default `error`; updated on every occurrence (latest-writer-wins) |
-| `type` | text | `error \| message` |
-| `first_release` | text | Nullable, set once |
-| `last_release` | text | Nullable, latest |
-| `created_at` / `updated_at` | timestamptz | ISO-8601 UTC strings |
+| Column                      | Type        | Notes                                                              |
+| --------------------------- | ----------- | ------------------------------------------------------------------ |
+| `id`                        | text PK     | Generated UUID                                                     |
+| `app_id`                    | text        | Indexed; the grouping boundary                                     |
+| `fingerprint`               | text        | Grouping key                                                       |
+| `title`                     | text        | Latest occurrence's title                                          |
+| `status`                    | text        | `unresolved` (default) / `resolved`                                |
+| `event_count`               | integer     | Increments per occurrence, guarded by NATS message id              |
+| `user_count`                | integer     | Distinct users, synced from the issue index on a `sort=users` read |
+| `first_seen` / `last_seen`  | timestamptz | ISO-8601 UTC strings, written at ingestion                         |
+| `latest_event_id`           | text        | NATS message id of the latest occurrence; enables UI drill-down    |
+| `culprit`                   | text        | Nullable                                                           |
+| `level`                     | text        | Default `error`; updated on every occurrence (latest-writer-wins)  |
+| `type`                      | text        | `error \| message`                                                 |
+| `first_release`             | text        | Nullable, set once                                                 |
+| `last_release`              | text        | Nullable, latest                                                   |
+| `created_at` / `updated_at` | timestamptz | ISO-8601 UTC strings                                               |
 
 Indexes: `app_id`, `status`, unique `(app_id, fingerprint)`.
 
@@ -176,20 +176,20 @@ One row per event item, fed by a materialized view on the events engine table.
 
 ### Schema
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `messageId` | String | NATS message id |
-| `eventId` | String | Item event id — dedup key |
-| `projectId` | String | |
-| `appId` | String | |
-| `fingerprint` | String | Grouping key |
-| `title` | String | |
-| `level` | String | |
-| `type` | String | `error \| message` |
-| `release` | String | Nullable |
-| `environment` | String | Nullable |
-| `user` | String | Nullable |
-| `receivedAt` | DateTime64(3) | |
+| Column        | Type          | Notes                     |
+| ------------- | ------------- | ------------------------- |
+| `messageId`   | String        | NATS message id           |
+| `eventId`     | String        | Item event id — dedup key |
+| `projectId`   | String        |                           |
+| `appId`       | String        |                           |
+| `fingerprint` | String        | Grouping key              |
+| `title`       | String        |                           |
+| `level`       | String        |                           |
+| `type`        | String        | `error \| message`        |
+| `release`     | String        | Nullable                  |
+| `environment` | String        | Nullable                  |
+| `user`        | String        | Nullable                  |
+| `receivedAt`  | DateTime64(3) |                           |
 
 Engine: `ReplacingMergeTree()` ordered by `(appId, fingerprint, receivedAt, eventId)`. TTL matches raw events (one month default, configurable via Settings → Event retention). `FINAL` used on reads to collapse redeliveries by `eventId`.
 
@@ -200,17 +200,20 @@ Extracts `issueEvents` from the NATS engine table using `JSONExtractArrayRaw` + 
 ### Queries
 
 **Occurrences of an issue** (drill-down list, replaces browser re-fingerprinting):
+
 - Filter by `appId` + `fingerprint`, order by `receivedAt DESC`, paginated.
 
 **Issue stats** (bucketed):
+
 - `toStartOfInterval(receivedAt, INTERVAL step SECOND)` → `count()` + `uniqIf(user, user != '')`.
 
 **Issues seen in a release** (serves the `release:` query term):
+
 - `DISTINCT fingerprint` from `sentry_issue_events` for visible apps matching the release.
 
 **Retention**: The index is created with the same TTL as `sentry_events`. A Settings → Event retention change applies the new TTL to the index via `ALTER TABLE sentry_issue_events MODIFY TTL ...` — drill-down never outlives the raw events.
 
-**Dimension breakdowns — non-goal for now**: the index carries the occurrence's `level`, `user` and `tags` (JSON text) and nothing more. Browser/OS-style server-side breakdowns are deliberately not built: the SDKs do not consistently send them as tags, so an honest aggregate would mean adding parsed columns to the index (schema + MV + read). Add one only when a real breakdown needs it; `tag:` filtering (`JSONExtractString(tags, key)`) already covers whatever the SDKs *do* send.
+**Dimension breakdowns — non-goal for now**: the index carries the occurrence's `level`, `user` and `tags` (JSON text) and nothing more. Browser/OS-style server-side breakdowns are deliberately not built: the SDKs do not consistently send them as tags, so an honest aggregate would mean adding parsed columns to the index (schema + MV + read). Add one only when a real breakdown needs it; `tag:` filtering (`JSONExtractString(tags, key)`) already covers whatever the SDKs _do_ send.
 
 ---
 
@@ -218,13 +221,13 @@ Extracts `issueEvents` from the NATS engine table using `JSONExtractArrayRaw` + 
 
 ### 9.1 Endpoints (Prefix `/api/admin/issues`)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/` | Paginated issues. `meta.terms` echoes the parsed query. |
-| GET | `/:id` | One issue (Postgres). |
-| GET | `/:id/events` | The issue's occurrences from ClickHouse, newest first. |
-| GET | `/:id/stats` | Bucketed event/user counts from ClickHouse. |
-| PATCH | `/:id` | Resolve/reopen: `{ status: 'unresolved' \| 'resolved' }`. |
+| Method | Path          | Description                                               |
+| ------ | ------------- | --------------------------------------------------------- |
+| GET    | `/`           | Paginated issues. `meta.terms` echoes the parsed query.   |
+| GET    | `/:id`        | One issue (Postgres).                                     |
+| GET    | `/:id/events` | The issue's occurrences from ClickHouse, newest first.    |
+| GET    | `/:id/stats`  | Bucketed event/user counts from ClickHouse.               |
+| PATCH  | `/:id`        | Resolve/reopen: `{ status: 'unresolved' \| 'resolved' }`. |
 
 All are inside the admin guard; the scoped-read allowlist covers every issue GET, `/:id/events` and `/:id/stats` included. The list endpoint takes only `query`/`sort` (plus `cursor`/`limit`); `appId`/`projectId`/`status`/`q` are not part of the protocol.
 
@@ -257,32 +260,32 @@ text       := quoted | unquoted                (bare term = free text)
 
 ### 9.3 Term Semantics
 
-| Term | Values | Backing Store | Condition |
-|------|--------|---------------|-----------|
-| `is:` | `unresolved`, `resolved` | PG `status` | Equality. Absent ⇒ all statuses. |
-| `app:` | App id or exact name (ci) | PG `apps` | Resolves to app ids; multiple name matches union. Unknown ⇒ `404`. Intersected with caller's scope. |
-| `project:` | Project id or slug (ci) | PG `projects` | Resolves to the project's apps. |
-| `environment:` | Environment id or name (ci) | PG `environments` → `apps` | Resolves to apps created in matching environments. |
-| `level:` | `fatal`, `error`, `warning`, `info`, `debug` | CH `level` | Equality against **any occurrence's** level (the ClickHouse issue index; the projection keeps the latest occurrence's level). |
-| `user:` | the user id | CH `user` | Equality against **any occurrence's** user. |
-| `tag:` | `<key>:<value>` | CH `tags` | Equality against **any occurrence's** tag. |
-| `event.type:` | `error`, `message` | PG `type` | Equality. |
-| `release:` | Version string (ci) | CH issue index | Issues with ≥1 occurrence carrying that release **in any visible app** (fingerprint set from CH is the union across visible apps; `IN` filter). |
-| `firstSeen:` | Time | PG `first_seen` | See **Time Operators** below. |
-| `lastSeen:` | Time | PG `last_seen` | See **Time Operators** below. |
-| `timesSeen:` | Integer with `>`, `>=`, `<`, `<=`, `=` | PG `event_count` | Bare value = exact count. |
-| free text | Any atom | PG | Each token is an escaped `ILIKE %…%` over `title` **OR** `culprit` **OR** `fingerprint`; multiple tokens are **AND**ed. (OR across columns, AND across tokens.) |
+| Term           | Values                                       | Backing Store              | Condition                                                                                                                                                       |
+| -------------- | -------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `is:`          | `unresolved`, `resolved`                     | PG `status`                | Equality. Absent ⇒ all statuses.                                                                                                                                |
+| `app:`         | App id or exact name (ci)                    | PG `apps`                  | Resolves to app ids; multiple name matches union. Unknown ⇒ `404`. Intersected with caller's scope.                                                             |
+| `project:`     | Project id or slug (ci)                      | PG `projects`              | Resolves to the project's apps.                                                                                                                                 |
+| `environment:` | Environment id or name (ci)                  | PG `environments` → `apps` | Resolves to apps created in matching environments.                                                                                                              |
+| `level:`       | `fatal`, `error`, `warning`, `info`, `debug` | CH `level`                 | Equality against **any occurrence's** level (the ClickHouse issue index; the projection keeps the latest occurrence's level).                                   |
+| `user:`        | the user id                                  | CH `user`                  | Equality against **any occurrence's** user.                                                                                                                     |
+| `tag:`         | `<key>:<value>`                              | CH `tags`                  | Equality against **any occurrence's** tag.                                                                                                                      |
+| `event.type:`  | `error`, `message`                           | PG `type`                  | Equality.                                                                                                                                                       |
+| `release:`     | Version string (ci)                          | CH issue index             | Issues with ≥1 occurrence carrying that release **in any visible app** (fingerprint set from CH is the union across visible apps; `IN` filter).                 |
+| `firstSeen:`   | Time                                         | PG `first_seen`            | See **Time Operators** below.                                                                                                                                   |
+| `lastSeen:`    | Time                                         | PG `last_seen`             | See **Time Operators** below.                                                                                                                                   |
+| `timesSeen:`   | Integer with `>`, `>=`, `<`, `<=`, `=`       | PG `event_count`           | Bare value = exact count.                                                                                                                                       |
+| free text      | Any atom                                     | PG                         | Each token is an escaped `ILIKE %…%` over `title` **OR** `culprit` **OR** `fingerprint`; multiple tokens are **AND**ed. (OR across columns, AND across tokens.) |
 
 **Time Operators** (apply to `firstSeen:` and `lastSeen:`):
 
-| Operator | Bare absolute date (`YYYY-MM-DD`) | Bare relative (`-24h`) | With explicit operator |
-|----------|-----------------------------------|------------------------|------------------------|
-| (none) | That UTC day (`≥ day 00:00:00` AND `< day+1 00:00:00`) | `firstSeen:` at/after now−24h; `lastSeen:` at/before now−24h | — |
-| `>` | Strictly after day end | Strictly after now−24h | Strictly after |
-| `>=` | At or after day start | At or after now−24h | At or after |
-| `<` | Strictly before day start | Strictly before now−24h | Strictly before |
-| `<=` | At or before day end | At or before now−24h | At or before |
-| `=` | Exactly that UTC day | Exactly now−24h | Exactly |
+| Operator | Bare absolute date (`YYYY-MM-DD`)                      | Bare relative (`-24h`)                                       | With explicit operator |
+| -------- | ------------------------------------------------------ | ------------------------------------------------------------ | ---------------------- |
+| (none)   | That UTC day (`≥ day 00:00:00` AND `< day+1 00:00:00`) | `firstSeen:` at/after now−24h; `lastSeen:` at/before now−24h | —                      |
+| `>`      | Strictly after day end                                 | Strictly after now−24h                                       | Strictly after         |
+| `>=`     | At or after day start                                  | At or after now−24h                                          | At or after            |
+| `<`      | Strictly before day start                              | Strictly before now−24h                                      | Strictly before        |
+| `<=`     | At or before day end                                   | At or before now−24h                                         | At or before           |
+| `=`      | Exactly that UTC day                                   | Exactly now−24h                                              | Exactly                |
 
 Reserved for later (parsed keys that answer `400 Unsupported term`): `assigned:`, `bookmarked:`, `has:`, `url:`.
 
@@ -294,6 +297,7 @@ Reserved for later (parsed keys that answer `400 Unsupported term`): `assigned:`
 ### 9.5 Response Shapes
 
 **List** (`GET /api/admin/issues?query=is:unresolved app:checkout lastSeen:-24h&sort=frequent`):
+
 ```jsonc
 {
   "data": [
@@ -312,21 +316,38 @@ Reserved for later (parsed keys that answer `400 Unsupported term`): `assigned:`
 ```
 
 **Occurrences** (`GET /:id/events`):
+
 ```jsonc
 {
   "data": [
-    { "messageId": "...", "eventId": "...", "receivedAt": "...", "title": "...",
-      "level": "error", "release": "2.3.1", "environment": "production", "user": "u_123" }
-  ]
+    {
+      "messageId": "...",
+      "eventId": "...",
+      "receivedAt": "...",
+      "title": "...",
+      "level": "error",
+      "release": "2.3.1",
+      "environment": "production",
+      "user": "u_123",
+    },
+  ],
 }
 ```
 
 **Stats** (`GET /:id/stats?from=...&to=...&stepSeconds=...`):
+
 ```jsonc
 {
-  "from": "...", "to": "...", "stepSeconds": 3600,
-  "points": [ { "bucketStart": "...", "eventCount": 12, "userCount": 3 } ],
-  "totals": { "eventCount": 412, "userCount": 37, "firstSeen": "...", "lastSeen": "..." }
+  "from": "...",
+  "to": "...",
+  "stepSeconds": 3600,
+  "points": [{ "bucketStart": "...", "eventCount": 12, "userCount": 3 }],
+  "totals": {
+    "eventCount": 412,
+    "userCount": 37,
+    "firstSeen": "...",
+    "lastSeen": "...",
+  },
 }
 ```
 
@@ -446,29 +467,32 @@ documented as a non-goal in §8; everything else is decided.
 ```
 is:unresolved app:checkout level:error timesSeen:>100 lastSeen:-24h
 ```
+
 → status=unresolved ∧ appIds=[checkout] ∧ level='error' ∧ event_count>100 ∧ last_seen ≥ now−24h, sort `new`.
 
 ```
 !is:resolved release:"2.3.1 (build 4)" firstSeen:>2026-10-01 firstSeen:<2026-10-18
 ```
+
 → not status='resolved' ∧ fingerprint ∈ CH fingerprint set for that release ∧ `2026-10-01T00:00:00Z < first_seen < 2026-10-18T00:00:00Z` (two comparison terms).
 
 ```
 TypeError boom
 ```
+
 → title/culprit/fingerprint ILIKE `%TypeError%` AND ILIKE `%boom%` (escaped), newest first.
 
 ---
 
 ## Appendix B — Mapping to Sentry
 
-| Here | Sentry Counterpart | Source |
-|------|-------------------|--------|
-| `is:unresolved` / `is:resolved` | Issue stream `is:` token | Sentry issue search |
+| Here                                             | Sentry Counterpart              | Source                                             |
+| ------------------------------------------------ | ------------------------------- | -------------------------------------------------- |
+| `is:unresolved` / `is:resolved`                  | Issue stream `is:` token        | Sentry issue search                                |
 | Fingerprint rules (`{{ default }}`, crash frame) | Error Grouping (Fingerprinting) | `sentry-docs/01-error-tracking.md` §Error Grouping |
-| `timesSeen:>N` | `times-seen:` | Sentry issue search |
-| `firstSeen:` / `lastSeen:` (+ relative `-24h`) | `first-seen:` / `last-seen:` | Sentry issue search |
-| `release:` | `release:` | `sentry-docs/02-release-tracking.md` |
-| `level:` / `event.type:` | `level:` / `event.type:error` | `sentry-docs/07-protocol-spec.md` §Event Payload |
-| Digest fields (release, environment, user) | Event payload fields | `sentry-docs/07-protocol-spec.md` §Event Payload |
-| Resolve/reopen + regression alerts | Resolve → regression | `sentry-docs/06-alerting.md` |
+| `timesSeen:>N`                                   | `times-seen:`                   | Sentry issue search                                |
+| `firstSeen:` / `lastSeen:` (+ relative `-24h`)   | `first-seen:` / `last-seen:`    | Sentry issue search                                |
+| `release:`                                       | `release:`                      | `sentry-docs/02-release-tracking.md`               |
+| `level:` / `event.type:`                         | `level:` / `event.type:error`   | `sentry-docs/07-protocol-spec.md` §Event Payload   |
+| Digest fields (release, environment, user)       | Event payload fields            | `sentry-docs/07-protocol-spec.md` §Event Payload   |
+| Resolve/reopen + regression alerts               | Resolve → regression            | `sentry-docs/06-alerting.md`                       |

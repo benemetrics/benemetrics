@@ -63,8 +63,18 @@ describe("Hop 4: ClickHouse -> reads", () => {
     const oldest = crypto.randomUUID();
     const newest = crypto.randomUUID();
     const other = crypto.randomUUID();
-    await seedEvent(app, oldest, "seeded oldest", new Date(now - 120_000).toISOString());
-    await seedEvent(app, newest, "seeded newest", new Date(now - 60_000).toISOString());
+    await seedEvent(
+      app,
+      oldest,
+      "seeded oldest",
+      new Date(now - 120_000).toISOString(),
+    );
+    await seedEvent(
+      app,
+      newest,
+      "seeded newest",
+      new Date(now - 60_000).toISOString(),
+    );
     await seedEvent(
       { projectId: app.projectId, appId: secondApp.id },
       other,
@@ -85,9 +95,12 @@ describe("Hop 4: ClickHouse -> reads", () => {
     expect(newestItem.itemTypes).toEqual(["event"]);
 
     const scoped = (await (
-      await fetch(`${TEST_ORIGIN}/events?projectId=${app.projectId}&appId=${app.appId}&limit=10`, {
-        headers: ADMIN_HEADERS,
-      })
+      await fetch(
+        `${TEST_ORIGIN}/events?projectId=${app.projectId}&appId=${app.appId}&limit=10`,
+        {
+          headers: ADMIN_HEADERS,
+        },
+      )
     ).json()) as ListBody;
     expect(scoped.data).toHaveLength(2);
     expect(scoped.data.map((item) => item.id)).toEqual([newest, oldest]);
@@ -127,9 +140,12 @@ describe("Hop 4: ClickHouse -> reads", () => {
     expect(detail.event_id).toBe(newest);
     expect(detail.message).toBe("seeded newest");
 
-    const missing = await fetch(`${TEST_ORIGIN}/events/${crypto.randomUUID()}`, {
-      headers: ADMIN_HEADERS,
-    });
+    const missing = await fetch(
+      `${TEST_ORIGIN}/events/${crypto.randomUUID()}`,
+      {
+        headers: ADMIN_HEADERS,
+      },
+    );
     expect(missing.status).toBe(404);
   });
 });

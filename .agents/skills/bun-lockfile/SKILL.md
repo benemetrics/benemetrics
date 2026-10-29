@@ -34,19 +34,20 @@ To install without creating a lockfile:
 bun install --no-save
 ```
 
-To install a Yarn lockfile *in addition* to `bun.lock`.
+To install a Yarn lockfile _in addition_ to `bun.lock`.
 
 <CodeGroup>
   ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
   bun install --yarn
   ```
 
-  ```toml bunfig.toml icon="settings" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  [install.lockfile]
-  # whether to save a non-Bun lockfile alongside bun.lock
-  # only "yarn" is supported
-  print = "yarn"
-  ```
+```toml bunfig.toml icon="settings" theme={"theme":{"light":"github-light","dark":"dracula"}}
+[install.lockfile]
+# whether to save a non-Bun lockfile alongside bun.lock
+# only "yarn" is supported
+print = "yarn"
+```
+
 </CodeGroup>
 
 #### Text-based lockfile
@@ -59,8 +60,8 @@ More information about the new lockfile format can be found on [our blogpost](ht
 
 When running `bun install` in a project without a `bun.lock`, Bun automatically migrates existing lockfiles:
 
-* `yarn.lock` (v1)
-* `package-lock.json` (npm)
-* `pnpm-lock.yaml` (pnpm)
+- `yarn.lock` (v1)
+- `package-lock.json` (npm)
+- `pnpm-lock.yaml` (pnpm)
 
 The original lockfile is preserved and can be removed manually after verification.

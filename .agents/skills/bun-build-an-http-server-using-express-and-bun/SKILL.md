@@ -16,7 +16,7 @@ Express and other major Node.js HTTP libraries should work out of the box. Bun i
 bun add express
 ```
 
-***
+---
 
 To define a simple HTTP route and start a server with Express:
 
@@ -35,7 +35,7 @@ app.listen(port, () => {
 });
 ```
 
-***
+---
 
 To start the server on `localhost`:
 

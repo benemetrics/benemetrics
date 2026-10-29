@@ -28,6 +28,5 @@ export const alertDeadLetters = pgTable(
   }),
 );
 
-
 export type AlertDeadLetterRow = typeof alertDeadLetters.$inferSelect;
 export type AlertDeadLetterInsert = typeof alertDeadLetters.$inferInsert;

@@ -21,7 +21,7 @@ items below are documented in `docs/` (`docs/rate-limiting.md`,
       SDKs do not consistently send browser/OS as tags, so an honest aggregate
       would mean new parsed index columns (schema + MV + read). `docs/issues.md`
       §8 records the non-goal; `tag:` filtering already covers what the SDKs
-      *do* send, and `release:` breakdowns read the index today.
+      _do_ send, and `release:` breakdowns read the index today.
 
 ## Permissions — design follow-ups
 

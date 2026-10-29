@@ -1,9 +1,10 @@
 import { Elysia } from "elysia";
 import { badRequest, notFound } from "backend/errors";
 import { type as arktype } from "arktype";
-import { projectDAO, appDAO } from "db/dao/project";
+import { projectDAO } from "db/dao/project";
 import { resolveIdentity } from "../auth";
 import { projectsAndAppsPermissions } from "../permissions/engine";
+import { appDAO } from "db/dao/app";
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
@@ -12,9 +13,17 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
   .post(
     "/",
     async ({ body }) => {
-      const slug = (body.slug || body.name).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const slug = (body.slug || body.name)
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
       if (!slug) throw badRequest("Project slug could not be derived");
-      const project = await projectDAO.createUnique({ ...body, slug, description: body.description || "" });
+      const project = await projectDAO.createUnique({
+        ...body,
+        slug,
+        description: body.description || "",
+      });
       return { ...project, appCount: 0 };
     },
     {
@@ -28,11 +37,13 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
   .get(
     "/",
     async ({ query, perms: { projectIds } }) => {
-      return projectDAO.list({
-        cursor: query.cursor,
-        limit: query.limit,
-        ...(projectIds.length && { projectIds }),
-      });
+      return projectDAO.list(
+        {
+          cursor: query.cursor,
+          limit: query.limit,
+        },
+        { ...(projectIds.length && { projectIds }) },
+      );
     },
     {
       query: arktype({
@@ -41,16 +52,12 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
       }),
     },
   )
-  .group('/:id', 
-    { params: arktype({ id: "string.uuid" }) }, 
-    (project) => project
-      .get(
-        "/",
-        async ({ params: { id }, perms: { projectIds } }) => {
-          if (!projectIds.includes(id)) throw notFound("Project", id);
-          return projectDAO.findByIdOrThrow(id);
-        },
-      )
+  .group("/:id", { params: arktype({ id: "string.uuid" }) }, (project) =>
+    project
+      .get("/", async ({ params: { id }, perms: { projectIds } }) => {
+        if (!projectIds.includes(id)) throw notFound("Project", id);
+        return projectDAO.findByIdOrThrow(id);
+      })
       .delete("/", async ({ params: { id } }) => projectDAO.delete(id))
       .post(
         "/duplicate",
@@ -70,7 +77,11 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
         apps
           .get(
             "",
-            async ({ params: { id }, perms: { appIds }, query }) => appDAO.listByProject(id, { ...query, ...(appIds.length && { appIds }) }),
+            async ({ params: { id }, perms: { appIds }, query }) =>
+              appDAO.listByProject(id, {
+                ...query,
+                ...(appIds.length && { appIds }),
+              }),
             {
               query: arktype({
                 cursor: "string?",
@@ -80,13 +91,18 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
           )
           .post(
             "",
-            async ({ params: { id }, body }) => appDAO.create({ ...body, projectId: id, publicKey: crypto.randomUUID().replace(/-/g, "").slice(0, 32) }),
+            async ({ params: { id }, body }) =>
+              appDAO.create({
+                ...body,
+                projectId: id,
+                publicKey: crypto.randomUUID().replace(/-/g, "").slice(0, 32),
+              }),
             {
               body: arktype({
                 name: "string",
-                platform: "string?",
+                platform: "string",
               }),
             },
           ),
       ),
-  )
+  );

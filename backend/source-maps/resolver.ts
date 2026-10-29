@@ -165,9 +165,7 @@ interface Versioned<T> {
 const parsedMapCache = new Map<string, Versioned<ParsedSourceMap>>();
 const MAX_PARSED_CACHE = 100;
 
-export function parseMapCached(
-  artifact: SourceMapContent,
-): ParsedSourceMap {
+export function parseMapCached(artifact: SourceMapContent): ParsedSourceMap {
   const cached = parsedMapCache.get(artifact.id);
   if (cached && cached.createdAt === artifact.createdAt) return cached.value;
   const parsed = JSON.parse(artifact.mapJson) as ParsedSourceMap;
@@ -188,7 +186,8 @@ function decodedMappingsFor(
   const cached = decodedMappingsCache.get(artifact.id);
   if (cached && cached.createdAt === artifact.createdAt) return cached.value;
   const decoded = decodeMappings(map.mappings);
-  if (decodedMappingsCache.size >= MAX_PARSED_CACHE) decodedMappingsCache.clear();
+  if (decodedMappingsCache.size >= MAX_PARSED_CACHE)
+    decodedMappingsCache.clear();
   decodedMappingsCache.set(artifact.id, {
     createdAt: artifact.createdAt,
     value: decoded,

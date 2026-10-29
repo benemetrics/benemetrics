@@ -30,13 +30,7 @@ function tagsOf(record: Record<string, unknown>): Record<string, string> {
 }
 
 // Anything outside the known set (including a missing level) counts as an error.
-const KNOWN_LEVELS = new Set([
-  "fatal",
-  "error",
-  "warning",
-  "info",
-  "debug",
-]);
+const KNOWN_LEVELS = new Set(["fatal", "error", "warning", "info", "debug"]);
 
 function normalizeLevel(record: Record<string, unknown>): string {
   const raw = record.level;
@@ -117,7 +111,9 @@ export function extractMetricSamples(input: {
 
     const measurements = record.measurements;
     if (!measurements || typeof measurements !== "object") continue;
-    for (const [name, entry] of Object.entries(measurements as Record<string, unknown>)) {
+    for (const [name, entry] of Object.entries(
+      measurements as Record<string, unknown>,
+    )) {
       if (name === "duration" && hasDurationSentinel) continue;
       const value =
         entry && typeof entry === "object"

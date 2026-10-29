@@ -13,7 +13,12 @@
 
 import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
+import {
+  app,
+  ADMIN_TOKEN,
+  ADMIN_HEADERS,
+  ADMIN_TOKEN_RAW,
+} from "./test-helpers";
 
 const PROJECT_NAME = `E2E UI Project ${Date.now()}`;
 
@@ -30,7 +35,10 @@ function uniqueMarker(): string {
  * The Issues page polls the ingestion API every 2s, so no manual
  * reload is needed — we just wait for the next refresh cycle.
  */
-async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string> {
+async function waitForTextInUI(
+  text: string,
+  timeoutMs = 15000,
+): Promise<string> {
   const start = Date.now();
   let body = "";
   while (Date.now() - start < timeoutMs) {
@@ -40,7 +48,9 @@ async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string>
   }
   const shot = await view.screenshot();
   await Bun.write("/tmp/e2e-ui-failure.png", shot);
-  throw new Error(`"${text}" not found in admin UI within ${timeoutMs}ms. Page text: ${body.slice(0, 300)}`);
+  throw new Error(
+    `"${text}" not found in admin UI within ${timeoutMs}ms. Page text: ${body.slice(0, 300)}`,
+  );
 }
 
 /**
@@ -48,7 +58,10 @@ async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string>
  * The test provisions the project + app through the admin API before
  * ingesting, so the project is selected by its real name.
  */
-async function selectProjectInUI(name: string, timeoutMs = 20000): Promise<void> {
+async function selectProjectInUI(
+  name: string,
+  timeoutMs = 20000,
+): Promise<void> {
   const start = Date.now();
   let reloaded = false;
   while (Date.now() - start < timeoutMs) {
@@ -97,12 +110,18 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
       body: JSON.stringify({ name: PROJECT_NAME }),
     });
     const project = (await projectResponse.json()) as { id: string };
-    const appResponse = await fetch(`${baseUrl}/api/admin/projects/${project.id}/apps`, {
-      method: "POST",
-      headers: adminHeaders,
-      body: JSON.stringify({ name: "UI App" }),
-    });
-    const created = (await appResponse.json()) as { number: number; publicKey: string };
+    const appResponse = await fetch(
+      `${baseUrl}/api/admin/projects/${project.id}/apps`,
+      {
+        method: "POST",
+        headers: adminHeaders,
+        body: JSON.stringify({ name: "UI App" }),
+      },
+    );
+    const created = (await appResponse.json()) as {
+      number: number;
+      publicKey: string;
+    };
     dsn = `http://${created.publicKey}@${new URL(baseUrl).host}/${created.number}`;
 
     Sentry.init({

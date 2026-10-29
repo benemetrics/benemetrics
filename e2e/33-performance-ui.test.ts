@@ -10,7 +10,12 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
+import {
+  app,
+  ADMIN_TOKEN,
+  ADMIN_HEADERS,
+  ADMIN_TOKEN_RAW,
+} from "./test-helpers";
 import { insertClickHouseMetricSamples } from "../backend/clickhouse";
 const PROJECT_NAME = `Perf UI Project ${Date.now()}`;
 const MARKER = `GET /perf-ui-${Math.random().toString(36).slice(2, 8)}`;
@@ -18,7 +23,11 @@ const MARKER = `GET /perf-ui-${Math.random().toString(36).slice(2, 8)}`;
 let baseUrl = "";
 let view: Bun.WebView;
 
-async function adminRequest(method: string, path: string, body?: unknown): Promise<Response> {
+async function adminRequest(
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<Response> {
   return fetch(`${baseUrl}${path}`, {
     method,
     headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
@@ -26,7 +35,10 @@ async function adminRequest(method: string, path: string, body?: unknown): Promi
   });
 }
 
-async function waitForTextInUI(text: string, timeoutMs = 20000): Promise<string> {
+async function waitForTextInUI(
+  text: string,
+  timeoutMs = 20000,
+): Promise<string> {
   const start = Date.now();
   let body = "";
   while (Date.now() - start < timeoutMs) {
@@ -42,7 +54,10 @@ async function waitForTextInUI(text: string, timeoutMs = 20000): Promise<string>
 }
 
 /** Selects the fixture project in the sidebar switcher. */
-async function selectProjectInUI(name: string, timeoutMs = 20000): Promise<void> {
+async function selectProjectInUI(
+  name: string,
+  timeoutMs = 20000,
+): Promise<void> {
   const start = Date.now();
   let reloaded = false;
   while (Date.now() - start < timeoutMs) {
@@ -127,22 +142,57 @@ describe("Performance metrics UI", () => {
     const rows = [
       // Latency: five samples on the marked transaction (P50 300ms, P95 480ms).
       ...[100, 200, 300, 400, 500].map((value, index) =>
-        sample(project.id, appRecord.id, "duration", value, MARKER, 5 * 60_000 + index * 5_000),
+        sample(
+          project.id,
+          appRecord.id,
+          "duration",
+          value,
+          MARKER,
+          5 * 60_000 + index * 5_000,
+        ),
       ),
       // Web vitals: LCP P50 2200ms (good band).
       ...[2000, 2200, 2400].map((value, index) =>
-        sample(project.id, appRecord.id, "lcp", value, "pageload", 4 * 60_000 + index * 1_000),
+        sample(
+          project.id,
+          appRecord.id,
+          "lcp",
+          value,
+          "pageload",
+          4 * 60_000 + index * 1_000,
+        ),
       ),
       // Mobile vitals: cold start P50 3000ms (needs improvement) and a
       // 20-of-200 slow-frame window (10.0% derived rate).
       ...[2500, 3500].map((value, index) =>
-        sample(project.id, appRecord.id, "app_start_cold", value, "AppStart", 3 * 60_000 + index * 1_000),
+        sample(
+          project.id,
+          appRecord.id,
+          "app_start_cold",
+          value,
+          "AppStart",
+          3 * 60_000 + index * 1_000,
+        ),
       ),
       ...[100, 100].map((value, index) =>
-        sample(project.id, appRecord.id, "frames_total", value, "HomeScreen", 2 * 60_000 + index * 1_000),
+        sample(
+          project.id,
+          appRecord.id,
+          "frames_total",
+          value,
+          "HomeScreen",
+          2 * 60_000 + index * 1_000,
+        ),
       ),
       ...[10, 10].map((value, index) =>
-        sample(project.id, appRecord.id, "frames_slow", value, "HomeScreen", 2 * 60_000 + index * 1_000 + 500),
+        sample(
+          project.id,
+          appRecord.id,
+          "frames_slow",
+          value,
+          "HomeScreen",
+          2 * 60_000 + index * 1_000 + 500,
+        ),
       ),
       sample(project.id, appRecord.id, "stall_count", 2, "HomeScreen", 60_000),
     ];
@@ -152,7 +202,9 @@ describe("Performance metrics UI", () => {
     await view.navigate(`${baseUrl}/ui/overview`);
     // The UI has no built-in token fallback: log in by storing the admin
     // token in localStorage, then reload so the SPA picks it up.
-    await view.evaluate(`sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`);
+    await view.evaluate(
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
+    );
     await view.navigate(`${baseUrl}/ui/overview`);
     // The workspace auto-selects the first project; scope the fixture.
     await selectProjectInUI(PROJECT_NAME);

@@ -19,6 +19,7 @@ description: Use Prisma Postgres with Bun
     cd prisma-postgres-app
     bun init
     ```
+
   </Step>
 
   <Step title="Install Prisma dependencies">
@@ -28,6 +29,7 @@ description: Use Prisma Postgres with Bun
     bun add -d prisma
     bun add @prisma/client @prisma/extension-accelerate
     ```
+
   </Step>
 
   <Step title="Initialize Prisma with PostgreSQL">
@@ -58,6 +60,7 @@ description: Use Prisma Postgres with Bun
     	name  String? // [!code ++]
     } // [!code ++]
     ```
+
   </Step>
 
   <Step title="Configure database connection">
@@ -66,6 +69,7 @@ description: Use Prisma Postgres with Bun
     ```ini .env icon="settings" theme={"theme":{"light":"github-light","dark":"dracula"}}
     DATABASE_URL="postgresql://username:password@localhost:5432/mydb?schema=public"
     ```
+
   </Step>
 
   <Step title="Create and run database migration">
@@ -94,6 +98,7 @@ description: Use Prisma Postgres with Bun
 
     ✔ Generated Prisma Client (6.17.1) to ./generated in 18ms
     ```
+
   </Step>
 
   <Step title="Generate Prisma Client">
@@ -102,6 +107,7 @@ description: Use Prisma Postgres with Bun
     ```sh terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
     bunx --bun prisma generate
     ```
+
   </Step>
 
   <Step title="Initialize Prisma Client with Accelerate">
@@ -113,6 +119,7 @@ description: Use Prisma Postgres with Bun
 
     export const prisma = new PrismaClient().$extends(withAccelerate())
     ```
+
   </Step>
 
   <Step title="Create a test script">
@@ -133,6 +140,7 @@ description: Use Prisma Postgres with Bun
     const count = await prisma.user.count();
     console.log(`There are ${count} users in the database.`);
     ```
+
   </Step>
 
   <Step title="Run and test the application">
@@ -161,9 +169,10 @@ description: Use Prisma Postgres with Bun
     ```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
     There are 3 users in the database.
     ```
+
   </Step>
 </Steps>
 
-***
+---
 
 That's it! Now that you've set up Prisma Postgres using Bun, we recommend referring to the [official Prisma Postgres docs](https://www.prisma.io/docs/postgres) as you continue to develop your application.

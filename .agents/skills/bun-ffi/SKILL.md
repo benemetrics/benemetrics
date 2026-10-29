@@ -14,13 +14,13 @@ description: Use Bun's FFI module to efficiently call native libraries from Java
 
 Use the built-in `bun:ffi` module to efficiently call native libraries from JavaScript. It works with languages that support the C ABI (Zig, Rust, C/C++, C#, Nim, Kotlin, etc).
 
-***
+---
 
 ## dlopen usage (`bun:ffi`)
 
 To print the version number of `sqlite3`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { dlopen, FFIType, suffix } from "bun:ffi";
 
 // `suffix` is either "dylib", "so", or "dll" depending on the platform
@@ -45,7 +45,7 @@ const {
 console.log(`SQLite 3 version: ${sqlite3_libversion()}`);
 ```
 
-***
+---
 
 ## Performance
 
@@ -55,7 +55,7 @@ According to [our benchmark](https://github.com/oven-sh/bun/tree/main/bench/ffi)
 
 Bun generates & just-in-time compiles C bindings that efficiently convert values between JavaScript types and native types. To compile C, Bun embeds [TinyCC](https://github.com/TinyCC/tinycc), a small and fast C compiler.
 
-***
+---
 
 ## Usage
 
@@ -75,7 +75,7 @@ zig build-lib add.zig -dynamic -OReleaseFast
 
 Pass a path to the shared library and a map of symbols to import into `dlopen`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { dlopen, FFIType, suffix } from "bun:ffi";
 const { i32 } = FFIType;
 
@@ -93,7 +93,7 @@ console.log(lib.symbols.add(1, 2));
 
 ### Rust
 
-```rust  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```rust theme={"theme":{"light":"github-light","dark":"dracula"}}
 // add.rs
 #[no_mangle]
 pub extern "C" fn add(a: i32, b: i32) -> i32 {
@@ -103,13 +103,13 @@ pub extern "C" fn add(a: i32, b: i32) -> i32 {
 
 To compile:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 rustc --crate-type cdylib add.rs
 ```
 
 ### C++
 
-```c  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```c theme={"theme":{"light":"github-light","dark":"dracula"}}
 #include <cstdint>
 
 extern "C" int32_t add(int32_t a, int32_t b) {
@@ -119,11 +119,11 @@ extern "C" int32_t add(int32_t a, int32_t b) {
 
 To compile:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 zig build-lib add.cpp -dynamic -lc -lc++
 ```
 
-***
+---
 
 ## FFI types
 
@@ -154,7 +154,7 @@ The following `FFIType` values are supported.
 
 Note: `buffer` arguments must be a `TypedArray` or `DataView`.
 
-***
+---
 
 ## Strings
 
@@ -163,20 +163,20 @@ JavaScript strings and C-like strings are different, and that complicates using 
 <Accordion title="How are JavaScript strings and C strings different?">
   JavaScript strings:
 
-  * UTF16 (2 bytes per letter) or potentially latin1, depending on the JavaScript engine & what characters are used
-  * `length` stored separately
-  * Immutable
+- UTF16 (2 bytes per letter) or potentially latin1, depending on the JavaScript engine & what characters are used
+- `length` stored separately
+- Immutable
 
-  C strings:
+C strings:
 
-  * UTF8 (1 byte per letter), usually
-  * The length is not stored. Instead, the string is null-terminated which means the length is the index of the first `\0` it finds
-  * Mutable
+- UTF8 (1 byte per letter), usually
+- The length is not stored. Instead, the string is null-terminated which means the length is the index of the first `\0` it finds
+- Mutable
 </Accordion>
 
 To solve this, `bun:ffi` exports `CString` which extends JavaScript's built-in `String` to support null-terminated strings and add a few extras:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 class CString extends String {
   /**
    * Given a `ptr`, this will automatically search for the closing `\0` character and transcode from UTF-8 to UTF-16 if necessary.
@@ -198,19 +198,19 @@ class CString extends String {
 
 To convert from a null-terminated string pointer to a JavaScript string:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const myString = new CString(ptr);
 ```
 
 To convert from a pointer with a known length to a JavaScript string:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const myString = new CString(ptr, 0, byteLength);
 ```
 
 The `new CString()` constructor clones the C string, so it is safe to continue using `myString` after `ptr` has been freed.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 my_library_free(myString.ptr);
 
 // this is safe because myString is a clone
@@ -219,7 +219,7 @@ console.log(myString);
 
 When used in `returns`, `FFIType.cstring` coerces the pointer to a JavaScript `string`. When used in `args`, `FFIType.cstring` is identical to `ptr`.
 
-***
+---
 
 ## Function pointers
 
@@ -227,7 +227,7 @@ When used in `returns`, `FFIType.cstring` coerces the pointer to a JavaScript `s
 
 To call a function pointer from JavaScript, use `CFunction`. This is useful if using Node-API (napi) with Bun, and you've already loaded some symbols.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { CFunction } from "bun:ffi";
 
 let myNativeLibraryGetVersion = /* somehow, you got this pointer */
@@ -242,7 +242,7 @@ getVersion();
 
 If you have multiple function pointers, you can define them all at once with `linkSymbols`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { linkSymbols } from "bun:ffi";
 
 // getVersionPtrs defined elsewhere
@@ -271,16 +271,20 @@ const lib = linkSymbols({
   },
 });
 
-const [major, minor, patch] = [lib.symbols.getMajor(), lib.symbols.getMinor(), lib.symbols.getPatch()];
+const [major, minor, patch] = [
+  lib.symbols.getMajor(),
+  lib.symbols.getMinor(),
+  lib.symbols.getPatch(),
+];
 ```
 
-***
+---
 
 ## Callbacks
 
 Use `JSCallback` to create JavaScript callback functions that can be passed to C/FFI functions. The C/FFI function can call into the JavaScript/TypeScript code. This is useful for asynchronous code or whenever you want to call into JavaScript code from C.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { dlopen, JSCallback, ptr, CString } from "bun:ffi";
 
 const {
@@ -293,10 +297,13 @@ const {
   },
 });
 
-const searchIterator = new JSCallback((ptr, length) => /hello/.test(new CString(ptr, length)), {
-  returns: "bool",
-  args: ["ptr", "usize"],
-});
+const searchIterator = new JSCallback(
+  (ptr, length) => /hello/.test(new CString(ptr, length)),
+  {
+    returns: "bool",
+    args: ["ptr", "usize"],
+  },
+);
 
 const str = Buffer.from("wwutwutwutwutwutwutwutwutwutwutut\0", "utf8");
 if (search(ptr(str), searchIterator)) {
@@ -318,53 +325,57 @@ When you're done with a JSCallback, you should call `close()` to free the memory
 
 Currently, thread-safe callbacks work best when run from another thread that is running JavaScript code, i.e. a [`Worker`](/runtime/workers). A future version of Bun will enable them to be called from any thread (such as new threads spawned by your native library that Bun is not aware of).
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-const searchIterator = new JSCallback((ptr, length) => /hello/.test(new CString(ptr, length)), {
-  returns: "bool",
-  args: ["ptr", "usize"],
-  threadsafe: true, // Optional. Defaults to `false`
-});
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+const searchIterator = new JSCallback(
+  (ptr, length) => /hello/.test(new CString(ptr, length)),
+  {
+    returns: "bool",
+    args: ["ptr", "usize"],
+    threadsafe: true, // Optional. Defaults to `false`
+  },
+);
 ```
 
 <Note>
   **⚡️ Performance tip** — For a slight performance boost, directly pass `JSCallback.prototype.ptr` instead of the `JSCallback` object:
 
-  ```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-  const onResolve = new JSCallback(arg => arg === 42, {
-    returns: "bool",
-    args: ["i32"],
-  });
-  const setOnResolve = new CFunction({
-    returns: "bool",
-    args: ["function"],
-    ptr: myNativeLibrarySetOnResolve,
-  });
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+const onResolve = new JSCallback((arg) => arg === 42, {
+  returns: "bool",
+  args: ["i32"],
+});
+const setOnResolve = new CFunction({
+  returns: "bool",
+  args: ["function"],
+  ptr: myNativeLibrarySetOnResolve,
+});
 
-  // This code runs slightly faster:
-  setOnResolve(onResolve.ptr);
+// This code runs slightly faster:
+setOnResolve(onResolve.ptr);
 
-  // Compared to this:
-  setOnResolve(onResolve);
-  ```
+// Compared to this:
+setOnResolve(onResolve);
+```
+
 </Note>
 
-***
+---
 
 ## Pointers
 
-Bun represents [pointers](https://en.wikipedia.org/wiki/Pointer_\(computer_programming\)) as a `number` in JavaScript.
+Bun represents [pointers](<https://en.wikipedia.org/wiki/Pointer_(computer_programming)>) as a `number` in JavaScript.
 
 <Accordion title="How does a 64 bit pointer fit in a JavaScript number?">
   64-bit processors support up to [52 bits of addressable space](https://en.wikipedia.org/wiki/64-bit_computing#Limits_of_processors). [JavaScript numbers](https://en.wikipedia.org/wiki/Double-precision_floating-point_format#IEEE_754_double-precision_binary_floating-point_format:_binary64) support 53 bits of usable space, so that leaves us with about 11 bits of extra space.
 
-  **Why not `BigInt`?** `BigInt` is slower. JavaScript engines allocate a separate `BigInt` which means they can't fit into a regular JavaScript value. If you pass a `BigInt` to a function, it will be converted to a `number`
+**Why not `BigInt`?** `BigInt` is slower. JavaScript engines allocate a separate `BigInt` which means they can't fit into a regular JavaScript value. If you pass a `BigInt` to a function, it will be converted to a `number`
 
-  **Windows Note**: The Windows API type HANDLE does not represent a virtual address, and using `ptr` for it will *not* work as expected. Use `u64` to safely represent HANDLE values.
+**Windows Note**: The Windows API type HANDLE does not represent a virtual address, and using `ptr` for it will _not_ work as expected. Use `u64` to safely represent HANDLE values.
 </Accordion>
 
 To convert from a `TypedArray` to a pointer:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { ptr } from "bun:ffi";
 let myTypedArray = new Uint8Array(32);
 const myPtr = ptr(myTypedArray);
@@ -372,7 +383,7 @@ const myPtr = ptr(myTypedArray);
 
 To convert from a pointer to an `ArrayBuffer`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { ptr, toArrayBuffer } from "bun:ffi";
 let myTypedArray = new Uint8Array(32);
 const myPtr = ptr(myTypedArray);
@@ -384,7 +395,7 @@ myTypedArray = new Uint8Array(toArrayBuffer(myPtr, 0, 32), 0, 32);
 
 To read data from a pointer, you have two options. For long-lived pointers, use a `DataView`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { toArrayBuffer } from "bun:ffi";
 let myDataView = new DataView(toArrayBuffer(myPtr, 0, 32));
 
@@ -398,7 +409,7 @@ console.log(
 
 For short-lived pointers, use `read`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { read } from "bun:ffi";
 
 console.log(
@@ -440,11 +451,11 @@ If you want to track when a `TypedArray` is no longer in use from C or FFI, you 
 
 The expected signature is the same as in [JavaScriptCore's C API](https://developer.apple.com/documentation/javascriptcore/jstypedarraybytesdeallocator?language=objc):
 
-```c  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```c theme={"theme":{"light":"github-light","dark":"dracula"}}
 typedef void (*JSTypedArrayBytesDeallocator)(void *bytes, void *deallocatorContext);
 ```
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { toArrayBuffer } from "bun:ffi";
 
 // with a deallocatorContext:
@@ -485,7 +496,7 @@ If an API expects a pointer sized to something other than `char` or `u8`, make s
 
 Where FFI functions expect a pointer, pass a `TypedArray` of equivalent size:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { dlopen, FFIType } from "bun:ffi";
 
 const {
@@ -516,38 +527,39 @@ The [auto-generated wrapper](https://github.com/oven-sh/bun/blob/6a65631cbdcae75
 <Accordion title="Hardmode">
   If you don't want the automatic conversion or you want a pointer to a specific byte offset within the `TypedArray`, you can also directly get the pointer to the `TypedArray`:
 
-  ```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-  import { dlopen, FFIType, ptr } from "bun:ffi";
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+import { dlopen, FFIType, ptr } from "bun:ffi";
 
-  const {
-    symbols: { encode_png },
-  } = dlopen(myLibraryPath, {
-    encode_png: {
-      // FFIType's can be specified as strings too
-      args: ["ptr", "u32", "u32"],
-      returns: FFIType.ptr,
-    },
-  });
+const {
+  symbols: { encode_png },
+} = dlopen(myLibraryPath, {
+  encode_png: {
+    // FFIType's can be specified as strings too
+    args: ["ptr", "u32", "u32"],
+    returns: FFIType.ptr,
+  },
+});
 
-  const pixels = new Uint8ClampedArray(128 * 128 * 4);
-  pixels.fill(254);
+const pixels = new Uint8ClampedArray(128 * 128 * 4);
+pixels.fill(254);
 
-  // this returns a number! not a BigInt!
-  const myPtr = ptr(pixels);
+// this returns a number! not a BigInt!
+const myPtr = ptr(pixels);
 
-  const out = encode_png(
-    myPtr,
+const out = encode_png(
+  myPtr,
 
-    // dimensions:
-    128,
-    128,
-  );
-  ```
+  // dimensions:
+  128,
+  128,
+);
+```
+
 </Accordion>
 
 ### Reading pointers
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const out = encode_png(
   // pixels will be passed as a pointer
   pixels,

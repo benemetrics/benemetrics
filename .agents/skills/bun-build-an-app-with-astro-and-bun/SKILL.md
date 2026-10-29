@@ -11,7 +11,7 @@ Initialize a fresh Astro app with `bun create astro`. The `create-astro` package
 bun create astro
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 ╭─────╮  Houston:
 │ ◠ ◡ ◠  We're glad to have you on board.
 ╰─────╯
@@ -53,7 +53,7 @@ bun create astro
 ╰─────╯
 ```
 
-***
+---
 
 Start the dev server with `bunx`.
 
@@ -63,14 +63,14 @@ By default, Bun will run the dev server with Node.js. To use the Bun runtime ins
 bunx --bun astro dev
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
   🚀  astro  v3.1.4 started in 200ms
 
   ┃ Local    http://localhost:4321/
   ┃ Network  use --host to expose
 ```
 
-***
+---
 
 Open [http://localhost:4321](http://localhost:4321) with your browser to see the result. Astro will hot-reload your app as you edit your source files.
 
@@ -78,6 +78,6 @@ Open [http://localhost:4321](http://localhost:4321) with your browser to see the
   <img src="https://i.imgur.com/Dswiu6w.png" caption="An Astro v3 starter app running on Bun" />
 </Frame>
 
-***
+---
 
 Refer to the [Astro docs](https://docs.astro.build/en/getting-started/) for complete documentation.

@@ -1,15 +1,18 @@
 # React Email Integration
 
 ## What It Is
+
 Use React components to create emails. Direct JSX import via Bun.
 
 ## Installation
+
 ```bash
 bun add -d react-email
 bun add @react-email/components react react-dom
 ```
 
 Script in `package.json`:
+
 ```json
 {
   "scripts": {
@@ -21,7 +24,9 @@ Script in `package.json`:
 Email templates → `src/emails` directory.
 
 ### TypeScript
+
 Add to `tsconfig.json`:
+
 ```json
 {
   "compilerOptions": {
@@ -31,10 +36,11 @@ Add to `tsconfig.json`:
 ```
 
 ## Email Template
+
 ```tsx
 // src/emails/otp.tsx
-import * as React from 'react'
-import { Tailwind, Section, Text } from '@react-email/components'
+import * as React from "react";
+import { Tailwind, Section, Text } from "@react-email/components";
 
 export default function OTPEmail({ otp }: { otp: number }) {
   return (
@@ -57,10 +63,10 @@ export default function OTPEmail({ otp }: { otp: number }) {
         </Section>
       </Section>
     </Tailwind>
-  )
+  );
 }
 
-OTPEmail.PreviewProps = { otp: 123456 }
+OTPEmail.PreviewProps = { otp: 123456 };
 ```
 
 `@react-email/components` → email-client compatible (Gmail, Outlook). Tailwind support.
@@ -68,6 +74,7 @@ OTPEmail.PreviewProps = { otp: 123456 }
 `PreviewProps` → playground only.
 
 ## Preview
+
 ```bash
 bun email
 ```
@@ -75,9 +82,11 @@ bun email
 Opens browser with preview.
 
 ## Send Email
+
 Render with `react-dom/server`, submit via provider:
 
 ### Nodemailer
+
 ```typescript
 import { renderToStaticMarkup } from 'react-dom/server'
 import OTPEmail from './emails/otp'
@@ -107,6 +116,7 @@ const transporter = nodemailer.createTransport({
 ```
 
 ### Resend
+
 ```typescript
 import OTPEmail from './emails/otp'
 import Resend from 'resend'

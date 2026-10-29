@@ -43,12 +43,28 @@ function assertRuleAttributes(rules: Array<{ attribute: string }>): void {
 }
 
 // ── oidc surface: the admin reads and writes ─────────────
-export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags" })
+export const featureFlagRoutes = new Elysia({
+  prefix: "/api/admin/feature-flags",
+})
   .resolve(resolveAdminId)
   .post(
     "/",
     async ({ body }) => {
-      const variants = body.variants?.length ? body.variants : body.type === "boolean" ? [{ key: "control", name: "Control", value: false, weight: 50 }, { key: "treatment", name: "Treatment", value: true, weight: 50 }] : [{ key: "default", name: "Default", value: body.defaultValue, weight: 100 }];
+      const variants = body.variants?.length
+        ? body.variants
+        : body.type === "boolean"
+          ? [
+              { key: "control", name: "Control", value: false, weight: 50 },
+              { key: "treatment", name: "Treatment", value: true, weight: 50 },
+            ]
+          : [
+              {
+                key: "default",
+                name: "Default",
+                value: body.defaultValue,
+                weight: 100,
+              },
+            ];
       assertVariants(variants);
       assertRuleAttributes(body.targetingRules ?? []);
       // The flag belongs to a project, optionally narrowed to one of its apps.
@@ -59,8 +75,27 @@ export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags"
           throw badRequest("The app does not belong to the project");
         }
       }
-      const created = await featureFlagDAO.create({ key: body.key, name: body.name, description: body.description ?? "", type: body.type, defaultValue: String(body.defaultValue), variants: JSON.stringify(variants), targetingRules: JSON.stringify(body.targetingRules ?? []), segments: JSON.stringify(body.segments ?? []), status: "draft", rolloutPercentage: body.rolloutPercentage ?? 100, experiment: body.experiment != null ? JSON.stringify(body.experiment) : null, projectId: body.projectId, appId: body.appId ?? null });
-      await publishFlagChange({ type: "create", flagKey: created.key, flag: created });
+      const created = await featureFlagDAO.create({
+        key: body.key,
+        name: body.name,
+        description: body.description ?? "",
+        type: body.type,
+        defaultValue: String(body.defaultValue),
+        variants: JSON.stringify(variants),
+        targetingRules: JSON.stringify(body.targetingRules ?? []),
+        segments: JSON.stringify(body.segments ?? []),
+        status: "draft",
+        rolloutPercentage: body.rolloutPercentage ?? 100,
+        experiment:
+          body.experiment != null ? JSON.stringify(body.experiment) : null,
+        projectId: body.projectId,
+        appId: body.appId ?? null,
+      });
+      await publishFlagChange({
+        type: "create",
+        flagKey: created.key,
+        flag: created,
+      });
       return created;
     },
     {
@@ -85,7 +120,15 @@ export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags"
     async ({ query }) => {
       if (query.projectId) await projectDAO.findByIdOrThrow(query.projectId);
       if (query.appId) await appDAO.findByIdOrThrow(query.appId);
-      return featureFlagDAO.list({ cursor: query.cursor, limit: query.limit, status: query.status, type: query.type, search: query.search, projectId: query.projectId ?? null, appId: query.appId ?? null });
+      return featureFlagDAO.list({
+        cursor: query.cursor,
+        limit: query.limit,
+        status: query.status,
+        type: query.type,
+        search: query.search,
+        projectId: query.projectId ?? null,
+        appId: query.appId ?? null,
+      });
     },
     {
       query: arktype({
@@ -99,34 +142,57 @@ export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags"
       }),
     },
   )
-  .get("/:id", async ({ params: { id } }) => featureFlagDAO.findByIdOrThrow(id), {
-    params: arktype({ id: "string.uuid" }),
-  })
+  .get(
+    "/:id",
+    async ({ params: { id } }) => featureFlagDAO.findByIdOrThrow(id),
+    {
+      params: arktype({ id: "string.uuid" }),
+    },
+  )
   .patch(
     "/:id",
     async ({ params: { id }, body }) => {
       if (body.variants !== undefined) assertVariants(body.variants);
-      if (body.targetingRules !== undefined) assertRuleAttributes(body.targetingRules);
+      if (body.targetingRules !== undefined)
+        assertRuleAttributes(body.targetingRules);
       // Only user-facing configuration is patchable; internal columns
       // (id, createdAt, updatedAt) cannot be set by the client. Status
       // changes go through /:id/status.
-      const { variants, targetingRules, segments, experiment, defaultValue, ...passthrough } = body;
+      const {
+        variants,
+        targetingRules,
+        segments,
+        experiment,
+        defaultValue,
+        ...passthrough
+      } = body;
       const updated = await featureFlagDAO.updateOrThrow(id, {
         ...passthrough,
         ...(defaultValue !== undefined
           ? { defaultValue: String(defaultValue) }
           : {}),
-        ...(variants !== undefined ? { variants: JSON.stringify(variants) } : {}),
+        ...(variants !== undefined
+          ? { variants: JSON.stringify(variants) }
+          : {}),
         ...(targetingRules !== undefined
           ? { targetingRules: JSON.stringify(targetingRules) }
           : {}),
-        ...(segments !== undefined ? { segments: JSON.stringify(segments) } : {}),
+        ...(segments !== undefined
+          ? { segments: JSON.stringify(segments) }
+          : {}),
         ...(experiment !== undefined
-          ? { experiment: experiment == null ? null : JSON.stringify(experiment) }
+          ? {
+              experiment:
+                experiment == null ? null : JSON.stringify(experiment),
+            }
           : {}),
         updatedAt: new Date().toISOString(),
       });
-      await publishFlagChange({ type: "update", flagKey: updated.key, flag: updated });
+      await publishFlagChange({
+        type: "update",
+        flagKey: updated.key,
+        flag: updated,
+      });
       return updated;
     },
     {
@@ -152,8 +218,15 @@ export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags"
       if (current.status === "archived" && body.status !== "archived") {
         throw badRequest("Archived flags cannot change status");
       }
-      const updated = await featureFlagDAO.updateOrThrow(id, { status: body.status, updatedAt: new Date().toISOString() });
-      await publishFlagChange({ type: "status", flagKey: updated.key, flag: updated });
+      const updated = await featureFlagDAO.updateOrThrow(id, {
+        status: body.status,
+        updatedAt: new Date().toISOString(),
+      });
+      await publishFlagChange({
+        type: "status",
+        flagKey: updated.key,
+        flag: updated,
+      });
       return updated;
     },
     {
@@ -166,7 +239,8 @@ export const featureFlagRoutes = new Elysia({ prefix: "/api/admin/feature-flags"
     async ({ params: { id } }) => {
       const flag = await featureFlagDAO.findById(id);
       if (!flag) return { success: true };
-      if (flag.status !== "draft") throw badRequest("Only draft flags can be deleted");
+      if (flag.status !== "draft")
+        throw badRequest("Only draft flags can be deleted");
       await featureFlagDAO.delete(id);
       await publishFlagChange({ type: "delete", flagKey: flag.key });
       return { success: true };

@@ -35,7 +35,6 @@ process.env.S3_ACCESS_KEY_ID ??= "rustfsadmin";
 process.env.S3_SECRET_ACCESS_KEY ??= "rustfsadmin";
 process.env.S3_REGION ??= "us-east-1";
 
-
 // Bun's WebView leaves its Chrome profile in the temp directory; a suite
 // leaves hundreds behind, and a full temp filesystem makes Chrome abort on
 // start. The profiles are per-run scratch space, so they are cleared

@@ -92,7 +92,10 @@ function buildEnvelope(
   for (const item of items) {
     const payloadText = JSON.stringify(item.payload);
     lines.push(
-      JSON.stringify({ ...item.header, length: Buffer.byteLength(payloadText, "utf8") }),
+      JSON.stringify({
+        ...item.header,
+        length: Buffer.byteLength(payloadText, "utf8"),
+      }),
     );
     lines.push(payloadText);
   }
@@ -179,7 +182,10 @@ describe("Replay segment offload to the S3-compatible object store", () => {
           payload: replayEvent,
         },
         {
-          header: { type: "replay_recording", content_type: "application/json" },
+          header: {
+            type: "replay_recording",
+            content_type: "application/json",
+          },
           payload: recording,
         },
       ]),
@@ -200,17 +206,18 @@ describe("Replay segment offload to the S3-compatible object store", () => {
       header: { type: string };
       payload: unknown;
     }>;
-    expect(storedItems.find((item) => item.header.type === "replay_event")!.payload).toEqual(
-      replayEvent,
-    );
     expect(
-      storedItems.find((item) => item.header.type === "replay_recording")!.payload,
+      storedItems.find((item) => item.header.type === "replay_event")!.payload,
+    ).toEqual(replayEvent);
+    expect(
+      storedItems.find((item) => item.header.type === "replay_recording")!
+        .payload,
     ).toEqual({ key });
 
     // The events API still serves the row: list summary + detail metadata.
-    const list = await apiGet<{ data: Array<{ id: string; itemTypes: string[] }> }>(
-      `/events?appId=${testServer.appId}`,
-    );
+    const list = await apiGet<{
+      data: Array<{ id: string; itemTypes: string[] }>;
+    }>(`/events?appId=${testServer.appId}`);
     expect(list.data.find((row) => row.id === eventId)?.itemTypes).toEqual([
       "replay_event",
       "replay_recording",
@@ -255,7 +262,10 @@ describe("Replay segment offload to the S3-compatible object store", () => {
           },
         },
         {
-          header: { type: "replay_recording", content_type: "application/json" },
+          header: {
+            type: "replay_recording",
+            content_type: "application/json",
+          },
           payload: recording,
         },
       ]),
@@ -279,7 +289,10 @@ describe("Replay segment offload to the S3-compatible object store", () => {
     const response = await sendEnvelope(
       buildEnvelope({ event_id: eventId, sent_at: new Date().toISOString() }, [
         {
-          header: { type: "replay_recording", content_type: "application/json" },
+          header: {
+            type: "replay_recording",
+            content_type: "application/json",
+          },
           payload: recording,
         },
       ]),
@@ -307,7 +320,10 @@ describe("Replay segment offload to the S3-compatible object store", () => {
 
     const response = await sendEnvelope(
       buildEnvelope({ event_id: eventId, sent_at: new Date().toISOString() }, [
-        { header: { type: "event", content_type: "application/json" }, payload: event },
+        {
+          header: { type: "event", content_type: "application/json" },
+          payload: event,
+        },
       ]),
     );
     expect(response.status).toBe(200);
@@ -329,26 +345,42 @@ describe("Replay segment offload to the S3-compatible object store", () => {
     // order is only correct because the key embeds the segment start.
     // Random ids keep the test independent of ClickHouse rows from earlier
     // runs (events are fetched by id).
-    const [lateId, earlyId] = [crypto.randomUUID(), crypto.randomUUID()].sort() as [
-      string,
-      string,
-    ];
+    const [lateId, earlyId] = [
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+    ].sort() as [string, string];
     const earlyStart = START_MS;
     const lateStart = START_MS + 30_000;
 
     const sendRecording = (messageId: string, startMs: number, label: string) =>
       sendEnvelope(
-        buildEnvelope({ event_id: messageId, sent_at: new Date().toISOString() }, [
-          { header: { type: "replay_event", content_type: "application/json" }, payload: replayEventPayload(replayId) },
-          {
-            header: { type: "replay_recording", content_type: "application/json" },
-            payload: replayRecording(startMs, label),
-          },
-        ]),
+        buildEnvelope(
+          { event_id: messageId, sent_at: new Date().toISOString() },
+          [
+            {
+              header: {
+                type: "replay_event",
+                content_type: "application/json",
+              },
+              payload: replayEventPayload(replayId),
+            },
+            {
+              header: {
+                type: "replay_recording",
+                content_type: "application/json",
+              },
+              payload: replayRecording(startMs, label),
+            },
+          ],
+        ),
       );
 
-    expect((await sendRecording(earlyId, earlyStart, "checkout")).status).toBe(200);
-    expect((await sendRecording(lateId, lateStart, "thank-you")).status).toBe(200);
+    expect((await sendRecording(earlyId, earlyStart, "checkout")).status).toBe(
+      200,
+    );
+    expect((await sendRecording(lateId, lateStart, "thank-you")).status).toBe(
+      200,
+    );
 
     const first = await waitForReplay(earlyId, replayId, "?limit=1");
     expect(first.segments).toHaveLength(1);
@@ -369,17 +401,25 @@ describe("Replay segment offload to the S3-compatible object store", () => {
     expect(second.nextCursor).toBeNull();
 
     // The presigned URLs carry the segments in the same order.
-    const earlyEvents = (await (await fetch(first.segments[0]!.url)).json()) as Array<{
+    const earlyEvents = (await (
+      await fetch(first.segments[0]!.url)
+    ).json()) as Array<{
       data?: { texts?: string };
     }>;
-    const lateEvents = (await (await fetch(second.segments[0]!.url)).json()) as Array<{
+    const lateEvents = (await (
+      await fetch(second.segments[0]!.url)
+    ).json()) as Array<{
       data?: { texts?: string };
     }>;
     expect(earlyEvents[2]!.data?.texts).toBe("checkout");
     expect(lateEvents[2]!.data?.texts).toBe("thank-you");
 
     // A cursor outside this replay's prefix is rejected.
-    const invalid = await replayRequest(earlyId, replayId, "?cursor=replays/other");
+    const invalid = await replayRequest(
+      earlyId,
+      replayId,
+      "?cursor=replays/other",
+    );
     expect(invalid.status).toBe(400);
   }, 30000);
 
@@ -392,12 +432,18 @@ describe("Replay segment offload to the S3-compatible object store", () => {
       const recording = replayRecording();
 
       const response = await sendEnvelope(
-        buildEnvelope({ event_id: eventId, sent_at: new Date().toISOString() }, [
-          {
-            header: { type: "replay_recording", content_type: "application/json" },
-            payload: recording,
-          },
-        ]),
+        buildEnvelope(
+          { event_id: eventId, sent_at: new Date().toISOString() },
+          [
+            {
+              header: {
+                type: "replay_recording",
+                content_type: "application/json",
+              },
+              payload: recording,
+            },
+          ],
+        ),
       );
       expect(response.status).toBe(200);
 

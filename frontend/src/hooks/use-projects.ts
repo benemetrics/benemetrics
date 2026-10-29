@@ -32,15 +32,17 @@ export function useProjects() {
 
   useEffect(() => {
     let alive = true;
-    api.api.admin.projects.get({ query: { limit: PAGE_SIZE } }).then((res: { error?: unknown; data?: unknown; status?: number }) => {
-      if (!alive) return;
-      if (res.error) {
-        setError((res as { status?: number }).status ?? 500);
-        setProjects(null);
-        return;
-      }
-      setProjects((res.data as { data: ProjectRecord[] }).data);
-    });
+    api.api.admin.projects
+      .get({ query: { limit: PAGE_SIZE } })
+      .then((res: { error?: unknown; data?: unknown; status?: number }) => {
+        if (!alive) return;
+        if (res.error) {
+          setError((res as { status?: number }).status ?? 500);
+          setProjects(null);
+          return;
+        }
+        setProjects((res.data as { data: ProjectRecord[] }).data);
+      });
     return () => {
       alive = false;
     };
@@ -59,12 +61,24 @@ interface ProjectAppIssues {
 // than one page — the UI renders "≥" instead of an invented total.
 async function openIssuesForApp(appId: string): Promise<ProjectAppIssues> {
   const res = await api["api/admin/issues"].get({
-    query: { query: `app:${appId} is:unresolved`, sort: "new", limit: PAGE_SIZE },
+    query: {
+      query: `app:${appId} is:unresolved`,
+      sort: "new",
+      limit: PAGE_SIZE,
+    },
   });
   if (res.error) return { unresolvedCount: null, eventCount: 0 };
-  const issues: Array<{ eventCount: number }> = (res.data as { data: Array<{ eventCount: number }> }).data;
+  const issues: Array<{ eventCount: number }> = (
+    res.data as { data: Array<{ eventCount: number }> }
+  ).data;
   const unresolvedCount = issues.length >= PAGE_SIZE ? null : issues.length;
-  return { unresolvedCount, eventCount: issues.reduce((s: number, i: { eventCount: number }) => s + i.eventCount, 0) };
+  return {
+    unresolvedCount,
+    eventCount: issues.reduce(
+      (s: number, i: { eventCount: number }) => s + i.eventCount,
+      0,
+    ),
+  };
 }
 
 export interface ProjectDetail extends ProjectRecord {
@@ -82,30 +96,35 @@ export function useProject(projectId: string | undefined) {
     let alive = true;
     setDetail(null);
     setNotFound(false);
-    api["api/admin/projects"][projectId].get().then(async (res: { error?: unknown; data?: unknown }) => {
-      if (!alive) return;
-      if (res.error) {
-        setNotFound(true);
-        return;
-      }
-      const { data } = res;
-      // Route-handler returns don't flow typed through this composed route
-      // tree, so the read data is declared here instead of trusted implicitly.
-      const project = data as ProjectRecord;
-      const appList = (data as { apps: AppRecord[] }).apps;
-      const apps = await Promise.all(
-        appList.map(async (a) => ({ ...a, ...(await openIssuesForApp(a.id)) })),
-      );
-      if (!alive) return;
-      setDetail({
-        ...project,
-        apps: apps.map(({ unresolvedCount, eventCount, ...app }) => ({
-          ...app,
-          unresolvedCount,
-          events: eventCount,
-        })),
+    api["api/admin/projects"][projectId]
+      .get()
+      .then(async (res: { error?: unknown; data?: unknown }) => {
+        if (!alive) return;
+        if (res.error) {
+          setNotFound(true);
+          return;
+        }
+        const { data } = res;
+        // Route-handler returns don't flow typed through this composed route
+        // tree, so the read data is declared here instead of trusted implicitly.
+        const project = data as ProjectRecord;
+        const appList = (data as { apps: AppRecord[] }).apps;
+        const apps = await Promise.all(
+          appList.map(async (a) => ({
+            ...a,
+            ...(await openIssuesForApp(a.id)),
+          })),
+        );
+        if (!alive) return;
+        setDetail({
+          ...project,
+          apps: apps.map(({ unresolvedCount, eventCount, ...app }) => ({
+            ...app,
+            unresolvedCount,
+            events: eventCount,
+          })),
+        });
       });
-    });
     return () => {
       alive = false;
     };
@@ -122,10 +141,14 @@ export function useChannels(projectId: string | undefined) {
   useEffect(() => {
     if (!projectId) return;
     let alive = true;
-    api["api/admin/alerting"]["channels"].get({ query: { projectId, limit: PAGE_SIZE } }).then((res: { error?: unknown; data?: unknown }) => {
-      if (!alive) return;
-      setChannels(res.error ? [] : (res.data as { data: ChannelRecord[] }).data);
-    });
+    api["api/admin/alerting"]["channels"]
+      .get({ query: { projectId, limit: PAGE_SIZE } })
+      .then((res: { error?: unknown; data?: unknown }) => {
+        if (!alive) return;
+        setChannels(
+          res.error ? [] : (res.data as { data: ChannelRecord[] }).data,
+        );
+      });
     return () => {
       alive = false;
     };

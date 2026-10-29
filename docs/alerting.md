@@ -14,11 +14,11 @@ The alerting system lets admins configure **channels** (delivery endpoints) and 
 
 ## 2. Trigger Taxonomy
 
-| Trigger | Source | Evaluation | Cooldown | Incident Lifecycle |
-|---------|--------|------------|----------|-------------------|
-| `threshold` | Metric sweeper | Periodic (every `ALERT_EVALUATION_INTERVAL_MS`, default 60s) | Per-rule (`cooldownSeconds`); suppresses re-notification for the cooldown period after a trigger | `firing` while breaching → `resolved` when metric recovers (via `resolveOpen`) |
-| `new_issue` | Ingestion (`trackIssuesForEvent`) | Immediate, once per fingerprint | Per-issue, per-rule (`cooldownSeconds`); recorded `resolved` immediately | One-shot: `resolved` at creation (nothing to recover) |
-| `regression` | Ingestion (`trackIssuesForEvent`) | Immediate, once per fingerprint | Per-issue, per-rule (`cooldownSeconds`); recorded `resolved` immediately | One-shot: `resolved` at creation |
+| Trigger      | Source                            | Evaluation                                                   | Cooldown                                                                                         | Incident Lifecycle                                                             |
+| ------------ | --------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `threshold`  | Metric sweeper                    | Periodic (every `ALERT_EVALUATION_INTERVAL_MS`, default 60s) | Per-rule (`cooldownSeconds`); suppresses re-notification for the cooldown period after a trigger | `firing` while breaching → `resolved` when metric recovers (via `resolveOpen`) |
+| `new_issue`  | Ingestion (`trackIssuesForEvent`) | Immediate, once per fingerprint                              | Per-issue, per-rule (`cooldownSeconds`); recorded `resolved` immediately                         | One-shot: `resolved` at creation (nothing to recover)                          |
+| `regression` | Ingestion (`trackIssuesForEvent`) | Immediate, once per fingerprint                              | Per-issue, per-rule (`cooldownSeconds`); recorded `resolved` immediately                         | One-shot: `resolved` at creation                                               |
 
 ---
 
@@ -26,14 +26,14 @@ The alerting system lets admins configure **channels** (delivery endpoints) and 
 
 All threshold metrics are computed from **ClickHouse metric samples** (sentinel counts and measurement quantiles), except `new_issue_count` which is counted in Postgres (`issues` table). A ClickHouse failure rejects the evaluation — the work queue logs it and the tick is skipped, so a CH outage pauses alerting instead of firing on zeros.
 
-| Metric | Source | Description |
-|--------|--------|-------------|
-| `event_count` | ClickHouse sentinel | Total events ingested |
-| `error_count` | ClickHouse sentinel | Events with level = `error` |
-| `fatal_count` | ClickHouse sentinel | Events with level = `fatal` |
-| `new_issue_count` | Postgres (`issues`) | Distinct new fingerprints in window |
-| `latency_p95` | ClickHouse quantile | 95th percentile of measurement samples |
-| `latency_p99` | ClickHouse quantile | 99th percentile of measurement samples |
+| Metric            | Source              | Description                            |
+| ----------------- | ------------------- | -------------------------------------- |
+| `event_count`     | ClickHouse sentinel | Total events ingested                  |
+| `error_count`     | ClickHouse sentinel | Events with level = `error`            |
+| `fatal_count`     | ClickHouse sentinel | Events with level = `fatal`            |
+| `new_issue_count` | Postgres (`issues`) | Distinct new fingerprints in window    |
+| `latency_p95`     | ClickHouse quantile | 95th percentile of measurement samples |
+| `latency_p99`     | ClickHouse quantile | 99th percentile of measurement samples |
 
 **Measurement name** for latency metrics (`latency_p95`, `latency_p99`) defaults to `duration` (from transaction `measurements.duration.value`). Configurable per rule via `measurement` field. Other metrics ignore this field.
 
@@ -45,9 +45,9 @@ All threshold metrics are computed from **ClickHouse metric samples** (sentinel 
 
 Rules and channels are scoped to **Project** and **Environment** — not App.
 
-| Scope | Description |
-|-------|-------------|
-| **Project** (`projectId`, `environmentId = NULL`) | Applies to all environments in the project. Baseline rules. |
+| Scope                                                   | Description                                                                  |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **Project** (`projectId`, `environmentId = NULL`)       | Applies to all environments in the project. Baseline rules.                  |
 | **Environment** (`projectId`, `environmentId = <uuid>`) | Applies only to that environment. Overrides project-level rules **by name**. |
 
 **Override semantics (per-name):** An environment-scoped row with the same `name` replaces the project-scoped row; other project-scoped rows still apply. This mirrors the current global/app override logic but at project/env granularity.
@@ -58,16 +58,16 @@ A channel is a delivery endpoint. Scoped to project or environment.
 
 **Types & config shapes** (validated at send time, not at create time):
 
-| Type | Config Keys |
-|------|-------------|
-| `webhook` | `url` (required), `headers?` (Record<string, string>), `secret?` (HMAC signing key) |
-| `slack` | `webhookUrl` **OR** `token` + `channel` |
-| `rocketchat` | `webhookUrl` |
-| `email` | `host`, `port`, `secure`, `auth: { user, pass }`, `from`, `to` |
-| `pagerduty` | `routing_key` (required), `severity?`, `custom_details?` |
-| `opsgenie` | `api_key` (required), `priority?`, `responders?`, `tags?` |
-| `msteams` | `webhookUrl` (required) |
-| `victorops` | `api_key`, `routing_key`, `message_type?`, `entity_display_name?` |
+| Type         | Config Keys                                                                         |
+| ------------ | ----------------------------------------------------------------------------------- |
+| `webhook`    | `url` (required), `headers?` (Record<string, string>), `secret?` (HMAC signing key) |
+| `slack`      | `webhookUrl` **OR** `token` + `channel`                                             |
+| `rocketchat` | `webhookUrl`                                                                        |
+| `email`      | `host`, `port`, `secure`, `auth: { user, pass }`, `from`, `to`                      |
+| `pagerduty`  | `routing_key` (required), `severity?`, `custom_details?`                            |
+| `opsgenie`   | `api_key` (required), `priority?`, `responders?`, `tags?`                           |
+| `msteams`    | `webhookUrl` (required)                                                             |
+| `victorops`  | `api_key`, `routing_key`, `message_type?`, `entity_display_name?`                   |
 
 ### Rules
 
@@ -75,20 +75,20 @@ A rule defines a trigger condition and its notification targets.
 
 **Fields**:
 
-| Field | Threshold Rules | Issue Triggers (`new_issue`, `regression`) |
-|-------|-----------------|-------------------------------------------|
-| `trigger` | `"threshold"` | `"new_issue"` / `"regression"` |
-| `metric` | Required (one of 6) | `null` |
-| `operator` | Required (`gt` / `lt`) | `null` |
-| `threshold` | Required unless `thresholdFactor` is set | `null` |
-| `thresholdFactor` | Optional (> 0, dynamic threshold; `null` = static) | `null` |
-| `windowSeconds` | Required (> 0) | `null` |
-| `measurement` | Optional (string, default `duration`) | `null` |
-| `folder` | Optional (string, UI grouping; `null` = ungrouped) | Optional |
-| `cooldownSeconds` | Optional (default 3600) | Optional (default 3600) |
-| `channelIds` | Optional (array of channel IDs) | Optional |
-| `isEnabled` | Optional (default `true`) | Optional (default `true`) |
-| `filters` | Optional (tag filters, see below) | Optional |
+| Field             | Threshold Rules                                    | Issue Triggers (`new_issue`, `regression`) |
+| ----------------- | -------------------------------------------------- | ------------------------------------------ |
+| `trigger`         | `"threshold"`                                      | `"new_issue"` / `"regression"`             |
+| `metric`          | Required (one of 6)                                | `null`                                     |
+| `operator`        | Required (`gt` / `lt`)                             | `null`                                     |
+| `threshold`       | Required unless `thresholdFactor` is set           | `null`                                     |
+| `thresholdFactor` | Optional (> 0, dynamic threshold; `null` = static) | `null`                                     |
+| `windowSeconds`   | Required (> 0)                                     | `null`                                     |
+| `measurement`     | Optional (string, default `duration`)              | `null`                                     |
+| `folder`          | Optional (string, UI grouping; `null` = ungrouped) | Optional                                   |
+| `cooldownSeconds` | Optional (default 3600)                            | Optional (default 3600)                    |
+| `channelIds`      | Optional (array of channel IDs)                    | Optional                                   |
+| `isEnabled`       | Optional (default `true`)                          | Optional (default `true`)                  |
+| `filters`         | Optional (tag filters, see below)                  | Optional                                   |
 
 **Channel selection**: If `channelIds` is non-empty, only those channels are notified. Channels must belong to the same scope as the rule (project-scoped rules reference project-scoped channels; environment-scoped rules reference environment-scoped channels). If empty, **all effective channels** for the scope are notified (project + environment, post-override).
 
@@ -100,10 +100,10 @@ Rules can optionally filter which events/issues they evaluate against:
 interface AlertRuleFilters {
   // Only evaluate metric samples / events matching these tags
   // Applies to threshold rules (metric samples) and issue triggers (event tags)
-  tags?: Record<string, string[]>;  // e.g., { "service": ["api", "payments"] }
+  tags?: Record<string, string[]>; // e.g., { "service": ["api", "payments"] }
   // Only evaluate issues in these environments (by environment name)
   // Applies to both threshold and issue triggers
-  environments?: string[];          // e.g., ["production"]
+  environments?: string[]; // e.g., ["production"]
 }
 ```
 
@@ -130,12 +130,14 @@ interface AlertRuleFilters {
 ### Per-Scope Serialization
 
 `enqueueScopeWork(projectId, environmentId)` maintains a per-scope promise chain. Ingestion-triggered processing and sweeper runs **never interleave** for the same scope. This guarantees:
+
 - Issue transitions are detected before the threshold evaluation that follows in the same ingestion tick
 - Cooldown checks see the latest `lastTriggeredAt` update
 
 ### Threshold Evaluation (`evaluateRulesForScope`)
 
 For each enabled threshold rule in the scope:
+
 1. Compute metric value over `windowSeconds` via `computeRuleValue` (ClickHouse for sentinels/quantiles, Postgres for `new_issue_count`), **applying rule filters** (tag filters, environment filters). Tag filters translate to ClickHouse `WHERE` clauses on the metric samples table (e.g., `WHERE tag_service IN ('api', 'payments')`); environment filters restrict to samples from the specified environments.
 2. Check breach: `operator === 'gt' ? value > threshold : value < threshold`.
    - **Dynamic threshold** (`thresholdFactor` set, e.g. `3` = "3x baseline"): the effective threshold is `thresholdFactor × baseline`, where the baseline is the same metric's per-window average over the history preceding the evaluation window (`ALERT_BASELINE_SECONDS`, default 24h; latency metrics use the quantile over the whole history window). The evaluation is **skipped** (logged as `no_baseline`, no incident change) while the history has no samples — a baseline computed from nothing would make every event an anomaly.
@@ -152,6 +154,7 @@ For each enabled threshold rule in the scope:
 ### Issue Trigger Evaluation (`fireIssueTriggerRulesForScope`)
 
 For each enabled issue-trigger rule in the scope matching the transition type:
+
 1. Check if the issue matches the rule's `filters` (tags, environment). Skip if not.
 2. Select channels (same logic as threshold).
 3. Check per-issue cooldown via `alertIncidentDAO.findLastForIssue(ruleId, ruleScope, fingerprint)`.
@@ -179,11 +182,11 @@ interface AlertNotification {
   metric: AlertMetric | null;
   value: number | null;
   threshold: number | null;
-  issue?: IssueSummary;        // Present on issue triggers
-  projectId: string;           // Project context
+  issue?: IssueSummary; // Present on issue triggers
+  projectId: string; // Project context
   environmentId: string | null; // Environment context (null = project-level)
-  occurredAt: string;          // ISO timestamp
-  link?: string;               // Optional UI deep-link (e.g., "/issues/<issueId>")
+  occurredAt: string; // ISO timestamp
+  link?: string; // Optional UI deep-link (e.g., "/issues/<issueId>")
 }
 ```
 
@@ -193,16 +196,16 @@ Severity: `critical` for `fatal_count`, `warning` for other metrics and issue tr
 
 Each notifier implements `Notifier { type, send(notification, config) }`:
 
-| Notifier | Delivery |
-|----------|----------|
-| `webhookNotifier` | `POST {url}` with JSON body = `AlertNotification`; with `secret`, the body is signed — `X-Sentry-Hook-Signature: t=<unix>,v1=<hmac-sha256 of `<unix>.<body>`>` and `X-Sentry-Hook-Timestamp` |
-| `slackNotifier` | Prefers `webhookUrl` (simple `POST {text}`), falls back to `chat.postMessage` with `token` + `channel` |
-| `rocketChatNotifier` | `POST {webhookUrl}` with Rocket.Chat attachment format (color, fields for metric/issue) |
-| `emailNotifier` | SMTP — configurable via `host`, `port`, `secure`, `auth: { user, pass }`, `from`, `to` |
-| `pagerDutyNotifier` | Events API v2 — `routing_key`, `severity`, `custom_details` |
-| `opsgenieNotifier` | Alert API — `api_key`, `priority`, `responders`, `tags` |
-| `msTeamsNotifier` | Incoming webhook — `webhookUrl`, adaptive card format |
-| `victorOpsNotifier` | REST API — `api_key`, `routing_key`, `message_type`, `entity_display_name` |
+| Notifier             | Delivery                                                                                                                                                                                     |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `webhookNotifier`    | `POST {url}` with JSON body = `AlertNotification`; with `secret`, the body is signed — `X-Sentry-Hook-Signature: t=<unix>,v1=<hmac-sha256 of `<unix>.<body>`>` and `X-Sentry-Hook-Timestamp` |
+| `slackNotifier`      | Prefers `webhookUrl` (simple `POST {text}`), falls back to `chat.postMessage` with `token` + `channel`                                                                                       |
+| `rocketChatNotifier` | `POST {webhookUrl}` with Rocket.Chat attachment format (color, fields for metric/issue)                                                                                                      |
+| `emailNotifier`      | SMTP — configurable via `host`, `port`, `secure`, `auth: { user, pass }`, `from`, `to`                                                                                                       |
+| `pagerDutyNotifier`  | Events API v2 — `routing_key`, `severity`, `custom_details`                                                                                                                                  |
+| `opsgenieNotifier`   | Alert API — `api_key`, `priority`, `responders`, `tags`                                                                                                                                      |
+| `msTeamsNotifier`    | Incoming webhook — `webhookUrl`, adaptive card format                                                                                                                                        |
+| `victorOpsNotifier`  | REST API — `api_key`, `routing_key`, `message_type`, `entity_display_name`                                                                                                                   |
 
 **Channel types** (in `AlertChannelType`): `"webhook" | "slack" | "rocketchat" | "email" | "pagerduty" | "opsgenie" | "msteams" | "victorops"`
 
@@ -259,43 +262,43 @@ All list endpoints are cursor-paginated: query `cursor` (the id of the last row 
 
 ### Channels
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/channels` | List project-scoped channels (paged) |
-| POST | `/channels` | Create project-scoped channel |
-| GET | `/channels/:id` | Get project-scoped channel by ID |
-| PATCH | `/channels/:id` | Update project-scoped channel |
-| DELETE | `/channels/:id` | Delete project-scoped channel |
-| GET | `/environments/:environmentId/channels` | List environment-scoped channels (paged) |
-| POST | `/environments/:environmentId/channels` | Create environment-scoped channel |
-| GET | `/environments/:environmentId/channels/:id` | Get environment-scoped channel by ID |
-| PATCH | `/environments/:environmentId/channels/:id` | Update environment-scoped channel |
-| DELETE | `/environments/:environmentId/channels/:id` | Delete environment-scoped channel |
+| Method | Path                                        | Description                              |
+| ------ | ------------------------------------------- | ---------------------------------------- |
+| GET    | `/channels`                                 | List project-scoped channels (paged)     |
+| POST   | `/channels`                                 | Create project-scoped channel            |
+| GET    | `/channels/:id`                             | Get project-scoped channel by ID         |
+| PATCH  | `/channels/:id`                             | Update project-scoped channel            |
+| DELETE | `/channels/:id`                             | Delete project-scoped channel            |
+| GET    | `/environments/:environmentId/channels`     | List environment-scoped channels (paged) |
+| POST   | `/environments/:environmentId/channels`     | Create environment-scoped channel        |
+| GET    | `/environments/:environmentId/channels/:id` | Get environment-scoped channel by ID     |
+| PATCH  | `/environments/:environmentId/channels/:id` | Update environment-scoped channel        |
+| DELETE | `/environments/:environmentId/channels/:id` | Delete environment-scoped channel        |
 
 ### Rules
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/rules` | List project-scoped rules (paged) |
-| POST | `/rules` | Create project-scoped rule |
-| GET | `/rules/:id` | Get project-scoped rule by ID |
-| PATCH | `/rules/:id` | Update project-scoped rule |
-| DELETE | `/rules/:id` | Delete project-scoped rule (cascades to incidents) |
-| POST | `/rules/:id/test` | Send test notification |
-| GET | `/environments/:environmentId/rules` | List environment-scoped rules (paged) |
-| POST | `/environments/:environmentId/rules` | Create environment-scoped rule |
-| GET | `/environments/:environmentId/rules/:id` | Get environment-scoped rule by ID |
-| PATCH | `/environments/:environmentId/rules/:id` | Update environment-scoped rule |
-| DELETE | `/environments/:environmentId/rules/:id` | Delete environment-scoped rule (cascades to incidents) |
-| POST | `/environments/:environmentId/rules/:id/test` | Send test notification |
+| Method | Path                                          | Description                                            |
+| ------ | --------------------------------------------- | ------------------------------------------------------ |
+| GET    | `/rules`                                      | List project-scoped rules (paged)                      |
+| POST   | `/rules`                                      | Create project-scoped rule                             |
+| GET    | `/rules/:id`                                  | Get project-scoped rule by ID                          |
+| PATCH  | `/rules/:id`                                  | Update project-scoped rule                             |
+| DELETE | `/rules/:id`                                  | Delete project-scoped rule (cascades to incidents)     |
+| POST   | `/rules/:id/test`                             | Send test notification                                 |
+| GET    | `/environments/:environmentId/rules`          | List environment-scoped rules (paged)                  |
+| POST   | `/environments/:environmentId/rules`          | Create environment-scoped rule                         |
+| GET    | `/environments/:environmentId/rules/:id`      | Get environment-scoped rule by ID                      |
+| PATCH  | `/environments/:environmentId/rules/:id`      | Update environment-scoped rule                         |
+| DELETE | `/environments/:environmentId/rules/:id`      | Delete environment-scoped rule (cascades to incidents) |
+| POST   | `/environments/:environmentId/rules/:id/test` | Send test notification                                 |
 
 ### Effective Config & Incidents
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/effective` | Resolved channels + rules for project (project + env merged) |
-| GET | `/environments/:environmentId/effective` | Resolved channels + rules for environment |
-| GET | `/incidents` | List incidents (paged, optional `environmentId` filter) |
+| Method | Path                                     | Description                                                  |
+| ------ | ---------------------------------------- | ------------------------------------------------------------ |
+| GET    | `/effective`                             | Resolved channels + rules for project (project + env merged) |
+| GET    | `/environments/:environmentId/effective` | Resolved channels + rules for environment                    |
+| GET    | `/incidents`                             | List incidents (paged, optional `environmentId` filter)      |
 
 ---
 
@@ -427,8 +430,8 @@ Enforced at database level via unique indexes on `(project_id, name)` and `(proj
 
 ## 11. Configuration Reference
 
-| Env Var | Default | Effect |
-|---------|---------|--------|
+| Env Var                        | Default | Effect                     |
+| ------------------------------ | ------- | -------------------------- |
 | `ALERT_EVALUATION_INTERVAL_MS` | `60000` | Sweeper tick interval (ms) |
 
 ---
@@ -448,15 +451,15 @@ Enforced at database level via unique indexes on `(project_id, name)` and `(proj
 
 ## 13. Current Implementation vs Target
 
-| Aspect | Current (App-Scoped) | Target (Project/Env-Scoped) |
-|--------|---------------------|----------------------------|
-| **Scope** | Global (`appId=NULL`) + App (`appId=uuid`) | Project (`projectId`, `environmentId=NULL`) + Environment (`projectId`, `environmentId=uuid`) |
-| **Override** | App overrides global by name | Environment overrides project by name |
-| **Metric aggregation** | Per-app (ClickHouse `appId`) | Per-project/env (ClickHouse `projectId` + `environmentId`) |
-| **Issue triggers** | Per-app fingerprint | Per-project/env fingerprint (issues already have `projectId` + `environmentId` via app) |
-| **API prefix** | `/api/admin/alerting` | `/api/admin/projects/:projectId/alerting` + `/environments/:environmentId/alerting` |
-| **Filters** | None | Tag filters, environment filters on rules |
-| **Channels** | Global + App | Project + Environment |
+| Aspect                 | Current (App-Scoped)                       | Target (Project/Env-Scoped)                                                                   |
+| ---------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| **Scope**              | Global (`appId=NULL`) + App (`appId=uuid`) | Project (`projectId`, `environmentId=NULL`) + Environment (`projectId`, `environmentId=uuid`) |
+| **Override**           | App overrides global by name               | Environment overrides project by name                                                         |
+| **Metric aggregation** | Per-app (ClickHouse `appId`)               | Per-project/env (ClickHouse `projectId` + `environmentId`)                                    |
+| **Issue triggers**     | Per-app fingerprint                        | Per-project/env fingerprint (issues already have `projectId` + `environmentId` via app)       |
+| **API prefix**         | `/api/admin/alerting`                      | `/api/admin/projects/:projectId/alerting` + `/environments/:environmentId/alerting`           |
+| **Filters**            | None                                       | Tag filters, environment filters on rules                                                     |
+| **Channels**           | Global + App                               | Project + Environment                                                                         |
 
 ### What landed
 

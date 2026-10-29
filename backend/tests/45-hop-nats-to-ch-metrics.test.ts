@@ -9,7 +9,10 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import type { NatsConnection } from "@nats-io/transport-node";
-import { jetstream as createJetstream, type JetStreamClient } from "@nats-io/jetstream";
+import {
+  jetstream as createJetstream,
+  type JetStreamClient,
+} from "@nats-io/jetstream";
 import { listClickHouseMetricSamplesForEvent } from "../clickhouse";
 import type { MetricSample } from "../protocol/metrics";
 import {
@@ -39,15 +42,45 @@ function samplesFor(
   eventId: string,
 ): MetricSample[] {
   return [
-    { projectId: app.projectId, appId: app.appId, eventId, metric: "event_count", value: 1, dimension: "GET /metrics", tags: {}, receivedAt },
-    { projectId: app.projectId, appId: app.appId, eventId, metric: "lcp", value: 2400, dimension: "GET /metrics", tags: {}, receivedAt },
-    { projectId: app.projectId, appId: app.appId, eventId, metric: "frames_total", value: 120, dimension: "HomeScreen", tags: {}, receivedAt },
+    {
+      projectId: app.projectId,
+      appId: app.appId,
+      eventId,
+      metric: "event_count",
+      value: 1,
+      dimension: "GET /metrics",
+      tags: {},
+      receivedAt,
+    },
+    {
+      projectId: app.projectId,
+      appId: app.appId,
+      eventId,
+      metric: "lcp",
+      value: 2400,
+      dimension: "GET /metrics",
+      tags: {},
+      receivedAt,
+    },
+    {
+      projectId: app.projectId,
+      appId: app.appId,
+      eventId,
+      metric: "frames_total",
+      value: 120,
+      dimension: "HomeScreen",
+      tags: {},
+      receivedAt,
+    },
   ];
 }
 
 function publishSamples(samples: MetricSample[]) {
   const payload = samples.map((sample) => JSON.stringify(sample)).join("\n");
-  return jetstream.publish(TEST_METRICS_SUBJECT, new TextEncoder().encode(payload));
+  return jetstream.publish(
+    TEST_METRICS_SUBJECT,
+    new TextEncoder().encode(payload),
+  );
 }
 
 describe("Hop 2 (metrics): sentry.metrics -> ClickHouse", () => {
@@ -67,10 +100,13 @@ describe("Hop 2 (metrics): sentry.metrics -> ClickHouse", () => {
       "lcp",
     ]);
     expect(stored.find((sample) => sample.metric === "lcp")?.value).toBe(2400);
-    expect(stored.find((sample) => sample.metric === "frames_total")?.dimension).toBe("HomeScreen");
+    expect(
+      stored.find((sample) => sample.metric === "frames_total")?.dimension,
+    ).toBe("HomeScreen");
     expect(
       stored.every(
-        (sample) => sample.projectId === app.projectId && sample.appId === app.appId,
+        (sample) =>
+          sample.projectId === app.projectId && sample.appId === app.appId,
       ),
     ).toBe(true);
 
@@ -80,6 +116,8 @@ describe("Hop 2 (metrics): sentry.metrics -> ClickHouse", () => {
     // A redelivery of the identical batch collapses under FINAL.
     const second = await publishSamples(samples);
     await waitForConsumerAck("clickhouse-metrics", second.seq);
-    expect(await listClickHouseMetricSamplesForEvent(eventId)).toHaveLength(samples.length);
+    expect(await listClickHouseMetricSamplesForEvent(eventId)).toHaveLength(
+      samples.length,
+    );
   }, 20000);
 });

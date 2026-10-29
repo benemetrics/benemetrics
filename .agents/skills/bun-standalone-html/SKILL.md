@@ -19,11 +19,11 @@ The output is a completely self-contained HTML document. No relative paths. No e
 
 The output is a single `.html` file you can put anywhere:
 
-* **Upload it to S3** or any static file host — no directory structure to maintain, just one file
-* **Double-click it from your desktop** — it opens in the browser and works offline, no localhost server needed
-* **Embed it in your webview** — No need to deal with relative files
-* **Insert it in an `<iframe>`** — embed interactive content in another page with a single file URL
-* **Serve it from anywhere** — any HTTP server, CDN, or file share. One file, zero configuration.
+- **Upload it to S3** or any static file host — no directory structure to maintain, just one file
+- **Double-click it from your desktop** — it opens in the browser and works offline, no localhost server needed
+- **Embed it in your webview** — No need to deal with relative files
+- **Insert it in an `<iframe>`** — embed interactive content in another page with a single file URL
+- **Serve it from anywhere** — any HTTP server, CDN, or file share. One file, zero configuration.
 
 There's nothing to install, no `node_modules` to deploy, no build artifacts to coordinate, no relative paths to think about. The entire app — framework code, stylesheets, images, everything — lives in that one file.
 
@@ -51,24 +51,25 @@ This makes it practical to distribute web pages the same way you'd distribute a 
   </html>
   ```
 
-  ```tsx app.tsx icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  import React from "react";
-  import { createRoot } from "react-dom/client";
+```tsx app.tsx icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
+import React from "react";
+import { createRoot } from "react-dom/client";
 
-  function App() {
-    return <h1>Hello from a single HTML file!</h1>;
-  }
+function App() {
+  return <h1>Hello from a single HTML file!</h1>;
+}
 
-  createRoot(document.getElementById("root")!).render(<App />);
-  ```
+createRoot(document.getElementById("root")!).render(<App />);
+```
 
-  ```css styles.css icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  body {
-    margin: 0;
-    font-family: system-ui, sans-serif;
-    background: #f5f5f5;
-  }
-  ```
+```css styles.css icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #f5f5f5;
+}
+```
+
 </CodeGroup>
 
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
@@ -129,31 +130,32 @@ bun install react react-dom
   </html>
   ```
 
-  ```tsx app.tsx icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  import React, { useState } from "react";
-  import { createRoot } from "react-dom/client";
-  import { Counter } from "./components/Counter.tsx";
+```tsx app.tsx icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
+import React, { useState } from "react";
+import { createRoot } from "react-dom/client";
+import { Counter } from "./components/Counter.tsx";
 
-  function App() {
-    return (
-      <main>
-        <h1>Single-file React App</h1>
-        <Counter />
-      </main>
-    );
-  }
+function App() {
+  return (
+    <main>
+      <h1>Single-file React App</h1>
+      <Counter />
+    </main>
+  );
+}
 
-  createRoot(document.getElementById("root")!).render(<App />);
-  ```
+createRoot(document.getElementById("root")!).render(<App />);
+```
 
-  ```tsx components/Counter.tsx icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  import React, { useState } from "react";
+```tsx components/Counter.tsx icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
+import React, { useState } from "react";
 
-  export function Counter() {
-    const [count, setCount] = useState(0);
-    return <button onClick={() => setCount(count + 1)}>Count: {count}</button>;
-  }
-  ```
+export function Counter() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(count + 1)}>Count: {count}</button>;
+}
+```
+
 </CodeGroup>
 
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
@@ -184,21 +186,22 @@ bun install --dev bun-plugin-tailwind
   </html>
   ```
 
-  ```tsx app.tsx icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  import React from "react";
-  import { createRoot } from "react-dom/client";
+```tsx app.tsx icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
+import React from "react";
+import { createRoot } from "react-dom/client";
 
-  function App() {
-    return (
-      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md">
-        <h1 className="text-2xl font-bold text-gray-800">Hello Tailwind</h1>
-        <p className="text-gray-600 mt-2">This is a single HTML file.</p>
-      </div>
-    );
-  }
+function App() {
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-8 max-w-md">
+      <h1 className="text-2xl font-bold text-gray-800">Hello Tailwind</h1>
+      <p className="text-gray-600 mt-2">This is a single HTML file.</p>
+    </div>
+  );
+}
 
-  createRoot(document.getElementById("root")!).render(<App />);
-  ```
+createRoot(document.getElementById("root")!).render(<App />);
+```
+
 </CodeGroup>
 
 Build with the plugin using the JavaScript API:
@@ -307,6 +310,6 @@ References to `process.env.API_URL` in your JavaScript are replaced with the lit
 
 ## Limitations
 
-* **Code splitting** is not supported — `--splitting` cannot be used with `--compile --target=browser`
-* **Large assets** increase file size since they're base64-encoded (33% overhead vs the raw binary)
-* **External URLs** (CDN links, absolute URLs) are left as-is — only relative paths are inlined
+- **Code splitting** is not supported — `--splitting` cannot be used with `--compile --target=browser`
+- **Large assets** increase file size since they're base64-encoded (33% overhead vs the raw binary)
+- **External URLs** (CDN links, absolute URLs) are left as-is — only relative paths are inlined

@@ -42,12 +42,12 @@ await metadata.delete();
 
 S3 is the [de facto standard](https://en.wikipedia.org/wiki/De_facto_standard) internet filesystem. Bun's S3 API works with S3-compatible storage services like:
 
-* AWS S3
-* Cloudflare R2
-* DigitalOcean Spaces
-* MinIO
-* Backblaze B2
-* ...and any other S3-compatible storage service
+- AWS S3
+- Cloudflare R2
+- DigitalOcean Spaces
+- MinIO
+- Backblaze B2
+- ...and any other S3-compatible storage service
 
 ## Basic Usage
 
@@ -185,7 +185,7 @@ for (let i = 0; i < 10; i++) {
 await writer.end();
 ```
 
-***
+---
 
 ## Presigning URLs
 
@@ -288,7 +288,7 @@ const response = new Response(s3file);
 console.log(response);
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Response (0 KB) {
   ok: false,
   url: "",
@@ -302,7 +302,7 @@ Response (0 KB) {
 }
 ```
 
-***
+---
 
 ## Support for S3-Compatible Services
 
@@ -447,7 +447,7 @@ const r2WithEndpoint = new S3Client({
 });
 ```
 
-***
+---
 
 ## Credentials
 
@@ -574,7 +574,14 @@ interface S3File extends Blob {
   arrayBuffer(): Promise<ArrayBuffer>;
   stream(options: S3Options): ReadableStream;
   write(
-    data: string | Uint8Array | ArrayBuffer | Blob | ReadableStream | Response | Request,
+    data:
+      | string
+      | Uint8Array
+      | ArrayBuffer
+      | Blob
+      | ReadableStream
+      | Response
+      | Request,
     options?: BlobPropertyBag,
   ): Promise<number>;
 
@@ -638,12 +645,12 @@ await s3file.delete();
 
 When Bun's S3 API throws an error, it will have a `code` property that matches one of the following values:
 
-* `ERR_S3_MISSING_CREDENTIALS`
-* `ERR_S3_INVALID_METHOD`
-* `ERR_S3_INVALID_PATH`
-* `ERR_S3_INVALID_ENDPOINT`
-* `ERR_S3_INVALID_SIGNATURE`
-* `ERR_S3_INVALID_SESSION_TOKEN`
+- `ERR_S3_MISSING_CREDENTIALS`
+- `ERR_S3_INVALID_METHOD`
+- `ERR_S3_INVALID_PATH`
+- `ERR_S3_INVALID_ENDPOINT`
+- `ERR_S3_INVALID_SIGNATURE`
+- `ERR_S3_INVALID_SESSION_TOKEN`
 
 When the S3 Object Storage service returns an error (that is, not Bun), it will be an `S3Error` instance (an `Error` instance with the name `"S3Error"`).
 
@@ -819,7 +826,7 @@ const credentials = {
 const stat = await S3Client.stat("my-file.txt", credentials);
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
   etag: "\"7a30b741503c0b461cc14157e2df4ad8\"",
   lastModified: 2025-01-07T00:19:10.000Z,
@@ -880,6 +887,6 @@ Like `Response` and `Blob`, `S3File` assumes UTF-8 encoding by default.
 
 When calling one of the `text()` or `json()` methods on an `S3File`:
 
-* When a UTF-16 byte order mark (BOM) is detected, it will be treated as UTF-16. JavaScriptCore natively supports UTF-16, so it skips the UTF-8 transcoding process (and strips the BOM). This is mostly good, but it does mean if you have invalid surrogate pairs characters in your UTF-16 string, they will be passed through to JavaScriptCore (same as source code).
-* When a UTF-8 BOM is detected, it gets stripped before the string is passed to JavaScriptCore and invalid UTF-8 codepoints are replaced with the Unicode replacement character (`\uFFFD`).
-* UTF-32 is not supported.
+- When a UTF-16 byte order mark (BOM) is detected, it will be treated as UTF-16. JavaScriptCore natively supports UTF-16, so it skips the UTF-8 transcoding process (and strips the BOM). This is mostly good, but it does mean if you have invalid surrogate pairs characters in your UTF-16 string, they will be passed through to JavaScriptCore (same as source code).
+- When a UTF-8 BOM is detected, it gets stripped before the string is passed to JavaScriptCore and invalid UTF-8 codepoints are replaced with the Unicode replacement character (`\uFFFD`).
+- UTF-32 is not supported.

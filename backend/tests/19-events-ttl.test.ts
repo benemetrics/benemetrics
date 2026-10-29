@@ -40,7 +40,10 @@ async function json<T>(response: Response): Promise<T> {
 
 describe("Event retention TTL", () => {
   it("reads the live TTL back from the table definition", async () => {
-    const response = await adminRequest("GET", "/api/admin/settings/events-ttl");
+    const response = await adminRequest(
+      "GET",
+      "/api/admin/settings/events-ttl",
+    );
     expect(response.status).toBe(200);
 
     const ttl = await json<TtlResponse>(response);
@@ -50,10 +53,14 @@ describe("Event retention TTL", () => {
   });
 
   it("changes the retention and reads the new value back", async () => {
-    const updated = await adminRequest("PUT", "/api/admin/settings/events-ttl", {
-      amount: 3,
-      unit: "month",
-    });
+    const updated = await adminRequest(
+      "PUT",
+      "/api/admin/settings/events-ttl",
+      {
+        amount: 3,
+        unit: "month",
+      },
+    );
     expect(updated.status).toBe(200);
     const after = await json<TtlResponse>(updated);
     expect(after.interval).toEqual({ amount: 3, unit: "month" });
@@ -71,10 +78,14 @@ describe("Event retention TTL", () => {
   });
 
   it("supports the other retention units", async () => {
-    const updated = await adminRequest("PUT", "/api/admin/settings/events-ttl", {
-      amount: 2,
-      unit: "week",
-    });
+    const updated = await adminRequest(
+      "PUT",
+      "/api/admin/settings/events-ttl",
+      {
+        amount: 2,
+        unit: "week",
+      },
+    );
     expect(updated.status).toBe(200);
     expect((await json<TtlResponse>(updated)).interval).toEqual({
       amount: 2,
@@ -88,10 +99,14 @@ describe("Event retention TTL", () => {
   });
 
   it("removes the retention when the amount is zero", async () => {
-    const updated = await adminRequest("PUT", "/api/admin/settings/events-ttl", {
-      amount: 0,
-      unit: "month",
-    });
+    const updated = await adminRequest(
+      "PUT",
+      "/api/admin/settings/events-ttl",
+      {
+        amount: 0,
+        unit: "month",
+      },
+    );
     expect(updated.status).toBe(200);
     expect((await json<TtlResponse>(updated)).interval).toBeNull();
 
@@ -105,15 +120,24 @@ describe("Event retention TTL", () => {
   });
 
   it("rejects an out-of-range retention", async () => {
-    const response = await adminRequest("PUT", "/api/admin/settings/events-ttl", {
-      amount: 5000,
-      unit: "month",
-    });
+    const response = await adminRequest(
+      "PUT",
+      "/api/admin/settings/events-ttl",
+      {
+        amount: 5000,
+        unit: "month",
+      },
+    );
     expect(response.status).toBe(400);
   });
 
   it("requires the admin token", async () => {
-    const read = await adminRequest("GET", "/api/admin/settings/events-ttl", undefined, "");
+    const read = await adminRequest(
+      "GET",
+      "/api/admin/settings/events-ttl",
+      undefined,
+      "",
+    );
     expect(read.status).toBe(401);
 
     const write = await adminRequest(

@@ -1,4 +1,5 @@
-export { projects, apps } from "./project";
+export { projects } from "./project";
+export { apps } from "./app";
 export { issues } from "./issues";
 export { featureFlags } from "./feature-flags";
 export { segments } from "./segments";
@@ -13,5 +14,5 @@ export { alertDeadLetters } from "./alert-dead-letters";
 export { alertSilences } from "./alert-silences";
 export { alertRuleHistory } from "./alert-rule-history";
 export { sourceMapTokens } from "./source-map-tokens";
-export { permissionRules, permissionGrants, permissionAudit } from "./permissions";
+export { permissionRules, permissionGrants } from "./permissions";
 export { sourceMaps } from "./source-maps";

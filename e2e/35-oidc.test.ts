@@ -41,14 +41,16 @@ afterAll(() => {
   server?.stop(true);
 });
 
-async function sign(options: {
-  audience?: string | string[];
-  claims?: Record<string, unknown>;
-  issuer?: string;
-  expiresIn?: string | null;
-  alg?: string;
-  key?: CryptoKey;
-} = {}): Promise<string> {
+async function sign(
+  options: {
+    audience?: string | string[];
+    claims?: Record<string, unknown>;
+    issuer?: string;
+    expiresIn?: string | null;
+    alg?: string;
+    key?: CryptoKey;
+  } = {},
+): Promise<string> {
   return oidcProvider.sign(options);
 }
 
@@ -158,15 +160,24 @@ describe("OIDC authentication", () => {
     // app is out of its scope.
     const project = await fetch(`${baseUrl}/api/admin/projects`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: ADMIN_TOKEN,
+      },
       body: JSON.stringify({ name: `OIDC probe ${Date.now()}` }),
     });
     const projectId = ((await project.json()) as { id: string }).id;
-    const created = await fetch(`${baseUrl}/api/admin/projects/${projectId}/apps`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
-      body: JSON.stringify({ name: "hidden-api" }),
-    });
+    const created = await fetch(
+      `${baseUrl}/api/admin/projects/${projectId}/apps`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: ADMIN_TOKEN,
+        },
+        body: JSON.stringify({ name: "hidden-api" }),
+      },
+    );
     const appName = ((await created.json()) as { name: string }).name;
 
     const unknown = await fetch(

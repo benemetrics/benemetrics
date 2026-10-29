@@ -17,6 +17,6 @@ const arrbuf = await file.arrayBuffer();
 const buffer = Buffer.from(arrbuf);
 ```
 
-***
+---
 
 Refer to [Binary data > Buffer](/runtime/binary-data#buffer) for more information on working with `Buffer` and other binary data formats in Bun.

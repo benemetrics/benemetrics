@@ -23,17 +23,17 @@ Breadcrumbs are **lightweight events** captured automatically (or manually) that
 
 Most SDKs automatically capture breadcrumbs for common operations:
 
-| Platform | HTTP Client | HTTP Server | Database | Console | Navigation (Frontend) | UI (Frontend) |
-|----------|-------------|-------------|----------|---------|----------------------|---------------|
-| Node.js | ✅ fetch, axios | ✅ Express, Fastify | ✅ pg, mysql, prisma | ✅ console.* | — | — |
-| Python | ✅ requests, httpx | ✅ Flask, FastAPI | ✅ psycopg2, SQLAlchemy | ✅ logging | — | — |
-| Go | ✅ net/http | ✅ Gin, Echo | ✅ database/sql, GORM | ✅ log/slog | — | — |
-| Java | ✅ HttpClient, OkHttp | ✅ Spring, Servlet | ✅ JDBC, JPA | ✅ SLF4J, Log4j | — | — |
-| .NET | ✅ HttpClient | ✅ ASP.NET Core | ✅ EF Core, Dapper | ✅ ILogger | — | — |
-| Ruby | ✅ Net::HTTP, Faraday | ✅ Rails, Rack | ✅ ActiveRecord, Sequel | ✅ Rails.logger | — | — |
-| PHP | ✅ Guzzle, HttpClient | ✅ Laravel, Symfony | ✅ PDO, Doctrine | ✅ Monolog | — | — |
-| Browser | ✅ fetch, XHR | — | — | ✅ console.* | ✅ History API | ✅ Clicks, inputs |
-| Mobile | ✅ Native clients | — | — | ✅ Native logs | ✅ Navigation | ✅ Touches, gestures |
+| Platform | HTTP Client           | HTTP Server         | Database                | Console         | Navigation (Frontend) | UI (Frontend)        |
+| -------- | --------------------- | ------------------- | ----------------------- | --------------- | --------------------- | -------------------- |
+| Node.js  | ✅ fetch, axios       | ✅ Express, Fastify | ✅ pg, mysql, prisma    | ✅ console.*    | —                     | —                    |
+| Python   | ✅ requests, httpx    | ✅ Flask, FastAPI   | ✅ psycopg2, SQLAlchemy | ✅ logging      | —                     | —                    |
+| Go       | ✅ net/http           | ✅ Gin, Echo        | ✅ database/sql, GORM   | ✅ log/slog     | —                     | —                    |
+| Java     | ✅ HttpClient, OkHttp | ✅ Spring, Servlet  | ✅ JDBC, JPA            | ✅ SLF4J, Log4j | —                     | —                    |
+| .NET     | ✅ HttpClient         | ✅ ASP.NET Core     | ✅ EF Core, Dapper      | ✅ ILogger      | —                     | —                    |
+| Ruby     | ✅ Net::HTTP, Faraday | ✅ Rails, Rack      | ✅ ActiveRecord, Sequel | ✅ Rails.logger | —                     | —                    |
+| PHP      | ✅ Guzzle, HttpClient | ✅ Laravel, Symfony | ✅ PDO, Doctrine        | ✅ Monolog      | —                     | —                    |
+| Browser  | ✅ fetch, XHR         | —                   | —                       | ✅ console.*    | ✅ History API        | ✅ Clicks, inputs    |
+| Mobile   | ✅ Native clients     | —                   | —                       | ✅ Native logs  | ✅ Navigation         | ✅ Touches, gestures |
 
 ### Enable/Disable Categories
 
@@ -42,9 +42,9 @@ Most SDKs automatically capture breadcrumbs for common operations:
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
   autoBreadcrumbs: {
-    http: true,        // Incoming/outgoing HTTP
-    console: true,     // Console logs
-    db: true,          // Database queries
+    http: true, // Incoming/outgoing HTTP
+    console: true, // Console logs
+    db: true, // Database queries
   },
 });
 ```
@@ -232,13 +232,13 @@ SentrySdk.AddBreadcrumb(new Breadcrumb
 
 ### Breadcrumb Levels
 
-| Level | Use Case | Color in UI |
-|-------|----------|-------------|
-| `debug` | Verbose debugging | Gray |
-| `info` | General info (default) | Blue |
-| `warning` | Potential issues | Yellow |
-| `error` | Errors (non-fatal) | Red |
-| `fatal` | Critical failures | Red (bold) |
+| Level     | Use Case               | Color in UI |
+| --------- | ---------------------- | ----------- |
+| `debug`   | Verbose debugging      | Gray        |
+| `info`    | General info (default) | Blue        |
+| `warning` | Potential issues       | Yellow      |
+| `error`   | Errors (non-fatal)     | Red         |
+| `fatal`   | Critical failures      | Red (bold)  |
 
 ### Breadcrumb Categories (Standard)
 
@@ -250,31 +250,31 @@ const CATEGORIES = {
   // HTTP
   "http.request": "Outgoing HTTP request",
   "http.response": "HTTP response received",
-  
+
   // Database
   "db.query": "Database query executed",
   "db.transaction": "Transaction started/committed",
-  
+
   // Cache
   "cache.hit": "Cache hit",
   "cache.miss": "Cache miss",
   "cache.set": "Cache write",
-  
+
   // Auth
   "auth.login": "User login",
   "auth.logout": "User logout",
   "auth.token_refresh": "Token refreshed",
-  
+
   // Business logic
   "checkout.started": "Checkout initiated",
   "checkout.payment": "Payment processed",
   "checkout.completed": "Order confirmed",
-  
+
   // Queue/Jobs
   "queue.enqueue": "Job queued",
   "queue.process": "Job processing",
   "queue.complete": "Job completed",
-  
+
   // Custom
   "app.feature_flag": "Feature flag evaluated",
   "app.config_change": "Config updated",
@@ -294,9 +294,9 @@ async function runMigration() {
     level: "info",
     data: { command: "npm run migrate" },
   });
-  
+
   const proc = spawn("npm", ["run", "migrate"]);
-  
+
   proc.on("close", (code) => {
     Sentry.addBreadcrumb({
       category: "process.exit",
@@ -363,9 +363,9 @@ async function processUpload(file) {
     level: "info",
     data: { filename: file.name, size: file.size, type: file.type },
   });
-  
+
   // ... process file
-  
+
   Sentry.addBreadcrumb({
     category: "fs.upload",
     message: "File upload completed",
@@ -406,17 +406,22 @@ function breadcrumbMiddleware(handler) {
   return async (req, res, next) => {
     const startTime = performance.now();
     const requestId = crypto.randomUUID();
-    
+
     Sentry.addBreadcrumb({
       category: "http.request",
       message: `${req.method} ${req.path}`,
       level: "info",
-      data: { requestId, method: req.method, url: req.url, userAgent: req.headers["user-agent"] },
+      data: {
+        requestId,
+        method: req.method,
+        url: req.url,
+        userAgent: req.headers["user-agent"],
+      },
     });
-    
+
     try {
       const response = await handler(req, res, next);
-      
+
       const duration = Math.round(performance.now() - startTime);
       Sentry.addBreadcrumb({
         category: "http.response",
@@ -424,7 +429,7 @@ function breadcrumbMiddleware(handler) {
         level: res.statusCode >= 400 ? "warning" : "info",
         data: { requestId, statusCode: res.statusCode, duration },
       });
-      
+
       return response;
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
@@ -487,14 +492,20 @@ class BreadcrumbMiddleware(BaseHTTPMiddleware):
 
 ```typescript
 // TypeScript
-function createDbBreadcrumb(query: string, params: any[], duration: number, rows: number) {
+function createDbBreadcrumb(
+  query: string,
+  params: any[],
+  duration: number,
+  rows: number,
+) {
   const sanitizedQuery = query.replace(/\$(\d+)/g, (_, n) => {
     const val = params[parseInt(n) - 1];
     if (typeof val === "string" && val.length > 100) return "'<long>'";
-    if (typeof val === "string" && /password|secret|token/i.test(query)) return "'***'";
+    if (typeof val === "string" && /password|secret|token/i.test(query))
+      return "'***'";
     return `'${val}'`;
   });
-  
+
   Sentry.addBreadcrumb({
     category: "db.query",
     message: sanitizedQuery,
@@ -546,14 +557,14 @@ prisma.$use(async (params, next) => {
   const start = Date.now();
   const result = await next(params);
   const duration = Date.now() - start;
-  
+
   Sentry.addBreadcrumb({
     category: "db.query",
     message: `${params.model}.${params.action}`,
     level: duration > 1000 ? "warning" : "info",
     data: { duration, args: JSON.stringify(params.args).slice(0, 200) },
   });
-  
+
   return result;
 });
 ```
@@ -605,10 +616,12 @@ Sentry.init({
   beforeSend(event) {
     if (event.breadcrumbs) {
       if (process.env.NODE_ENV === "production") {
-        event.breadcrumbs = event.breadcrumbs.filter(b => b.level !== "debug");
+        event.breadcrumbs = event.breadcrumbs.filter(
+          (b) => b.level !== "debug",
+        );
       }
       event.breadcrumbs = event.breadcrumbs.filter(
-        b => !["auth.token", "payment.card"].includes(b.category)
+        (b) => !["auth.token", "payment.card"].includes(b.category),
       );
       event.breadcrumbs = event.breadcrumbs.slice(-50);
     }
@@ -648,13 +661,13 @@ breadcrumbs.message:"payment"
 
 ## Best Practices
 
-| Do | Don't |
-|----|-------|
-| Use standard categories | Invent random category names |
+| Do                                  | Don't                         |
+| ----------------------------------- | ----------------------------- |
+| Use standard categories             | Invent random category names  |
 | Include `requestId` for correlation | Log full request bodies (PII) |
-| Set appropriate `level` | Use `info` for everything |
-| Add `data` with context | Put sensitive data in `data` |
-| Keep messages short (<100 chars) | Write paragraph-long messages |
+| Set appropriate `level`             | Use `info` for everything     |
+| Add `data` with context             | Put sensitive data in `data`  |
+| Keep messages short (<100 chars)    | Write paragraph-long messages |
 
 ## Debugging with Breadcrumbs
 
@@ -696,13 +709,13 @@ Sentry.addBreadcrumb({
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| No breadcrumbs | Check `autoBreadcrumbs` config, verify SDK version |
-| Too many breadcrumbs | Reduce `maxBreadcrumbs`, filter in `beforeSend` |
-| Missing DB breadcrumbs | Ensure ORM middleware registered, check query hook |
+| Issue                    | Solution                                                  |
+| ------------------------ | --------------------------------------------------------- |
+| No breadcrumbs           | Check `autoBreadcrumbs` config, verify SDK version        |
+| Too many breadcrumbs     | Reduce `maxBreadcrumbs`, filter in `beforeSend`           |
+| Missing DB breadcrumbs   | Ensure ORM middleware registered, check query hook        |
 | Breadcrumbs not in issue | They only attach to captured events (errors/transactions) |
-| PII in breadcrumbs | Add `beforeSend` filter, use `data-sentry-ignore` pattern |
+| PII in breadcrumbs       | Add `beforeSend` filter, use `data-sentry-ignore` pattern |
 
 ## Quick Reference
 
@@ -715,7 +728,9 @@ Sentry.getCurrentScope().clearBreadcrumbs();
 Sentry.init({
   maxBreadcrumbs: 100,
   autoBreadcrumbs: { http: true, console: true, db: true },
-  beforeBreadcrumb(breadcrumb, hint) { return breadcrumb; },
+  beforeBreadcrumb(breadcrumb, hint) {
+    return breadcrumb;
+  },
 });
 ```
 

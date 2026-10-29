@@ -11,7 +11,7 @@ It offers features like auto deploys from GitHub, a global CDN, private networks
 
 Render supports Bun natively. You can deploy Bun apps as web services, background workers, cron jobs, and more.
 
-***
+---
 
 As an example, let's deploy a simple Express HTTP server to Render.
 
@@ -23,6 +23,7 @@ As an example, let's deploy a simple Express HTTP server to Render.
     git clone git@github.com:my-github-username/myapp.git
     cd myapp
     ```
+
   </Step>
 
   <Step title="Step 2">
@@ -31,6 +32,7 @@ As an example, let's deploy a simple Express HTTP server to Render.
     ```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
     bun add express
     ```
+
   </Step>
 
   <Step title="Step 3">
@@ -50,6 +52,7 @@ As an example, let's deploy a simple Express HTTP server to Render.
     	console.log(`Listening on port ${port}...`);
     });
     ```
+
   </Step>
 
   <Step title="Step 4">
@@ -60,6 +63,7 @@ As an example, let's deploy a simple Express HTTP server to Render.
     git commit -m "Create simple Express app"
     git push origin main
     ```
+
   </Step>
 
   <Step title="Step 5">
@@ -74,6 +78,7 @@ As an example, let's deploy a simple Express HTTP server to Render.
     | **Runtime**       | `Node`        |
     | **Build Command** | `bun install` |
     | **Start Command** | `bun app.ts`  |
+
   </Step>
 </Steps>
 

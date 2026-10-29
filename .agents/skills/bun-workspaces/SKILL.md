@@ -7,7 +7,7 @@ description: Develop complex monorepos with multiple independent packages
 
 > Develop complex monorepos with multiple independent packages
 
-Bun supports [`workspaces`](https://docs.npmjs.com/cli/v9/using-npm/workspaces?v=true#description) in `package.json`. Workspaces make it easy to develop complex software as a *monorepo* consisting of several independent packages.
+Bun supports [`workspaces`](https://docs.npmjs.com/cli/v9/using-npm/workspaces?v=true#description) in `package.json`. Workspaces make it easy to develop complex software as a _monorepo_ consisting of several independent packages.
 
 It's common for a monorepo to have the following structure:
 
@@ -54,7 +54,11 @@ In the root `package.json`, the `"workspaces"` key is used to indicate which sub
 {
   "name": "my-project",
   "version": "1.0.0",
-  "workspaces": ["packages/**", "!packages/**/test/**", "!packages/**/template/**"]
+  "workspaces": [
+    "packages/**",
+    "!packages/**/test/**",
+    "!packages/**/template/**"
+  ]
 }
 ```
 
@@ -72,7 +76,7 @@ Each workspace has it's own `package.json`. When referencing other packages in t
 
 `bun install` will install dependencies for all workspaces in the monorepo, de-duplicating packages if possible. If you only want to install dependencies for specific workspaces, you can use the `--filter` flag.
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 # Install dependencies for all workspaces starting with `pkg-` except for `pkg-c`
 bun install --filter "pkg-*" --filter "!pkg-c"
 
@@ -96,9 +100,9 @@ Setting a specific version takes precedence over the package's `package.json` ve
 
 Workspaces have a couple major benefits.
 
-* **Code can be split into logical parts.** If one package relies on another, you can simply add it as a dependency in `package.json`. If package `b` depends on `a`, `bun install` will install your local `packages/a` directory into `node_modules` instead of downloading it from the npm registry.
-* **Dependencies can be de-duplicated.** If `a` and `b` share a common dependency, it will be *hoisted* to the root `node_modules` directory. This reduces redundant disk usage and minimizes "dependency hell" issues associated with having multiple versions of a package installed simultaneously.
-* **Run scripts in multiple packages.** You can use the [`--filter` flag](/pm/filter) to easily run `package.json` scripts in multiple packages in your workspace, , or `--workspaces` to run scripts across all workspaces.
+- **Code can be split into logical parts.** If one package relies on another, you can simply add it as a dependency in `package.json`. If package `b` depends on `a`, `bun install` will install your local `packages/a` directory into `node_modules` instead of downloading it from the npm registry.
+- **Dependencies can be de-duplicated.** If `a` and `b` share a common dependency, it will be _hoisted_ to the root `node_modules` directory. This reduces redundant disk usage and minimizes "dependency hell" issues associated with having multiple versions of a package installed simultaneously.
+- **Run scripts in multiple packages.** You can use the [`--filter` flag](/pm/filter) to easily run `package.json` scripts in multiple packages in your workspace, , or `--workspaces` to run scripts across all workspaces.
 
 ## Share versions with Catalogs
 
@@ -111,9 +115,10 @@ updates every package that references it. See
 <Note>
   ⚡️ **Speed** — Installs are fast, even for big monorepos. Bun installs the [Remix](https://github.com/remix-run/remix) monorepo in about `500ms` on Linux.
 
-  * 28x faster than `npm install`
-  * 12x faster than `yarn install` (v1)
-  * 8x faster than `pnpm install`
+- 28x faster than `npm install`
+- 12x faster than `yarn install` (v1)
+- 8x faster than `pnpm install`
 
   <Image src="https://user-images.githubusercontent.com/709451/212829600-77df9544-7c9f-4d8d-a984-b2cd0fd2aa52.png" />
+
 </Note>

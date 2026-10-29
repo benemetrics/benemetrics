@@ -8,7 +8,10 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import type { NatsConnection } from "@nats-io/transport-node";
-import { jetstream as createJetstream, type JetStreamClient } from "@nats-io/jetstream";
+import {
+  jetstream as createJetstream,
+  type JetStreamClient,
+} from "@nats-io/jetstream";
 import { clickHouseIssueFingerprintsByLevel } from "../clickhouse";
 import {
   ADMIN_HEADERS,
@@ -57,11 +60,16 @@ async function findIssueId(
   appId: string,
   fingerprint: string,
 ): Promise<string | undefined> {
-  const response = await fetch(`${TEST_ORIGIN}/api/admin/issues?query=${encodeURIComponent(`app:${appId}`)}`, {
-    headers: ADMIN_HEADERS,
-  });
+  const response = await fetch(
+    `${TEST_ORIGIN}/api/admin/issues?query=${encodeURIComponent(`app:${appId}`)}`,
+    {
+      headers: ADMIN_HEADERS,
+    },
+  );
   const issues = (
-    (await response.json()) as { data: Array<{ id: string; fingerprint: string }> }
+    (await response.json()) as {
+      data: Array<{ id: string; fingerprint: string }>;
+    }
   ).data;
   return issues.find((entry) => entry.fingerprint === fingerprint)?.id;
 }
@@ -130,7 +138,12 @@ describe("Hop 5: NATS -> ClickHouse issue index", () => {
       envelopeHeader: JSON.stringify({ event_id: eventId }),
       envelopeItems: JSON.stringify([]),
       issueEvents: JSON.stringify([
-        { ...digest(eventId, fingerprint), level: "warning", user: "u-gold", tags: { tier: "gold" } },
+        {
+          ...digest(eventId, fingerprint),
+          level: "warning",
+          user: "u-gold",
+          tags: { tier: "gold" },
+        },
       ]),
       receivedAt: new Date().toISOString(),
       type: "store",
@@ -147,7 +160,9 @@ describe("Hop 5: NATS -> ClickHouse issue index", () => {
       15000,
     );
 
-    const withFilter = async (query: string): Promise<Array<{ fingerprint: string }>> => {
+    const withFilter = async (
+      query: string,
+    ): Promise<Array<{ fingerprint: string }>> => {
       const response = await fetch(
         `${TEST_ORIGIN}/api/admin/issues?query=${encodeURIComponent(query)}`,
         { headers: ADMIN_HEADERS },
@@ -160,16 +175,22 @@ describe("Hop 5: NATS -> ClickHouse issue index", () => {
 
     // The level, the user and the tag match any occurrence.
     const byLevel = await withFilter(`level:warning app:${app.appId}`);
-    expect(byLevel.some((entry) => entry.fingerprint === fingerprint)).toBe(true);
+    expect(byLevel.some((entry) => entry.fingerprint === fingerprint)).toBe(
+      true,
+    );
 
     const byUser = await withFilter(`user:u-gold app:${app.appId}`);
-    expect(byUser.some((entry) => entry.fingerprint === fingerprint)).toBe(true);
+    expect(byUser.some((entry) => entry.fingerprint === fingerprint)).toBe(
+      true,
+    );
 
     const byTag = await withFilter(`tag:tier:gold app:${app.appId}`);
     expect(byTag.some((entry) => entry.fingerprint === fingerprint)).toBe(true);
 
     // A tag that does not match excludes the issue.
     const byOtherTag = await withFilter(`tag:tier:silver app:${app.appId}`);
-    expect(byOtherTag.some((entry) => entry.fingerprint === fingerprint)).toBe(false);
+    expect(byOtherTag.some((entry) => entry.fingerprint === fingerprint)).toBe(
+      false,
+    );
   }, 30000);
 });

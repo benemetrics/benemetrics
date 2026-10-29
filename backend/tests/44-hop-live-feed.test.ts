@@ -28,7 +28,8 @@ import {
 const NATS_WS_URL = process.env.NATS_WS_URL || "ws://localhost:9222";
 // The dev issuer keypair is committed (docker-compose nats config); tests
 // sign verdicts with the same key the broker trusts.
-process.env.NATS_AUTH_KEY_SEED ||= "SAAICRLV2CKHUW4DJ4UWKWWZOXS7K4AZ7F3DWLXHXA5FUVBM2OUZ3O3ITM";
+process.env.NATS_AUTH_KEY_SEED ||=
+  "SAAICRLV2CKHUW4DJ4UWKWWZOXS7K4AZ7F3DWLXHXA5FUVBM2OUZ3O3ITM";
 
 let nats: NatsConnection;
 
@@ -44,7 +45,10 @@ afterAll(async () => {
 });
 
 function publish(subject: string, message: Record<string, unknown>) {
-  return nats.publish(subject, new TextEncoder().encode(JSON.stringify(message)));
+  return nats.publish(
+    subject,
+    new TextEncoder().encode(JSON.stringify(message)),
+  );
 }
 
 /** Starts the browser client and resolves once its subscription is live. */
@@ -60,7 +64,11 @@ function startFeed(handlers: {
           if (status === "connected") resolve(close);
         },
       },
-      { url: NATS_WS_URL, appNumber: handlers.appNumber, authToken: ADMIN_TOKEN },
+      {
+        url: NATS_WS_URL,
+        appNumber: handlers.appNumber,
+        authToken: ADMIN_TOKEN,
+      },
     );
   });
 }
@@ -70,7 +78,10 @@ describe("Hop 5: live feed over the NATS WebSocket", () => {
     const app = await startTestApp();
     const eventId = crypto.randomUUID();
     const items: LiveEventItem[] = [];
-    const close = await startFeed({ onItem: (item) => items.push(item), appNumber: app.appNumber });
+    const close = await startFeed({
+      onItem: (item) => items.push(item),
+      appNumber: app.appNumber,
+    });
     // "connected" is the socket's open event; the SUB registers only after
     // the auth callout admits the connection, so give it a beat.
     await Bun.sleep(300);
@@ -98,7 +109,9 @@ describe("Hop 5: live feed over the NATS WebSocket", () => {
       expect(received?.projectId).toBe(app.projectId);
       expect(received?.appId).toBe(app.appId);
       expect(received?.itemTypes).toEqual(["event"]);
-      expect((received?.event as { message?: string } | undefined)?.message).toBe("hop five");
+      expect(
+        (received?.event as { message?: string } | undefined)?.message,
+      ).toBe("hop five");
     } finally {
       close();
     }
@@ -110,7 +123,8 @@ describe("Hop 5: live feed over the NATS WebSocket", () => {
   });
 
   it("parses a newline-batched payload into one item per envelope", () => {
-    const envelope = (id: string) => JSON.stringify({ id, envelopeHeader: "{}", envelopeItems: "[]" });
+    const envelope = (id: string) =>
+      JSON.stringify({ id, envelopeHeader: "{}", envelopeItems: "[]" });
     const parsed = parseLiveMessages(`${envelope("a")}\n${envelope("b")}\n`);
     expect(parsed.map((m) => m.id)).toEqual(["a", "b"]);
   });

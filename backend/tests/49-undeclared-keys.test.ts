@@ -15,7 +15,9 @@ const baseUrl = TEST_ORIGIN;
 describe("Undeclared keys are dropped", () => {
   it("strips client junk from a schema's output (unit)", () => {
     const T = arktype({ name: "string" });
-    expect(T({ name: "a", injected: { evil: true }, junk: "x" })).toEqual({ name: "a" });
+    expect(T({ name: "a", injected: { evil: true }, junk: "x" })).toEqual({
+      name: "a",
+    });
     // Declared keys keep their morphs (uuid parse, integer parse) unchanged.
     const M = arktype({ id: "string.uuid", limit: "string.integer.parse?" });
     expect(
@@ -28,11 +30,16 @@ describe("Undeclared keys are dropped", () => {
     let appId = "";
 
     beforeAll(async () => {
-      const projectRes = await (await fetch(`${baseUrl}/api/admin/projects`, {
-        method: "POST",
-        headers: ADMIN_HEADERS,
-        body: JSON.stringify({ name: "Undeclared Keys", slug: "undeclared-keys" }),
-      })).json();
+      const projectRes = await (
+        await fetch(`${baseUrl}/api/admin/projects`, {
+          method: "POST",
+          headers: ADMIN_HEADERS,
+          body: JSON.stringify({
+            name: "Undeclared Keys",
+            slug: "undeclared-keys",
+          }),
+        })
+      ).json();
       projectId = (projectRes as { id: string }).id;
 
       const appRes = await (

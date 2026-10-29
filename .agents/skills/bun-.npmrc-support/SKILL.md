@@ -12,7 +12,7 @@ Bun supports loading configuration options from [`.npmrc`](https://docs.npmjs.co
   flexible options and can let you configure Bun-specific options.
 </Note>
 
-***
+---
 
 ## Supported options
 
@@ -70,11 +70,11 @@ myorg = "http://localhost:4873/"
 
 The following options are supported:
 
-* `_authToken`
-* `username`
-* `_password` (base64 encoded password)
-* `_auth` (base64 encoded username:password, e.g. `btoa(username + ":" + password)`)
-* `email`
+- `_authToken`
+- `username`
+- `_password` (base64 encoded password)
+- `_auth` (base64 encoded username:password, e.g. `btoa(username + ":" + password)`)
+- `email`
 
 The equivalent `bunfig.toml` option is to add a key in [`install.scopes`](/runtime/bunfig#install-registry):
 

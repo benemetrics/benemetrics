@@ -2,9 +2,7 @@
   "version": "8",
   "dialect": "postgres",
   "id": "f9d9c9f0-63f3-4de5-8b54-a10e683adcbe",
-  "prevIds": [
-    "00000000-0000-0000-0000-000000000000"
-  ],
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
       "isRlsEnabled": false,
@@ -3691,9 +3689,7 @@
       "table": "source_maps"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "alert_channels_pkey",
       "schema": "public",
@@ -3701,9 +3697,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "alert_dead_letters_pkey",
       "schema": "public",
@@ -3711,9 +3705,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "alert_incidents_pkey",
       "schema": "public",
@@ -3721,9 +3713,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "alert_rule_history_pkey",
       "schema": "public",
@@ -3731,9 +3721,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "alert_rules_pkey",
       "schema": "public",
@@ -3741,9 +3729,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "alert_silences_pkey",
       "schema": "public",
@@ -3751,9 +3737,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "apps_pkey",
       "schema": "public",
@@ -3761,9 +3745,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "experiment_assignments_pkey",
       "schema": "public",
@@ -3771,9 +3753,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "experiment_metrics_pkey",
       "schema": "public",
@@ -3781,9 +3761,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "feature_flags_pkey",
       "schema": "public",
@@ -3791,9 +3769,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "issues_pkey",
       "schema": "public",
@@ -3801,9 +3777,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "permission_audit_pkey",
       "schema": "public",
@@ -3811,9 +3785,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "permission_grants_pkey",
       "schema": "public",
@@ -3821,9 +3793,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "permission_rules_pkey",
       "schema": "public",
@@ -3831,9 +3801,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "projects_pkey",
       "schema": "public",
@@ -3841,9 +3809,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "releases_pkey",
       "schema": "public",
@@ -3851,9 +3817,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "segments_pkey",
       "schema": "public",
@@ -3861,9 +3825,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "source_map_tokens_pkey",
       "schema": "public",
@@ -3871,9 +3833,7 @@
       "entityType": "pks"
     },
     {
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "name": "source_maps_pkey",
       "schema": "public",
@@ -3882,9 +3842,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "number"
-      ],
+      "columns": ["number"],
       "nullsNotDistinct": false,
       "name": "apps_number_key",
       "schema": "public",
@@ -3893,9 +3851,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "ingest_key"
-      ],
+      "columns": ["ingest_key"],
       "nullsNotDistinct": false,
       "name": "apps_ingest_key_key",
       "schema": "public",
@@ -3904,9 +3860,7 @@
     },
     {
       "nameExplicit": false,
-      "columns": [
-        "slug"
-      ],
+      "columns": ["slug"],
       "nullsNotDistinct": false,
       "name": "projects_slug_key",
       "schema": "public",

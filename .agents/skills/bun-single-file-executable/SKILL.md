@@ -38,13 +38,13 @@ This bundles `cli.ts` into an executable that can be executed directly:
 ./mycli
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Hello world!
 ```
 
 All imported files and packages are bundled into the executable, along with a copy of the Bun runtime. All built-in Bun and Node.js APIs are supported.
 
-***
+---
 
 ## Cross-compile to other platforms
 
@@ -64,6 +64,7 @@ To build for Linux x64 (most servers):
     # modern is faster, but baseline is more compatible.
     bun build --compile --target=bun-linux-x64-modern ./index.ts --outfile myapp
     ```
+
   </Tab>
 
   <Tab title="JavaScript">
@@ -95,6 +96,7 @@ To build for Linux x64 (most servers):
       },
     });
     ```
+
   </Tab>
 </Tabs>
 
@@ -136,6 +138,7 @@ To build for Windows x64:
 
     # note: if no .exe extension is provided, Bun will automatically add it for Windows executables
     ```
+
   </Tab>
 
   <Tab title="JavaScript">
@@ -158,6 +161,7 @@ To build for Windows x64:
       },
     });
     ```
+
   </Tab>
 </Tabs>
 
@@ -211,14 +215,14 @@ The order of the `--target` flag does not matter, as long as they're delimited b
 
 | --target              | Operating System | Architecture | Modern | Baseline | Libc  |
 | --------------------- | ---------------- | ------------ | ------ | -------- | ----- |
-| bun-linux-x64         | Linux            | x64          | ✅      | ✅        | glibc |
-| bun-linux-arm64       | Linux            | arm64        | ✅      | N/A      | glibc |
-| bun-windows-x64       | Windows          | x64          | ✅      | ✅        | -     |
-| ~~bun-windows-arm64~~ | ~~Windows~~      | ~~arm64~~    | ❌      | ❌        | -     |
-| bun-darwin-x64        | macOS            | x64          | ✅      | ✅        | -     |
-| bun-darwin-arm64      | macOS            | arm64        | ✅      | N/A      | -     |
-| bun-linux-x64-musl    | Linux            | x64          | ✅      | ✅        | musl  |
-| bun-linux-arm64-musl  | Linux            | arm64        | ✅      | N/A      | musl  |
+| bun-linux-x64         | Linux            | x64          | ✅     | ✅       | glibc |
+| bun-linux-arm64       | Linux            | arm64        | ✅     | N/A      | glibc |
+| bun-windows-x64       | Windows          | x64          | ✅     | ✅       | -     |
+| ~~bun-windows-arm64~~ | ~~Windows~~      | ~~arm64~~    | ❌     | ❌       | -     |
+| bun-darwin-x64        | macOS            | x64          | ✅     | ✅       | -     |
+| bun-darwin-arm64      | macOS            | arm64        | ✅     | N/A      | -     |
+| bun-linux-x64-musl    | Linux            | x64          | ✅     | ✅       | musl  |
+| bun-linux-arm64-musl  | Linux            | arm64        | ✅     | N/A      | musl  |
 
 <Warning>
   On x64 platforms, Bun uses SIMD optimizations which require a modern CPU supporting AVX2 instructions. The `-baseline`
@@ -228,7 +232,7 @@ The order of the `--target` flag does not matter, as long as they're delimited b
   your users see `"Illegal instruction"` errors, you might need to use the baseline version.
 </Warning>
 
-***
+---
 
 ## Build-time constants
 
@@ -264,7 +268,7 @@ These constants are embedded directly into your compiled binary at build time, p
   guide](/guides/runtime/build-time-constants).
 </Note>
 
-***
+---
 
 ## Deploying to production
 
@@ -341,7 +345,7 @@ The `--sourcemap` argument embeds a sourcemap compressed with zstd, so that erro
 
 The `--bytecode` argument enables bytecode compilation. Every time you run JavaScript code in Bun, JavaScriptCore (the engine) will compile your source code into bytecode. We can move this parsing work from runtime to bundle time, saving you startup time.
 
-***
+---
 
 ## Embedding runtime arguments
 
@@ -389,14 +393,14 @@ BUN_OPTIONS="--smol --cpu-prof-md" ./myapp
 
 This is useful for debugging or profiling production executables without rebuilding them.
 
-***
+---
 
 ## Automatic config loading
 
 Standalone executables can automatically load configuration files from the directory where they are run. By default:
 
-* **`tsconfig.json`** and **`package.json`** loading is **disabled** — these are typically only needed at development time, and the bundler already uses them when compiling
-* **`.env`** and **`bunfig.toml`** loading is **enabled** — these often contain runtime configuration that may vary per deployment
+- **`tsconfig.json`** and **`package.json`** loading is **disabled** — these are typically only needed at development time, and the bundler already uses them when compiling
+- **`.env`** and **`bunfig.toml`** loading is **enabled** — these often contain runtime configuration that may vary per deployment
 
 <Note>
   In a future version of Bun, `.env` and `bunfig.toml` may also be disabled by default for more deterministic behavior.
@@ -433,6 +437,7 @@ To disable `.env` or `bunfig.toml` loading for deterministic execution:
     # Disable all config loading
     bun build --compile --no-compile-autoload-dotenv --no-compile-autoload-bunfig ./app.ts --outfile myapp
     ```
+
   </Tab>
 
   <Tab title="JavaScript">
@@ -451,10 +456,11 @@ To disable `.env` or `bunfig.toml` loading for deterministic execution:
       },
     });
     ```
+
   </Tab>
 </Tabs>
 
-***
+---
 
 ## Act as the Bun CLI
 
@@ -469,7 +475,7 @@ echo "console.log(\"you shouldn't see this\");" > such-bun.js
 bun build --compile ./such-bun.js
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 [3ms] bundle 1 modules
 [89ms] compile such-bun
 ```
@@ -481,7 +487,7 @@ Normally, running `./such-bun` with arguments would execute the script.
 ./such-bun install
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 you shouldn't see this
 ```
 
@@ -492,14 +498,14 @@ However, with the `BUN_BE_BUN=1` environment variable, it acts just like the `bu
 BUN_BE_BUN=1 ./such-bun install
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun install v1.2.16-canary.1 (1d1db811)
 Checked 63 installs across 64 packages (no changes) [5.00ms]
 ```
 
 This is useful for building CLI tools on top of Bun that may need to install packages, bundle dependencies, run different or local files and more without needing to download a separate binary or install bun.
 
-***
+---
 
 ## Full-stack executables
 
@@ -512,39 +518,41 @@ Bun's `--compile` flag can create standalone executables that contain both serve
   import { serve } from "bun";
   import index from "./index.html";
 
-  const server = serve({
-    routes: {
-      "/": index,
-      "/api/hello": { GET: () => Response.json({ message: "Hello from API" }) },
-    },
-  });
+const server = serve({
+routes: {
+"/": index,
+"/api/hello": { GET: () => Response.json({ message: "Hello from API" }) },
+},
+});
 
-  console.log(`Server running at http://localhost:${server.port}`);
-  ```
+console.log(`Server running at http://localhost:${server.port}`);
 
-  ```html index.html icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  <!DOCTYPE html>
-  <html>
-    <head>
-      <title>My App</title>
-      <link rel="stylesheet" href="./styles.css" />
-    </head>
-    <body>
-      <h1>Hello World</h1>
-      <script src="./app.ts"></script>
-    </body>
-  </html>
-  ```
+````
 
-  ```ts app.ts icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  console.log("Hello from the client!");
-  ```
+```html index.html icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My App</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <h1>Hello World</h1>
+    <script src="./app.ts"></script>
+  </body>
+</html>
+````
 
-  ```css styles.css icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  body {
-    background-color: #f0f0f0;
-  }
-  ```
+```ts app.ts icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
+console.log("Hello from the client!");
+```
+
+```css styles.css icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
+body {
+  background-color: #f0f0f0;
+}
+```
+
 </CodeGroup>
 
 To build this into a single executable:
@@ -570,10 +578,10 @@ To build this into a single executable:
 
 This creates a self-contained binary that includes:
 
-* Your server code
-* The Bun runtime
-* All frontend assets (HTML, CSS, JavaScript)
-* Any npm packages used by your server
+- Your server code
+- The Bun runtime
+- All frontend assets (HTML, CSS, JavaScript)
+- Any npm packages used by your server
 
 The result is a single file that can be deployed anywhere without needing Node.js, Bun, or any dependencies installed. Just run:
 
@@ -585,7 +593,7 @@ Bun automatically handles serving the frontend assets with proper MIME types and
 
 For more details on building full-stack applications with Bun, see the [full-stack guide](/bundler/fullstack).
 
-***
+---
 
 ## Worker
 
@@ -627,7 +635,7 @@ In the future, we may automatically detect usages of statically-known paths in `
 
 If you use a relative path to a file not included in the standalone executable, it will attempt to load that path from disk relative to the current working directory of the process (and then error if it doesn't exist).
 
-***
+---
 
 ## SQLite
 
@@ -648,7 +656,7 @@ cd /home/me/Desktop
 ./hello
 ```
 
-***
+---
 
 ## Embed assets & files
 
@@ -768,7 +776,9 @@ import { file } from "bun";
 
 async function sendWelcomeEmail(user: { name: string; email: string }) {
   const template = await file(templatePath).text();
-  const html = template.replace("{{name}}", user.name).replace("{{email}}", user.email);
+  const html = template
+    .replace("{{name}}", user.name)
+    .replace("{{email}}", user.email);
 
   // Send email with the rendered template...
 }
@@ -853,6 +863,7 @@ To embed a directory with `bun build --compile`, include file patterns in your b
       },
     });
     ```
+
   </Tab>
 </Tabs>
 
@@ -894,7 +905,7 @@ for (const blob of embeddedFiles) {
 
 Each item in `Bun.embeddedFiles` is a `Blob` with a `name` property:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 embeddedFiles: ReadonlyArray<Blob>;
 ```
 
@@ -954,7 +965,7 @@ To disable the content hash, configure asset naming:
   </Tab>
 </Tabs>
 
-***
+---
 
 ## Minification
 
@@ -990,12 +1001,13 @@ To trim down the size of the executable, enable minification:
       },
     });
     ```
+
   </Tab>
 </Tabs>
 
 This uses Bun's minifier to reduce the code size. Overall though, Bun's binary is still way too big and we need to make it smaller.
 
-***
+---
 
 ## Windows-specific flags
 
@@ -1010,6 +1022,7 @@ When compiling a standalone executable on Windows, there are platform-specific o
     # Hide console window (for GUI apps)
     bun build --compile --windows-hide-console ./app.ts --outfile myapp
     ```
+
   </Tab>
 
   <Tab title="JavaScript">
@@ -1036,17 +1049,17 @@ When compiling a standalone executable on Windows, there are platform-specific o
 
 Available Windows options:
 
-* `icon` - Path to `.ico` file for the executable icon
-* `hideConsole` - Disable the background terminal (for GUI apps)
-* `title` - Application title in file properties
-* `publisher` - Publisher name in file properties
-* `version` - Version string in file properties
-* `description` - Description in file properties
-* `copyright` - Copyright notice in file properties
+- `icon` - Path to `.ico` file for the executable icon
+- `hideConsole` - Disable the background terminal (for GUI apps)
+- `title` - Application title in file properties
+- `publisher` - Publisher name in file properties
+- `version` - Version string in file properties
+- `description` - Description in file properties
+- `copyright` - Copyright notice in file properties
 
 <Warning>These flags currently cannot be used when cross-compiling because they depend on Windows APIs.</Warning>
 
-***
+---
 
 ## Code signing on macOS
 
@@ -1093,7 +1106,7 @@ codesign -vvv --verify ./myapp
 
 <Warning>Codesign support requires Bun v1.2.4 or newer.</Warning>
 
-***
+---
 
 ## Code splitting
 
@@ -1125,23 +1138,24 @@ Standalone executables support code splitting. Use `--compile` with `--splitting
   lazy.hello();
   ```
 
-  ```ts src/lazy.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  export function hello() {
-    console.log("Lazy module loaded");
-  }
-  ```
+```ts src/lazy.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
+export function hello() {
+  console.log("Lazy module loaded");
+}
+```
+
 </CodeGroup>
 
 ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
 ./build/entry
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Entrypoint loaded
 Lazy module loaded
 ```
 
-***
+---
 
 ## Using plugins
 
@@ -1153,7 +1167,7 @@ import type { BunPlugin } from "bun";
 const envPlugin: BunPlugin = {
   name: "env-loader",
   setup(build) {
-    build.onLoad({ filter: /\.env\.json$/ }, async args => {
+    build.onLoad({ filter: /\.env\.json$/ }, async (args) => {
       // Transform .env.json files into validated config objects
       const env = await Bun.file(args.path).json();
 
@@ -1185,19 +1199,19 @@ console.log(`API endpoint: ${config.apiUrl}`);
 
 Plugins can perform any transformation: compile YAML/TOML configs, inline SQL queries, generate type-safe API clients, or preprocess templates. Refer to the [plugin documentation](/bundler/plugins) for more details.
 
-***
+---
 
 ## Unsupported CLI arguments
 
 Currently, the `--compile` flag can only accept a single entrypoint at a time and does not support the following flags:
 
-* `--outdir` — use `outfile` instead (except when using with `--splitting`).
-* `--public-path`
-* `--target=node`
-* `--target=browser` (without HTML entrypoints — see [Standalone HTML](/bundler/standalone-html) for `--compile --target=browser` with `.html` files)
-* `--no-bundle` - we always bundle everything into the executable.
+- `--outdir` — use `outfile` instead (except when using with `--splitting`).
+- `--public-path`
+- `--target=node`
+- `--target=browser` (without HTML entrypoints — see [Standalone HTML](/bundler/standalone-html) for `--compile --target=browser` with `.html` files)
+- `--no-bundle` - we always bundle everything into the executable.
 
-***
+---
 
 ## API reference
 

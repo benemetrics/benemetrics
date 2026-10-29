@@ -126,7 +126,7 @@ async function createExperimentFlag(
   targetingRules: Array<Record<string, unknown>> = [],
 ): Promise<FeatureFlag> {
   const res = await adminRequest("POST", "/api/admin/feature-flags", {
-        projectId: await flagProjectId(),
+    projectId: await flagProjectId(),
     key: `exp-${suffix}`,
     name: `Experiment ${suffix}`,
     type: "string",
@@ -204,17 +204,26 @@ describe("Experiments / A/B Testing", () => {
       }),
     );
 
-    const variantKeys = new Set(evaluations.map((evaluation) => evaluation.variantKey));
+    const variantKeys = new Set(
+      evaluations.map((evaluation) => evaluation.variantKey),
+    );
     expect(variantKeys.size).toBe(1);
-    const assignmentIds = new Set(evaluations.map((evaluation) => evaluation.assignmentId));
+    const assignmentIds = new Set(
+      evaluations.map((evaluation) => evaluation.assignmentId),
+    );
     expect(assignmentIds.size).toBe(1);
 
     const users = await json<{
       variants: Record<string, { users: Array<{ id: string }> }>;
     }>(
-      await adminRequest("GET", `/api/admin/experiments/${flag.id}/users?search=${userId}`),
+      await adminRequest(
+        "GET",
+        `/api/admin/experiments/${flag.id}/users?search=${userId}`,
+      ),
     );
-    const matches = Object.values(users.variants).flatMap((variant) => variant.users);
+    const matches = Object.values(users.variants).flatMap(
+      (variant) => variant.users,
+    );
     expect(matches.filter((user) => user.id === userId)).toHaveLength(1);
   });
 
@@ -231,11 +240,9 @@ describe("Experiments / A/B Testing", () => {
   });
 
   it("filters eligibility via targeting rules without pinning a variant", async () => {
-    const flag = await createExperimentFlag(
-      `eligibility-${Date.now()}`,
-      {},
-      [{ attribute: "context.browser", operator: "equals", value: "chrome" }],
-    );
+    const flag = await createExperimentFlag(`eligibility-${Date.now()}`, {}, [
+      { attribute: "context.browser", operator: "equals", value: "chrome" },
+    ]);
 
     const chromeUser = await evaluateUser(flag.key, "chrome-user", {
       browser: "chrome",
@@ -283,7 +290,10 @@ describe("Experiments / A/B Testing", () => {
     const assignments: Array<{ userId: string; variantKey: string }> = [];
     for (let i = 0; i < 200; i++) {
       const evaluation = await evaluateUser(flag.key, `results-user-${i}`);
-      assignments.push({ userId: `results-user-${i}`, variantKey: evaluation.variantKey });
+      assignments.push({
+        userId: `results-user-${i}`,
+        variantKey: evaluation.variantKey,
+      });
     }
 
     for (const [i, assignment] of assignments.entries()) {
@@ -311,7 +321,9 @@ describe("Experiments / A/B Testing", () => {
     expect(results.experiment.primaryMetric).toBe("conversion");
     expect(results.experiment.status).toBe("running");
 
-    const byKey = new Map<string, any>(results.variants.map((v: any) => [v.key, v]));
+    const byKey = new Map<string, any>(
+      results.variants.map((v: any) => [v.key, v]),
+    );
     const control = byKey.get("control");
     const treatment = byKey.get("treatment");
 
@@ -352,7 +364,9 @@ describe("Experiments / A/B Testing", () => {
       `/api/admin/experiments/${flag.id}/results`,
     );
     const results = (await resultsRes.json()) as any;
-    const byKey = new Map<string, any>(results.variants.map((v: any) => [v.key, v]));
+    const byKey = new Map<string, any>(
+      results.variants.map((v: any) => [v.key, v]),
+    );
 
     expect(byKey.get("treatment").isSignificant).toBe(false);
     expect(results.recommendation.action).toBe("continue");
@@ -418,8 +432,7 @@ describe("Experiments / A/B Testing", () => {
 
     const ids = Object.values(
       data.variants as Record<string, { users: Array<{ id: string }> }>,
-    )
-      .flatMap((variant) => variant.users.map((user) => user.id));
+    ).flatMap((variant) => variant.users.map((user) => user.id));
     expect(ids.length).toBeGreaterThan(0);
     expect(ids.every((id) => id.includes("user-15"))).toBe(true);
   });
@@ -500,7 +513,8 @@ describe("Experiments / A/B Testing", () => {
 
     for (let i = 0; i < 100; i++) {
       const evaluation = await evaluateUser(flag.key, `promote-user-${i}`);
-      const converts = evaluation.variantKey === "treatment" ? i % 2 === 0 : false;
+      const converts =
+        evaluation.variantKey === "treatment" ? i % 2 === 0 : false;
       if (converts) {
         await trackRequest({
           flagKey: flag.key,
@@ -597,7 +611,9 @@ describe("Experiments / A/B Testing", () => {
       `${baseUrl}/api/sentry/flags/stream?flags=${flag.key}&sentry_key=${await sentryDsnKey()}`,
     );
     expect(streamRes.status).toBe(200);
-    expect(streamRes.headers.get("content-type")).toContain("text/event-stream");
+    expect(streamRes.headers.get("content-type")).toContain(
+      "text/event-stream",
+    );
 
     const reader = streamRes.body!.getReader();
     const decoder = new TextDecoder();

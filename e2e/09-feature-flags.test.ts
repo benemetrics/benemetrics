@@ -20,7 +20,7 @@ interface TestResult {
 async function apiRequest(
   method: string,
   path: string,
-  body?: unknown
+  body?: unknown,
 ): Promise<Response> {
   const url = new URL(`${SERVER_URL}${path}`);
   const options: RequestInit = {
@@ -47,7 +47,10 @@ async function fetchAllEvents(): Promise<TestResult[]> {
   return await response.json();
 }
 
-async function waitForEvent(eventId: string, timeout: number = 5000): Promise<TestResult | null> {
+async function waitForEvent(
+  eventId: string,
+  timeout: number = 5000,
+): Promise<TestResult | null> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const event = await fetchEvent(eventId);
@@ -241,9 +244,10 @@ describe("Feature Flags - Multivariate Flag Patterns (09-feature-flags.md)", () 
     // Pattern from docs: variant-based API routing
     const variant: string = "treatment-b";
 
-    const baseUrl = variant === "control"
-      ? "https://api.v1.example.com"
-      : "https://api.v2.example.com";
+    const baseUrl =
+      variant === "control"
+        ? "https://api.v1.example.com"
+        : "https://api.v2.example.com";
 
     const headers: Record<string, string> = {};
     if (variant === "treatment-b") {
@@ -346,7 +350,9 @@ describe("Feature Flags - Targeting Rules Patterns (09-feature-flags.md)", () =>
     // Pattern: user.id % 100 < 25 (25% rollout)
     const userId = "user-123";
     // Simple hash for demo
-    const hash = userId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hash = userId
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const percentile = hash % 100;
     const inRollout = percentile < 25;
 
@@ -380,7 +386,11 @@ describe("Feature Flags - Segments Patterns (09-feature-flags.md)", () => {
       description: "Users with >100 events in last 30 days",
       rules: [
         { attribute: "custom.events_30d", operator: ">", value: 100 },
-        { attribute: "user.plan", operator: "IN", value: ["pro", "enterprise"] },
+        {
+          attribute: "user.plan",
+          operator: "IN",
+          value: ["pro", "enterprise"],
+        },
       ],
     };
 
@@ -411,16 +421,19 @@ describe("Feature Flags - Segments Patterns (09-feature-flags.md)", () => {
       { attribute: "plan", operator: "IN", value: ["pro", "enterprise"] },
     ];
 
-    const matches = rules.every(rule => {
+    const matches = rules.every((rule) => {
       const keys = rule.attribute.split(".");
       let value: unknown = user;
       for (const key of keys) {
         value = (value as Record<string, unknown>)?.[key];
       }
       switch (rule.operator) {
-        case ">": return (value as number) > (rule.value as number);
-        case "IN": return (rule.value as string[]).includes(value as string);
-        default: return false;
+        case ">":
+          return (value as number) > (rule.value as number);
+        case "IN":
+          return (rule.value as string[]).includes(value as string);
+        default:
+          return false;
       }
     });
 
@@ -473,8 +486,9 @@ describe("Feature Flags - Kill Switch Patterns (09-feature-flags.md)", () => {
     const currentErrorRate = 0.08; // 8% - exceeds threshold
     const evaluations = 150;
 
-    const shouldTrigger = currentErrorRate > killSwitchConfig.trigger.threshold
-      && evaluations >= killSwitchConfig.trigger.min_evaluations;
+    const shouldTrigger =
+      currentErrorRate > killSwitchConfig.trigger.threshold &&
+      evaluations >= killSwitchConfig.trigger.min_evaluations;
 
     expect(shouldTrigger).toBe(true);
     expect(killSwitchConfig.action).toBe("disable");
@@ -492,8 +506,9 @@ describe("Feature Flags - Kill Switch Patterns (09-feature-flags.md)", () => {
     const currentErrorRate = 0.02; // 2% - below threshold
     const evaluations = 150;
 
-    const shouldTrigger = currentErrorRate > killSwitchConfig.trigger.threshold
-      && evaluations >= killSwitchConfig.trigger.min_evaluations;
+    const shouldTrigger =
+      currentErrorRate > killSwitchConfig.trigger.threshold &&
+      evaluations >= killSwitchConfig.trigger.min_evaluations;
 
     expect(shouldTrigger).toBe(false);
   });
@@ -612,7 +627,11 @@ describe("Feature Flags - Migration Patterns (09-feature-flags.md)", () => {
       key: string;
       defaultValue: boolean;
       rollout: number;
-      targetingRules: Array<{ attribute: string; operator: string; value: string }>;
+      targetingRules: Array<{
+        attribute: string;
+        operator: string;
+        value: string;
+      }>;
     }
 
     const ldFlag: LDFlag = {
@@ -631,7 +650,7 @@ describe("Feature Flags - Migration Patterns (09-feature-flags.md)", () => {
       key: ldFlag.key,
       defaultValue: ldFlag.variations[0]?.value ?? false,
       rollout: ldFlag.rollout,
-      targetingRules: ldFlag.targets.map(t => ({
+      targetingRules: ldFlag.targets.map((t) => ({
         attribute: t.attribute,
         operator: t.op === "endsWith" ? "ENDS_WITH" : "=",
         value: t.values[0] ?? "",
@@ -648,13 +667,20 @@ describe("Feature Flags - Migration Patterns (09-feature-flags.md)", () => {
     interface UnleashFlag {
       name: string;
       enabled: boolean;
-      strategies: Array<{ name: string; parameters: Record<string, string | number> }>;
+      strategies: Array<{
+        name: string;
+        parameters: Record<string, string | number>;
+      }>;
     }
     interface SentryFlag {
       key: string;
       defaultValue: boolean;
       rollout: number;
-      targetingRules: Array<{ attribute: string; operator: string; value: string[] }>;
+      targetingRules: Array<{
+        attribute: string;
+        operator: string;
+        value: string[];
+      }>;
     }
 
     const unleashFlag: UnleashFlag = {

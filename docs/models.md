@@ -17,16 +17,19 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 ## 2. Project
 
 ### Identity
+
 - UUID primary key
 - Human-readable **slug** (derived from name, unique globally; a name that collides gets a numeric suffix)
 - Name, optional description
 - Created/updated timestamps (ISO strings)
 
 ### Ownership
+
 - One-to-many → Apps (via `apps.project_id`)
 - One-to-many → Environments (via `environments.project_id`)
 
 ### Default Environment
+
 - Every project has **exactly one default environment** (`environments.is_default = 1`).
 - Project creation auto-creates a default environment named "Testing" (slug `testing`).
 - The first environment created becomes the default.
@@ -34,9 +37,11 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 - Deleting the default promotes the oldest remaining environment to default.
 
 ### Cascading Deletes
+
 - Deleting a project cascades to **all its apps AND all its environments**.
 
 ### API
+
 - `POST /projects` — create (slug auto-derived from name)
 - `GET /projects` — list (with `appCount`)
 - `GET /projects/:id` — detail + apps (the embedded list is capped; the full list is `GET /projects/:id/apps`)
@@ -48,6 +53,7 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 ## 3. Environment
 
 ### Identity
+
 - UUID primary key
 - **Slug** unique **within its project** (same slug may be reused across different projects)
 - Name (human-readable)
@@ -56,10 +62,12 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 - Created/updated timestamps (ISO strings)
 
 ### Relationships
+
 - Belongs to one project (via `environments.project_id`, no DB foreign key)
 - Shared by many apps (via `apps.environment_id`, no DB foreign key)
 
 ### Lifecycle
+
 - Created explicitly via admin API (not during project creation beyond the initial "testing" default)
 - May be renamed (name + slug editable)
 - Promoting to default demotes the previous default
@@ -67,6 +75,7 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 - When the default is deleted, the oldest remaining environment becomes the new default
 
 ### API (Admin-Only)
+
 - `POST /environments` — `{ projectId, name, slug?, isDefault? }`
 - `GET /environments?projectId=` — paginated list for a project
 - `GET /environments/:id` — get one
@@ -80,6 +89,7 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 ## 4. App
 
 ### Identity
+
 - UUID primary key
 - **Number** (auto-incrementing integer, used in DSN path)
 - Name, platform (e.g., `javascript`, `react-native`, `python`, etc.)
@@ -90,27 +100,32 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 - Created/updated timestamps (ISO strings)
 
 ### DSN
+
 - Per-app, not per-project
 - Format: `http://<public-key>@<host>/<app-number>`
 - The API returns the ingredients (`publicKey`, `number`); the caller composes the DSN for the origin it reached
 - No separate DSN management endpoint
 
 ### Relationships
+
 - Belongs to exactly one project (via `apps.project_id`, no DB foreign key)
 - Created inside exactly one environment (via `apps.environment_id`, no DB foreign key)
 - The app's `environment_id` is set at creation and does not change
 
 ### Creation
+
 - `POST /projects/:id/apps` with optional `environment` name (slug or name)
   - If provided: reuse existing environment by slug/name, or create it
   - If omitted: use the project's default environment
 - Project creation does **not** create an app; apps are created explicitly
 
 ### Deletion
+
 - Deleting an app **does not** delete its environment (environments are shared)
 - Apps are removed by deleting their owning project
 
 ### API
+
 - `GET /projects/:id/apps` — list apps for a project
 - `POST /projects/:id/apps` — create app (generates the public key + the app number)
 - `GET /apps/:id` — get single app (admin scope only)
@@ -120,19 +135,19 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 
 ## 5. Invariants (Must Not Break)
 
-| Invariant | Enforcement |
-|-----------|-------------|
-| Project → Environment → App hierarchy | Application logic (no DB foreign keys) |
-| Environment slug unique per project | Unique index on `(project_id, slug)` |
-| Exactly one default environment per project | Unique partial index on `(project_id) WHERE is_default = 1`; application logic on promote/delete |
-| App belongs to one project + one environment | Application logic (no DB foreign keys) |
-| App number unique globally | Unique index on `number` (DSN path requirement) |
-| Ingest key unique globally | Unique index on `apps.ingest_key` |
-| Public key generated randomly | Random 32-char string at creation (no DB uniqueness constraint) |
-| Deleting app → environment preserved | No cascade from `apps` to `environments` |
-| Deleting environment → apps in it deleted | Application-level cascade in the environment delete handler (`backend/environments/index.ts`) |
-| Deleting project → apps + environments deleted | Application-level cascade in project DELETE handler |
-| Environments admin-only | Route guard: only under `/api/admin/environments/*` |
+| Invariant                                      | Enforcement                                                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Project → Environment → App hierarchy          | Application logic (no DB foreign keys)                                                           |
+| Environment slug unique per project            | Unique index on `(project_id, slug)`                                                             |
+| Exactly one default environment per project    | Unique partial index on `(project_id) WHERE is_default = 1`; application logic on promote/delete |
+| App belongs to one project + one environment   | Application logic (no DB foreign keys)                                                           |
+| App number unique globally                     | Unique index on `number` (DSN path requirement)                                                  |
+| Ingest key unique globally                     | Unique index on `apps.ingest_key`                                                                |
+| Public key generated randomly                  | Random 32-char string at creation (no DB uniqueness constraint)                                  |
+| Deleting app → environment preserved           | No cascade from `apps` to `environments`                                                         |
+| Deleting environment → apps in it deleted      | Application-level cascade in the environment delete handler (`backend/environments/index.ts`)    |
+| Deleting project → apps + environments deleted | Application-level cascade in project DELETE handler                                              |
+| Environments admin-only                        | Route guard: only under `/api/admin/environments/*`                                              |
 
 ---
 

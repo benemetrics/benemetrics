@@ -36,7 +36,7 @@ Now we'll bundle this file with `bun build`. The bundled file will be printed to
 bun build ./cli.tsx
 ```
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 console.log(`Your random number is ${0.6805550949689833}`);
 ```
 
@@ -52,8 +52,8 @@ If you find yourself running a lot of code at bundle-time though, consider runni
 
 Bun Macros are import statements annotated using either:
 
-* `with { type: 'macro' }` — an import attribute, a Stage 3 ECMA Script proposal
-* `assert { type: 'macro' }` — an import assertion, an earlier incarnation of import attributes that has now been abandoned (but is already supported by a number of browsers and runtimes)
+- `with { type: 'macro' }` — an import attribute, a Stage 3 ECMA Script proposal
+- `assert { type: 'macro' }` — an import assertion, an earlier incarnation of import attributes that has now been abandoned (but is already supported by a number of browsers and runtimes)
 
 ## Security considerations
 
@@ -164,9 +164,9 @@ export async function getText() {
 
 The transpiler implements special logic for serializing common data formats like `Response`, `Blob`, `TypedArray`.
 
-* **TypedArray**: Resolves to a base64-encoded string.
-* **Response**: Bun will read the `Content-Type` and serialize accordingly; for instance, a Response with type `application/json` will be automatically parsed into an object and `text/plain` will be inlined as a string. Responses with an unrecognized or undefined type will be base-64 encoded.
-* **Blob**: As with Response, the serialization depends on the `type` property.
+- **TypedArray**: Resolves to a base64-encoded string.
+- **Response**: Bun will read the `Content-Type` and serialize accordingly; for instance, a Response with type `application/json` will be automatically parsed into an object and `text/plain` will be inlined as a string. Responses with an unrecognized or undefined type will be base-64 encoded.
+- **Blob**: As with Response, the serialization depends on the `type` property.
 
 The result of `fetch` is `Promise<Response>`, so it can be directly returned.
 
@@ -217,7 +217,7 @@ export function howLong() {
 
 This outputs:
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 function howLong() {
   console.log("The page is", 1322, "characters long");
 }
@@ -245,12 +245,14 @@ When we build it, the `getGitCommitHash` is replaced with the result of calling 
   ```ts input theme={"theme":{"light":"github-light","dark":"dracula"}}
   import { getGitCommitHash } from "./getGitCommitHash.ts" with { type: "macro" };
 
-  console.log(`The current Git commit hash is ${getGitCommitHash()}`);
-  ```
+console.log(`The current Git commit hash is ${getGitCommitHash()}`);
 
-  ```ts output theme={"theme":{"light":"github-light","dark":"dracula"}}
-  console.log(`The current Git commit hash is 3ee3259104e4507cf62c160f0ff5357ec4c7a7f8`);
-  ```
+````
+
+```ts output theme={"theme":{"light":"github-light","dark":"dracula"}}
+console.log(`The current Git commit hash is 3ee3259104e4507cf62c160f0ff5357ec4c7a7f8`);
+````
+
 </CodeGroup>
 
 <Info>
@@ -277,7 +279,9 @@ export async function extractMetaTags(url: string) {
     .on("meta", {
       element(element) {
         const name =
-          element.getAttribute("name") || element.getAttribute("property") || element.getAttribute("itemprop");
+          element.getAttribute("name") ||
+          element.getAttribute("property") ||
+          element.getAttribute("itemprop");
 
         if (name) meta[name] = element.getAttribute("content");
       },
@@ -294,8 +298,8 @@ The `extractMetaTags` function is erased at bundle-time and replaced with the re
   ```jsx input theme={"theme":{"light":"github-light","dark":"dracula"}}
   import { extractMetaTags } from "./meta.ts" with { type: "macro" };
 
-  export const Head = () => {
-    const headTags = extractMetaTags("https://example.com");
+export const Head = () => {
+const headTags = extractMetaTags("https://example.com");
 
     if (headTags.title !== "Example Domain") {
       throw new Error("Expected title to be 'Example Domain'");
@@ -307,22 +311,25 @@ The `extractMetaTags` function is erased at bundle-time and replaced with the re
         <meta name="viewport" content={headTags.viewport} />
       </head>
     );
-  };
-  ```
 
-  ```jsx output theme={"theme":{"light":"github-light","dark":"dracula"}}
-  export const Head = () => {
-    const headTags = {
-      title: "Example Domain",
-      viewport: "width=device-width, initial-scale=1",
-    };
+};
 
-    return (
-      <head>
-        <title>{headTags.title}</title>
-        <meta name="viewport" content={headTags.viewport} />
-      </head>
-    );
+````
+
+```jsx output theme={"theme":{"light":"github-light","dark":"dracula"}}
+export const Head = () => {
+  const headTags = {
+    title: "Example Domain",
+    viewport: "width=device-width, initial-scale=1",
   };
-  ```
+
+  return (
+    <head>
+      <title>{headTags.title}</title>
+      <meta name="viewport" content={headTags.viewport} />
+    </head>
+  );
+};
+````
+
 </CodeGroup>

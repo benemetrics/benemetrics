@@ -14,7 +14,12 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
+import {
+  app,
+  ADMIN_TOKEN,
+  ADMIN_HEADERS,
+  ADMIN_TOKEN_RAW,
+} from "./test-helpers";
 const PROJECT_NAME = `Parity UI Project ${Date.now()}`;
 const SEGMENT_NAME = `Paying customers ${Date.now()}`;
 const TOKEN_NAME = `Upload token ${Date.now()}`;
@@ -45,7 +50,10 @@ async function adminRequest(
   });
 }
 
-async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string> {
+async function waitForTextInUI(
+  text: string,
+  timeoutMs = 15000,
+): Promise<string> {
   const start = Date.now();
   let body = "";
   while (Date.now() - start < timeoutMs) {
@@ -61,7 +69,10 @@ async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string>
 }
 
 /** Clicks a `.row-action` with the given label inside the row containing `rowText`. */
-async function clickRowAction(rowText: string, actionLabel: string): Promise<boolean> {
+async function clickRowAction(
+  rowText: string,
+  actionLabel: string,
+): Promise<boolean> {
   return (
     (await view.evaluate(`(() => {
       const rows = Array.from(document.querySelectorAll(".list-screen-row"));
@@ -126,7 +137,10 @@ async function setField(label: string, value: string): Promise<boolean> {
 }
 
 /** Waits for the flags list row to show the flag together with its audience chip. */
-async function waitForFlagRowWithAudience(name: string, timeoutMs = 15000): Promise<boolean> {
+async function waitForFlagRowWithAudience(
+  name: string,
+  timeoutMs = 15000,
+): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const ready =
@@ -277,7 +291,8 @@ describe("Backend parity — admin UI surfaces", () => {
     await waitForTextInUI("Audience");
     await waitForTextInUI(SEGMENT_NAME);
 
-    const selected = (await view.evaluate(`(() => {
+    const selected =
+      (await view.evaluate(`(() => {
       const options = Array.from(document.querySelectorAll(".segment-option"));
       const option = options.find((el) => (el.textContent || "").includes(${JSON.stringify(SEGMENT_NAME)}));
       if (!option) return false;

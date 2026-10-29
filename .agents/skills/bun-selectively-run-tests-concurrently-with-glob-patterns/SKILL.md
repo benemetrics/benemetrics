@@ -122,10 +122,10 @@ To migrate existing tests to concurrent execution:
 
 ## Tips
 
-* **Use descriptive prefixes**: `concurrent-`, `parallel-`, `async-`
-* **Keep related sequential tests together** in the same directory
-* **Document why certain tests must remain sequential** with comments
-* **Use `test.concurrent()` for fine-grained control** in sequential files
+- **Use descriptive prefixes**: `concurrent-`, `parallel-`, `async-`
+- **Keep related sequential tests together** in the same directory
+- **Document why certain tests must remain sequential** with comments
+- **Use `test.concurrent()` for fine-grained control** in sequential files
   (Note: In files matched by `concurrentTestGlob`, plain `test()` already runs concurrently)
 
 ## Multiple Patterns
@@ -143,6 +143,6 @@ concurrentTestGlob = [
 
 This configuration will run tests concurrently if they match any of these patterns:
 
-* All tests in `integration/` directories
-* All tests in `e2e/` directories
-* All tests with `concurrent-` prefix anywhere in the project
+- All tests in `integration/` directories
+- All tests in `e2e/` directories
+- All tests with `concurrent-` prefix anywhere in the project

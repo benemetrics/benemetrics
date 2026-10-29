@@ -39,7 +39,10 @@ function contextsReplayId(payload: unknown): string | null {
 
 // The replay session is identified by the `replay_event` metadata or, when
 // the envelope carries the error event itself, by its `contexts.replay`.
-function replayKeyFor(items: ParsedEnvelope["items"], fallback: string): string {
+function replayKeyFor(
+  items: ParsedEnvelope["items"],
+  fallback: string,
+): string {
   for (const item of items) {
     if (item.header.type !== "replay_event") continue;
     const replayId = replayIdOf(item.payload);
@@ -71,10 +74,7 @@ function segmentStartMs(payload: unknown): number {
   return Date.now();
 }
 
-async function putObjectBounded(
-  key: string,
-  body: string,
-): Promise<void> {
+async function putObjectBounded(key: string, body: string): Promise<void> {
   const write = s3.write(key, body, { type: "application/json" });
   let abandoned = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -82,13 +82,10 @@ async function putObjectBounded(
     await Promise.race([
       write,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () => {
-            abandoned = true;
-            reject(new Error(`upload timed out after ${UPLOAD_TIMEOUT_MS}ms`));
-          },
-          UPLOAD_TIMEOUT_MS,
-        );
+        timer = setTimeout(() => {
+          abandoned = true;
+          reject(new Error(`upload timed out after ${UPLOAD_TIMEOUT_MS}ms`));
+        }, UPLOAD_TIMEOUT_MS);
       }),
     ]);
   } catch (err) {
@@ -115,24 +112,22 @@ export async function offloadReplayItems(
   });
 
   return Promise.all(
-    items.map(
-      async (item, index): Promise<ParsedEnvelope["items"][number]> => {
-        if (!OFFLOADED_ITEM_TYPES.has(item.header.type)) return item;
+    items.map(async (item, index): Promise<ParsedEnvelope["items"][number]> => {
+      if (!OFFLOADED_ITEM_TYPES.has(item.header.type)) return item;
 
-        const serialized = JSON.stringify(item.payload);
-        const key = `${prefix}${String(segmentStartMs(item.payload)).padStart(16, "0")}-${messageId}-${index}.json`;
-        try {
-          await putObjectBounded(key, serialized);
-          const pointer: OffloadedItemPayload = { key };
-          return { header: item.header, payload: pointer };
-        } catch (err) {
-          console.error(
-            `[storage] Keeping "${key}" inline after write failure:`,
-            err instanceof Error ? err.message : String(err),
-          );
-          return item;
-        }
-      },
-    ),
+      const serialized = JSON.stringify(item.payload);
+      const key = `${prefix}${String(segmentStartMs(item.payload)).padStart(16, "0")}-${messageId}-${index}.json`;
+      try {
+        await putObjectBounded(key, serialized);
+        const pointer: OffloadedItemPayload = { key };
+        return { header: item.header, payload: pointer };
+      } catch (err) {
+        console.error(
+          `[storage] Keeping "${key}" inline after write failure:`,
+          err instanceof Error ? err.message : String(err),
+        );
+        return item;
+      }
+    }),
   );
 }

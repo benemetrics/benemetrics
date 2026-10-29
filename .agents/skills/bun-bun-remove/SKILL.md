@@ -13,7 +13,7 @@ description: Remove dependencies from your project
 bun remove ts-node
 ```
 
-***
+---
 
 ## CLI Usage
 

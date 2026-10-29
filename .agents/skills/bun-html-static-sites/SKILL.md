@@ -37,14 +37,14 @@ Press h + Enter to show shortcuts
 
 Bun's development server provides powerful features with zero configuration:
 
-* **Automatic Bundling** - Bundles and serves your HTML, JavaScript, and CSS
-* **Multi-Entry Support** - Handles multiple HTML entry points and glob entry points
-* **Modern JavaScript** - TypeScript & JSX support out of the box
-* **Smart Configuration** - Reads `tsconfig.json` for paths, JSX options, experimental decorators, and more
-* **Plugins** - Plugins for TailwindCSS and more
-* **ESM & CommonJS** - Use ESM and CommonJS in your JavaScript, TypeScript, and JSX files
-* **CSS Bundling & Minification** - Bundles CSS from `<link>` tags and `@import` statements
-* **Asset Management** - Automatic copying & hashing of images and assets; Rewrites asset paths in JavaScript, CSS, and HTML
+- **Automatic Bundling** - Bundles and serves your HTML, JavaScript, and CSS
+- **Multi-Entry Support** - Handles multiple HTML entry points and glob entry points
+- **Modern JavaScript** - TypeScript & JSX support out of the box
+- **Smart Configuration** - Reads `tsconfig.json` for paths, JSX options, experimental decorators, and more
+- **Plugins** - Plugins for TailwindCSS and more
+- **ESM & CommonJS** - Use ESM and CommonJS in your JavaScript, TypeScript, and JSX files
+- **CSS Bundling & Minification** - Bundles CSS from `<link>` tags and `@import` statements
+- **Asset Management** - Automatic copying & hashing of images and assets; Rewrites asset paths in JavaScript, CSS, and HTML
 
 ## Single Page Apps (SPA)
 
@@ -84,7 +84,7 @@ Some projects have several separate routes or HTML files as entry points. To sup
 bun ./index.html ./about.html
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun v1.3.3
 ready in 6.62ms
 → http://localhost:3000/
@@ -96,8 +96,8 @@ Press h + Enter to show shortcuts
 
 This will serve:
 
-* `index.html` at `/`
-* `about.html` at `/about`
+- `index.html` at `/`
+- `about.html` at `/about`
 
 ### Glob patterns
 
@@ -162,16 +162,18 @@ For example:
   ```css styles.css icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
   @import "./abc.css";
 
-  .container {
-    background-color: blue;
-  }
-  ```
+.container {
+background-color: blue;
+}
 
-  ```css abc.css icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  body {
-    background-color: red;
-  }
-  ```
+````
+
+```css abc.css icon="file-code" theme={"theme":{"light":"github-light","dark":"dracula"}}
+body {
+  background-color: red;
+}
+````
+
 </CodeGroup>
 
 This outputs:
@@ -279,7 +281,7 @@ env = "PUBLIC_*"  # only inline env vars starting with PUBLIC_ (recommended)
   This only works with literal `process.env.FOO` references, not `import.meta.env` or indirect access like `const env =
     process.env; env.FOO`.
 
-  If an environment variable is not set, you may see runtime errors like `ReferenceError: process
+If an environment variable is not set, you may see runtime errors like `ReferenceError: process
     is not defined` in the browser.
 </Note>
 
@@ -302,6 +304,7 @@ When building static HTML for production, use the `env` option to inline environ
     # Only inline env vars with a specific prefix (recommended)
     bun build ./index.html --outdir=dist --env=PUBLIC_*
     ```
+
   </Tab>
 
   <Tab title="API">
@@ -320,6 +323,7 @@ When building static HTML for production, use the `env` option to inline environ
       env: "PUBLIC_*", // [!code highlight]
     });
     ```
+
   </Tab>
 </Tabs>
 
@@ -374,9 +378,9 @@ Bun's frontend dev server has support for Automatic Workspace Folders in Chrome 
 
 While the server is running:
 
-* `o + Enter` - Open in browser
-* `c + Enter` - Clear console
-* `q + Enter` (or `Ctrl+C`) - Quit server
+- `o + Enter` - Open in browser
+- `c + Enter` - Clear console
+- `q + Enter` (or `Ctrl+C`) - Quit server
 
 ## Build for Production
 
@@ -403,7 +407,7 @@ When you're ready to deploy, use `bun build` to create optimized production bund
 <Warning>
   Currently, plugins are only supported through `Bun.build`'s API or through `bunfig.toml` with the frontend dev server
 
-  * not yet supported in `bun build`'s CLI.
+- not yet supported in `bun build`'s CLI.
 </Warning>
 
 ### Watch Mode
@@ -436,7 +440,7 @@ await Bun.build({
           },
         });
 
-        onLoad({ filter: /\.html$/ }, async args => {
+        onLoad({ filter: /\.html$/ }, async (args) => {
           const html = await Bun.file(args.path).text();
 
           return {
@@ -456,22 +460,22 @@ await Bun.build({
 
 Bun automatically handles all common web assets:
 
-* **Scripts** (`<script src>`) are run through Bun's JavaScript/TypeScript/JSX bundler
-* **Stylesheets** (`<link rel="stylesheet">`) are run through Bun's CSS parser & bundler
-* **Images** (`<img>`, `<picture>`) are copied and hashed
-* **Media** (`<video>`, `<audio>`, `<source>`) are copied and hashed
-* Any `<link>` tag with an `href` attribute pointing to a local file is rewritten to the new path, and hashed
+- **Scripts** (`<script src>`) are run through Bun's JavaScript/TypeScript/JSX bundler
+- **Stylesheets** (`<link rel="stylesheet">`) are run through Bun's CSS parser & bundler
+- **Images** (`<img>`, `<picture>`) are copied and hashed
+- **Media** (`<video>`, `<audio>`, `<source>`) are copied and hashed
+- Any `<link>` tag with an `href` attribute pointing to a local file is rewritten to the new path, and hashed
 
 All paths are resolved relative to your HTML file, making it easy to organize your project however you want.
 
 <Warning>
   **This is a work in progress**
 
-  * Need more plugins
-  * Need more configuration options for things like asset handling
-  * Need a way to configure CORS, headers, etc.
+- Need more plugins
+- Need more configuration options for things like asset handling
+- Need a way to configure CORS, headers, etc.
 
-  {/* If you want to submit a PR, most of the code is [here](https://github.com/oven-sh/bun/blob/main/src/bun.js/api/bun/html-rewriter.ts). You could even copy paste that file into your project and use it as a starting point. */}
+{/* If you want to submit a PR, most of the code is [here](https://github.com/oven-sh/bun/blob/main/src/bun.js/api/bun/html-rewriter.ts). You could even copy paste that file into your project and use it as a starting point. */}
 </Warning>
 
 ## How this works

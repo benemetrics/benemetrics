@@ -9,10 +9,10 @@ description: Bun's bundler has built-in support for CSS with modern features
 
 Bun's bundler has built-in support for CSS with the following features:
 
-* Transpiling modern/future features to work on all browsers (including vendor prefixing)
-* Minification
-* CSS Modules
-* Tailwind (via a native bundler plugin)
+- Transpiling modern/future features to work on all browsers (including vendor prefixing)
+- Minification
+- CSS Modules
+- Tailwind (via a native bundler plugin)
 
 ## Transpiling
 
@@ -26,11 +26,11 @@ Bun's CSS parser and bundler is a direct Rust → Zig port of LightningCSS, with
 
 By default, Bun's CSS bundler targets the following browsers:
 
-* ES2020
-* Edge 88+
-* Firefox 78+
-* Chrome 87+
-* Safari 14+
+- ES2020
+- Edge 88+
+- Firefox 78+
+- Chrome 87+
+- Safari 14+
 
 ## Syntax Lowering
 
@@ -147,7 +147,7 @@ CSS now allows you to modify individual components of a color using relative col
 
 Bun's CSS bundler computes these relative color modifications at build time (when not using CSS variables) and generates static color values for browser compatibility:
 
-```css  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```css theme={"theme":{"light":"github-light","dark":"dracula"}}
 .theme-color {
   --accent: lch(69.32% 58.34 328.37);
   --subtle-blue: oklch(60.92% 0.112 240.01);
@@ -166,7 +166,11 @@ Modern CSS supports perceptually uniform color spaces like LAB, LCH, OKLAB, and 
   color: lab(55% 78 35);
 
   /* A smooth gradient using perceptual color space */
-  background: linear-gradient(to right, oklch(65% 0.25 10deg), oklch(65% 0.25 250deg));
+  background: linear-gradient(
+    to right,
+    oklch(65% 0.25 10deg),
+    oklch(65% 0.25 250deg)
+  );
 }
 ```
 
@@ -182,7 +186,11 @@ Bun's CSS bundler automatically converts these advanced color formats to backwar
   color: lab(55% 78 35);
 
   background: linear-gradient(to right, #cd4e15, #3887ab);
-  background: linear-gradient(to right, oklch(65% 0.25 10deg), oklch(65% 0.25 250deg));
+  background: linear-gradient(
+    to right,
+    oklch(65% 0.25 10deg),
+    oklch(65% 0.25 250deg)
+  );
 }
 ```
 
@@ -346,9 +354,11 @@ For browsers that don't support this feature yet, Bun's CSS bundler converts it 
 }
 
 .themed-component {
-  background-color: var(--lightningcss-light, #ffffff) var(--lightningcss-dark, #121212);
+  background-color: var(--lightningcss-light, #ffffff)
+    var(--lightningcss-dark, #121212);
   color: var(--lightningcss-light, #333333) var(--lightningcss-dark, #eeeeee);
-  border-color: var(--lightningcss-light, #dddddd) var(--lightningcss-dark, #555555);
+  border-color: var(--lightningcss-light, #dddddd)
+    var(--lightningcss-dark, #555555);
 }
 ```
 
@@ -516,7 +526,7 @@ The `:is()` pseudo-class function (formerly `:matches()`) allows you to create m
 
 For browsers that don't support `:is()`, Bun's CSS bundler provides fallbacks using vendor-prefixed alternatives:
 
-```css  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```css theme={"theme":{"light":"github-light","dark":"dracula"}}
 /* Fallback using -webkit-any */
 .article :-webkit-any(h1, h2, h3) {
   margin-top: 1.5em;
@@ -888,10 +898,10 @@ This approach gives you the simplicity of writing just `system-ui` in your sourc
 
 Bun's bundler also supports bundling CSS modules in addition to regular CSS with support for the following features:
 
-* Automatically detecting CSS module files (`.module.css`) with zero configuration
-* Composition (`composes` property)
-* Importing CSS modules into JSX/TSX
-* Warnings/errors for invalid usages of CSS modules
+- Automatically detecting CSS module files (`.module.css`) with zero configuration
+- Composition (`composes` property)
+- Importing CSS modules into JSX/TSX
+- Warnings/errors for invalid usages of CSS modules
 
 A CSS module is a CSS file (with the `.module.css` extension) where are all class names and animations are scoped to the file. This helps you avoid class name collisions as CSS declarations are globally scoped by default.
 
@@ -1023,5 +1033,5 @@ You can also compose from a separate CSS module file:
 <Warning>
   When composing classes from separate files, be sure that they do not contain the same properties.
 
-  The CSS module spec says that composing classes from separate files with conflicting properties is undefined behavior, meaning that the output may differ and be unreliable.
+The CSS module spec says that composing classes from separate files with conflicting properties is undefined behavior, meaning that the output may differ and be unreliable.
 </Warning>

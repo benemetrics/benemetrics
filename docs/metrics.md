@@ -43,45 +43,45 @@ One ClickHouse row per `(event, metric, dimension)` where `dimension` = transact
 
 ### Web Vitals
 
-| Metric | Description | Display Thresholds (warning / critical) |
-|--------|-------------|-----------------------------------------|
-| `lcp` | Largest Contentful Paint (ms) | 2500 / 4000 |
-| `inp` | Interaction to Next Paint (ms) | 200 / 500 |
-| `cls` | Cumulative Layout Shift | 0.1 / 0.25 |
-| `fcp` | First Contentful Paint (ms) | 1800 / 3000 |
-| `ttfb` | Time to First Byte (ms) | 800 / 1800 |
-| `fp` | First Paint (ms) | 1000 / 3000 |
-| `fid` | First Input Delay (ms) | 100 / 300 |
-| `ttfb.requesttime` | Request time component of TTFB | — |
+| Metric             | Description                    | Display Thresholds (warning / critical) |
+| ------------------ | ------------------------------ | --------------------------------------- |
+| `lcp`              | Largest Contentful Paint (ms)  | 2500 / 4000                             |
+| `inp`              | Interaction to Next Paint (ms) | 200 / 500                               |
+| `cls`              | Cumulative Layout Shift        | 0.1 / 0.25                              |
+| `fcp`              | First Contentful Paint (ms)    | 1800 / 3000                             |
+| `ttfb`             | Time to First Byte (ms)        | 800 / 1800                              |
+| `fp`               | First Paint (ms)               | 1000 / 3000                             |
+| `fid`              | First Input Delay (ms)         | 100 / 300                               |
+| `ttfb.requesttime` | Request time component of TTFB | —                                       |
 
 ### Mobile Vitals
 
-| Metric | Description | Display Thresholds (warning / critical) |
-|--------|-------------|-----------------------------------------|
-| `app_start_cold` | Cold start time (ms) | <3000 / <5000 |
-| `app_start_warm` | Warm start time (ms) | <1000 / <2000 |
-| `time_to_initial_display` | TTID (ms) | — |
-| `time_to_full_display` | TTFD (ms) | — |
-| `frames_total` | Total frames rendered | — |
-| `frames_slow` | Slow frames (>16ms) | — |
-| `frames_frozen` | Frozen frames (>700ms) | — |
-| `stall_count` | Number of stalls (RN) | — |
-| `stall_total_time` | Total stall time (ms) | — |
-| `stall_longest_time` | Longest stall (ms) | — |
-| `frames_slow_rate` | `frames_slow / frames_total` (weighted, Sentry-style) | — |
-| `frames_frozen_rate` | `frames_frozen / frames_total` | — |
-| `stall_percentage` | `stall_total_time / total_time` | — |
+| Metric                    | Description                                           | Display Thresholds (warning / critical) |
+| ------------------------- | ----------------------------------------------------- | --------------------------------------- |
+| `app_start_cold`          | Cold start time (ms)                                  | <3000 / <5000                           |
+| `app_start_warm`          | Warm start time (ms)                                  | <1000 / <2000                           |
+| `time_to_initial_display` | TTID (ms)                                             | —                                       |
+| `time_to_full_display`    | TTFD (ms)                                             | —                                       |
+| `frames_total`            | Total frames rendered                                 | —                                       |
+| `frames_slow`             | Slow frames (>16ms)                                   | —                                       |
+| `frames_frozen`           | Frozen frames (>700ms)                                | —                                       |
+| `stall_count`             | Number of stalls (RN)                                 | —                                       |
+| `stall_total_time`        | Total stall time (ms)                                 | —                                       |
+| `stall_longest_time`      | Longest stall (ms)                                    | —                                       |
+| `frames_slow_rate`        | `frames_slow / frames_total` (weighted, Sentry-style) | —                                       |
+| `frames_frozen_rate`      | `frames_frozen / frames_total`                        | —                                       |
+| `stall_percentage`        | `stall_total_time / total_time`                       | —                                       |
 
 > **Note:** `frames_slow_rate`, `frames_frozen_rate`, and `stall_percentage` are rate samples sent directly by React Native SDKs. The aggregate frame rate for display is computed as `frames_slow / frames_total` (weighted, Sentry-style).
 
 ### Sentinels
 
-| Metric | Description |
-|--------|-------------|
+| Metric        | Description                                        |
+| ------------- | -------------------------------------------------- |
 | `event_count` | 1 per stored event item (`event` or `transaction`) |
-| `error_count` | 1 when level = `error` |
-| `fatal_count` | 1 when level = `fatal` |
-| `duration` | Transaction duration (ms) |
+| `error_count` | 1 when level = `error`                             |
+| `fatal_count` | 1 when level = `fatal`                             |
+| `duration`    | Transaction duration (ms)                          |
 
 The level is normalized lowercase; a missing or unknown level counts as `error`. `error_count` and
 `fatal_count` are disjoint — a `fatal` event is counted only by `fatal_count`.
@@ -92,11 +92,11 @@ The level is normalized lowercase; a missing or unknown level counts as `error`.
 
 ### Subjects on the `SENTRIES` stream
 
-| Subject | Payload | Consumers |
-|---------|---------|-----------|
+| Subject                     | Payload                                                                                                               | Consumers                                                            |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `sentry.events.<appNumber>` | One JSON object per message (event id, project id, app id, envelope header, envelope items, received timestamp, type) | ClickHouse (events) + Side-effects consumer (`side-effects` durable) |
-| `sentry.metrics` | JSONEachRow sample rows | ClickHouse (metrics) |
-| `sentry.flags.changed` | The flag change | Flags consumer (`flags-consumer` durable) |
+| `sentry.metrics`            | JSONEachRow sample rows                                                                                               | ClickHouse (metrics)                                                 |
+| `sentry.flags.changed`      | The flag change                                                                                                       | Flags consumer (`flags-consumer` durable)                            |
 
 ### ClickHouse DDL
 
@@ -152,18 +152,21 @@ TTL toDateTime(receivedAt) + toIntervalMonth(1)
 ## 5. Write Path
 
 ### Ingest Handler
+
 1. Resolve app (control plane)
 2. Extract samples from envelope (every numeric measurement + sentinels)
 3. Publish `sentry.events.<appNumber>` + `sentry.metrics`
 4. Publish failure → 503; no in-process fallback
 
 ### ClickHouse
+
 - Engine tables pull from JetStream via their own durable consumers
 - Materialized views insert, ack-after-insert
 - Redelivery retried by the engine
 - Duplicates collapsed by `ReplacingMergeTree`
 
 ### Side-Effects Consumer
+
 - Process ingested event — issue create/regress (one-shot, race-safe) + mark seen
 - No ledger, no ClickHouse writes, no broadcast
 - A ClickHouse outage never touches this consumer
@@ -173,6 +176,7 @@ TTL toDateTime(receivedAt) + toIntervalMonth(1)
 ## 6. Read Path
 
 ### Events API
+
 - ClickHouse only (`SELECT … FINAL`)
 - No control-plane fallback
 - ClickHouse errors → 5xx
@@ -180,18 +184,22 @@ TTL toDateTime(receivedAt) + toIntervalMonth(1)
 ### Metrics API
 
 #### `GET /api/admin/metrics/series`
+
 ```
 Query: metric, projectId|environmentId|appId, from, to, stepSeconds?
 Response: { metric, unit, points: [{ bucketStart, count, mean, p50, p95, p99 }] }
 ```
+
 - `toStartOfInterval` + `quantile()` in ClickHouse
 - Auto step: ≤6h → 1m, ≤48h → 5m, else 1h
 
 #### `GET /api/admin/metrics/breakdown`
+
 ```
 Query: metric=duration, projectId|environmentId|appId, from, to, limit?
 Response: { data: [{ dimension, count, mean, p50, p95 }] }
 ```
+
 - Top-N dimensions by count for the given metric/window
 
 ---
@@ -210,11 +218,13 @@ Response: { data: [{ dimension, count, mean, p50, p95 }] }
 ## 8. Frontend
 
 ### Live Feed
+
 - Subscribe over the NATS WebSocket to `sentry.events.<appNumber>` per app (URL from config, default local dev WS port); CONNECT carries the credential as `auth_token` and the auth callout scopes it
 - Parse envelopes client-side (reuse the events-API parser)
 - Old backend live-feed route removed
 
 ### Metrics Panels
+
 - API client, units, bands
 - **Performance page web vitals cards** (adds `fp`/`fid`)
 - **Mobile Vitals panel** — cold/warm start, TTID/TTFD, derived slow/frozen frame rate, stalls
@@ -244,19 +254,20 @@ There is **no log store**: the Logs page is an honest placeholder and never fabr
 ## 10. Testing — Small Blocks, One Hop Per Test
 
 Test suites split by transport:
+
 - **In-process**: run via application handle — no network listener. Host header set so request-derived values (DSN hosts) stay consistent.
 - **E2E**: only suites needing a real socket — SDK-driven, WebView UI, WebSocket.
 
 Each hop is asserted by its own small test (no chain assertions):
 
-| # | Test | Description |
-|---|------|-------------|
-| 1 | **ingest → NATS** | POST an envelope; assert the `sentry.events.<appNumber>` message and `sentry.metrics` rows in the stream. Nothing downstream awaited. |
-| 2 | **NATS → ClickHouse** | Publish directly to NATS; wait for row in events/metrics tables (`FINAL`); duplicate event id stays one row. Owns engine config/ack path. |
-| 3 | **NATS → Control Plane** | Publish; assert issue/alert side effects; republished id never creates a second issue or re-fires an alert (one-shot; counter drift accepted). |
-| 4 | **ClickHouse → API reads** | Seed ClickHouse directly; assert events/metrics endpoints. No ingestion involved. |
-| 5 | **Live feed** | NATS client subscribes like the browser; publish; assert receipt. |
-| 6 | **SDK E2E** | Full path through a real SDK; ClickHouse visibility assertions wait for engine ingestion (asynchronous). |
+| #   | Test                       | Description                                                                                                                                    |
+| --- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **ingest → NATS**          | POST an envelope; assert the `sentry.events.<appNumber>` message and `sentry.metrics` rows in the stream. Nothing downstream awaited.          |
+| 2   | **NATS → ClickHouse**      | Publish directly to NATS; wait for row in events/metrics tables (`FINAL`); duplicate event id stays one row. Owns engine config/ack path.      |
+| 3   | **NATS → Control Plane**   | Publish; assert issue/alert side effects; republished id never creates a second issue or re-fires an alert (one-shot; counter drift accepted). |
+| 4   | **ClickHouse → API reads** | Seed ClickHouse directly; assert events/metrics endpoints. No ingestion involved.                                                              |
+| 5   | **Live feed**              | NATS client subscribes like the browser; publish; assert receipt.                                                                              |
+| 6   | **SDK E2E**                | Full path through a real SDK; ClickHouse visibility assertions wait for engine ingestion (asynchronous).                                       |
 
 ---
 

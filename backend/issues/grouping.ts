@@ -26,13 +26,7 @@ export interface IssueDigest {
   tags: Record<string, string>;
 }
 
-const ISSUE_LEVELS = new Set([
-  "fatal",
-  "error",
-  "warning",
-  "info",
-  "debug",
-]);
+const ISSUE_LEVELS = new Set(["fatal", "error", "warning", "info", "debug"]);
 
 // The newest in_app frame with a filename, else the newest frame with a
 // filename, else the last frame (SDKs send frames oldest-first).
@@ -51,11 +45,21 @@ function crashFrame(
   return frames[frames.length - 1];
 }
 
-function topException(
-  payload: Record<string, unknown>,
-): { type?: string; value?: string; stacktrace?: { frames?: ExceptionFrame[] } } | undefined {
+function topException(payload: Record<string, unknown>):
+  | {
+      type?: string;
+      value?: string;
+      stacktrace?: { frames?: ExceptionFrame[] };
+    }
+  | undefined {
   const exception = payload.exception as
-    | { values?: Array<{ type?: string; value?: string; stacktrace?: { frames?: ExceptionFrame[] } }> }
+    | {
+        values?: Array<{
+          type?: string;
+          value?: string;
+          stacktrace?: { frames?: ExceptionFrame[] };
+        }>;
+      }
     | undefined;
   return exception?.values?.[0];
 }
@@ -125,14 +129,15 @@ export function issueLevel(payload: Record<string, unknown>): string {
   return ISSUE_LEVELS.has(level) ? level : "error";
 }
 
-export function issueType(payload: Record<string, unknown>): "error" | "message" {
+export function issueType(
+  payload: Record<string, unknown>,
+): "error" | "message" {
   return topException(payload) ? "error" : "message";
 }
 
 export function issueUser(payload: Record<string, unknown>): string | null {
   const user = payload.user as
-    | { id?: unknown; email?: unknown; username?: unknown }
-    | undefined;
+    { id?: unknown; email?: unknown; username?: unknown } | undefined;
   if (!user) return null;
   for (const value of [user.id, user.email, user.username]) {
     if (typeof value === "string" && value) return value;
@@ -141,7 +146,9 @@ export function issueUser(payload: Record<string, unknown>): string | null {
 }
 
 // The event's tags; only the string values are kept.
-export function issueTags(payload: Record<string, unknown>): Record<string, string> {
+export function issueTags(
+  payload: Record<string, unknown>,
+): Record<string, string> {
   const tags = payload.tags;
   if (!tags || typeof tags !== "object" || Array.isArray(tags)) return {};
   const result: Record<string, string> = {};
@@ -197,9 +204,7 @@ export function issueEventId(
 }
 
 // The digest of one occurrence.
-export function issueDigest(
-  payload: Record<string, unknown>,
-): IssueDigest {
+export function issueDigest(payload: Record<string, unknown>): IssueDigest {
   return {
     eventId: issueEventId(payload, crypto.randomUUID()),
     fingerprint: issueFingerprint(payload),

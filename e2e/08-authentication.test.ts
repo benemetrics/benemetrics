@@ -1,8 +1,8 @@
 /**
  * E2E Test: Authentication (08-authentication.md)
- * 
+ *
  * Tests Sentry authentication patterns from 08-authentication.md
- * 
+ *
  * IMPORTANT: This test focuses on DSN-only (None) authentication,
  * which is the method used by SDKs to send events. OAuth2 and OIDC
  * are server-side/admin authentication methods and require a real
@@ -29,11 +29,14 @@ async function bootstrapProjectAndApp(): Promise<void> {
   const project = (await projectResponse.json()) as { id: string };
 
   const appResponse = await app.handle(
-    new Request(`http://localhost:31337/api/admin/projects/${project.id}/apps`, {
-      method: "POST",
-      headers: ADMIN_HEADERS,
-      body: JSON.stringify({ name: "Auth App" }),
-    }),
+    new Request(
+      `http://localhost:31337/api/admin/projects/${project.id}/apps`,
+      {
+        method: "POST",
+        headers: ADMIN_HEADERS,
+        body: JSON.stringify({ name: "Auth App" }),
+      },
+    ),
   );
   const created = (await appResponse.json()) as {
     ingestKey: string;
@@ -62,14 +65,17 @@ async function fetchEvent(eventId: string): Promise<any> {
   return response.json();
 }
 
-async function waitForEvent(eventId: string, timeout: number = 5000): Promise<any> {
+async function waitForEvent(
+  eventId: string,
+  timeout: number = 5000,
+): Promise<any> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     try {
       return await fetchEvent(eventId);
     } catch (e) {
       if ((e as Error).message.includes("not found")) {
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 100));
         continue;
       }
       throw e;
@@ -81,12 +87,14 @@ async function waitForEvent(eventId: string, timeout: number = 5000): Promise<an
 async function sendEnvelope(projectId: string, envelope: string): Promise<any> {
   const url = new URL(`http://localhost:31337/api/${projectId}/envelope/`);
   url.searchParams.set("sentry_key", TEST_PUBLIC_KEY);
-  
-  return await app.handle(new Request(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-sentry-envelope" },
-    body: envelope
-  }));
+
+  return await app.handle(
+    new Request(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-sentry-envelope" },
+      body: envelope,
+    }),
+  );
 }
 
 describe("Authentication - None (DSN-based) (08-authentication.md)", () => {
@@ -97,28 +105,28 @@ describe("Authentication - None (DSN-based) (08-authentication.md)", () => {
   it("sends events with DSN-only authentication via envelope endpoint", async () => {
     const envelopeHeader = JSON.stringify({
       sent_at: new Date().toISOString(),
-      dsn: TEST_DSN
+      dsn: TEST_DSN,
     });
     const itemHeader = JSON.stringify({
       type: "event",
       content_type: "application/json",
-      length: 0
+      length: 0,
     });
     const payload = JSON.stringify({
       event_id: crypto.randomUUID(),
       message: "DSN-only auth test",
       level: "info",
-      timestamp: Date.now() / 1000
+      timestamp: Date.now() / 1000,
     });
-    
+
     const envelope = `${envelopeHeader}\n${itemHeader}\n${payload}\n`;
-    
+
     const response = await sendEnvelope(TEST_PROJECT_ID, envelope);
     expect(response.status).toBe(200);
-    
+
     const result = await response.json();
     expect(result.id).toBeDefined();
-    
+
     const event = await waitForEvent(result.id);
     expect(event).toBeDefined();
     expect(event.message).toBe("DSN-only auth test");
@@ -129,25 +137,25 @@ describe("Authentication - None (DSN-based) (08-authentication.md)", () => {
     const eventId = crypto.randomUUID();
     const envelopeHeader = JSON.stringify({
       sent_at: new Date().toISOString(),
-      dsn: TEST_DSN
+      dsn: TEST_DSN,
     });
     const itemHeader = JSON.stringify({
       type: "event",
       content_type: "application/json",
-      length: 0
+      length: 0,
     });
     const payload = JSON.stringify({
       event_id: eventId,
       message: "DSN header test",
       level: "error",
-      timestamp: Date.now() / 1000
+      timestamp: Date.now() / 1000,
     });
-    
+
     const envelope = `${envelopeHeader}\n${itemHeader}\n${payload}\n`;
-    
+
     const response = await sendEnvelope(TEST_PROJECT_ID, envelope);
     expect(response.status).toBe(200);
-    
+
     const event = await waitForEvent(eventId);
     expect(event).toBeDefined();
     expect(event.event_id).toBe(eventId);
@@ -155,29 +163,33 @@ describe("Authentication - None (DSN-based) (08-authentication.md)", () => {
 
   it("rejects envelope without DSN authentication", async () => {
     const envelopeHeader = JSON.stringify({
-      sent_at: new Date().toISOString()
+      sent_at: new Date().toISOString(),
     });
     const itemHeader = JSON.stringify({
       type: "event",
       content_type: "application/json",
-      length: 0
+      length: 0,
     });
     const payload = JSON.stringify({
       event_id: crypto.randomUUID(),
       message: "No auth test",
       level: "info",
-      timestamp: Date.now() / 1000
+      timestamp: Date.now() / 1000,
     });
-    
+
     const envelope = `${envelopeHeader}\n${itemHeader}\n${payload}\n`;
-    
-    const url = new URL(`http://localhost:31337/api/${TEST_PROJECT_ID}/envelope/`);
-    const response = await app.handle(new Request(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-sentry-envelope" },
-      body: envelope
-    }));
-    
+
+    const url = new URL(
+      `http://localhost:31337/api/${TEST_PROJECT_ID}/envelope/`,
+    );
+    const response = await app.handle(
+      new Request(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-sentry-envelope" },
+        body: envelope,
+      }),
+    );
+
     expect(response.status).toBe(401);
   });
 });
@@ -185,50 +197,53 @@ describe("Authentication - None (DSN-based) (08-authentication.md)", () => {
 describe("Authentication - OAuth2 Client Credentials Flow (08-authentication.md)", () => {
   it("demonstrates custom transport with Bearer token pattern", () => {
     let capturedToken = "";
-    
+
     function createOAuthTransport() {
       return {
-        sendEvent: async (event: unknown, options: { url: string; headers: Record<string, string | undefined> }) => {
+        sendEvent: async (
+          event: unknown,
+          options: { url: string; headers: Record<string, string | undefined> },
+        ) => {
           capturedToken = "Bearer simulated-oauth-token";
-          
+
           const headers: Record<string, string> = {
-            "Authorization": capturedToken,
+            Authorization: capturedToken,
             "Content-Type": "application/json",
           };
           if (options.headers["User-Agent"]) {
             headers["User-Agent"] = options.headers["User-Agent"] as string;
           }
-          
+
           return { status: 200 };
         },
       };
     }
 
     const transport = createOAuthTransport();
-    
+
     expect(typeof transport.sendEvent).toBe("function");
     expect(capturedToken).toBe("");
   });
 
   it("handles token refresh pattern", async () => {
     let tokenCache: { access_token: string; expires_at: number } | null = null;
-    
+
     async function getAccessToken(): Promise<string> {
       if (tokenCache && Date.now() < tokenCache.expires_at - 60_000) {
         return tokenCache.access_token;
       }
-      
+
       tokenCache = {
         access_token: "new-access-token-" + Date.now(),
         expires_at: Date.now() + 3600_000,
       };
-      
+
       return tokenCache.access_token;
     }
 
     const token1 = await getAccessToken();
     const token2 = await getAccessToken();
-    
+
     expect(token1).toBe(token2);
     expect(token1).toContain("new-access-token-");
   });
@@ -236,11 +251,11 @@ describe("Authentication - OAuth2 Client Credentials Flow (08-authentication.md)
   it("validates required OAuth2 scopes pattern", () => {
     const requiredScopes = ["event:write", "project:read"];
     const grantedScopes = ["event:write", "project:read", "org:read"];
-    
-    const hasRequiredScopes = requiredScopes.every(scope => 
-      grantedScopes.includes(scope)
+
+    const hasRequiredScopes = requiredScopes.every((scope) =>
+      grantedScopes.includes(scope),
     );
-    
+
     expect(hasRequiredScopes).toBe(true);
   });
 });
@@ -270,9 +285,7 @@ describe("Authentication - OIDC Token Validation Pattern (08-authentication.md)"
     };
 
     const userGroups = ["sentry-developers", "other-group"];
-    const mappedRoles = userGroups
-      .map(g => groupMapping[g])
-      .filter(Boolean);
+    const mappedRoles = userGroups.map((g) => groupMapping[g]).filter(Boolean);
 
     expect(mappedRoles).toContain("member");
     expect(mappedRoles).not.toContain("admin");
@@ -283,23 +296,31 @@ describe("Authentication - Security Patterns (08-authentication.md)", () => {
   it("demonstrates DSN rotation pattern", async () => {
     const oldDsn = TEST_DSN;
     const newDsn = `https://newpublickey123456789012345678901234@localhost:31337/124`;
-    
+
     expect(oldDsn).not.toBe(newDsn);
     expect(newDsn).toContain("newpublickey123456789012345678901234");
   });
 
   it("uses minimal scopes principle", () => {
     const allScopes = [
-      "event:read", "event:write", "event:admin",
-      "org:read", "org:write",
-      "project:read", "project:write", "project:admin",
-      "team:read", "team:write",
-      "member:read", "member:write",
-      "user:read", "user:email",
+      "event:read",
+      "event:write",
+      "event:admin",
+      "org:read",
+      "org:write",
+      "project:read",
+      "project:write",
+      "project:admin",
+      "team:read",
+      "team:write",
+      "member:read",
+      "member:write",
+      "user:read",
+      "user:email",
     ];
 
     const serverScopes = ["event:write", "project:read"];
-    
+
     expect(serverScopes.length).toBeLessThan(allScopes.length);
     expect(serverScopes).toContain("event:write");
     expect(serverScopes).not.toContain("event:admin");
@@ -330,10 +351,10 @@ describe("Authentication - Security Patterns (08-authentication.md)", () => {
   it("validates state parameter for CSRF protection", () => {
     const storedState = "random-state-" + crypto.randomUUID();
     const receivedState = storedState;
-    
+
     const isValid = receivedState === storedState;
     expect(isValid).toBe(true);
-    
+
     const invalidState = "different-state";
     expect(invalidState === storedState).toBe(false);
   });
@@ -341,36 +362,42 @@ describe("Authentication - Security Patterns (08-authentication.md)", () => {
 
 describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
   it("rejects admin endpoints without Bearer token", async () => {
-    const response = await app.handle(new Request("http://localhost:31337/api/admin/feature-flags", {
-      method: "GET",
-      headers: { "Content-Type": "application/json" }
-    }));
-    
+    const response = await app.handle(
+      new Request("http://localhost:31337/api/admin/feature-flags", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
     expect(response.status).toBe(401);
   });
 
   it("accepts admin endpoints with valid Bearer token", async () => {
-    const response = await app.handle(new Request("http://localhost:31337/api/admin/feature-flags", {
-      method: "GET",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": ADMIN_TOKEN
-      }
-    }));
-    
+    const response = await app.handle(
+      new Request("http://localhost:31337/api/admin/feature-flags", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: ADMIN_TOKEN,
+        },
+      }),
+    );
+
     expect(response.status).toBe(200);
   });
 
   it("rejects sentry endpoints with admin token (invalid body)", async () => {
-    const response = await app.handle(new Request("http://localhost:31337/api/sentry/flags/evaluate", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": ADMIN_TOKEN
-      },
-      body: JSON.stringify({ user: { id: "1" }, flags: [] })
-    }));
-    
+    const response = await app.handle(
+      new Request("http://localhost:31337/api/sentry/flags/evaluate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: ADMIN_TOKEN,
+        },
+        body: JSON.stringify({ user: { id: "1" }, flags: [] }),
+      }),
+    );
+
     // Sentry endpoints accept DSN auth (sentry_key), not admin Bearer tokens
     // They will reject if no sentry_key is provided, but body validation happens first
     expect([400, 401]).toContain(response.status);
@@ -379,12 +406,14 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
   it("rejects admin endpoints with sentry_key", async () => {
     const url = new URL("http://localhost:31337/api/admin/feature-flags");
     url.searchParams.set("sentry_key", TEST_PUBLIC_KEY);
-    
-    const response = await app.handle(new Request(url, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" }
-    }));
-    
+
+    const response = await app.handle(
+      new Request(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
     expect(response.status).toBe(401);
   });
 });

@@ -33,7 +33,10 @@ async function resolveApp(
   const byIngestKey = await appDAO.findByIngestKey(projectId);
   if (byIngestKey) return byIngestKey;
 
-  const byProject = await appDAO.findByProjectAndPublicKey(projectId, requestKey);
+  const byProject = await appDAO.findByProjectAndPublicKey(
+    projectId,
+    requestKey,
+  );
   if (byProject) return byProject;
 
   return await appDAO.findByPublicKey(requestKey);
@@ -97,9 +100,15 @@ async function flushBuffer(): Promise<void> {
 
   try {
     const newline = encoder.encode("\n");
-    const byApp = new Map<number, { eventChunks: Uint8Array[]; sampleChunks: Uint8Array[] }>();
+    const byApp = new Map<
+      number,
+      { eventChunks: Uint8Array[]; sampleChunks: Uint8Array[] }
+    >();
     for (const b of batch) {
-      const bucket = byApp.get(b.appNumber) ?? { eventChunks: [], sampleChunks: [] };
+      const bucket = byApp.get(b.appNumber) ?? {
+        eventChunks: [],
+        sampleChunks: [],
+      };
       bucket.eventChunks.push(b.event, newline);
       for (const s of b.samples) bucket.sampleChunks.push(s, newline);
       byApp.set(b.appNumber, bucket);
@@ -109,7 +118,9 @@ async function flushBuffer(): Promise<void> {
       [...byApp].map(([appNumber, { eventChunks, sampleChunks }]) =>
         Promise.all([
           publishEvent(appNumber, eventChunks),
-          sampleChunks.length > 0 ? publishMetricSamples(sampleChunks) : Promise.resolve(),
+          sampleChunks.length > 0
+            ? publishMetricSamples(sampleChunks)
+            : Promise.resolve(),
         ]),
       ),
     );
@@ -132,10 +143,15 @@ export async function dispatchIngestedEvent(
 ): Promise<void> {
   const event = encoder.encode(JSON.stringify(message));
   const sampleChunks = samples.map((s) =>
-    encoder.encode(JSON.stringify({ ...s, tags: JSON.stringify(s.tags ?? {}) })),
+    encoder.encode(
+      JSON.stringify({ ...s, tags: JSON.stringify(s.tags ?? {}) }),
+    ),
   );
 
-  if (eventBuffer.push({ appNumber: app.number, event, samples: sampleChunks }) >= BATCH_MAX_SIZE) {
+  if (
+    eventBuffer.push({ appNumber: app.number, event, samples: sampleChunks }) >=
+    BATCH_MAX_SIZE
+  ) {
     await flushBuffer();
   }
 }

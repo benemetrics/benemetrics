@@ -6,14 +6,14 @@ Sentry's feature flags let you control feature rollouts, run experiments, and co
 
 ## Overview
 
-| Capability | Description |
-|------------|-------------|
-| **Release-scoped flags** | Flags automatically associated with a release version |
-| **Gradual rollout** | Percentage-based targeting per release |
-| **User targeting** | Rules based on user attributes, segments, custom properties |
-| **Error correlation** | See which flag states correlate with errors/performance issues |
-| **Experimentation** | A/B testing with statistical significance |
-| **Kill switches** | Instantly disable problematic features |
+| Capability               | Description                                                    |
+| ------------------------ | -------------------------------------------------------------- |
+| **Release-scoped flags** | Flags automatically associated with a release version          |
+| **Gradual rollout**      | Percentage-based targeting per release                         |
+| **User targeting**       | Rules based on user attributes, segments, custom properties    |
+| **Error correlation**    | See which flag states correlate with errors/performance issues |
+| **Experimentation**      | A/B testing with statistical significance                      |
+| **Kill switches**        | Instantly disable problematic features                         |
 
 ---
 
@@ -34,14 +34,14 @@ Sentry's feature flags let you control feature rollouts, run experiments, and co
 
 ### Key Terms
 
-| Term | Definition |
-|------|------------|
-| **Flag** | A toggle with key, default value, and targeting rules |
-| **Release** | A version identifier (semver, git SHA, build number) |
-| **Rollout** | Percentage of users who see the flag enabled |
-| **Targeting Rule** | Conditions to match users (attributes, segments, custom) |
-| **Variant** | For multivariate flags: `control`, `treatment-a`, `treatment-b` |
-| **Evaluation** | Determining flag value for a specific user/context |
+| Term               | Definition                                                      |
+| ------------------ | --------------------------------------------------------------- |
+| **Flag**           | A toggle with key, default value, and targeting rules           |
+| **Release**        | A version identifier (semver, git SHA, build number)            |
+| **Rollout**        | Percentage of users who see the flag enabled                    |
+| **Targeting Rule** | Conditions to match users (attributes, segments, custom)        |
+| **Variant**        | For multivariate flags: `control`, `treatment-a`, `treatment-b` |
+| **Evaluation**     | Determining flag value for a specific user/context              |
 
 ---
 
@@ -60,7 +60,7 @@ import * as Sentry from "@sentry/<your-platform>";
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
   release: process.env.APP_VERSION, // Required for release-scoped flags
-  
+
   // Feature flags configuration
   featureFlags: {
     // Fetch flags from Sentry on init
@@ -70,7 +70,7 @@ Sentry.init({
     // Custom endpoint (self-hosted)
     // endpoint: "https://sentry.example.com/api/0/feature-flags/",
   },
-  
+
   // Required for user targeting
   initialScope: {
     user: {
@@ -101,7 +101,9 @@ let flagsCache: FeatureFlags | null = null;
 let lastFetch = 0;
 const CACHE_TTL = 30_000; // 30 seconds
 
-export async function getFeatureFlags(user: Sentry.User): Promise<FeatureFlags> {
+export async function getFeatureFlags(
+  user: Sentry.User,
+): Promise<FeatureFlags> {
   // Return cached if fresh
   if (flagsCache && Date.now() - lastFetch < CACHE_TTL) {
     return flagsCache;
@@ -131,7 +133,10 @@ export async function getFeatureFlags(user: Sentry.User): Promise<FeatureFlags> 
 }
 
 // Helper for boolean flags
-export async function isEnabled(flagKey: keyof FeatureFlags, user: Sentry.User): Promise<boolean> {
+export async function isEnabled(
+  flagKey: keyof FeatureFlags,
+  user: Sentry.User,
+): Promise<boolean> {
   const flags = await getFeatureFlags(user);
   const value = flags[flagKey];
   return typeof value === "boolean" ? value : value !== "control";
@@ -146,13 +151,13 @@ export async function isEnabled(flagKey: keyof FeatureFlags, user: Sentry.User):
 
 **Feature Flags** → **New Feature Flag**
 
-| Field | Example |
-|-------|---------|
-| **Key** | `new-checkout` (snake_case, unique) |
-| **Name** | `New Checkout Flow` |
-| **Description** | `Redesigned checkout with fewer steps` |
-| **Type** | `Boolean` or `Multivariate` |
-| **Default Value** | `false` (off by default) |
+| Field             | Example                                |
+| ----------------- | -------------------------------------- |
+| **Key**           | `new-checkout` (snake_case, unique)    |
+| **Name**          | `New Checkout Flow`                    |
+| **Description**   | `Redesigned checkout with fewer steps` |
+| **Type**          | `Boolean` or `Multivariate`            |
+| **Default Value** | `false` (off by default)               |
 
 ### 2. Configure Rollout (Per Release)
 
@@ -203,7 +208,7 @@ export function CheckoutPage() {
 export async function POST(req: Request) {
   const user = await getUser(req);
   const flags = await getFeatureFlags(user);
-  
+
   if (flags["new-checkout"]) {
     return handleNewCheckout(req);
   }
@@ -218,19 +223,20 @@ export async function POST(req: Request) {
 export async function callAPI(endpoint: string, user: Sentry.User) {
   const flags = await getFeatureFlags(user);
   const variant = flags["beta-api-v2"];
-  
-  const baseUrl = variant === "control" 
-    ? "https://api.v1.example.com"
-    : "https://api.v2.example.com";
-  
+
+  const baseUrl =
+    variant === "control"
+      ? "https://api.v1.example.com"
+      : "https://api.v2.example.com";
+
   const headers: Record<string, string> = {};
   if (variant === "treatment-b") {
     headers["X-Cache-Strategy"] = "aggressive";
   }
-  
+
   // Track variant for analytics
   Sentry.setTag("experiment.beta-api-v2", variant);
-  
+
   return fetch(`${baseUrl}${endpoint}`, { headers });
 }
 ```
@@ -249,12 +255,12 @@ export function useFeatureFlag(flagKey: string): boolean | string {
 
   useEffect(() => {
     let mounted = true;
-    
+
     async function load() {
       try {
         const user = Sentry.getCurrentScope().getUser();
         if (!user) return;
-        
+
         const flags = await getFeatureFlags(user);
         if (mounted) {
           setValue(flags[flagKey] ?? false);
@@ -263,9 +269,11 @@ export function useFeatureFlag(flagKey: string): boolean | string {
         if (mounted) setLoading(false);
       }
     }
-    
+
     load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [flagKey]);
 
   return value;
@@ -297,14 +305,14 @@ Sentry.setUser({
 
 ### Targeting Rule Examples
 
-| Rule | Matches |
-|------|---------|
-| `user.segment = "beta"` | Beta users |
-| `user.plan IN ["pro", "enterprise"]` | Paid plans |
-| `user.signup_date > "2024-01-01"` | New users |
-| `user.beta_opt_in = true` | Opted-in users |
-| `custom.region = "us-east"` | Geographic |
-| `user.id % 100 < 25` | 25% random sample |
+| Rule                                 | Matches           |
+| ------------------------------------ | ----------------- |
+| `user.segment = "beta"`              | Beta users        |
+| `user.plan IN ["pro", "enterprise"]` | Paid plans        |
+| `user.signup_date > "2024-01-01"`    | New users         |
+| `user.beta_opt_in = true`            | Opted-in users    |
+| `custom.region = "us-east"`          | Geographic        |
+| `user.id % 100 < 25`                 | 25% random sample |
 
 ### Segments (Reusable Audiences)
 
@@ -324,6 +332,7 @@ rules:
 ```
 
 Use in flag targeting:
+
 ```
 IF user IN SEGMENT "power-users" → 100%
 ```
@@ -348,11 +357,11 @@ Sentry.init({
 
 **Releases** → Select release → **Feature Flags** tab shows:
 
-| Flag | Rollout | Evaluations | Enabled % | Error Rate (on) | Error Rate (off) |
-|------|---------|-------------|-----------|-----------------|------------------|
-| new-checkout | 25% | 12,450 | 24.8% | 0.2% | 0.5% |
-| dark-mode | 100% | 45,200 | 100% | 0.1% | N/A |
-| beta-api-v2 | 10% | 4,520 | 10.1% | 0.8% | 0.3% |
+| Flag         | Rollout | Evaluations | Enabled % | Error Rate (on) | Error Rate (off) |
+| ------------ | ------- | ----------- | --------- | --------------- | ---------------- |
+| new-checkout | 25%     | 12,450      | 24.8%     | 0.2%            | 0.5%             |
+| dark-mode    | 100%    | 45,200      | 100%      | 0.1%            | N/A              |
+| beta-api-v2  | 10%     | 4,520       | 10.1%     | 0.8%            | 0.3%             |
 
 ### Correlating Flags with Errors
 
@@ -397,7 +406,7 @@ feature_flags:
     - flag: "new-checkout"
       trigger:
         metric: "error_rate"
-        threshold: 0.05  # 5%
+        threshold: 0.05 # 5%
         window: "5m"
         min_evaluations: 100
       action: "disable"
@@ -421,11 +430,11 @@ interface ExperimentResult {
 export async function trackExperiment(
   user: Sentry.User,
   experimentKey: string,
-  result: ExperimentResult
+  result: ExperimentResult,
 ) {
   const flags = await getFeatureFlags(user);
   const variant = flags[experimentKey];
-  
+
   // Send to Sentry as custom metric
   Sentry.metrics.increment("experiment.conversion", 1, {
     tags: {
@@ -434,7 +443,7 @@ export async function trackExperiment(
       converted: result.conversion.toString(),
     },
   });
-  
+
   if (result.revenue > 0) {
     Sentry.metrics.distribution("experiment.revenue", result.revenue, {
       tags: { experiment: experimentKey, variant },
@@ -448,11 +457,11 @@ export async function trackExperiment(
 
 **Feature Flags** → Select multivariate flag → **Experiment Results**
 
-| Variant | Users | Conversions | Rate | Significance |
-|---------|-------|-------------|------|--------------|
-| control | 5,000 | 450 | 9.0% | — |
-| treatment-a | 2,500 | 280 | 11.2% | p=0.02 ✓ |
-| treatment-b | 2,500 | 245 | 9.8% | p=0.31 |
+| Variant     | Users | Conversions | Rate  | Significance |
+| ----------- | ----- | ----------- | ----- | ------------ |
+| control     | 5,000 | 450         | 9.0%  | —            |
+| treatment-a | 2,500 | 280         | 11.2% | p=0.02 ✓     |
+| treatment-b | 2,500 | 245         | 9.8%  | p=0.31       |
 
 ---
 
@@ -462,32 +471,32 @@ export async function trackExperiment(
 # sentry/config.yml
 feature_flags:
   enabled: true
-  
+
   # Flag evaluation service
   evaluation:
     # Cache TTL for flag definitions
-    cache_ttl: 300  # 5 minutes
+    cache_ttl: 300 # 5 minutes
     # Max concurrent evaluations
     max_concurrent: 1000
-  
+
   # Storage
   storage:
-    backend: "postgres"  # or "redis"
+    backend: "postgres" # or "redis"
     # Redis for high-throughput
     redis:
       hosts: ["redis:6379"]
       key_prefix: "sentry:ff:"
-  
+
   # Analytics
   analytics:
     enabled: true
     # Sample rate for evaluation events
     sample_rate: 0.1
-  
+
   # API
   api:
     # Rate limiting
-    rate_limit: 1000  # per minute per org
+    rate_limit: 1000 # per minute per org
 ```
 
 ---
@@ -542,13 +551,13 @@ const enabled = flags["new-feature"];
 
 ### Flag Definition Migration
 
-| LaunchDarkly | Sentry |
-|--------------|--------|
-| `key` | `key` |
-| `variations` | `variants` (multivariate) |
-| `targets` | `targeting rules` |
-| `rollout` | `rollout percentage` |
-| `prerequisites` | `segment dependencies` |
+| LaunchDarkly    | Sentry                    |
+| --------------- | ------------------------- |
+| `key`           | `key`                     |
+| `variations`    | `variants` (multivariate) |
+| `targets`       | `targeting rules`         |
+| `rollout`       | `rollout percentage`      |
+| `prerequisites` | `segment dependencies`    |
 
 ---
 
@@ -568,7 +577,9 @@ Sentry.init({
 const flags = await client.evaluateFeatureFlags({ user });
 
 // Boolean check
-if (flags["new-checkout"]) { /* ... */ }
+if (flags["new-checkout"]) {
+  /* ... */
+}
 
 // Multivariate
 const variant = flags["beta-api-v2"]; // "control" | "treatment-a" | "treatment-b"
@@ -577,7 +588,9 @@ const variant = flags["beta-api-v2"]; // "control" | "treatment-a" | "treatment-
 Sentry.setUser({ id, email, segment: "beta", beta_opt_in: true });
 
 // Track in metrics
-Sentry.metrics.increment("feature.usage", 1, { tags: { flag: "new-checkout" } });
+Sentry.metrics.increment("feature.usage", 1, {
+  tags: { flag: "new-checkout" },
+});
 ```
 
 ---

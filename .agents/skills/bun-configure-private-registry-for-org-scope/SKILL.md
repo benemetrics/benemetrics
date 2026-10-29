@@ -27,7 +27,7 @@ To configure a registry for a particular npm scope:
 
 ```
 
-***
+---
 
 Your `bunfig.toml` can reference environment variables. Bun automatically loads environment variables from `.env.local`, `.env.[NODE_ENV]`, and `.env`. See [Docs > Environment variables](/runtime/environment-variables) for more information.
 
@@ -36,6 +36,6 @@ Your `bunfig.toml` can reference environment variables. Bun automatically loads 
 "@myorg3" = { token = "$npm_token", url = "https://registry.myorg.com/" }
 ```
 
-***
+---
 
 See [Docs > Package manager](/pm/cli/install) for complete documentation of Bun's package manager.

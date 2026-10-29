@@ -12,17 +12,17 @@ description: The console object in Bun
   global. This page only documents Bun-native APIs.
 </Note>
 
-***
+---
 
 ## Object inspection depth
 
 Bun allows you to configure how deeply nested objects are displayed in `console.log()` output:
 
-* **CLI flag**: Use `--console-depth <number>` to set the depth for a single run
-* **Configuration**: Set `console.depth` in your `bunfig.toml` for persistent configuration
-* **Default**: Objects are inspected to a depth of `2` levels
+- **CLI flag**: Use `--console-depth <number>` to set the depth for a single run
+- **Configuration**: Set `console.depth` in your `bunfig.toml` for persistent configuration
+- **Default**: Objects are inspected to a depth of `2` levels
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 const nested = { a: { b: { c: { d: "deep" } } } };
 console.log(nested);
 // Default (depth 2): { a: { b: [Object] } }
@@ -31,7 +31,7 @@ console.log(nested);
 
 The CLI flag takes precedence over the configuration file setting.
 
-***
+---
 
 ## Reading from stdin
 

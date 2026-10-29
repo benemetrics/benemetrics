@@ -1,7 +1,13 @@
 import { Hash, Mail, Siren, Webhook, MessageCircle } from "lucide-react";
 import type { ChannelType } from "../lib/data";
 
-const icons = { slack: Hash, email: Mail, pagerduty: Siren, webhook: Webhook, discord: MessageCircle };
+const icons = {
+  slack: Hash,
+  email: Mail,
+  pagerduty: Siren,
+  webhook: Webhook,
+  discord: MessageCircle,
+};
 
 export function ChannelIcon({ type }: { type: ChannelType }) {
   const I = icons[type];

@@ -13,7 +13,7 @@ const file = Bun.file(path);
 const resp = new Response(file);
 ```
 
-***
+---
 
 The `Content-Type` is read from the file and automatically set on the `Response`.
 
@@ -31,7 +31,7 @@ new Response(Bun.file("./img.png")).headers.get("Content-Type");
 // => image/png
 ```
 
-***
+---
 
 Putting it all together with [`Bun.serve()`](/runtime/http/server).
 
@@ -46,6 +46,6 @@ Bun.serve({
 });
 ```
 
-***
+---
 
 See [Docs > API > File I/O](/runtime/file-io#writing-files-bun-write) for complete documentation of `Bun.write()`.

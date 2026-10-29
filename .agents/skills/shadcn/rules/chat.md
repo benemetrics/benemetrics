@@ -324,20 +324,20 @@ function ToolRow({
   status,
   output,
 }: {
-  icon: React.ReactNode
-  title: string
-  status?: "running" | "error"
-  output?: string
+  icon: React.ReactNode;
+  title: string;
+  status?: "running" | "error";
+  output?: string;
 }) {
   const line = (
     <TraceLine status={status}>
       <TraceIcon>{icon}</TraceIcon>
       <TraceTitle>{title}</TraceTitle>
     </TraceLine>
-  )
+  );
 
   if (output === undefined) {
-    return line
+    return line;
   }
 
   return (
@@ -351,7 +351,7 @@ function ToolRow({
         </CodeBlock>
       </TraceCollapsibleContent>
     </TraceCollapsible>
-  )
+  );
 }
 ```
 

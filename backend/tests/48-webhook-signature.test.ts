@@ -13,7 +13,11 @@ import {
 
 describe("webhook signature", () => {
   it("signs the body with the shared secret", () => {
-    const { signature, timestamp } = signWebhook('{"a":1}', "s3cret", 1712345678);
+    const { signature, timestamp } = signWebhook(
+      '{"a":1}',
+      "s3cret",
+      1712345678,
+    );
     expect(signature).toStartWith("t=1712345678,v1=");
     expect(timestamp).toBe("1712345678");
   });
@@ -22,7 +26,14 @@ describe("webhook signature", () => {
     const body = JSON.stringify({ ruleName: "rule", value: 3 });
     const { signature, timestamp } = signWebhook(body, "s3cret", 1712345678);
     expect(
-      verifyWebhookSignature(body, "s3cret", signature, timestamp, 300, 1712345678),
+      verifyWebhookSignature(
+        body,
+        "s3cret",
+        signature,
+        timestamp,
+        300,
+        1712345678,
+      ),
     ).toBe(true);
   });
 
@@ -40,11 +51,25 @@ describe("webhook signature", () => {
       ),
     ).toBe(false);
     expect(
-      verifyWebhookSignature(body, "other", signature, timestamp, 300, 1712345678),
+      verifyWebhookSignature(
+        body,
+        "other",
+        signature,
+        timestamp,
+        300,
+        1712345678,
+      ),
     ).toBe(false);
     // A timestamp outside the replay window is rejected.
     expect(
-      verifyWebhookSignature(body, "s3cret", signature, timestamp, 300, 1712349000),
+      verifyWebhookSignature(
+        body,
+        "s3cret",
+        signature,
+        timestamp,
+        300,
+        1712349000,
+      ),
     ).toBe(false);
     expect(
       verifyWebhookSignature(body, "s3cret", null, timestamp, 300, 1712345678),
@@ -54,7 +79,14 @@ describe("webhook signature", () => {
   it("rejects a signature without a v1 part", () => {
     const body = "{}";
     expect(
-      verifyWebhookSignature(body, "s3cret", "t=1712345678", "1712345678", 300, 1712345678),
+      verifyWebhookSignature(
+        body,
+        "s3cret",
+        "t=1712345678",
+        "1712345678",
+        300,
+        1712345678,
+      ),
     ).toBe(false);
   });
 });

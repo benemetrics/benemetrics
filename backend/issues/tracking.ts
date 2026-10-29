@@ -1,10 +1,6 @@
-
 import { issueDAO } from "db/dao/issues";
 import { extractEventItems } from "../events/utils";
-import {
-  issueDigestsFromPayloads,
-  type IssueDigest,
-} from "./grouping";
+import { issueDigestsFromPayloads, type IssueDigest } from "./grouping";
 
 export interface TrackedIssue {
   id: string;
@@ -53,10 +49,7 @@ export async function trackIssuesForEvent(
 
   const tracked = await Promise.all(
     [...occurrences].map(
-      async ([
-        fingerprint,
-        { digest, count },
-      ]): Promise<{
+      async ([fingerprint, { digest, count }]): Promise<{
         newIssue?: TrackedIssue;
         regression?: TrackedIssue;
       }> => {
@@ -120,7 +113,11 @@ export async function trackIssuesForEvent(
   );
 
   return {
-    newIssues: tracked.flatMap((entry) => (entry.newIssue ? [entry.newIssue] : [])),
-    regressions: tracked.flatMap((entry) => (entry.regression ? [entry.regression] : [])),
+    newIssues: tracked.flatMap((entry) =>
+      entry.newIssue ? [entry.newIssue] : [],
+    ),
+    regressions: tracked.flatMap((entry) =>
+      entry.regression ? [entry.regression] : [],
+    ),
   };
 }

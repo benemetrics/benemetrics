@@ -7,7 +7,7 @@ import {
   payloadTooLarge,
   unauthorized,
 } from "backend/errors";
-import { resolveAdminId, validateUploadAuth } from "../auth";
+import { resolveAdminId, resolveIdentity, validateUploadAuth } from "../auth";
 import { projectDAO } from "db/dao/project";
 import { releaseDAO } from "db/dao/releases";
 import { sourceMapDAO } from "db/dao/source-maps";
@@ -44,11 +44,37 @@ export const sourceMapUploadRoutes = new Elysia({
     "/:org/:project/releases/",
     async ({ request, uploadToken, uploadProject }) => {
       const contentType = request.headers.get("content-type") ?? "";
-      const body: Record<string, string> = contentType.includes("application/json") ? await request.json().catch(() => ({})) as Record<string, string> : contentType.includes("form") ? Object.fromEntries([...(await request.formData()).entries()].filter((entry): entry is [string, string] => typeof entry[1] === "string")) : {};
+      const body: Record<string, string> = contentType.includes(
+        "application/json",
+      )
+        ? ((await request.json().catch(() => ({}))) as Record<string, string>)
+        : contentType.includes("form")
+          ? Object.fromEntries(
+              [...(await request.formData()).entries()].filter(
+                (entry): entry is [string, string] =>
+                  typeof entry[1] === "string",
+              ),
+            )
+          : {};
       const version = body.version ?? body.name;
       if (!version) throw badRequest("Release version is required");
-      const release = await releaseDAO.findOrCreate({ appId: uploadToken.appId, version, ref: body.ref ?? null, url: body.url ?? null, owner: body.owner ?? null, status: "draft" });
-      return { version: release.version, ref: release.ref, url: release.url, owner: release.owner, status: release.status, dateCreated: release.createdAt, projectId: uploadProject.id };
+      const release = await releaseDAO.findOrCreate({
+        appId: uploadToken.appId,
+        version,
+        ref: body.ref ?? null,
+        url: body.url ?? null,
+        owner: body.owner ?? null,
+        status: "draft",
+      });
+      return {
+        version: release.version,
+        ref: release.ref,
+        url: release.url,
+        owner: release.owner,
+        status: release.status,
+        dateCreated: release.createdAt,
+        projectId: uploadProject.id,
+      };
     },
     {
       params: arktype({ org: "string", project: "string" }),
@@ -63,8 +89,19 @@ export const sourceMapUploadRoutes = new Elysia({
       }
       const upload = await readSourceMapUpload(await request.formData());
       const [, artifactRow] = await Promise.all([
-        releaseDAO.findOrCreate({ appId: uploadToken.appId, version, status: "draft" }),
-        sourceMapDAO.create({ projectId: uploadProject.id, appId: uploadToken.appId, release: version, dist: upload.dist, filename: upload.filename, mapJson: upload.mapJson }),
+        releaseDAO.findOrCreate({
+          appId: uploadToken.appId,
+          version,
+          status: "draft",
+        }),
+        sourceMapDAO.create({
+          projectId: uploadProject.id,
+          appId: uploadToken.appId,
+          release: version,
+          dist: upload.dist,
+          filename: upload.filename,
+          mapJson: upload.mapJson,
+        }),
       ]);
       const { createdAt, ...artifact } = artifactRow;
       invalidateSourceMapCache(artifactRow.id);
@@ -81,8 +118,19 @@ export const sourceMapUploadRoutes = new Elysia({
   .get(
     "/:org/:project/releases/:version/files/",
     async ({ params: { version }, query, uploadToken, uploadProject }) => {
-      const { data } = await sourceMapDAO.list({ projectId: uploadProject.id, appId: uploadToken.appId, release: version, cursor: query.cursor, limit: query.limit });
-      return { data: data.map(({ createdAt, ...artifact }) => ({ ...artifact, dateCreated: createdAt })) };
+      const { data } = await sourceMapDAO.list({
+        projectId: uploadProject.id,
+        appId: uploadToken.appId,
+        release: version,
+        cursor: query.cursor,
+        limit: query.limit,
+      });
+      return {
+        data: data.map(({ createdAt, ...artifact }) => ({
+          ...artifact,
+          dateCreated: createdAt,
+        })),
+      };
     },
     {
       params: arktype({
@@ -118,9 +166,21 @@ export const sourceMapUploadRoutes = new Elysia({
   .post(
     "/:org/:project/releases/:version/",
     async ({ params: { version }, uploadToken }) => {
-      const release = await releaseDAO.findByAppAndVersionOrThrow(uploadToken.appId, version);
-      const finalized = await releaseDAO.updateOrThrow(release.id, { status: "finalized" });
-      return { version: finalized.version, ref: finalized.ref, url: finalized.url, owner: finalized.owner, status: finalized.status, dateCreated: finalized.createdAt };
+      const release = await releaseDAO.findByAppAndVersionOrThrow(
+        uploadToken.appId,
+        version,
+      );
+      const finalized = await releaseDAO.updateOrThrow(release.id, {
+        status: "finalized",
+      });
+      return {
+        version: finalized.version,
+        ref: finalized.ref,
+        url: finalized.url,
+        owner: finalized.owner,
+        status: finalized.status,
+        dateCreated: finalized.createdAt,
+      };
     },
     {
       params: arktype({
@@ -132,73 +192,21 @@ export const sourceMapUploadRoutes = new Elysia({
   );
 
 // ── oidc surface: the admin reads and writes ─────────────
-export const sourceMapRoutes = new Elysia({ prefix: "/api/admin/source-maps" })
-  .resolve(resolveAdminId)
-  .get(
-    "/",
-    async ({ query }) => {
-      return sourceMapDAO.list({
-        projectId: query.projectId,
-        release: query.release,
-        cursor: query.cursor,
-        limit: query.limit,
-      });
-    },
-    {
-      query: arktype({
-        projectId: "string.uuid?",
-        release: "string?",
-        cursor: "string?",
-        limit: "string.integer.parse?",
-      }),
-    },
-  )
-  .get(
-    "/:id",
-    async ({ params: { id }, query: { include } }) => {
-      return include === "content"
-        ? sourceMapDAO.findWithContentOrThrow(id)
-        : sourceMapDAO.findByIdOrThrow(id);
-    },
-    {
-      params: arktype({ id: "string.uuid" }),
-      query: arktype({ include: "'content'?" }),
-    },
-  )
-  .delete(
-    "/:id",
-    async ({ params: { id } }) => {
-      await sourceMapDAO.delete(id);
-      return { success: true };
-    },
-    { params: arktype({ id: "string.uuid" }) },
-  )
-  .post(
-    "/resolve",
-    async ({ body }) => {
-      const map = await findSourceMapFor(body.projectId, body.release, body.filename);
-      if (!map) throw notFound("Source map", `${body.filename} in release ${body.release}`);
-      try {
-        const original = originalPositionFor(parseMapCached(map), body.line, body.column);
-        return { filename: body.filename, release: body.release, line: body.line, column: body.column, original };
-      } catch (e) {
-        throw badRequest(`Failed to decode source map: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    },
-    {
-      body: arktype({
-        projectId: "string.uuid",
-        release: "string",
-        filename: "string",
-        line: "number",
-        column: "number",
-      }),
-    },
-  );
+export const sourceMapRoutes = new Elysia({ prefix: "/source-maps" })
+  .resolve(resolveIdentity)
+  .get("/", ({ query }) => sourceMapDAO.list({ appId: query.appId }, query), {
+    query: arktype({
+      appId: "string.uuid?",
+      cursor: "string?",
+      limit: "string.integer.parse?",
+    }),
+  });
 
 // ── oidc surface: the admin reads and writes ─────────────
-export const sourceMapTokenRoutes = new Elysia({ prefix: "/api/admin/source-map-tokens" })
-  .resolve(resolveAdminId)
+export const sourceMapTokenRoutes = new Elysia({
+  prefix: "/source-map-tokens",
+})
+  .resolve(resolveIdentity)
   .post(
     "/",
     async ({ body, adminId }) => {
@@ -206,8 +214,13 @@ export const sourceMapTokenRoutes = new Elysia({ prefix: "/api/admin/source-map-
         projectDAO.findByIdOrThrow(body.projectId),
         appDAO.findByIdOrThrow(body.appId),
       ]);
-      if (app.projectId !== body.projectId) throw badRequest("App does not belong to this project");
-      const { token, record } = await sourceMapTokenDAO.create({ ...body, createdBy: adminId, expiresAt: body.expiresAt ?? null });
+      if (app.projectId !== body.projectId)
+        throw badRequest("App does not belong to this project");
+      const { token, record } = await sourceMapTokenDAO.create({
+        ...body,
+        createdBy: adminId,
+        expiresAt: body.expiresAt ?? null,
+      });
       return { ...record, token };
     },
     {
@@ -219,39 +232,21 @@ export const sourceMapTokenRoutes = new Elysia({ prefix: "/api/admin/source-map-
       }),
     },
   )
-  .get(
-    "/",
-    async ({ query }) => {
-      return sourceMapTokenDAO.list({ ...query });
-    },
-    {
-      query: arktype({
-        projectId: "string.uuid?",
-        cursor: "string?",
-        limit: "string.integer.parse?",
-      }),
-    },
-  )
-  .get(
-    "/:id",
-    async ({ params: { id } }) => sourceMapTokenDAO.findByIdOrThrow(id),
-    { params: arktype({ id: "string.uuid" }) },
-  )
+  .get("/", ({ query }) => sourceMapTokenDAO.list({ ...query }), {
+    query: arktype({
+      projectId: "string.uuid?",
+      cursor: "string?",
+      limit: "string.integer.parse?",
+    }),
+  })
+  .get("/:id", ({ params: { id } }) => sourceMapTokenDAO.findByIdOrThrow(id), {
+    params: arktype({ id: "string.uuid" }),
+  })
   .post(
     "/:id/rotate",
-    async ({ params: { id } }) => {
-      await sourceMapTokenDAO.findByIdOrThrow(id);
-      const rotated = await sourceMapTokenDAO.rotate(id);
-      if (!rotated) throw notFound("Upload token", id);
-      return { ...rotated.record, token: rotated.token };
-    },
+    async ({ params: { id } }) => sourceMapTokenDAO.rotate(id),
     { params: arktype({ id: "string.uuid" }) },
   )
-  .delete(
-    "/:id",
-    async ({ params: { id } }) => {
-      await sourceMapTokenDAO.revoke(id);
-      return { success: true };
-    },
-    { params: arktype({ id: "string.uuid" }) },
-  );
+  .delete("/:id", ({ params: { id } }) => sourceMapTokenDAO.delete(id), {
+    params: arktype({ id: "string.uuid" }),
+  });

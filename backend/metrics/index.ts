@@ -84,10 +84,17 @@ export const metricsRoutes = new Elysia({ prefix: "/api/admin/metrics" })
     async ({ query }) => {
       const { from, to, windowMs } = resolveRange(query);
       const stepSeconds = query.stepSeconds ?? autoStepSeconds(windowMs);
-      if (stepSeconds < 1 || stepSeconds > MAX_STEP_SECONDS) throw badRequest(`"stepSeconds" must be between 1 and ${MAX_STEP_SECONDS}`);
+      if (stepSeconds < 1 || stepSeconds > MAX_STEP_SECONDS)
+        throw badRequest(
+          `"stepSeconds" must be between 1 and ${MAX_STEP_SECONDS}`,
+        );
       let appIds: string[] | undefined;
-      if (query.appId) appIds = [(await appDAO.findByIdOrThrow(query.appId)).id];
-      const points = await queryMetricSeries({ metric: query.metric, projectId: query.projectId, appIds, from, to }, stepSeconds);
+      if (query.appId)
+        appIds = [(await appDAO.findByIdOrThrow(query.appId)).id];
+      const points = await queryMetricSeries(
+        { metric: query.metric, projectId: query.projectId, appIds, from, to },
+        stepSeconds,
+      );
       return { metric: query.metric, unit: metricUnit(query.metric), points };
     },
     { query: arktype({ ...readQuery, stepSeconds: "string.integer.parse?" }) },
@@ -97,10 +104,17 @@ export const metricsRoutes = new Elysia({ prefix: "/api/admin/metrics" })
     async ({ query }) => {
       const { from, to } = resolveRange(query);
       const limit = query.limit ?? DEFAULT_BREAKDOWN_LIMIT;
-      if (limit < 1 || limit > MAX_BREAKDOWN_LIMIT) throw badRequest(`"limit" must be between 1 and ${MAX_BREAKDOWN_LIMIT}`);
+      if (limit < 1 || limit > MAX_BREAKDOWN_LIMIT)
+        throw badRequest(
+          `"limit" must be between 1 and ${MAX_BREAKDOWN_LIMIT}`,
+        );
       let appIds: string[] | undefined;
-      if (query.appId) appIds = [(await appDAO.findByIdOrThrow(query.appId)).id];
-      const data = await queryMetricBreakdown({ metric: query.metric, projectId: query.projectId, appIds, from, to }, limit);
+      if (query.appId)
+        appIds = [(await appDAO.findByIdOrThrow(query.appId)).id];
+      const data = await queryMetricBreakdown(
+        { metric: query.metric, projectId: query.projectId, appIds, from, to },
+        limit,
+      );
       return { data };
     },
     { query: arktype({ ...readQuery, limit: "string.integer.parse?" }) },

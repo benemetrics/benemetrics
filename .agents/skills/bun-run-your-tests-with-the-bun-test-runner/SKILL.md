@@ -7,7 +7,7 @@ description: Run your tests with the Bun test runner
 
 Bun has a built-in [test runner](/test) with a Jest-like `expect` API.
 
-***
+---
 
 To use it, run the `bun test` command from your project directory. The test runner will recursively search for all files in the directory that match the following patterns and execute the tests they contain.
 
@@ -18,7 +18,7 @@ To use it, run the `bun test` command from your project directory. The test runn
 *_spec.{js|jsx|ts|tsx}
 ```
 
-***
+---
 
 Here's what the output of a typical test run looks like. In this case, there are three tests files (`test.test.js`, `test2.test.js`, and `test3.test.js`) containing two tests each (`add` and `multiply`).
 
@@ -26,7 +26,7 @@ Here's what the output of a typical test run looks like. In this case, there are
 bun test
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 test.test.js:
 ✓ add [0.87ms]
 ✓ multiply [0.02ms]
@@ -45,7 +45,7 @@ test3.test.js:
 Ran 6 tests across 3 files. [9.00ms]
 ```
 
-***
+---
 
 To only run certain test files, pass a positional argument to `bun test`. The runner will only execute files that contain that argument in their path.
 
@@ -53,7 +53,7 @@ To only run certain test files, pass a positional argument to `bun test`. The ru
 bun test test3
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 test3.test.js:
 ✓ add [1.40ms]
 ✓ multiply [0.03ms]
@@ -64,11 +64,11 @@ test3.test.js:
 Ran 2 tests across 1 files. [15.00ms]
 ```
 
-***
+---
 
 All tests have a name, defined using the first parameter to the `test` function. Tests can also be grouped into suites with `describe`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { test, expect, describe } from "bun:test";
 
 describe("math", () => {
@@ -82,7 +82,7 @@ describe("math", () => {
 });
 ```
 
-***
+---
 
 To filter which tests are executed by name, use the `-t`/`--test-name-pattern` flag.
 
@@ -92,7 +92,7 @@ Adding `-t add` will only run tests with "add" in the name. This works with test
 bun test -t add
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 test.test.js:
 ✓ add [1.79ms]
 » multiply
@@ -112,6 +112,6 @@ test3.test.js:
 Ran 6 tests across 3 files. [59.00ms]
 ```
 
-***
+---
 
 See [Docs > Test Runner](/test) for complete documentation on the test runner.

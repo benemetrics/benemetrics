@@ -122,12 +122,57 @@ describe("Hop 4: ClickHouse -> metrics reads", () => {
     const at = (offsetMs: number) => new Date(base + offsetMs).toISOString();
     await seedSamples([
       // Three samples on one dimension (of the app's default environment).
-      { projectId: app.projectId, appId: app.appId, eventId: crypto.randomUUID(), metric: "duration", value: 10, dimension: "GET /checkout", tags: {}, receivedAt: at(1_000) },
-      { projectId: app.projectId, appId: app.appId, eventId: crypto.randomUUID(), metric: "duration", value: 20, dimension: "GET /checkout", tags: {}, receivedAt: at(2_000) },
-      { projectId: app.projectId, appId: app.appId, eventId: crypto.randomUUID(), metric: "duration", value: 30, dimension: "GET /checkout", tags: {}, receivedAt: at(3_000) },
-      { projectId: app.projectId, appId: app.appId, eventId: crypto.randomUUID(), metric: "duration", value: 50, dimension: "POST /orders", tags: {}, receivedAt: at(4_000) },
+      {
+        projectId: app.projectId,
+        appId: app.appId,
+        eventId: crypto.randomUUID(),
+        metric: "duration",
+        value: 10,
+        dimension: "GET /checkout",
+        tags: {},
+        receivedAt: at(1_000),
+      },
+      {
+        projectId: app.projectId,
+        appId: app.appId,
+        eventId: crypto.randomUUID(),
+        metric: "duration",
+        value: 20,
+        dimension: "GET /checkout",
+        tags: {},
+        receivedAt: at(2_000),
+      },
+      {
+        projectId: app.projectId,
+        appId: app.appId,
+        eventId: crypto.randomUUID(),
+        metric: "duration",
+        value: 30,
+        dimension: "GET /checkout",
+        tags: {},
+        receivedAt: at(3_000),
+      },
+      {
+        projectId: app.projectId,
+        appId: app.appId,
+        eventId: crypto.randomUUID(),
+        metric: "duration",
+        value: 50,
+        dimension: "POST /orders",
+        tags: {},
+        receivedAt: at(4_000),
+      },
       // A second app in the same project and environment.
-      { projectId: app.projectId, appId: secondApp.id, eventId: crypto.randomUUID(), metric: "duration", value: 70, dimension: "GET /cart", tags: {}, receivedAt: at(5_000) },
+      {
+        projectId: app.projectId,
+        appId: secondApp.id,
+        eventId: crypto.randomUUID(),
+        metric: "duration",
+        value: 70,
+        dimension: "GET /cart",
+        tags: {},
+        receivedAt: at(5_000),
+      },
     ]);
 
     const from = new Date(base - 10 * 60_000).toISOString();

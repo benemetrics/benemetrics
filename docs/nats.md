@@ -18,7 +18,7 @@ sentry.flags.changed        feature-flag change notifications
   DSN path uses. It is globally unique and stable, which keeps NATS subject
   tokens small (regex/UUID tokens are allowed but wasteful).
 - **Every** `sentry.events` publish carries the app number: the API edge
-  resolves the app (DSN → app → number) *before* the publish, so the subject
+  resolves the app (DSN → app → number) _before_ the publish, so the subject
   routes on the event's own contents, not on a per-deployment guess.
 - The stream `SENTRIES` declares `sentry.events.*` (not the bare subject), so
   a malformed publish without the app token fails at the server instead of
@@ -26,12 +26,12 @@ sentry.flags.changed        feature-flag change notifications
 
 ### Consumers
 
-| Consumer | Mode | Filter subject |
-|---|---|---|
-| `clickhouse-events` | ClickHouse NATS engine table + MV | `sentry.events.*` |
-| `clickhouse-metrics` | ClickHouse NATS engine table + MV | `sentry.metrics` |
-| `side-effects` | backend consumer binary (Postgres) | `sentry.events.*` |
-| `flags-consumer` | backend (feature-flag SSE fan-out) | `sentry.flags.changed` |
+| Consumer             | Mode                               | Filter subject         |
+| -------------------- | ---------------------------------- | ---------------------- |
+| `clickhouse-events`  | ClickHouse NATS engine table + MV  | `sentry.events.*`      |
+| `clickhouse-metrics` | ClickHouse NATS engine table + MV  | `sentry.metrics`       |
+| `side-effects`       | backend consumer binary (Postgres) | `sentry.events.*`      |
+| `flags-consumer`     | backend (feature-flag SSE fan-out) | `sentry.flags.changed` |
 
 ## 2. Auth callout — every connection is authorized by the backend
 
@@ -58,11 +58,11 @@ claim the callout mints** (sub-only, allowlisted app shards), not an account
 boundary: a multi-account split would need stream imports to deliver anything
 to the readers, and the per-user permissions already express the scope.
 
-| Connection | Credential | Permissions |
-|---|---|---|
-| browser / provider identity | Keycloak JWT or admin token via `auth_token` | minted by the callout: sub-only allowlist (below) |
-| backend + side-effects consumer | `NATS_AUTH_USER`/`NATS_AUTH_PASSWORD` config user | unrestricted; exempt from the callout via `auth_users` (it IS the auth service) |
-| ClickHouse NATS engine | `NATS_INTERNAL_USER`/`NATS_INTERNAL_PASSWORD` config user | unrestricted; exempt via `auth_users` |
+| Connection                      | Credential                                                | Permissions                                                                     |
+| ------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| browser / provider identity     | Keycloak JWT or admin token via `auth_token`              | minted by the callout: sub-only allowlist (below)                               |
+| backend + side-effects consumer | `NATS_AUTH_USER`/`NATS_AUTH_PASSWORD` config user         | unrestricted; exempt from the callout via `auth_users` (it IS the auth service) |
+| ClickHouse NATS engine          | `NATS_INTERNAL_USER`/`NATS_INTERNAL_PASSWORD` config user | unrestricted; exempt via `auth_users`                                           |
 
 - A connection matching no config user (the browsers) always goes through the
   callout — there is no anonymous mode and no dev bypass.

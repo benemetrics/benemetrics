@@ -4,11 +4,11 @@ Track deployments, catch regressions, and link errors to exact commits.
 
 ## Why Release Tracking Matters
 
-| Without Releases | With Releases |
-|------------------|---------------|
-| "Errors increased" | "Errors increased in v2.3.1" |
-| Manual git bisect | "Suspect commit: abc123 - fix: payment validation" |
-| Unknown deploy impact | "Regression: v2.3.0 fixed, v2.3.1 broke" |
+| Without Releases      | With Releases                                      |
+| --------------------- | -------------------------------------------------- |
+| "Errors increased"    | "Errors increased in v2.3.1"                       |
+| Manual git bisect     | "Suspect commit: abc123 - fix: payment validation" |
+| Unknown deploy impact | "Regression: v2.3.0 fixed, v2.3.1 broke"           |
 
 ## Setup Overview
 
@@ -93,8 +93,8 @@ name: Sentry Release
 
 on:
   push:
-    tags: ["v*"]  # Trigger on version tags
-  workflow_dispatch:  # Manual trigger
+    tags: ["v*"] # Trigger on version tags
+  workflow_dispatch: # Manual trigger
 
 permissions:
   contents: read
@@ -106,12 +106,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for commit history
-      
+          fetch-depth: 0 # Required for commit history
+
       - name: Install sentry-cli
         run: |
           curl -sL https://sentry.io/get-cli/ | bash
-      
+
       - name: Create Release
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -120,7 +120,7 @@ jobs:
         run: |
           VERSION=${GITHUB_REF_NAME#v}
           sentry-cli releases new -p $SENTRY_PROJECT $VERSION
-      
+
       - name: Associate Commits
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -128,7 +128,7 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         run: |
           sentry-cli releases set-commits $VERSION --auto
-      
+
       - name: Finalize Release
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -136,7 +136,7 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         run: |
           sentry-cli releases finalize $VERSION
-      
+
       - name: Create Deploy
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -190,6 +190,7 @@ echo "Release $VERSION deployed to $ENVIRONMENT"
 ```
 
 Usage:
+
 ```bash
 # In CI
 ./scripts/sentry-release.sh v2.3.1 production
@@ -212,10 +213,12 @@ import { execSync } from "child_process";
 export function getRelease(): string {
   // Priority: env var > package.json + git sha > default
   if (process.env.SENTRY_RELEASE) return process.env.SENTRY_RELEASE;
-  
+
   try {
     const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
-    const sha = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
+    const sha = execSync("git rev-parse --short HEAD", {
+      encoding: "utf-8",
+    }).trim();
     return `${pkg.version}-${sha}`;
   } catch {
     return "1.0.0-dev";
@@ -505,11 +508,13 @@ sentry-cli sourcemaps upload --org $SENTRY_ORG --project $SENTRY_PROJECT dist/
 ## Verifying in Sentry UI
 
 ### Release Page
+
 - **Issues** tab: "New in this release", "Regressed in this release"
 - **Commits** tab: Linked commits with authors
 - **Deploys** tab: Environment, time, duration
 
 ### Issue View
+
 ```
 ┌─────────────────────────────────────────────┐
 │ Issue: TypeError: Cannot read 'id' of null  │
@@ -574,13 +579,13 @@ sentry-cli releases new v2.3.1 --project frontend --project api --project worker
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| "Release not found" | Ensure `sentry-cli releases finalize` ran |
-| No suspect commits | Run `set-commits --auto` after `releases new` |
-| Source maps not working | Verify `sourcemap: true` in build, upload .map files |
-| Wrong release in UI | Check `release` option in `Sentry.init()` matches CI |
-| Commits not linking | Ensure repo connected in Sentry: Settings → Integrations → GitHub/GitLab |
+| Issue                   | Solution                                                                 |
+| ----------------------- | ------------------------------------------------------------------------ |
+| "Release not found"     | Ensure `sentry-cli releases finalize` ran                                |
+| No suspect commits      | Run `set-commits --auto` after `releases new`                            |
+| Source maps not working | Verify `sourcemap: true` in build, upload .map files                     |
+| Wrong release in UI     | Check `release` option in `Sentry.init()` matches CI                     |
+| Commits not linking     | Ensure repo connected in Sentry: Settings → Integrations → GitHub/GitLab |
 
 ## Quick Reference
 

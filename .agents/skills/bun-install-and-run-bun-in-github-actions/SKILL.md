@@ -24,7 +24,7 @@ jobs:
       - run: bun run build # [!code ++]
 ```
 
-***
+---
 
 To specify a version of Bun to install:
 
@@ -41,6 +41,6 @@ jobs:
           bun-version: 1.3.3 # or "latest", "canary", <sha> # [!code ++]
 ```
 
-***
+---
 
 Refer to the [README.md](https://github.com/oven-sh/setup-bun) for complete documentation of the `setup-bun` GitHub Action.

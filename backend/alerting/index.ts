@@ -205,7 +205,9 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
         body.threshold == null &&
         body.thresholdFactor == null
       ) {
-        throw badRequest("threshold rules require a static threshold or a thresholdFactor");
+        throw badRequest(
+          "threshold rules require a static threshold or a thresholdFactor",
+        );
       }
       const rule = await alertRuleDAO.create(
         "metric" in body
@@ -239,19 +241,21 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
         filters: ruleFiltersSchema.optional(),
         message: "string?",
         folder: "string?",
-      }).onUndeclaredKey("reject").or(
-        arktype({
-          name: "string",
-          trigger: issueAlertTrigger,
-          cooldownSeconds: "number.integer >= 0?",
-          channelIds: "string.uuid[]?",
-          appId: "string.uuid?",
-          projectId: "string.uuid?",
-          filters: ruleFiltersSchema.optional(),
-          message: "string?",
-          folder: "string?",
-        }).onUndeclaredKey("reject"),
-      ),
+      })
+        .onUndeclaredKey("reject")
+        .or(
+          arktype({
+            name: "string",
+            trigger: issueAlertTrigger,
+            cooldownSeconds: "number.integer >= 0?",
+            channelIds: "string.uuid[]?",
+            appId: "string.uuid?",
+            projectId: "string.uuid?",
+            filters: ruleFiltersSchema.optional(),
+            message: "string?",
+            folder: "string?",
+          }).onUndeclaredKey("reject"),
+        ),
     },
   )
   .get(
@@ -278,12 +282,39 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
     async ({ params: { id }, body, adminId }) => {
       const current = await alertRuleDAO.findByIdOrThrow(id);
       const trigger = body.trigger ?? current.trigger;
-      const next = { metric: body.metric ?? current.metric, operator: body.operator ?? current.operator, threshold: body.threshold ?? current.threshold, windowSeconds: body.windowSeconds ?? current.windowSeconds };
+      const next = {
+        metric: body.metric ?? current.metric,
+        operator: body.operator ?? current.operator,
+        threshold: body.threshold ?? current.threshold,
+        windowSeconds: body.windowSeconds ?? current.windowSeconds,
+      };
       const thresholdFactor = body.thresholdFactor ?? current.thresholdFactor;
       // A dynamic rule ("3x baseline") does not need a static threshold.
-      const thresholdMissing = next.threshold == null && thresholdFactor == null;
-      if (trigger === "threshold" && (Object.entries(next).some(([key, value]) => value == null && key !== "threshold") || thresholdMissing)) throw badRequest("threshold rules require metric, operator, windowSeconds and a static threshold or a thresholdFactor");
-      if (trigger !== "threshold" && [body.metric, body.operator, body.threshold, body.windowSeconds, body.thresholdFactor].some((value) => value !== undefined)) throw badRequest("issue triggers do not accept metric, operator, threshold, thresholdFactor or windowSeconds");
+      const thresholdMissing =
+        next.threshold == null && thresholdFactor == null;
+      if (
+        trigger === "threshold" &&
+        (Object.entries(next).some(
+          ([key, value]) => value == null && key !== "threshold",
+        ) ||
+          thresholdMissing)
+      )
+        throw badRequest(
+          "threshold rules require metric, operator, windowSeconds and a static threshold or a thresholdFactor",
+        );
+      if (
+        trigger !== "threshold" &&
+        [
+          body.metric,
+          body.operator,
+          body.threshold,
+          body.windowSeconds,
+          body.thresholdFactor,
+        ].some((value) => value !== undefined)
+      )
+        throw badRequest(
+          "issue triggers do not accept metric, operator, threshold, thresholdFactor or windowSeconds",
+        );
       // The JSON columns travel stringified on write; an emptied filter set
       // normalizes to the unfiltered shape like the create surface.
       const { filters, folder, ...rest } = body;
@@ -293,7 +324,27 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
           : filters !== undefined
             ? JSON.stringify(filters)
             : JSON.stringify(current.filters);
-      const updated = await alertRuleDAO.updateOrThrow(id, { ...rest, ...(trigger === "threshold" ? { ...next, thresholdFactor, measurement: body.measurement ?? current.measurement } : { metric: null, operator: null, threshold: null, thresholdFactor: null, windowSeconds: null, measurement: null }), filters: nextFilters, folder: folder !== undefined ? (folder ?? null) : current.folder, channelIds: JSON.stringify(body.channelIds ?? current.channelIds), isEnabled: (body.isEnabled ?? current.isEnabled) ? 1 : 0 });
+      const updated = await alertRuleDAO.updateOrThrow(id, {
+        ...rest,
+        ...(trigger === "threshold"
+          ? {
+              ...next,
+              thresholdFactor,
+              measurement: body.measurement ?? current.measurement,
+            }
+          : {
+              metric: null,
+              operator: null,
+              threshold: null,
+              thresholdFactor: null,
+              windowSeconds: null,
+              measurement: null,
+            }),
+        filters: nextFilters,
+        folder: folder !== undefined ? (folder ?? null) : current.folder,
+        channelIds: JSON.stringify(body.channelIds ?? current.channelIds),
+        isEnabled: (body.isEnabled ?? current.isEnabled) ? 1 : 0,
+      });
       await recordRuleChange(updated, "updated", adminId);
       return updated;
     },
@@ -347,8 +398,14 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       const channels = rule.appId
         ? (await resolveEffectiveAlertConfig({ appId: rule.appId })).channels
         : await alertChannelDAO.list(null);
-      const targets = rule.channelIds.length > 0 ? rule.channelIds : channels.map((channel) => channel.id);
-      const results = await deliverAlertToChannels(channels.filter((channel) => targets.includes(channel.id)), buildTestNotification(rule, rule.appId));
+      const targets =
+        rule.channelIds.length > 0
+          ? rule.channelIds
+          : channels.map((channel) => channel.id);
+      const results = await deliverAlertToChannels(
+        channels.filter((channel) => targets.includes(channel.id)),
+        buildTestNotification(rule, rule.appId),
+      );
       return { results };
     },
     { params: arktype({ id: "string.uuid" }) },
@@ -606,7 +663,8 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
     "/incidents/:id/assign",
     async ({ params: { id }, body }) => {
       const assignee = body.assignee.trim();
-      if (assignee.length === 0) throw badRequest("The assignee cannot be empty");
+      if (assignee.length === 0)
+        throw badRequest("The assignee cannot be empty");
       await alertIncidentDAO.findByIdOrThrow(id);
       return alertIncidentDAO.updateOrThrow(id, { assignee });
     },

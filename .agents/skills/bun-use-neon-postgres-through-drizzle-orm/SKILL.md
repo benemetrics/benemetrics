@@ -17,7 +17,7 @@ bun add drizzle-orm @neondatabase/serverless
 bun add -D drizzle-kit
 ```
 
-***
+---
 
 Create a `.env.local` file and add your [Neon Postgres connection string](https://neon.tech/docs/connect/connect-from-any-app) to it.
 
@@ -25,7 +25,7 @@ Create a `.env.local` file and add your [Neon Postgres connection string](https:
 DATABASE_URL=postgresql://usertitle:password@ep-adj-noun-guid.us-east-1.aws.neon.tech/neondb?sslmode=require
 ```
 
-***
+---
 
 We will connect to the Neon database using the Neon serverless driver, wrapped in a Drizzle database instance.
 
@@ -40,7 +40,7 @@ const sql = neon(process.env.DATABASE_URL!);
 export const db = drizzle(sql);
 ```
 
-***
+---
 
 To see the database in action, add these lines to `index.ts`.
 
@@ -53,7 +53,7 @@ const result = await db.execute(query);
 console.log(result.rows);
 ```
 
-***
+---
 
 Then run `index.ts` with Bun.
 
@@ -61,7 +61,7 @@ Then run `index.ts` with Bun.
 bun run index.ts
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 [
   {
     text: "hello world",
@@ -69,7 +69,7 @@ bun run index.ts
 ]
 ```
 
-***
+---
 
 We can define a schema for our database using Drizzle ORM primitives. Create a `schema.ts` file and add this code.
 
@@ -84,15 +84,15 @@ export const authors = pgTable("authors", {
 });
 ```
 
-***
+---
 
 We then use the `drizzle-kit` CLI to generate an initial SQL migration.
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bunx drizzle-kit generate --dialect postgresql --schema ./schema.ts --out ./drizzle
 ```
 
-***
+---
 
 This creates a new `drizzle` directory containing a `.sql` migration file and `meta` directory.
 
@@ -104,7 +104,7 @@ drizzle
     └── _journal.json
 ```
 
-***
+---
 
 We can execute these migrations with a simple `migrate.ts` script. This script creates a new connection to the Neon database and executes all unexecuted migrations in the `drizzle` directory.
 
@@ -125,7 +125,7 @@ const main = async () => {
 main();
 ```
 
-***
+---
 
 We can run this script with `bun` to execute the migration.
 
@@ -133,11 +133,11 @@ We can run this script with `bun` to execute the migration.
 bun run migrate.ts
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Migration completed
 ```
 
-***
+---
 
 We can now add some data to our database. Create a `seed.ts` file with the following contents.
 
@@ -175,7 +175,7 @@ async function main() {
 main();
 ```
 
-***
+---
 
 Then run this file.
 
@@ -183,11 +183,11 @@ Then run this file.
 bun run seed.ts
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Seeding completed
 ```
 
-***
+---
 
 We now have a database with a schema and sample data. We can use Drizzle to query it. Replace the contents of `index.ts` with the following.
 
@@ -199,7 +199,7 @@ const result = await db.select().from(schema.authors);
 console.log(result);
 ```
 
-***
+---
 
 Then run the file. You should see the three authors we inserted.
 
@@ -207,7 +207,7 @@ Then run the file. You should see the three authors we inserted.
 bun run index.ts
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 [
   {
     id: 1,
@@ -228,7 +228,7 @@ bun run index.ts
 ]
 ```
 
-***
+---
 
 This example used the Neon serverless driver's SQL-over-HTTP functionality. Neon's serverless driver also exposes `Client` and `Pool` constructors to enable sessions, interactive transactions, and node-postgres compatibility. Refer to [Neon's documentation](https://neon.tech/docs/serverless/serverless-driver) for a complete overview.
 

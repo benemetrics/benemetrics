@@ -7,7 +7,7 @@ description: Use TanStack Start with Bun
 
 [TanStack Start](https://tanstack.com/start/latest) is a full-stack framework powered by TanStack Router. It supports full-document SSR, streaming, server functions, bundling and more, powered by TanStack Router and [Vite](https://vite.dev/).
 
-***
+---
 
 <Steps>
   <Step title="Create a new TanStack Start app">
@@ -16,6 +16,7 @@ description: Use TanStack Start with Bun
     ```sh terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
     bun create @tanstack/start@latest my-tanstack-app
     ```
+
   </Step>
 
   <Step title="Start the dev server">
@@ -27,6 +28,7 @@ description: Use TanStack Start with Bun
     ```
 
     This starts the Vite dev server with Bun.
+
   </Step>
 
   <Step title="Update scripts in package.json">
@@ -41,10 +43,11 @@ description: Use TanStack Start with Bun
       }
     }
     ```
+
   </Step>
 </Steps>
 
-***
+---
 
 ## Hosting
 
@@ -131,6 +134,7 @@ To host your TanStack Start app, you can use [Nitro](https://nitro.build/) or a 
         </Note>
       </Step>
     </Steps>
+
   </Tab>
 
   <Tab title="Custom Server">
@@ -726,6 +730,7 @@ To host your TanStack Start app, you can use [Nitro](https://nitro.build/) or a 
         The server will start on port 3000 by default (configurable via `PORT` environment variable).
       </Step>
     </Steps>
+
   </Tab>
 </Tabs>
 
@@ -755,7 +760,7 @@ To host your TanStack Start app, you can use [Nitro](https://nitro.build/) or a 
   </Card>
 </Columns>
 
-***
+---
 
 ## Templates
 
@@ -773,6 +778,6 @@ To host your TanStack Start app, you can use [Nitro](https://nitro.build/) or a 
   </Card>
 </Columns>
 
-***
+---
 
 [→ See TanStack Start's official documentation](https://tanstack.com/start/latest/docs/framework/react/guide/hosting) for more information on hosting.

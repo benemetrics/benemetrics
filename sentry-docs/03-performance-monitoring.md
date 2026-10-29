@@ -55,10 +55,10 @@ import * as Sentry from "@sentry/node"; // or @sentry/bun, @sentry/deno
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
-  
+
   // Transaction sampling (0.0 - 1.0)
   tracesSampleRate: 1.0,
-  
+
   // Profiling sampling
   profilesSampleRate: 0.1,
 });
@@ -116,15 +116,15 @@ SentrySdk.Init(o => {
 
 Most SDKs automatically instrument common libraries:
 
-| Platform | HTTP Server | HTTP Client | Database | Redis | Messaging |
-|----------|-------------|-------------|----------|-------|-----------|
-| Node.js | Express, Koa, Fastify, Hono, Elysia | fetch, axios, http | pg, mysql2, prisma, drizzle, sequelize | ioredis, redis | amqplib, kafkajs |
-| Python | Flask, Django, FastAPI, Starlette | requests, httpx, aiohttp | psycopg2, sqlalchemy, django.db | redis-py | celery, pika |
-| Go | Gin, Echo, Chi, stdlib | net/http, http.Client | database/sql, gorm, sqlx | go-redis | sarama, nats.go |
-| Java | Spring Boot, Servlet, Vert.x | HttpClient, OkHttp | JDBC, JPA, R2DBC | Lettuce, Jedis | Kafka, RabbitMQ |
-| .NET | ASP.NET Core | HttpClient | Entity Framework, Dapper | StackExchange.Redis | MassTransit, NServiceBus |
-| Ruby | Rails, Rack, Sinatra | Net::HTTP, Faraday | ActiveRecord, Sequel | redis-rb | Sidekiq, Bunny |
-| PHP | Laravel, Symfony, Slim | Guzzle, HttpClient | PDO, Doctrine | predis, phpredis | enqueue, php-amqplib |
+| Platform | HTTP Server                         | HTTP Client              | Database                               | Redis               | Messaging                |
+| -------- | ----------------------------------- | ------------------------ | -------------------------------------- | ------------------- | ------------------------ |
+| Node.js  | Express, Koa, Fastify, Hono, Elysia | fetch, axios, http       | pg, mysql2, prisma, drizzle, sequelize | ioredis, redis      | amqplib, kafkajs         |
+| Python   | Flask, Django, FastAPI, Starlette   | requests, httpx, aiohttp | psycopg2, sqlalchemy, django.db        | redis-py            | celery, pika             |
+| Go       | Gin, Echo, Chi, stdlib              | net/http, http.Client    | database/sql, gorm, sqlx               | go-redis            | sarama, nats.go          |
+| Java     | Spring Boot, Servlet, Vert.x        | HttpClient, OkHttp       | JDBC, JPA, R2DBC                       | Lettuce, Jedis      | Kafka, RabbitMQ          |
+| .NET     | ASP.NET Core                        | HttpClient               | Entity Framework, Dapper               | StackExchange.Redis | MassTransit, NServiceBus |
+| Ruby     | Rails, Rack, Sinatra                | Net::HTTP, Faraday       | ActiveRecord, Sequel                   | redis-rb            | Sidekiq, Bunny           |
+| PHP      | Laravel, Symfony, Slim              | Guzzle, HttpClient       | PDO, Doctrine                          | predis, phpredis    | enqueue, php-amqplib     |
 
 ## Custom Transactions & Spans
 
@@ -139,20 +139,20 @@ async function processOrderQueue() {
     name: "Process Order Queue",
     op: "task.queue",
   });
-  
+
   try {
     const orders = await fetchPendingOrders();
-    
+
     for (const order of orders) {
       const span = transaction.startChild({
         op: "task.process",
         description: `Order ${order.id}`,
       });
-      
+
       await processOrder(order);
       span.end();
     }
-    
+
     transaction.setTag("orders_processed", orders.length);
     transaction.setStatus("ok");
   } catch (error) {
@@ -237,28 +237,30 @@ async function getUserWithOrders(userId: string) {
       "db.table": "users",
     },
   });
-  
+
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
     with: { orders: true },
   });
-  
+
   dbSpan.end();
-  
+
   // External API span
   const apiSpan = Sentry.startSpan({
     op: "http.client",
     name: "GET /api/loyalty",
     attributes: {
       "http.method": "GET",
-      "url": "https://loyalty.example.com/api/points",
+      url: "https://loyalty.example.com/api/points",
     },
   });
-  
-  const loyalty = await fetch(`https://loyalty.example.com/api/points/${userId}`);
+
+  const loyalty = await fetch(
+    `https://loyalty.example.com/api/points/${userId}`,
+  );
   apiSpan.setAttribute("http.status_code", loyalty.status);
   apiSpan.end();
-  
+
   return { user, loyalty: await loyalty.json() };
 }
 ```
@@ -304,7 +306,7 @@ span.setAttributes({
 // HTTP Client
 span.setAttributes({
   "http.method": "POST",
-  "url": "https://api.stripe.com/v1/charges",
+  url: "https://api.stripe.com/v1/charges",
   "http.status_code": 200,
   "http.request.body.size": 1024,
   "http.response.body.size": 2048,
@@ -354,16 +356,16 @@ Sentry.init({
   tracesSampler(ctx) {
     if (ctx.transactionContext?.op === "http.server") {
       const url = ctx.transactionContext.name;
-      
+
       // High priority: always sample
       if (url.includes("/payment") || url.includes("/checkout")) return 1.0;
-      
+
       // Health checks: never sample
       if (url.includes("/health") || url.includes("/ready")) return 0.0;
-      
+
       // API: 10%
       if (url.startsWith("/api/")) return 0.1;
-      
+
       // Static assets: 1%
       return 0.01;
     }
@@ -392,23 +394,23 @@ sentry_sdk.init(traces_sampler=traces_sampler)
 
 ### Head-Based vs Tail-Based
 
-| Strategy | When Decision Made | Pros | Cons |
-|----------|-------------------|------|------|
-| **Head-based** (tracesSampler) | At transaction start | Low overhead | Can't sample based on outcome |
-| **Tail-based** | After transaction ends | Sample errors/slow requests | Higher overhead, limited SDK support |
+| Strategy                       | When Decision Made     | Pros                        | Cons                                 |
+| ------------------------------ | ---------------------- | --------------------------- | ------------------------------------ |
+| **Head-based** (tracesSampler) | At transaction start   | Low overhead                | Can't sample based on outcome        |
+| **Tail-based**                 | After transaction ends | Sample errors/slow requests | Higher overhead, limited SDK support |
 
 ## Performance Metrics & Dashboards
 
 ### Key Metrics to Monitor
 
-| Metric | Description | Target |
-|--------|-------------|--------|
-| **p50 latency** | Median response time | < 200ms |
-| **p95 latency** | 95th percentile | < 1s |
-| **p99 latency** | 99th percentile | < 3s |
-| **Throughput** | Requests/second | — |
-| **Error rate** | Errors / total requests | < 0.1% |
-| **Apdex** | User satisfaction score | > 0.9 |
+| Metric          | Description             | Target  |
+| --------------- | ----------------------- | ------- |
+| **p50 latency** | Median response time    | < 200ms |
+| **p95 latency** | 95th percentile         | < 1s    |
+| **p99 latency** | 99th percentile         | < 3s    |
+| **Throughput**  | Requests/second         | —       |
+| **Error rate**  | Errors / total requests | < 0.1%  |
+| **Apdex**       | User satisfaction score | > 0.9   |
 
 ### Discover Queries (SQL-like)
 
@@ -516,7 +518,7 @@ const transaction = Sentry.getCurrentScope().getTransaction();
 const traceparent = transaction?.toTraceparent();
 
 const response = await fetch("https://api.example.com/data", {
-  headers: { "traceparent": traceparent },
+  headers: { traceparent: traceparent },
 });
 ```
 
@@ -558,9 +560,8 @@ import * as Sentry from "@sentry/node";
 const db = drizzle(sql);
 
 async function getOrders(userId: string) {
-  return Sentry.startSpan(
-    { op: "db.query", name: "getOrders" },
-    async () => db.select().from(orders).where(eq(orders.userId, userId))
+  return Sentry.startSpan({ op: "db.query", name: "getOrders" }, async () =>
+    db.select().from(orders).where(eq(orders.userId, userId)),
   );
 }
 
@@ -572,7 +573,7 @@ const prisma = new PrismaClient();
 prisma.$use(async (params, next) => {
   return Sentry.startSpan(
     { op: "db.query", name: `prisma.${params.model}.${params.action}` },
-    async () => next(params)
+    async () => next(params),
   );
 });
 ```
@@ -621,8 +622,12 @@ func query(db *gorm.DB, span *sentry.Span) {
 ```typescript
 // TypeScript
 Sentry.metrics.increment("orders.created", 1, { tags: { tier: "premium" } });
-Sentry.metrics.distribution("order.value", 99.99, { tags: { currency: "USD" } });
-Sentry.metrics.timing("checkout.duration", 1250, { tags: { payment_method: "stripe" } });
+Sentry.metrics.distribution("order.value", 99.99, {
+  tags: { currency: "USD" },
+});
+Sentry.metrics.timing("checkout.duration", 1250, {
+  tags: { payment_method: "stripe" },
+});
 ```
 
 ```python
@@ -641,14 +646,14 @@ sentry.Metrics.Timing("checkout.duration", 1250, map[string]string{"payment_meth
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| No transactions | Check `tracesSampleRate > 0`, verify DSN |
-| Missing spans | Ensure DB/HTTP libraries are supported/instrumented |
-| High overhead | Lower `tracesSampleRate`, disable profiling |
-| No profiling data | Enable profiling in runtime (Node: `--enable-source-map`, Go: pprof, Java: JFR) |
-| Trace not continuing | Check `traceparent` header propagation |
-| Spans too granular | Filter spans in `beforeSendTransaction` |
+| Issue                | Solution                                                                        |
+| -------------------- | ------------------------------------------------------------------------------- |
+| No transactions      | Check `tracesSampleRate > 0`, verify DSN                                        |
+| Missing spans        | Ensure DB/HTTP libraries are supported/instrumented                             |
+| High overhead        | Lower `tracesSampleRate`, disable profiling                                     |
+| No profiling data    | Enable profiling in runtime (Node: `--enable-source-map`, Go: pprof, Java: JFR) |
+| Trace not continuing | Check `traceparent` header propagation                                          |
+| Spans too granular   | Filter spans in `beforeSendTransaction`                                         |
 
 ## Quick Reference
 

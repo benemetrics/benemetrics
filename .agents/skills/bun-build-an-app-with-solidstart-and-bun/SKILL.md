@@ -11,7 +11,7 @@ Initialize a SolidStart app with `create-solid`. You can specify the `--solidsta
 bun create solid my-app --solidstart --ts
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 ┌
  Create-Solid v0.6.11
 │
@@ -32,7 +32,7 @@ bun create solid my-app --solidstart --ts
 ├────────────────────────╯
 ```
 
-***
+---
 
 As instructed by the `create-solid` CLI, install the dependencies.
 
@@ -47,7 +47,7 @@ Then run the development server with `bun dev`.
 bun dev
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 $ vinxi dev
 vinxi v0.5.8
 vinxi starting dev server
@@ -58,6 +58,6 @@ vinxi starting dev server
 
 Open [localhost:3000](http://localhost:3000). Any changes you make to `src/routes/index.tsx` will be hot-reloaded automatically.
 
-***
+---
 
 Refer to the [SolidStart website](https://docs.solidjs.com/solid-start) for complete framework documentation.

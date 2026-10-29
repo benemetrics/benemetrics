@@ -24,17 +24,17 @@ export SENTRY_DSN="https://xxx@o1.ingest.sentry.io/123"
 
 ## Documentation Index
 
-| # | Feature | Document | Covers |
-|---|---------|----------|--------|
-| 1 | **Error Tracking** | [01-error-tracking.md](./01-error-tracking.md) | Exception capture, context, grouping, manual capture |
-| 2 | **Release Tracking** | [02-release-tracking.md](./02-release-tracking.md) | Release creation, deploy tracking, suspect commits |
-| 3 | **Performance Monitoring** | [03-performance-monitoring.md](./03-performance-monitoring.md) | Transactions, spans, tracing, profiling |
-| 4 | **Session Replay** | [04-session-replay.md](./04-session-replay.md) | Frontend replay, backend trace linking |
-| 5 | **Breadcrumbs** | [05-breadcrumbs.md](./05-breadcrumbs.md) | Auto-captured breadcrumbs, custom breadcrumbs |
-| 6 | **Alerting** | [06-alerting.md](./06-alerting.md) | Alert rules, metric alerts, Slack/PagerDuty, ownership |
-| 7 | **Protocol Spec** | [07-protocol-spec.md](./07-protocol-spec.md) | Ingestion protocol with source references |
-| 8 | **Authentication** | [08-authentication.md](./08-authentication.md) | None, OIDC, OAuth2 — auth methods for Sentry server & SDKs |
-| 9 | **Feature Flags** | [09-feature-flags.md](./09-feature-flags.md) | Release-scoped flags, rollouts, targeting, experimentation |
+| #   | Feature                    | Document                                                       | Covers                                                     |
+| --- | -------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------- |
+| 1   | **Error Tracking**         | [01-error-tracking.md](./01-error-tracking.md)                 | Exception capture, context, grouping, manual capture       |
+| 2   | **Release Tracking**       | [02-release-tracking.md](./02-release-tracking.md)             | Release creation, deploy tracking, suspect commits         |
+| 3   | **Performance Monitoring** | [03-performance-monitoring.md](./03-performance-monitoring.md) | Transactions, spans, tracing, profiling                    |
+| 4   | **Session Replay**         | [04-session-replay.md](./04-session-replay.md)                 | Frontend replay, backend trace linking                     |
+| 5   | **Breadcrumbs**            | [05-breadcrumbs.md](./05-breadcrumbs.md)                       | Auto-captured breadcrumbs, custom breadcrumbs              |
+| 6   | **Alerting**               | [06-alerting.md](./06-alerting.md)                             | Alert rules, metric alerts, Slack/PagerDuty, ownership     |
+| 7   | **Protocol Spec**          | [07-protocol-spec.md](./07-protocol-spec.md)                   | Ingestion protocol with source references                  |
+| 8   | **Authentication**         | [08-authentication.md](./08-authentication.md)                 | None, OIDC, OAuth2 — auth methods for Sentry server & SDKs |
+| 9   | **Feature Flags**          | [09-feature-flags.md](./09-feature-flags.md)                   | Release-scoped flags, rollouts, targeting, experimentation |
 
 ## Project Structure
 
@@ -76,14 +76,14 @@ export function initSentry(options: {
     dsn: options.dsn,
     environment: options.environment || process.env.NODE_ENV || "development",
     release: options.release || process.env.APP_VERSION || "1.0.0",
-    
+
     // Performance Monitoring
     tracesSampleRate: options.tracesSampleRate ?? 1.0,
     profilesSampleRate: options.profilesSampleRate ?? 0.1,
-    
+
     // Debug in development
     debug: process.env.NODE_ENV === "development",
-    
+
     // Before send - filter/modify events
     beforeSend(event, hint) {
       // Filter out health check noise
@@ -91,7 +91,7 @@ export function initSentry(options: {
       return event;
     },
   });
-  
+
   return Sentry;
 }
 ```
@@ -158,17 +158,17 @@ SENTRY_DEBUG=false                     # true/false
 
 ## Feature Matrix (Platform Support)
 
-| Feature | Node/Bun/Deno | Python | Go | Java | .NET | Ruby | PHP | Browser | Mobile |
-|---------|---------------|--------|-----|------|------|------|-----|---------|--------|
-| Error Tracking | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Release Tracking | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Performance (Tracing) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Profiling | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ | ✅ |
-| Session Replay | ⚠️ Backend | ⚠️ Backend | ⚠️ Backend | ⚠️ Backend | ⚠️ Backend | ⚠️ Backend | ⚠️ Backend | ✅ | ✅ |
-| Breadcrumbs | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Alerting | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Feature               | Node/Bun/Deno | Python     | Go         | Java       | .NET       | Ruby       | PHP        | Browser | Mobile |
+| --------------------- | ------------- | ---------- | ---------- | ---------- | ---------- | ---------- | ---------- | ------- | ------ |
+| Error Tracking        | ✅            | ✅         | ✅         | ✅         | ✅         | ✅         | ✅         | ✅      | ✅     |
+| Release Tracking      | ✅            | ✅         | ✅         | ✅         | ✅         | ✅         | ✅         | ✅      | ✅     |
+| Performance (Tracing) | ✅            | ✅         | ✅         | ✅         | ✅         | ✅         | ✅         | ✅      | ✅     |
+| Profiling             | ✅            | ✅         | ✅         | ✅         | ✅         | ⚠️         | ⚠️         | ✅      | ✅     |
+| Session Replay        | ⚠️ Backend    | ⚠️ Backend | ⚠️ Backend | ⚠️ Backend | ⚠️ Backend | ⚠️ Backend | ⚠️ Backend | ✅      | ✅     |
+| Breadcrumbs           | ✅            | ✅         | ✅         | ✅         | ✅         | ✅         | ✅         | ✅      | ✅     |
+| Alerting              | ✅            | ✅         | ✅         | ✅         | ✅         | ✅         | ✅         | ✅      | ✅     |
 
-*Session Replay is primarily a frontend/mobile feature. Backend SDKs provide trace context linking.*
+_Session Replay is primarily a frontend/mobile feature. Backend SDKs provide trace context linking._
 
 ## Next Steps
 

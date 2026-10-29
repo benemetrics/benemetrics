@@ -14,17 +14,17 @@ Source maps are uploaded as artifacts bound to a **release** (version string) wi
 
 ### Source Map Artifact
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | UUID | Primary key |
-| `projectId` | UUID | Owner project |
-| `appId` | UUID | Owner app (scoping boundary) |
-| `environmentId` | UUID | Owner environment |
-| `release` | string | Release version (e.g., `1.2.3`) |
-| `dist` | string? | Optional distribution identifier |
-| `filename` | string | Artifact name as sent by `sentry-cli` (e.g., `~/dist/app.js.map`) |
-| `mapJson` | text | Raw source map document (version 3, JSON) |
-| `createdAt` | ISO string | Upload timestamp |
+| Field           | Type       | Notes                                                             |
+| --------------- | ---------- | ----------------------------------------------------------------- |
+| `id`            | UUID       | Primary key                                                       |
+| `projectId`     | UUID       | Owner project                                                     |
+| `appId`         | UUID       | Owner app (scoping boundary)                                      |
+| `environmentId` | UUID       | Owner environment                                                 |
+| `release`       | string     | Release version (e.g., `1.2.3`)                                   |
+| `dist`          | string?    | Optional distribution identifier                                  |
+| `filename`      | string     | Artifact name as sent by `sentry-cli` (e.g., `~/dist/app.js.map`) |
+| `mapJson`       | text       | Raw source map document (version 3, JSON)                         |
+| `createdAt`     | ISO string | Upload timestamp                                                  |
 
 **Uniqueness**: `(projectId, release, filename)` — re-uploading the same artifact name to the same release **replaces it in place** (last wins, via `onConflictDoUpdate`), so a corrected map takes effect without cutting a new release. The artifact keeps its `id`; the parsed/decoded caches are versioned by the artifact's `createdAt` and invalidated on upload, so symbolication never serves a superseded body.
 
@@ -32,20 +32,20 @@ Source maps are uploaded as artifacts bound to a **release** (version string) wi
 
 ### Upload Token
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | UUID | Primary key |
-| `projectId` | UUID | Owner project |
-| `appId` | UUID | Scoped app |
-| `environmentId` | UUID | Scoped environment |
-| `tokenHash` | string | SHA-256 of raw token (never stores plaintext) |
-| `tokenPrefix` | string | First 8 chars of raw token (for UI identification) |
-| `name` | string | Human-readable label |
-| `createdBy` | string | Admin identity who created it |
-| `createdAt` | ISO string | Creation timestamp |
-| `lastUsedAt` | ISO string? | Last successful authentication |
-| `expiresAt` | ISO string? | Optional TTL |
-| `revokedAt` | ISO string? | Soft revocation timestamp |
+| Field           | Type        | Notes                                              |
+| --------------- | ----------- | -------------------------------------------------- |
+| `id`            | UUID        | Primary key                                        |
+| `projectId`     | UUID        | Owner project                                      |
+| `appId`         | UUID        | Scoped app                                         |
+| `environmentId` | UUID        | Scoped environment                                 |
+| `tokenHash`     | string      | SHA-256 of raw token (never stores plaintext)      |
+| `tokenPrefix`   | string      | First 8 chars of raw token (for UI identification) |
+| `name`          | string      | Human-readable label                               |
+| `createdBy`     | string      | Admin identity who created it                      |
+| `createdAt`     | ISO string  | Creation timestamp                                 |
+| `lastUsedAt`    | ISO string? | Last successful authentication                     |
+| `expiresAt`     | ISO string? | Optional TTL                                       |
+| `revokedAt`     | ISO string? | Soft revocation timestamp                          |
 
 **Security**: Raw token returned **exactly once** — at creation and at rotation. Never stored, never listed.
 
@@ -62,20 +62,21 @@ Auth: `Authorization: Bearer <upload-token>` (scoped to project+app+environment;
 
 ### Release Management
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/releases/` | Create release (`{ version, ref?, url?, owner? }`); returns release + `projectId` |
-| `POST` | `/releases/:version/` | Finalize release (`status: "finalized"`); 404 when the release was never created |
+| Method | Path                  | Description                                                                       |
+| ------ | --------------------- | --------------------------------------------------------------------------------- |
+| `POST` | `/releases/`          | Create release (`{ version, ref?, url?, owner? }`); returns release + `projectId` |
+| `POST` | `/releases/:version/` | Finalize release (`status: "finalized"`); 404 when the release was never created  |
 
 ### Artifact Upload / List / Delete
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/releases/:version/files/` | Upload source map (multipart: `file` + `name` + optional `dist`); validates version 3 + `sources` + `mappings`; 10 MB limit; returns artifact metadata |
-| `GET` | `/releases/:version/files/` | List artifacts for release (paginated) |
-| `DELETE` | `/releases/:version/files/:fileId/` | Delete artifact (scoped to project+release) |
+| Method   | Path                                | Description                                                                                                                                            |
+| -------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST`   | `/releases/:version/files/`         | Upload source map (multipart: `file` + `name` + optional `dist`); validates version 3 + `sources` + `mappings`; 10 MB limit; returns artifact metadata |
+| `GET`    | `/releases/:version/files/`         | List artifacts for release (paginated)                                                                                                                 |
+| `DELETE` | `/releases/:version/files/:fileId/` | Delete artifact (scoped to project+release)                                                                                                            |
 
 **Upload validation**:
+
 - Multipart form with `file` (the `.map`) and `name` (the `--url-prefix` path)
 - File must be valid JSON, version 3, with `sources` array and `mappings` string
 - Size limit: 10 MB
@@ -91,26 +92,27 @@ Auth: Admin token only (scoped identities excluded)
 
 ### Artifacts
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/source-maps` | List artifacts (filter by `projectId`, `environmentId`, `release`; paginated) |
-| `GET` | `/source-maps/:id` | Get artifact; `?include=content` returns raw `mapJson` |
-| `POST` | `/source-maps/resolve` | Resolve one position: `{ projectId, release, filename, line, column }` → the original position |
-| `DELETE` | `/source-maps/:id` | Delete artifact |
+| Method   | Path                   | Description                                                                                    |
+| -------- | ---------------------- | ---------------------------------------------------------------------------------------------- |
+| `GET`    | `/source-maps`         | List artifacts (filter by `projectId`, `environmentId`, `release`; paginated)                  |
+| `GET`    | `/source-maps/:id`     | Get artifact; `?include=content` returns raw `mapJson`                                         |
+| `POST`   | `/source-maps/resolve` | Resolve one position: `{ projectId, release, filename, line, column }` → the original position |
+| `DELETE` | `/source-maps/:id`     | Delete artifact                                                                                |
 
 **Note**: Content (`mapJson` / `sourcesContent`) never exposed unless explicitly requested via `?include=content`.
 
 ### Tokens
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/source-map-tokens` | Create token (`{ name, projectId, appId, environmentId, expiresAt? }`); returns raw token once |
-| `GET` | `/source-map-tokens` | List tokens (filter by `projectId`, `environmentId`; paginated) |
-| `GET` | `/source-map-tokens/:id` | Get token (never returns raw token) |
-| `POST` | `/source-map-tokens/:id/rotate` | Rotate token (invalidates previous raw value immediately); returns new raw token once |
-| `DELETE` | `/source-map-tokens/:id` | Revoke token (soft delete; keeps audit trail) |
+| Method   | Path                            | Description                                                                                    |
+| -------- | ------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `POST`   | `/source-map-tokens`            | Create token (`{ name, projectId, appId, environmentId, expiresAt? }`); returns raw token once |
+| `GET`    | `/source-map-tokens`            | List tokens (filter by `projectId`, `environmentId`; paginated)                                |
+| `GET`    | `/source-map-tokens/:id`        | Get token (never returns raw token)                                                            |
+| `POST`   | `/source-map-tokens/:id/rotate` | Rotate token (invalidates previous raw value immediately); returns new raw token once          |
+| `DELETE` | `/source-map-tokens/:id`        | Revoke token (soft delete; keeps audit trail)                                                  |
 
 **Token scoping**: Bound to one `projectId` + `appId` + `environmentId`. Validation at upload time checks:
+
 - Token's `projectId` matches the project slug in the path
 - Token's `environmentId` exists and belongs to the project
 - Token not revoked, not expired
@@ -147,6 +149,7 @@ Auth: Admin token only (scoped identities excluded)
 ### Output
 
 Symbolicated frames gain:
+
 - `original_filename` (source file)
 - `original_lineno` / `original_colno` (1-indexed)
 - `context_line` / `pre_context` / `post_context` (from `sourcesContent` when available)
@@ -155,18 +158,18 @@ Symbolicated frames gain:
 
 ## 6. Invariants (Must Not Break)
 
-| Invariant | Enforcement |
-|-----------|-------------|
-| Artifact unique per `(projectId, release, filename)` | Unique index; upsert uses conflict-do-update (last wins) |
-| Upload token raw value never persisted | Only `tokenHash` (SHA-256) stored; raw returned once at create/rotate |
-| Token scoped to project+app+environment | Foreign keys + validation at upload auth |
-| Token rotation invalidates previous value | Rotation generates new hash, updates `tokenHash`, returns new raw |
-| Revoked/expired tokens rejected | Auth checks `revokedAt` and `expiresAt` |
-| Symbolication only for events with `release` | Pipeline returns early if no release |
-| Malformed mappings never crash read | Decode wrapped in error boundary; logs error, skips frame |
-| Admin-only token management | Route guard; scoped identities excluded from allowlist |
-| Artifact content never leaked in lists | `mapJson` only included with explicit `?include=content` |
-| Symbolication never serves a superseded body | The parse/decode caches are keyed by artifact id **and** versioned by `createdAt`; an upload invalidates the artifact's entries |
+| Invariant                                            | Enforcement                                                                                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Artifact unique per `(projectId, release, filename)` | Unique index; upsert uses conflict-do-update (last wins)                                                                        |
+| Upload token raw value never persisted               | Only `tokenHash` (SHA-256) stored; raw returned once at create/rotate                                                           |
+| Token scoped to project+app+environment              | Foreign keys + validation at upload auth                                                                                        |
+| Token rotation invalidates previous value            | Rotation generates new hash, updates `tokenHash`, returns new raw                                                               |
+| Revoked/expired tokens rejected                      | Auth checks `revokedAt` and `expiresAt`                                                                                         |
+| Symbolication only for events with `release`         | Pipeline returns early if no release                                                                                            |
+| Malformed mappings never crash read                  | Decode wrapped in error boundary; logs error, skips frame                                                                       |
+| Admin-only token management                          | Route guard; scoped identities excluded from allowlist                                                                          |
+| Artifact content never leaked in lists               | `mapJson` only included with explicit `?include=content`                                                                        |
+| Symbolication never serves a superseded body         | The parse/decode caches are keyed by artifact id **and** versioned by `createdAt`; an upload invalidates the artifact's entries |
 
 ---
 

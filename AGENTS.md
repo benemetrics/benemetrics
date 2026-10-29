@@ -3,6 +3,7 @@
 Agent operating rules for this repository. `docs/BACKEND_API.md` is the long-form reference; this file is the contract you MUST follow when writing or changing backend code.
 
 **Architecture Reference Documents** (in `docs/`) — **GROUND TRUTH**
+
 - [`models.md`](docs/models.md) — Project → Environment → App hierarchy, invariants, scoped reads
 - [`metrics.md`](docs/metrics.md) — Metric taxonomy, NATS→ClickHouse pipeline, series/breakdown APIs, alerting integration
 - [`source-maps.md`](docs/source-maps.md) — Artifact storage, upload tokens, VLQ symbolication, CLI surface
@@ -13,7 +14,8 @@ Agent operating rules for this repository. `docs/BACKEND_API.md` is the long-for
 - [`nats.md`](docs/nats.md) — NATS subjects, account/credential model, auth callout
 - [`permission.md`](docs/permission.md) — Admin auth model, scoped reads, group rules + whitelist
 
-**Enforcement:** The `docs/` documents are the **single source of architectural truth**. 
+**Enforcement:** The `docs/` documents are the **single source of architectural truth**.
+
 - `AGENTS.md` and `docs/BACKEND_API.md` MUST be consistent with `docs/`.
 - Any architectural decision not reflected in `docs/` is not binding.
 - When changing architecture: update `docs/` FIRST, then `AGENTS.md`/`docs/BACKEND_API.md`.
@@ -128,7 +130,7 @@ Ingest Handler → NATS (sentry.events.<appNumber>, sentry.metrics)
 
 - MUST check admin credentials in ONE place: `resolveIdentity` (`backend/auth.ts`) — `API-Key` compared in constant time against the admin token, or `Bearer <provider JWT>` verified with `jose` against the provider's JWKS, fail closed. The two credentials never share a header. It resolves to **an id** (`local-admin`, or `<issuer>-<subject>`); every oidc route group resolves it through `resolveAdminId` and reads `adminId`. An id is all the admin surface needs — do NOT build a user profile. The DSN/source-map-upload auth (`validateAuth`/`validateUploadAuth`) stays separate.
 - MUST guard `/api/admin/*` with admin auth (fail closed): the admin token is an `API-Key`, a provider identity is a `Bearer` token.
-- Token model: the admin token is the **master/fallback credential** and is always accepted (it is what the UI prompts for when no grant applies); with OIDC/OAuth2 configured a verified provider JWT is an *additional* identity. The token is generated at boot and held **only as its `Bun.password` hash** (argon2id) in global Elysia state (`backend/index.ts`) — the plaintext never persists; requests present it under `API-Key` and the check is `Bun.password.verify`. It rotates daily at 00:00 UTC by the Elysia cron in the same file — no env var, no file, no HTTP surface for it. Tests pin it by writing the fixture hash to `app.store.adminTokenHash` (Bun suites); production code carries no test hook. `/api/admin/*` rejects every request without a credential. NEVER reintroduce built-in dev/test tokens, prefix/length bypasses, env/file configuration of the token, or "provider configured ⇒ admin token ignored".
+- Token model: the admin token is the **master/fallback credential** and is always accepted (it is what the UI prompts for when no grant applies); with OIDC/OAuth2 configured a verified provider JWT is an _additional_ identity. The token is generated at boot and held **only as its `Bun.password` hash** (argon2id) in global Elysia state (`backend/index.ts`) — the plaintext never persists; requests present it under `API-Key` and the check is `Bun.password.verify`. It rotates daily at 00:00 UTC by the Elysia cron in the same file — no env var, no file, no HTTP surface for it. Tests pin it by writing the fixture hash to `app.store.adminTokenHash` (Bun suites); production code carries no test hook. `/api/admin/*` rejects every request without a credential. NEVER reintroduce built-in dev/test tokens, prefix/length bypasses, env/file configuration of the token, or "provider configured ⇒ admin token ignored".
 - Browser login is the standard authorization-code + PKCE flow run by the SPA with `openid-client`. The public OIDC settings (`OIDC_ISSUER`/`OAUTH_ISSUER`, `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID`, `OIDC_SCOPES`, `OIDC_ALLOW_INSECURE_HTTP`) are compiled into the bundle at startup via `frontend/auth-env-plugin.ts` (it replaces `frontend/src/lib/auth-env.ts`); there is no auth config endpoint, and only those public names may cross into frontend code. The ID token is stored as the SPA's bearer credential and verified server-side like any provider JWT; the backend never handles the authorization code and there is no client secret in the browser (state + PKCE only — no nonce). A failed exchange falls back to the admin-token prompt for the session.
 - JWT verification uses `jose` (the provider's discovery document resolves the JWKS; `jwtVerify` with the audience `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID` and the issuer `OIDC_ISSUER`, trailing slash normalized) and MUST fail closed; never log tokens. The `azp` claim must be the client id. The provider is discovered **once at boot**: without `OIDC_ISSUER` + `OIDC_CLIENT_ID` no provider JWT is accepted. A plain-HTTP issuer needs the explicit `OIDC_ALLOW_INSECURE_HTTP=true` opt-in — **HTTPS is the recommendation**, and the opt-in only relaxes the discovery, never the signature, audience or issuer check.
 - Read permissions (`backend/permissions/engine.ts`): a verified identity's scope is the union of the enabled group rules matching its `groups`; an enabled grant for the identity id replaces the group assignment. Scope = environment **names** + app **name prefixes** expanded into visible apps/environments/projects. No matching grant → `401` with `NO_READ_PERMISSION_MESSAGE` (the UI then prompts for the admin token).
@@ -163,7 +165,7 @@ Ingest Handler → NATS (sentry.events.<appNumber>, sentry.metrics)
 - NEVER commit `.tmp` files, commented-out dead code, or duplicate files; delete unused code.
 - MUST follow naming: plural kebab-case route prefixes (`feature-flags`), `index.ts` per module, DAO methods per above.
 - MUST read from env for hosts/ports; NEVER hardcode `localhost` outside dev.
-- **Code comments MUST be minimal**: one short line explaining a non-obvious *why* (a race, a constraint, a surprising invariant). NEVER restate what the code says, never narrate the change, and never cite `docs/` sections in a comment — the docs are the reference, not the code. If a comment needs more than two lines, the code is too clever or belongs in the doc.
+- **Code comments MUST be minimal**: one short line explaining a non-obvious _why_ (a race, a constraint, a surprising invariant). NEVER restate what the code says, never narrate the change, and never cite `docs/` sections in a comment — the docs are the reference, not the code. If a comment needs more than two lines, the code is too clever or belongs in the doc.
 
 ## Known landmines (do not reproduce; fix if touched)
 

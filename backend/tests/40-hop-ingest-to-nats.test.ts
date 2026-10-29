@@ -59,14 +59,21 @@ describe("Hop 1: ingest -> NATS", () => {
     // The publish is batched (a 100ms flush), so the shard's newest message
     // may still be a previous run's: poll until this event id shows up.
     const manager = await jetstreamManager(nats);
-    const message = await waitFor(async () => {
-      const found = await manager.streams.getMessage(TEST_STREAM, {
-        last_by_subj: `sentry.events.${app.appNumber}`,
-      }).catch(() => null);
-      if (!found) return null;
-      const parsed = JSON.parse(new TextDecoder().decode(found.data)) as { id: string };
-      return parsed.id === eventId ? found : null;
-    }, (found) => found !== null);
+    const message = await waitFor(
+      async () => {
+        const found = await manager.streams
+          .getMessage(TEST_STREAM, {
+            last_by_subj: `sentry.events.${app.appNumber}`,
+          })
+          .catch(() => null);
+        if (!found) return null;
+        const parsed = JSON.parse(new TextDecoder().decode(found.data)) as {
+          id: string;
+        };
+        return parsed.id === eventId ? found : null;
+      },
+      (found) => found !== null,
+    );
     expect(message).not.toBeNull();
 
     const published = JSON.parse(new TextDecoder().decode(message!.data)) as {
@@ -104,7 +111,10 @@ describe("Hop 1: ingest -> NATS", () => {
     const response = await fetch(`${TEST_ORIGIN}/api/000000/store/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_id: crypto.randomUUID(), message: "unknown app" }),
+      body: JSON.stringify({
+        event_id: crypto.randomUUID(),
+        message: "unknown app",
+      }),
     });
     expect(response.status).toBe(401);
   });
@@ -211,7 +221,10 @@ describe("Hop 1: ingest -> NATS", () => {
       const url = new URL(`${TEST_ORIGIN}/api/${app.ingestKey}/envelope/`);
       url.searchParams.set("sentry_key", app.publicKey);
       const envelope = [
-        JSON.stringify({ event_id: eventId, sent_at: new Date().toISOString() }),
+        JSON.stringify({
+          event_id: eventId,
+          sent_at: new Date().toISOString(),
+        }),
         JSON.stringify({ type: "event", length: 0 }),
         JSON.stringify({
           event_id: eventId,

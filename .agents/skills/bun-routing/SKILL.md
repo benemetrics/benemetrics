@@ -28,7 +28,7 @@ Bun.serve({
 
 Routes in `Bun.serve()` receive a `BunRequest` (which extends [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request)) and return a [`Response`](https://developer.mozilla.org/en-US/docs/Web/API/Response) or `Promise<Response>`. This makes it easier to use the same code for both sending & receiving HTTP requests.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Simplified for brevity
 interface BunRequest<T extends string> extends Request {
   params: Record<T, string>;
@@ -42,7 +42,7 @@ interface BunRequest<T extends string> extends Request {
 
 You can use async/await in route handlers to return a `Promise<Response>`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { sql, serve } from "bun";
 
 serve({
@@ -60,13 +60,13 @@ serve({
 
 You can also return a `Promise<Response>` from a route handler.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { sql, serve } from "bun";
 
 serve({
   routes: {
     "/api/version": () => {
-      return new Promise(resolve => {
+      return new Promise((resolve) => {
         setTimeout(async () => {
           const [version] = await sql`SELECT version()`;
           resolve(Response.json(version));
@@ -77,7 +77,7 @@ serve({
 });
 ```
 
-***
+---
 
 ## Route precedence
 
@@ -88,19 +88,19 @@ Routes are matched in order of specificity:
 3. Wildcard routes (`/users/*`)
 4. Global catch-all (`/*`)
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.serve({
   routes: {
     // Most specific first
     "/api/users/me": () => new Response("Current user"),
-    "/api/users/:id": req => new Response(`User ${req.params.id}`),
+    "/api/users/:id": (req) => new Response(`User ${req.params.id}`),
     "/api/*": () => new Response("API catch-all"),
     "/*": () => new Response("Global catch-all"),
   },
 });
 ```
 
-***
+---
 
 ## Type-safe route parameters
 
@@ -112,7 +112,7 @@ import type { BunRequest } from "bun";
 Bun.serve({
   routes: {
     // TypeScript knows the shape of params when passed as a string literal
-    "/orgs/:orgId/repos/:repoId": req => {
+    "/orgs/:orgId/repos/:repoId": (req) => {
       const { orgId, repoId } = req.params;
       return Response.json({ orgId, repoId });
     },
@@ -134,7 +134,7 @@ Percent-encoded route parameter values are automatically decoded. Unicode charac
 
 Routes can also be `Response` objects (without the handler function). Bun.serve() optimizes it for zero-allocation dispatch - perfect for health checks, redirects, and fixed content:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.serve({
   routes: {
     // Health checks
@@ -166,7 +166,7 @@ Static route responses are cached for the lifetime of the server object. To relo
 
 When serving files in routes, there are two distinct behaviors depending on whether you buffer the file content or serve it directly:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.serve({
   routes: {
     // Static route - content is buffered in memory at startup
@@ -180,31 +180,31 @@ Bun.serve({
 
 **Static routes** (`new Response(await file.bytes())`) buffer content in memory at startup:
 
-* **Zero filesystem I/O** during requests - content served entirely from memory
-* **ETag support** - Automatically generates and validates ETags for caching
-* **If-None-Match** - Returns `304 Not Modified` when client ETag matches
-* **No 404 handling** - Missing files cause startup errors, not runtime 404s
-* **Memory usage** - Full file content stored in RAM
-* **Best for**: Small static assets, API responses, frequently accessed files
+- **Zero filesystem I/O** during requests - content served entirely from memory
+- **ETag support** - Automatically generates and validates ETags for caching
+- **If-None-Match** - Returns `304 Not Modified` when client ETag matches
+- **No 404 handling** - Missing files cause startup errors, not runtime 404s
+- **Memory usage** - Full file content stored in RAM
+- **Best for**: Small static assets, API responses, frequently accessed files
 
 **File routes** (`new Response(Bun.file(path))`) read from filesystem per request:
 
-* **Filesystem reads** on each request - checks file existence and reads content
-* **Built-in 404 handling** - Returns `404 Not Found` if file doesn't exist or becomes inaccessible
-* **Last-Modified support** - Uses file modification time for `If-Modified-Since` headers
-* **If-Modified-Since** - Returns `304 Not Modified` when file hasn't changed since client's cached version
-* **Range request support** - Automatically handles partial content requests with `Content-Range` headers
-* **Streaming transfers** - Uses buffered reader with backpressure handling for efficient memory usage
-* **Memory efficient** - Only buffers small chunks during transfer, not entire file
-* **Best for**: Large files, dynamic content, user uploads, files that change frequently
+- **Filesystem reads** on each request - checks file existence and reads content
+- **Built-in 404 handling** - Returns `404 Not Found` if file doesn't exist or becomes inaccessible
+- **Last-Modified support** - Uses file modification time for `If-Modified-Since` headers
+- **If-Modified-Since** - Returns `304 Not Modified` when file hasn't changed since client's cached version
+- **Range request support** - Automatically handles partial content requests with `Content-Range` headers
+- **Streaming transfers** - Uses buffered reader with backpressure handling for efficient memory usage
+- **Memory efficient** - Only buffers small chunks during transfer, not entire file
+- **Best for**: Large files, dynamic content, user uploads, files that change frequently
 
-***
+---
 
 ## Streaming files
 
 To stream a file, return a `Response` object with a `BunFile` object as the body.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.serve({
   fetch(req) {
     return new Response(Bun.file("./hello.txt"));
@@ -219,7 +219,7 @@ Bun.serve({
 
 You can send part of a file using the [`slice(start, end)`](https://developer.mozilla.org/en-US/docs/Web/API/Blob/slice) method on the `Bun.file` object. This automatically sets the `Content-Range` and `Content-Length` headers on the `Response` object.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.serve({
   fetch(req) {
     // parse `Range` header
@@ -237,13 +237,13 @@ Bun.serve({
 });
 ```
 
-***
+---
 
 ## `fetch` request handler
 
 The `fetch` handler handles incoming requests that weren't matched by any route. It receives a [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request) object and returns a [`Response`](https://developer.mozilla.org/en-US/docs/Web/API/Response) or [`Promise<Response>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.serve({
   fetch(req) {
     const url = new URL(req.url);
@@ -256,7 +256,7 @@ Bun.serve({
 
 The `fetch` handler supports async/await:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { sleep, serve } from "bun";
 
 serve({
@@ -271,7 +271,7 @@ serve({
 
 Promise-based responses are also supported:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.serve({
   fetch(req) {
     // Forward the request to another server.
@@ -282,7 +282,7 @@ Bun.serve({
 
 You can also access the `Server` object from the `fetch` handler. It's the second argument passed to the `fetch` function.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // `server` is passed in as the second argument to `fetch`.
 const server = Bun.serve({
   fetch(req, server) {

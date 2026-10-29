@@ -11,7 +11,7 @@ Use `sv create my-app` to create a SvelteKit project with SvelteKit CLI. Answer 
 bunx sv create my-app
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 ┌  Welcome to the Svelte CLI! (v0.5.7)
 │
 ◇  Which template would you like?
@@ -45,7 +45,7 @@ bunx sv create my-app
 └  You're all set!
 ```
 
-***
+---
 
 Once the project is initialized, `cd` into the new project. You don't need to run 'bun install' since the dependencies are already installed.
 
@@ -58,7 +58,7 @@ cd my-app
 bun --bun run dev
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
   $ vite dev
   Forced re-optimization of dependencies
 
@@ -69,7 +69,7 @@ bun --bun run dev
     ➜  press h + enter to show help
 ```
 
-***
+---
 
 Visit [http://localhost:5173](http://localhost:5173/) in a browser to see the template app.
 
@@ -77,11 +77,11 @@ Visit [http://localhost:5173](http://localhost:5173/) in a browser to see the te
   ![SvelteKit app running](https://github.com/oven-sh/bun/assets/3084745/7c76eae8-78f9-44fa-9f15-1bd3ca1a47c0)
 </Frame>
 
-***
+---
 
 If you edit and save `src/routes/+page.svelte`, you should see your changes hot-reloaded in the browser.
 
-***
+---
 
 To build for production, you'll need to add the right SvelteKit adapter. Currently we recommend the
 
@@ -111,7 +111,7 @@ const config = {
 export default config;
 ```
 
-***
+---
 
 To build a production bundle:
 
@@ -119,7 +119,7 @@ To build a production bundle:
 bun --bun run build
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
   $ vite build
   vite v5.4.10 building SSR bundle for production...
   "confetti" is imported from external module "@neoconfetti/svelte" but never used in "src/routes/sverdle/+page.svelte".

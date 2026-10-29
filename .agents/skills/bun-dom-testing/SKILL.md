@@ -181,7 +181,7 @@ global.ResizeObserver = class ResizeObserver {
 // Mock other APIs as needed
 Object.defineProperty(window, "matchMedia", {
   writable: true,
-  value: jest.fn().mockImplementation(query => ({
+  value: jest.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -215,9 +215,9 @@ preload = ["./test-setup.ts"]
 
 Happy-dom is fast, but for very large test suites, you might want to:
 
-* Use `beforeEach` to reset the DOM state between tests
-* Avoid creating too many DOM elements in a single test
-* Consider using `cleanup` functions from testing libraries
+- Use `beforeEach` to reset the DOM state between tests
+- Avoid creating too many DOM elements in a single test
+- Consider using `cleanup` functions from testing libraries
 
 ```ts title="test-setup.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { afterEach } from "bun:test";

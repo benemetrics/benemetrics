@@ -200,7 +200,12 @@ export async function evaluateFlag(
     }
   }
 
-  return weightedVariant(variants, bucket, "Weighted random assignment", flag.defaultValue);
+  return weightedVariant(
+    variants,
+    bucket,
+    "Weighted random assignment",
+    flag.defaultValue,
+  );
 }
 
 export async function evaluateWithAssignment(
@@ -259,13 +264,33 @@ export const evaluationRoutes = new Elysia({ prefix: "api/sentry/flags" })
     async ({ body, request }) => {
       const app = await requireDsnKey(request);
       const scope = scopeOf(app);
-      const evaluations = await Promise.all(body.flags.map(async (flagKey): Promise<EvaluationItem> => {
-        const flag = await featureFlagDAO.findByKeyForScope(flagKey, scope);
-        if (!flag) return { flagKey, variantKey: "default", value: null, reason: "Feature flag not found", errorCode: "FLAG_NOT_FOUND" };
-        const control = controlVariant(flag.variants as FeatureFlagVariant[]);
-        if (flag.status !== "active") return { flagKey, variantKey: control?.key ?? "default", value: control?.value ?? null, reason: `Flag is ${flag.status}, returning default`, errorCode: null };
-        return { flagKey, ...(await evaluateWithAssignment(flag, body.user, body.context)), errorCode: null };
-      }));
+      const evaluations = await Promise.all(
+        body.flags.map(async (flagKey): Promise<EvaluationItem> => {
+          const flag = await featureFlagDAO.findByKeyForScope(flagKey, scope);
+          if (!flag)
+            return {
+              flagKey,
+              variantKey: "default",
+              value: null,
+              reason: "Feature flag not found",
+              errorCode: "FLAG_NOT_FOUND",
+            };
+          const control = controlVariant(flag.variants as FeatureFlagVariant[]);
+          if (flag.status !== "active")
+            return {
+              flagKey,
+              variantKey: control?.key ?? "default",
+              value: control?.value ?? null,
+              reason: `Flag is ${flag.status}, returning default`,
+              errorCode: null,
+            };
+          return {
+            flagKey,
+            ...(await evaluateWithAssignment(flag, body.user, body.context)),
+            errorCode: null,
+          };
+        }),
+      );
       return { evaluations, evaluatedAt: new Date().toISOString() };
     },
     {
@@ -285,23 +310,57 @@ export const evaluationRoutes = new Elysia({ prefix: "api/sentry/flags" })
     "/experiment/track",
     async ({ body, request }) => {
       const app = await requireDsnKey(request);
-      const flag = await featureFlagDAO.findByKeyForScope(body.flagKey, scopeOf(app));
+      const flag = await featureFlagDAO.findByKeyForScope(
+        body.flagKey,
+        scopeOf(app),
+      );
       if (!flag) throw notFound("Feature flag", body.flagKey);
-      const assignment = await experimentAssignmentDAO.findByFlagAndUser(flag.id, body.userId);
-      if (!assignment) throw badRequest(`No assignment for user: ${body.userId}`);
+      const assignment = await experimentAssignmentDAO.findByFlagAndUser(
+        flag.id,
+        body.userId,
+      );
+      if (!assignment)
+        throw badRequest(`No assignment for user: ${body.userId}`);
       const value = body.value ?? 1;
-      const pause = (flag.experiment?.guardrailMetrics ?? []).some((guardrail) => guardrail.metric === body.metric && guardrail.action === "pause" && value > guardrail.threshold);
+      const pause = (flag.experiment?.guardrailMetrics ?? []).some(
+        (guardrail) =>
+          guardrail.metric === body.metric &&
+          guardrail.action === "pause" &&
+          value > guardrail.threshold,
+      );
       // The metric row and the auto-pause are one unit: a crash between
       // them would leave a breaching metric with the flag still active.
       const paused = await db.transaction(async (tx) => {
-        await experimentMetricDAO.record({ flagId: flag.id, variantKey: assignment.variantKey, userId: body.userId, metricName: body.metric, value }, tx);
+        await experimentMetricDAO.record(
+          {
+            flagId: flag.id,
+            variantKey: assignment.variantKey,
+            userId: body.userId,
+            metricName: body.metric,
+            value,
+          },
+          tx,
+        );
         if (!pause) return null;
-        return featureFlagDAO.updateOrThrow(flag.id, { status: "paused", updatedAt: new Date().toISOString() }, tx);
+        return featureFlagDAO.updateOrThrow(
+          flag.id,
+          { status: "paused", updatedAt: new Date().toISOString() },
+          tx,
+        );
       });
       if (paused) {
-        await publishFlagChange({ type: "status", flagKey: paused.key, flag: paused });
+        await publishFlagChange({
+          type: "status",
+          flagKey: paused.key,
+          flag: paused,
+        });
       }
-      return { success: true, flagKey: body.flagKey, variantKey: assignment.variantKey, assignmentId: assignment.id };
+      return {
+        success: true,
+        flagKey: body.flagKey,
+        variantKey: assignment.variantKey,
+        assignmentId: assignment.id,
+      };
     },
     {
       body: arktype({

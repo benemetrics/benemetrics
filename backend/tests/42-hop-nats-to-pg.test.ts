@@ -9,7 +9,10 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import type { NatsConnection } from "@nats-io/transport-node";
-import { jetstream as createJetstream, type JetStreamClient } from "@nats-io/jetstream";
+import {
+  jetstream as createJetstream,
+  type JetStreamClient,
+} from "@nats-io/jetstream";
 import {
   ADMIN_HEADERS,
   connectTestNats,
@@ -46,18 +49,33 @@ afterAll(async () => {
 });
 
 function publishEventMessage(message: Record<string, unknown>) {
-  return jetstream.publish(TEST_EVENTS_SUBJECT, new TextEncoder().encode(JSON.stringify(message)));
+  return jetstream.publish(
+    TEST_EVENTS_SUBJECT,
+    new TextEncoder().encode(JSON.stringify(message)),
+  );
 }
 
-async function listIssues(appId: string): Promise<
+async function listIssues(
+  appId: string,
+): Promise<
   Array<{ id: string; fingerprint: string; status: string; eventCount: number }>
 > {
-  const response = await fetch(`${TEST_ORIGIN}/api/admin/issues?query=${encodeURIComponent(`app:${appId}`)}`, {
-    headers: ADMIN_HEADERS,
-  });
-  return ((
-    await response.json()
-  ) as { data: Array<{ id: string; fingerprint: string; status: string; eventCount: number }> }).data;
+  const response = await fetch(
+    `${TEST_ORIGIN}/api/admin/issues?query=${encodeURIComponent(`app:${appId}`)}`,
+    {
+      headers: ADMIN_HEADERS,
+    },
+  );
+  return (
+    (await response.json()) as {
+      data: Array<{
+        id: string;
+        fingerprint: string;
+        status: string;
+        eventCount: number;
+      }>;
+    }
+  ).data;
 }
 
 describe("Hop 3: NATS -> Postgres", () => {
@@ -99,7 +117,12 @@ describe("Hop 3: NATS -> Postgres", () => {
       envelopeItems: JSON.stringify([
         {
           header: { type: "event", length: 0 },
-          payload: { event_id: eventId, level: "error", message, environment: "test" },
+          payload: {
+            event_id: eventId,
+            level: "error",
+            message,
+            environment: "test",
+          },
         },
       ]),
       receivedAt: new Date().toISOString(),
@@ -116,7 +139,10 @@ describe("Hop 3: NATS -> Postgres", () => {
     expect(issues[0]!.status).toBe("unresolved");
 
     await waitFor(
-      () => Promise.resolve(webhookCalls.filter((body) => body.ruleName === ruleName)),
+      () =>
+        Promise.resolve(
+          webhookCalls.filter((body) => body.ruleName === ruleName),
+        ),
       (calls) => calls.length === 1,
     );
 
@@ -126,11 +152,16 @@ describe("Hop 3: NATS -> Postgres", () => {
     await Bun.sleep(500);
 
     expect(await listIssues(app.appId)).toHaveLength(1);
-    expect(webhookCalls.filter((body) => body.ruleName === ruleName)).toHaveLength(1);
+    expect(
+      webhookCalls.filter((body) => body.ruleName === ruleName),
+    ).toHaveLength(1);
     const incidents = (await (
-      await fetch(`${TEST_ORIGIN}/api/admin/alerting/incidents?appId=${app.appId}`, {
-        headers: ADMIN_HEADERS,
-      })
+      await fetch(
+        `${TEST_ORIGIN}/api/admin/alerting/incidents?appId=${app.appId}`,
+        {
+          headers: ADMIN_HEADERS,
+        },
+      )
     ).json()) as { data: Array<{ trigger: string }> };
     expect(incidents.data).toHaveLength(1);
     expect(incidents.data[0]!.trigger).toBe("new_issue");
@@ -266,12 +297,16 @@ describe("Hop 3: NATS -> Postgres", () => {
       (result) => {
         if (result.meta.sort !== "users") return false;
         if (result.data.length < 3) return false;
-        return result.data.some((row) => row.fingerprint === fingerprintA && row.userCount === 3);
+        return result.data.some(
+          (row) => row.fingerprint === fingerprintA && row.userCount === 3,
+        );
       },
       20000,
     );
     expect(page.meta.sort).toBe("users");
-    const byFingerprint = new Map(page.data.map((row) => [row.fingerprint, row.userCount]));
+    const byFingerprint = new Map(
+      page.data.map((row) => [row.fingerprint, row.userCount]),
+    );
     expect(byFingerprint.get(fingerprintA)).toBe(3);
     expect(byFingerprint.get(fingerprintB)).toBe(1);
     expect(byFingerprint.get(userless)).toBe(0);

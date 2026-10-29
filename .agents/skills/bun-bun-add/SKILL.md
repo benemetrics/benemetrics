@@ -93,7 +93,7 @@ bun add --global cowsay # or `bun add -g cowsay`
 cowsay "Bun!"
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
  ______
 < Bun! >
  ------
@@ -110,9 +110,11 @@ cowsay "Bun!"
   # where `bun add --global` installs packages
   globalDir = "~/.bun/install/global"
 
-  # where globally-installed package bins are linked
-  globalBinDir = "~/.bun/bin"
-  ```
+# where globally-installed package bins are linked
+
+globalBinDir = "~/.bun/bin"
+
+````
 </Accordion>
 
 ## Trusted dependencies
@@ -123,11 +125,11 @@ To tell Bun to allow lifecycle scripts for a particular package, add the package
 
 ```json package.json icon="file-json" theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
-  "name": "my-app",
-  "version": "1.0.0",
-  "trustedDependencies": ["my-trusted-package"] // [!code ++]
+"name": "my-app",
+"version": "1.0.0",
+"trustedDependencies": ["my-trusted-package"] // [!code ++]
 }
-```
+````
 
 Bun reads this field and will run lifecycle scripts for `my-trusted-package`.
 
@@ -174,11 +176,11 @@ This will add the following line to your `package.json`:
 }
 ```
 
-***
+---
 
 ## CLI Usage
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun add <package> <@version>
 ```
 

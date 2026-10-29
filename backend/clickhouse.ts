@@ -15,8 +15,10 @@ const CLICKHOUSE_USER = process.env.CLICKHOUSE_USER || "default";
 const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || "";
 const CLICKHOUSE_NATS_URL = process.env.CLICKHOUSE_NATS_URL || "nats:4222";
 // The engine connection is the `INTERNAL` config user of the broker.
-const CLICKHOUSE_NATS_USER = process.env.CLICKHOUSE_NATS_USER || "sentries-internal";
-const CLICKHOUSE_NATS_PASSWORD = process.env.CLICKHOUSE_NATS_PASSWORD || "sentries-dev-internal-pass";
+const CLICKHOUSE_NATS_USER =
+  process.env.CLICKHOUSE_NATS_USER || "sentries-internal";
+const CLICKHOUSE_NATS_PASSWORD =
+  process.env.CLICKHOUSE_NATS_PASSWORD || "sentries-dev-internal-pass";
 
 const NATS_STREAM = "SENTRIES";
 const EVENTS_SUBJECT = "sentry.events.*";
@@ -152,8 +154,8 @@ async function runCommand(statement: ChQuery): Promise<void> {
 
 // Executes a SELECT and returns its rows in the object row mode.
 async function queryRows<T>(statement: ChQuery): Promise<T[]> {
-  return await withChRetry(async () =>
-    (await getChSql()<T>`${statement}`.query()) as T[],
+  return await withChRetry(
+    async () => (await getChSql()<T>`${statement}`.query()) as T[],
   );
 }
 
@@ -179,7 +181,9 @@ function columnList(columns: readonly ChColumn[]): ChQuery {
 // `` `id` String, `projectId` String, … `` — the CREATE TABLE body.
 function columnDefinitions(columns: readonly ChColumn[]): ChQuery {
   return joinChunks(
-    columns.map(([name, type]) => sql`${sql.identifier(name)} ${sql.raw(type)}`),
+    columns.map(
+      ([name, type]) => sql`${sql.identifier(name)} ${sql.raw(type)}`,
+    ),
     sql`, `,
   );
 }
@@ -504,7 +508,9 @@ async function ensureEventsEngineColumns(): Promise<void> {
     `,
   );
   if (column) return;
-  console.log("[ClickHouse] Recreating nats_events with the issueEvents column");
+  console.log(
+    "[ClickHouse] Recreating nats_events with the issueEvents column",
+  );
   await runCommand(sql`DROP TABLE IF EXISTS ${EVENTS_ENGINE_TABLE}`);
   await runCommand(createEventsEngineTable());
 }
@@ -522,7 +528,9 @@ async function ensureIssueEventsColumns(): Promise<void> {
   );
   if (!column) {
     console.log("[ClickHouse] Adding the tags column to sentry_issue_events");
-    await runCommand(sql`ALTER TABLE ${ISSUE_EVENTS_TABLE} ADD COLUMN tags String`);
+    await runCommand(
+      sql`ALTER TABLE ${ISSUE_EVENTS_TABLE} ADD COLUMN tags String`,
+    );
   }
   const [view] = await queryRows<{ create_table_query: string }>(
     sql`
@@ -530,8 +538,13 @@ async function ensureIssueEventsColumns(): Promise<void> {
       WHERE database = ${CLICKHOUSE_DATABASE} AND name = 'sentry_issue_events_mv'
     `,
   );
-  if (view && !view.create_table_query.includes("JSONExtractRaw(digest, 'tags')")) {
-    console.log("[ClickHouse] Recreating the issue events view with the tags column");
+  if (
+    view &&
+    !view.create_table_query.includes("JSONExtractRaw(digest, 'tags')")
+  ) {
+    console.log(
+      "[ClickHouse] Recreating the issue events view with the tags column",
+    );
     await runCommand(sql`DROP TABLE IF EXISTS ${ISSUE_EVENTS_VIEW}`);
   }
   await runCommand(createIssueEventsView());
@@ -593,13 +606,19 @@ async function migrateEventsTable(): Promise<void> {
     `,
   );
   const current = `${table.engine}/${receivedAt?.type ?? "unknown"}`;
-  if (table.engine === "ReplacingMergeTree" && receivedAt?.type === "DateTime64(3)") return;
+  if (
+    table.engine === "ReplacingMergeTree" &&
+    receivedAt?.type === "DateTime64(3)"
+  )
+    return;
 
   // The rebuilt table must keep the retention an admin configured.
   const previousTtl = await readEventsTtl();
   const previousInterval = previousTtl.interval ?? DEFAULT_EVENTS_TTL;
 
-  console.log(`[ClickHouse] Migrating sentry_events (${current} -> ReplacingMergeTree/DateTime64(3))`);
+  console.log(
+    `[ClickHouse] Migrating sentry_events (${current} -> ReplacingMergeTree/DateTime64(3))`,
+  );
   await runCommand(sql`DROP TABLE IF EXISTS ${EVENTS_VIEW}`);
   await runCommand(sql`RENAME TABLE ${EVENTS_TABLE} TO ${EVENTS_OLD_TABLE}`);
   await runCommand(createEventsTable(previousInterval));
@@ -678,9 +697,15 @@ export async function setEventsTtl(
     return readEventsTtl();
   }
   const expression = ttlExpression(amount, unit);
-  await runCommand(sql`ALTER TABLE ${EVENTS_TABLE} MODIFY TTL ${sql.raw(expression)}`);
-  await runCommand(sql`ALTER TABLE ${METRICS_TABLE} MODIFY TTL ${sql.raw(expression)}`);
-  await runCommand(sql`ALTER TABLE ${ISSUE_EVENTS_TABLE} MODIFY TTL ${sql.raw(expression)}`);
+  await runCommand(
+    sql`ALTER TABLE ${EVENTS_TABLE} MODIFY TTL ${sql.raw(expression)}`,
+  );
+  await runCommand(
+    sql`ALTER TABLE ${METRICS_TABLE} MODIFY TTL ${sql.raw(expression)}`,
+  );
+  await runCommand(
+    sql`ALTER TABLE ${ISSUE_EVENTS_TABLE} MODIFY TTL ${sql.raw(expression)}`,
+  );
   return readEventsTtl();
 }
 
@@ -702,8 +727,12 @@ async function ensureEngineAuthSettings(): Promise<void> {
       `,
     );
     if (row && !row.create_table_query.includes("nats_username")) {
-      console.log(`[ClickHouse] Recreating ${table} with the engine auth settings`);
-      await runCommand(sql`DROP TABLE IF EXISTS ${sql.identifier(CLICKHOUSE_DATABASE)}.${sql.identifier(table)}`);
+      console.log(
+        `[ClickHouse] Recreating ${table} with the engine auth settings`,
+      );
+      await runCommand(
+        sql`DROP TABLE IF EXISTS ${sql.identifier(CLICKHOUSE_DATABASE)}.${sql.identifier(table)}`,
+      );
     }
   }
 }
@@ -712,7 +741,9 @@ async function ensureEngineAuthSettings(): Promise<void> {
 // table attaches to `clickhouse-events` by name. Retries, then fails fast.
 export async function initClickHouse(): Promise<void> {
   await retryInit(async () => {
-    await runCommand(sql`CREATE DATABASE IF NOT EXISTS ${sql.identifier(CLICKHOUSE_DATABASE)}`);
+    await runCommand(
+      sql`CREATE DATABASE IF NOT EXISTS ${sql.identifier(CLICKHOUSE_DATABASE)}`,
+    );
     await migrateEventsTable();
     await runCommand(createEventsTable());
     await ensureEngineAuthSettings();
@@ -742,7 +773,10 @@ function tagConditions(tags: Record<string, string> | undefined): ChQuery[] {
   );
 }
 
-function withTags(conditions: ChQuery[], tags: Record<string, string> | undefined): ChQuery[] {
+function withTags(
+  conditions: ChQuery[],
+  tags: Record<string, string> | undefined,
+): ChQuery[] {
   return [...conditions, ...tagConditions(tags)];
 }
 
@@ -751,9 +785,12 @@ function parseTags(value: string | undefined): Record<string, string> {
   if (!value) return {};
   try {
     const parsed = JSON.parse(value) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      return {};
     const tags: Record<string, string> = {};
-    for (const [key, entry] of Object.entries(parsed as Record<string, unknown>)) {
+    for (const [key, entry] of Object.entries(
+      parsed as Record<string, unknown>,
+    )) {
       if (typeof entry === "string") tags[key] = entry;
     }
     return tags;
@@ -765,7 +802,9 @@ function parseTags(value: string | undefined): Record<string, string> {
 // ClickHouse DateTime values are written and read as UTC so the API keeps
 // ISO timestamps.
 function toIsoTimestamp(value: string): string {
-  const parsed = new Date(value.includes("T") ? value : `${value.replace(" ", "T")}Z`);
+  const parsed = new Date(
+    value.includes("T") ? value : `${value.replace(" ", "T")}Z`,
+  );
   return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString();
 }
 
@@ -823,7 +862,8 @@ export async function listClickHouseEvents(options?: {
   }
 
   const conditions: ChQuery[] = [];
-  if (options?.projectId) conditions.push(sql`projectId = ${options.projectId}`);
+  if (options?.projectId)
+    conditions.push(sql`projectId = ${options.projectId}`);
   if (options?.appIds) conditions.push(sql`appId IN ${options.appIds}`);
   // A null parse (junk `since`) yields no rows, like any other empty filter.
   if (options?.since)
@@ -1132,7 +1172,9 @@ export async function clickHouseReleaseIssueMetrics(options: {
     .sort((a, b) => (a.lastSeen < b.lastSeen ? 1 : -1));
 }
 
-export async function findClickHouseEvent(id: string): Promise<StoredEvent | undefined> {
+export async function findClickHouseEvent(
+  id: string,
+): Promise<StoredEvent | undefined> {
   const rows = await queryRows<ClickHouseEventRow>(sql`
     SELECT ${columnList(EVENTS_COLUMNS)}
     FROM ${EVENTS_TABLE} FINAL
@@ -1386,7 +1428,9 @@ function eventRow(event: StoredEvent): string[] {
 
 // Direct inserts used by tests to seed the store; ingestion itself writes
 // through the NATS engine tables and views.
-export async function insertClickHouseEvents(events: StoredEvent[]): Promise<void> {
+export async function insertClickHouseEvents(
+  events: StoredEvent[],
+): Promise<void> {
   if (events.length === 0) return;
   await runCommand(sql`
     INSERT INTO ${EVENTS_TABLE} (${columnList(EVENTS_COLUMNS)})
@@ -1409,7 +1453,9 @@ function metricSampleRow(sample: MetricSample): (string | number)[] {
   ];
 }
 
-export async function insertClickHouseMetricSamples(samples: MetricSample[]): Promise<void> {
+export async function insertClickHouseMetricSamples(
+  samples: MetricSample[],
+): Promise<void> {
   if (samples.length === 0) return;
   await runCommand(sql`
     INSERT INTO ${METRICS_TABLE} (${columnList(METRICS_COLUMNS)})

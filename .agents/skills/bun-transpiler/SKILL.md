@@ -9,13 +9,13 @@ description: Use Bun's transpiler to transpile JavaScript and TypeScript code
 
 Bun exposes its internal transpiler via the `Bun.Transpiler` class. To create an instance of Bun's transpiler:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const transpiler = new Bun.Transpiler({
   loader: "tsx", // "js | "jsx" | "ts" | "tsx"
 });
 ```
 
-***
+---
 
 ## `.transformSync()`
 
@@ -27,68 +27,69 @@ Transpile code synchronously with the `.transformSync()` method. Modules are not
     loader: 'tsx',
   });
 
-  const code = `
+const code = `
   import * as whatever from "./whatever.ts"
   export function Home(props: {title: string}){
     return <p>{props.title}</p>;
   }`;
 
-  const result = transpiler.transformSync(code);
+const result = transpiler.transformSync(code);
 
-  ```
+````
 
-  ```ts output theme={"theme":{"light":"github-light","dark":"dracula"}}
-  import { __require as require } from "bun:wrap";
-  import * as JSX from "react/jsx-dev-runtime";
-  var jsx = require(JSX).jsxDEV;
+```ts output theme={"theme":{"light":"github-light","dark":"dracula"}}
+import { __require as require } from "bun:wrap";
+import * as JSX from "react/jsx-dev-runtime";
+var jsx = require(JSX).jsxDEV;
 
-  export default jsx(
-    "div",
-    {
-      children: "hi!",
-    },
-    undefined,
-    false,
-    undefined,
-    this,
-  );
-  ```
+export default jsx(
+  "div",
+  {
+    children: "hi!",
+  },
+  undefined,
+  false,
+  undefined,
+  this,
+);
+````
+
 </CodeGroup>
 
 To override the default loader specified in the `new Bun.Transpiler()` constructor, pass a second argument to `.transformSync()`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 transpiler.transformSync("<div>hi!</div>", "tsx");
 ```
 
 <Accordion title="Nitty gritty">
   When `.transformSync` is called, the transpiler is run in the same thread as the currently executed code.
 
-  If a macro is used, it will be run in the same thread as the transpiler, but in a separate event loop from the rest of your application. Currently, globals between macros and regular code are shared, which means it is possible (but not recommended) to share states between macros and regular code. Attempting to use AST nodes outside of a macro is undefined behavior.
+If a macro is used, it will be run in the same thread as the transpiler, but in a separate event loop from the rest of your application. Currently, globals between macros and regular code are shared, which means it is possible (but not recommended) to share states between macros and regular code. Attempting to use AST nodes outside of a macro is undefined behavior.
 </Accordion>
 
-***
+---
 
 ## `.transform()`
 
 The `transform()` method is an async version of `.transformSync()` that returns a `Promise<string>`.
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 const transpiler = new Bun.Transpiler({ loader: "jsx" });
 const result = await transpiler.transform("<div>hi!</div>");
 console.log(result);
 ```
 
-Unless you're transpiling *many* large files, you should probably use `Bun.Transpiler.transformSync`. The cost of the threadpool will often take longer than actually transpiling code.
+Unless you're transpiling _many_ large files, you should probably use `Bun.Transpiler.transformSync`. The cost of the threadpool will often take longer than actually transpiling code.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 await transpiler.transform("<div>hi!</div>", "tsx");
 ```
 
 <Accordion title="Nitty gritty">
   The `.transform()` method runs the transpiler in Bun's worker threadpool, so if you run it 100 times, it will run it across `Math.floor($cpu_count * 0.8)` threads, without blocking the main JavaScript thread.
 
-  If your code uses a macro, it will potentially spawn a new copy of Bun's JavaScript runtime environment in that new thread.
+If your code uses a macro, it will potentially spawn a new copy of Bun's JavaScript runtime environment in that new thread.
 </Accordion>
 
 ## `.scan()`
@@ -101,49 +102,51 @@ The `Transpiler` instance can also scan some source code and return a list of it
     loader: "tsx",
   });
 
-  const code = `
-  import React from 'react';
-  import type {ReactNode} from 'react';
-  const val = require('./cjs.js')
-  import('./loader');
+const code = `
+import React from 'react';
+import type {ReactNode} from 'react';
+const val = require('./cjs.js')
+import('./loader');
 
-  export const name = "hello";
-  `;
+export const name = "hello";
+`;
 
-  const result = transpiler.scan(code);
-  ```
+const result = transpiler.scan(code);
 
-  ```json output theme={"theme":{"light":"github-light","dark":"dracula"}}
-  {
-    "exports": ["name"],
-    "imports": [
-      {
-        "kind": "import-statement",
-        "path": "react"
-      },
-      {
-        "kind": "import-statement",
-        "path": "remix"
-      },
-      {
-        "kind": "dynamic-import",
-        "path": "./loader"
-      }
-    ]
-  }
-  ```
+````
+
+```json output theme={"theme":{"light":"github-light","dark":"dracula"}}
+{
+  "exports": ["name"],
+  "imports": [
+    {
+      "kind": "import-statement",
+      "path": "react"
+    },
+    {
+      "kind": "import-statement",
+      "path": "remix"
+    },
+    {
+      "kind": "dynamic-import",
+      "path": "./loader"
+    }
+  ]
+}
+````
+
 </CodeGroup>
 
 Each import in the `imports` array has a `path` and `kind`. Bun categories imports into the following kinds:
 
-* `import-statement`: `import React from 'react'`
-* `require-call`: `const val = require('./cjs.js')`
-* `require-resolve`: `require.resolve('./cjs.js')`
-* `dynamic-import`: `import('./loader')`
-* `import-rule`: `@import 'foo.css'`
-* `url-token`: `url('./foo.png')`
+- `import-statement`: `import React from 'react'`
+- `require-call`: `const val = require('./cjs.js')`
+- `require-resolve`: `require.resolve('./cjs.js')`
+- `dynamic-import`: `import('./loader')`
+- `import-rule`: `@import 'foo.css'`
+- `url-token`: `url('./foo.png')`
 
-***
+---
 
 ## `.scanImports()`
 
@@ -155,37 +158,39 @@ For performance-sensitive code, you can use the `.scanImports()` method to get a
     loader: "tsx",
   });
 
-  const code = `
-  import React from 'react';
-  import type {ReactNode} from 'react';
-  const val = require('./cjs.js')
-  import('./loader');
+const code = `
+import React from 'react';
+import type {ReactNode} from 'react';
+const val = require('./cjs.js')
+import('./loader');
 
-  export const name = "hello";
-  `;
+export const name = "hello";
+`;
 
-  const result = transpiler.scanImports(code);
-  ```
+const result = transpiler.scanImports(code);
 
-  ```json results icon="file-json" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  [
-    {
-      "kind": "import-statement",
-      "path": "react"
-    },
-    {
-      "kind": "require-call",
-      "path": "./cjs.js"
-    },
-    {
-      "kind": "dynamic-import",
-      "path": "./loader"
-    }
-  ]
-  ```
+````
+
+```json results icon="file-json" theme={"theme":{"light":"github-light","dark":"dracula"}}
+[
+  {
+    "kind": "import-statement",
+    "path": "react"
+  },
+  {
+    "kind": "require-call",
+    "path": "./cjs.js"
+  },
+  {
+    "kind": "dynamic-import",
+    "path": "./loader"
+  }
+]
+````
+
 </CodeGroup>
 
-***
+---
 
 ## Reference
 

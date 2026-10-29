@@ -47,15 +47,27 @@ function ProjectDetail({ projectId }: { projectId: string }) {
         <Stat
           label="Open issues"
           value={anyOpenExceeded ? `${open}+` : open}
-          hint={anyOpenExceeded ? "counts capped at the first 100 per app" : undefined}
+          hint={
+            anyOpenExceeded
+              ? "counts capped at the first 100 per app"
+              : undefined
+          }
         />
-        <Stat label="Events in open issues" value={compact(p.apps.reduce((s, a) => s + a.events, 0))} />
+        <Stat
+          label="Events in open issues"
+          value={compact(p.apps.reduce((s, a) => s + a.events, 0))}
+        />
       </div>
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Apps</h2>
-          <Btn variant="primary" onClick={() => setCreatingApp((v) => !v)}><Plus className="h-4 w-4" />New app</Btn>
+          <h2 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            Apps
+          </h2>
+          <Btn variant="primary" onClick={() => setCreatingApp((v) => !v)}>
+            <Plus className="h-4 w-4" />
+            New app
+          </Btn>
         </div>
         {creatingApp && (
           <div className="mb-3">
@@ -68,7 +80,9 @@ function ProjectDetail({ projectId }: { projectId: string }) {
           </div>
         )}
         {p.apps.length === 0 && !creatingApp ? (
-          <div className="panel p-6 text-center font-mono text-sm text-muted-foreground">No apps yet — create one to get a DSN.</div>
+          <div className="panel p-6 text-center font-mono text-sm text-muted-foreground">
+            No apps yet — create one to get a DSN.
+          </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-3">
             {p.apps.map((a) => (
@@ -93,7 +107,10 @@ function ProjectDetail({ projectId }: { projectId: string }) {
           <h2 className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
             <Bell className="h-3.5 w-3.5" /> Alert channels
           </h2>
-          <Btn onClick={() => setAddingChannel((v) => !v)}><Plus className="h-4 w-4" />Add</Btn>
+          <Btn onClick={() => setAddingChannel((v) => !v)}>
+            <Plus className="h-4 w-4" />
+            Add
+          </Btn>
         </div>
         {addingChannel && (
           <div className="mb-3">
@@ -109,17 +126,26 @@ function ProjectDetail({ projectId }: { projectId: string }) {
         )}
         <div className="panel divide-y">
           {(channels ?? []).map((c) => (
-            <div key={c.id} className="flex items-center justify-between gap-3 p-3">
+            <div
+              key={c.id}
+              className="flex items-center justify-between gap-3 p-3"
+            >
               <div className="flex min-w-0 items-center gap-3">
                 <ChannelIcon type={c.type as never} />
                 <div className="min-w-0">
                   <div className="text-sm font-medium">{c.name}</div>
-                  <div className="truncate font-mono text-xs text-muted-foreground">{c.type}</div>
+                  <div className="truncate font-mono text-xs text-muted-foreground">
+                    {c.type}
+                  </div>
                 </div>
               </div>
             </div>
           ))}
-          {!channels?.length && <div className="p-4 text-center font-mono text-sm text-muted-foreground">No channels yet.</div>}
+          {!channels?.length && (
+            <div className="p-4 text-center font-mono text-sm text-muted-foreground">
+              No channels yet.
+            </div>
+          )}
         </div>
       </section>
     </div>
@@ -154,7 +180,10 @@ function AppCard({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 font-semibold">
           <Code2 className="h-4 w-4 text-primary" />
-          <Link to={`/projects/${projectId}/apps/${appId}`} className="hover:text-primary">
+          <Link
+            to={`/projects/${projectId}/apps/${appId}`}
+            className="hover:text-primary"
+          >
             {name}
           </Link>
         </div>
@@ -163,7 +192,10 @@ function AppCard({
       <div className="mt-3 flex items-end justify-between">
         <div className="space-y-1 text-xs text-muted-foreground">
           <div>
-            <span className="text-destructive">{unresolvedCount ?? "100+"}</span> unresolved
+            <span className="text-destructive">
+              {unresolvedCount ?? "100+"}
+            </span>{" "}
+            unresolved
           </div>
           <div>{compact(events)} events in open issues</div>
         </div>

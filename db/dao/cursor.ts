@@ -7,12 +7,8 @@
 // tie-broken by id, and the next page is the matching keyset slice, so a
 // deep page never scans the rows before it.
 
-import { and, eq, gt, lt, or, type SQL } from "drizzle-orm";
-import { db } from "db";
-import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
-
 export const DEFAULT_LIMIT = 20;
-export const MAX_LIMIT = 100;
+export const MAX_LIMIT = 200;
 
 export function cursorLimit(raw?: number): number {
   return Math.min(Math.max(raw ?? DEFAULT_LIMIT, 1), MAX_LIMIT);

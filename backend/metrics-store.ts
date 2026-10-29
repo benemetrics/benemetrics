@@ -40,7 +40,13 @@ export async function countProjectMetricSamples(
   tags?: Record<string, string>,
   until?: string,
 ): Promise<number> {
-  return countClickHouseMetricSamplesByProject({ projectId, metric, since, until, tags });
+  return countClickHouseMetricSamplesByProject({
+    projectId,
+    metric,
+    since,
+    until,
+    tags,
+  });
 }
 
 export async function projectMetricSampleQuantile(
@@ -69,5 +75,12 @@ export async function metricSampleQuantile(
   tags?: Record<string, string>,
   until?: string,
 ): Promise<number> {
-  return quantileClickHouseMetricSamples({ appId, metric, quantile, since, until, tags });
+  return quantileClickHouseMetricSamples({
+    appId,
+    metric,
+    quantile,
+    since,
+    until,
+    tags,
+  });
 }

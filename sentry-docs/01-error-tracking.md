@@ -141,12 +141,12 @@ public class Program {
 
 All SDKs automatically capture:
 
-| Error Type | Description |
-|------------|-------------|
-| **Uncaught exceptions** | Unhandled `throw` / `raise` / `panic` in request handlers |
-| **Unhandled promise rejections** | `unhandledrejection` (JS), `Task` exceptions (.NET), etc. |
-| **Uncaught exceptions** | `process.on("uncaughtException")` (Node), `sys.excepthook` (Python), etc. |
-| **Framework errors** | Express, FastAPI, Gin, Spring, ASP.NET middleware errors |
+| Error Type                       | Description                                                               |
+| -------------------------------- | ------------------------------------------------------------------------- |
+| **Uncaught exceptions**          | Unhandled `throw` / `raise` / `panic` in request handlers                 |
+| **Unhandled promise rejections** | `unhandledrejection` (JS), `Task` exceptions (.NET), etc.                 |
+| **Uncaught exceptions**          | `process.on("uncaughtException")` (Node), `sys.excepthook` (Python), etc. |
+| **Framework errors**             | Express, FastAPI, Gin, Spring, ASP.NET middleware errors                  |
 
 ## Manual Error Capture
 
@@ -170,7 +170,7 @@ try {
     },
     level: "error", // "fatal" | "error" | "warning" | "info" | "debug"
   });
-  
+
   // Capture a message without exception
   Sentry.captureMessage("Payment gateway timeout", "warning");
 }
@@ -407,15 +407,15 @@ sentry_sdk.set_context("payment", {
 
 Most server SDKs automatically capture HTTP context when integrated with frameworks:
 
-| Platform | Framework Integration | Auto-captures |
-|----------|----------------------|---------------|
-| Node.js | Express, Koa, Fastify, Hono, Elysia | Method, URL, headers, query, body, status |
-| Python | Flask, Django, FastAPI, Starlette | Method, URL, headers, query, body, status |
-| Go | Gin, Echo, Chi, stdlib | Method, URL, headers, query, status |
-| Java | Spring, Servlet, Vert.x | Method, URL, headers, query, status |
-| .NET | ASP.NET Core | Method, URL, headers, query, body, status |
-| Ruby | Rails, Rack, Sinatra | Method, URL, headers, query, body, status |
-| PHP | Laravel, Symfony, Slim | Method, URL, headers, query, body, status |
+| Platform | Framework Integration               | Auto-captures                             |
+| -------- | ----------------------------------- | ----------------------------------------- |
+| Node.js  | Express, Koa, Fastify, Hono, Elysia | Method, URL, headers, query, body, status |
+| Python   | Flask, Django, FastAPI, Starlette   | Method, URL, headers, query, body, status |
+| Go       | Gin, Echo, Chi, stdlib              | Method, URL, headers, query, status       |
+| Java     | Spring, Servlet, Vert.x             | Method, URL, headers, query, status       |
+| .NET     | ASP.NET Core                        | Method, URL, headers, query, body, status |
+| Ruby     | Rails, Rack, Sinatra                | Method, URL, headers, query, body, status |
+| PHP      | Laravel, Symfony, Slim              | Method, URL, headers, query, body, status |
 
 ### Enable Request Body Capture
 
@@ -446,15 +446,15 @@ Sentry.init({
   beforeSend(event, hint) {
     // Drop health check errors
     if (event.request?.url?.includes("/health")) return null;
-    
+
     // Drop specific error types
     if (event.exception?.values?.[0]?.type === "ValidationError") return null;
-    
+
     // Scrub sensitive data
     if (event.request?.data) {
       event.request.data = sanitize(event.request.data);
     }
-    
+
     return event;
   },
 });
@@ -489,14 +489,8 @@ sentry_sdk.init(
 // TypeScript
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
-  ignoreErrors: [
-    "NetworkError",
-    "ResizeObserver loop",
-    /^Script error\.?$/,
-  ],
-  denyUrls: [
-    /browser-extension/,
-  ],
+  ignoreErrors: ["NetworkError", "ResizeObserver loop", /^Script error\.?$/],
+  denyUrls: [/browser-extension/],
 });
 ```
 
@@ -637,7 +631,7 @@ except Exception as e:
 function withSentry(handler) {
   return async (req, res, next) => {
     const transaction = Sentry.startInactiveSpan({ name: req.url });
-    
+
     try {
       Sentry.setTag("route", req.path);
       return await handler(req, res, next);
@@ -650,9 +644,12 @@ function withSentry(handler) {
   };
 }
 
-app.get("/users/:id", withSentry(async (req, res) => {
-  // Your handler
-}));
+app.get(
+  "/users/:id",
+  withSentry(async (req, res) => {
+    // Your handler
+  }),
+);
 ```
 
 ```python
@@ -715,12 +712,12 @@ sys.excepthook = handle_exception
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| Errors not appearing | Check DSN, network, `debug: true` in init |
-| Duplicate grouping | Adjust `fingerprint` in `beforeSend` |
-| Too many events | Lower `tracesSampleRate`, add `ignoreErrors` |
-| Missing stack traces | Ensure source maps / debug symbols uploaded |
-| PII in events | Use `beforeSend` to scrub, enable `sendDefaultPii: false` |
+| Issue                | Solution                                                  |
+| -------------------- | --------------------------------------------------------- |
+| Errors not appearing | Check DSN, network, `debug: true` in init                 |
+| Duplicate grouping   | Adjust `fingerprint` in `beforeSend`                      |
+| Too many events      | Lower `tracesSampleRate`, add `ignoreErrors`              |
+| Missing stack traces | Ensure source maps / debug symbols uploaded               |
+| PII in events        | Use `beforeSend` to scrub, enable `sendDefaultPii: false` |
 
 ## Next: [Release Tracking →](./02-release-tracking.md)

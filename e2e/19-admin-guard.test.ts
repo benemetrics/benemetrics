@@ -35,7 +35,9 @@ describe("Admin guard enforcement", () => {
     });
     expect(response.status).toBe(401);
 
-    const list = await fetch(`${baseUrl}/api/admin/projects`, { headers: ADMIN_HEADERS });
+    const list = await fetch(`${baseUrl}/api/admin/projects`, {
+      headers: ADMIN_HEADERS,
+    });
     const body = (await list.json()) as { data: Array<{ name: string }> };
     expect(body.data.some((project) => project.name === "Unauth")).toBe(false);
   });
@@ -122,9 +124,13 @@ describe("Admin guard enforcement", () => {
       const events = await fetch(`${baseUrl}/events`);
       expect(events.status).toBe(401);
 
-      const withToken = await fetch(`${baseUrl}/events`, { headers: ADMIN_HEADERS });
+      const withToken = await fetch(`${baseUrl}/events`, {
+        headers: ADMIN_HEADERS,
+      });
       expect(withToken.status).toBe(200);
-      const admin = await fetch(`${baseUrl}/api/admin/projects`, { headers: ADMIN_HEADERS });
+      const admin = await fetch(`${baseUrl}/api/admin/projects`, {
+        headers: ADMIN_HEADERS,
+      });
       expect(admin.status).toBe(200);
     } finally {
       delete process.env.OIDC_ISSUER;

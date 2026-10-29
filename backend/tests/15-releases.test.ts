@@ -25,7 +25,8 @@ import {
 } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
-const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+const uniq = () =>
+  Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface ReleaseResponse {
@@ -88,16 +89,26 @@ async function json<T>(response: Response): Promise<T> {
 }
 
 // Creates a fresh project + app and returns ids plus the ingest key.
-async function makeApp(): Promise<{ projectId: string; appId: string; publicKey: string }> {
+async function makeApp(): Promise<{
+  projectId: string;
+  appId: string;
+  publicKey: string;
+}> {
   const project = await json<{ id: string }>(
-    await apiRequest("POST", "/api/admin/projects", { name: `RelProj-${uniq()}` }),
+    await apiRequest("POST", "/api/admin/projects", {
+      name: `RelProj-${uniq()}`,
+    }),
   );
   const appRecord = await json<{ id: string; publicKey: string }>(
     await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `RelApp-${uniq()}`,
     }),
   );
-  return { projectId: project.id, appId: appRecord.id, publicKey: appRecord.publicKey };
+  return {
+    projectId: project.id,
+    appId: appRecord.id,
+    publicKey: appRecord.publicKey,
+  };
 }
 
 // Ingests an event through the store endpoint (JSON body, sentry_key auth).
@@ -123,7 +134,10 @@ async function ingestEnvelope(
   event: Record<string, unknown>,
 ): Promise<Response> {
   const raw = [
-    JSON.stringify({ event_id: event.event_id, sent_at: new Date().toISOString() }),
+    JSON.stringify({
+      event_id: event.event_id,
+      sent_at: new Date().toISOString(),
+    }),
     JSON.stringify({ type: "event", content_type: "application/json" }),
     JSON.stringify(event),
   ].join("\n");
@@ -144,11 +158,18 @@ async function createRelease(
   extra?: { ref?: string; url?: string; owner?: string },
 ): Promise<ReleaseResponse> {
   return await json<ReleaseResponse>(
-    await apiRequest("POST", "/api/admin/releases", { appId, version, ...extra }),
+    await apiRequest("POST", "/api/admin/releases", {
+      appId,
+      version,
+      ...extra,
+    }),
   );
 }
 
-async function listReleases(appId: string, query = ""): Promise<ReleaseListResponse> {
+async function listReleases(
+  appId: string,
+  query = "",
+): Promise<ReleaseListResponse> {
   return await json<ReleaseListResponse>(
     await apiRequest("GET", `/api/admin/releases?appId=${appId}${query}`),
   );
@@ -169,14 +190,17 @@ async function waitForRelease(
     const release = data.find((r) => r.version === version);
     if (
       release &&
-      (options?.eventCount === undefined || release.eventCount >= options.eventCount)
+      (options?.eventCount === undefined ||
+        release.eventCount >= options.eventCount)
     ) {
       return release;
     }
     if (Date.now() - start > timeoutMs) {
       throw new Error(
         `Release not found: ${version}${
-          options?.eventCount !== undefined ? ` (eventCount >= ${options.eventCount})` : ""
+          options?.eventCount !== undefined
+            ? ` (eventCount >= ${options.eventCount})`
+            : ""
         }`,
       );
     }
@@ -210,10 +234,18 @@ describe("Releases (auto-created from ingestion)", () => {
     const { projectId, appId, publicKey } = await makeApp();
 
     const first = crypto.randomUUID();
-    await ingestStore(projectId, publicKey, { event_id: first, release: "2.0.0", message: "one" });
+    await ingestStore(projectId, publicKey, {
+      event_id: first,
+      release: "2.0.0",
+      message: "one",
+    });
     await sleep(10);
     const second = crypto.randomUUID();
-    await ingestStore(projectId, publicKey, { event_id: second, release: "2.0.0", message: "two" });
+    await ingestStore(projectId, publicKey, {
+      event_id: second,
+      release: "2.0.0",
+      message: "two",
+    });
 
     const release = await waitForRelease(appId, "2.0.0", { eventCount: 2 });
     expect(release.eventCount).toBe(2);
@@ -226,9 +258,18 @@ describe("Releases (auto-created from ingestion)", () => {
   it("creates a separate release row for each version", async () => {
     const { projectId, appId, publicKey } = await makeApp();
 
-    await ingestStore(projectId, publicKey, { event_id: crypto.randomUUID(), release: "3.0.0" });
-    await ingestStore(projectId, publicKey, { event_id: crypto.randomUUID(), release: "3.1.0" });
-    await ingestStore(projectId, publicKey, { event_id: crypto.randomUUID(), release: "3.0.0" });
+    await ingestStore(projectId, publicKey, {
+      event_id: crypto.randomUUID(),
+      release: "3.0.0",
+    });
+    await ingestStore(projectId, publicKey, {
+      event_id: crypto.randomUUID(),
+      release: "3.1.0",
+    });
+    await ingestStore(projectId, publicKey, {
+      event_id: crypto.randomUUID(),
+      release: "3.0.0",
+    });
 
     const v30 = await waitForRelease(appId, "3.0.0", { eventCount: 2 });
     const v31 = await waitForRelease(appId, "3.1.0", { eventCount: 1 });
@@ -280,7 +321,11 @@ describe("Releases (auto-created from ingestion)", () => {
     expect(created.firstSeen).toBeNull();
 
     const eventId = crypto.randomUUID();
-    await ingestStore(projectId, publicKey, { event_id: eventId, release: "5.0.0", message: "deployed" });
+    await ingestStore(projectId, publicKey, {
+      event_id: eventId,
+      release: "5.0.0",
+      message: "deployed",
+    });
 
     const release = await waitForRelease(appId, "5.0.0", { eventCount: 1 });
     expect(release.id).toBe(created.id);
@@ -296,7 +341,10 @@ describe("Releases (auto-created from ingestion)", () => {
     const { appId } = await makeApp();
 
     await createRelease(appId, "6.0.0");
-    const response = await apiRequest("POST", "/api/admin/releases", { appId, version: "6.0.0" });
+    const response = await apiRequest("POST", "/api/admin/releases", {
+      appId,
+      version: "6.0.0",
+    });
     expect(response.status).toBe(409);
   });
 
@@ -357,7 +405,10 @@ describe("Releases (auto-created from ingestion)", () => {
   });
 
   it("returns 404 for an unknown release", async () => {
-    const response = await apiRequest("GET", `/api/admin/releases/${crypto.randomUUID()}`);
+    const response = await apiRequest(
+      "GET",
+      `/api/admin/releases/${crypto.randomUUID()}`,
+    );
     expect(response.status).toBe(404);
   });
 
@@ -365,7 +416,10 @@ describe("Releases (auto-created from ingestion)", () => {
     const { appId } = await makeApp();
     const created = await createRelease(appId, "8.0.0");
 
-    const response = await apiRequest("DELETE", `/api/admin/releases/${created.id}`);
+    const response = await apiRequest(
+      "DELETE",
+      `/api/admin/releases/${created.id}`,
+    );
     expect(response.status).toBe(200);
 
     const after = await apiRequest("GET", `/api/admin/releases/${created.id}`);
@@ -376,9 +430,16 @@ describe("Releases (auto-created from ingestion)", () => {
     const { appId } = await makeApp();
     const created = await createRelease(appId, "8.1.0");
 
-    expect((await apiRequest("DELETE", `/api/admin/releases/${created.id}`)).status).toBe(200);
-    expect((await apiRequest("DELETE", `/api/admin/releases/${created.id}`)).status).toBe(200);
-    expect((await apiRequest("DELETE", `/api/admin/releases/${crypto.randomUUID()}`)).status).toBe(200);
+    expect(
+      (await apiRequest("DELETE", `/api/admin/releases/${created.id}`)).status,
+    ).toBe(200);
+    expect(
+      (await apiRequest("DELETE", `/api/admin/releases/${created.id}`)).status,
+    ).toBe(200);
+    expect(
+      (await apiRequest("DELETE", `/api/admin/releases/${crypto.randomUUID()}`))
+        .status,
+    ).toBe(200);
   });
 
   it("paginates the release list with a cursor", async () => {

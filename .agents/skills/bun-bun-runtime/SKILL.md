@@ -53,12 +53,12 @@ bun --watch run index.tsx
 <Note>
   When using `bun run`, put Bun flags like `--watch` immediately after `bun`.
 
-  ```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
-  bun --watch run dev # ✔️ do this
-  bun run dev --watch # ❌ don't do this
-  ```
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
+bun --watch run dev # ✔️ do this
+bun run dev --watch # ❌ don't do this
+```
 
-  Flags that occur at the end of the command will be ignored and passed through to the `"dev"` script itself.
+Flags that occur at the end of the command will be ignored and passed through to the `"dev"` script itself.
 </Note>
 
 ## Run a `package.json` script
@@ -67,7 +67,7 @@ bun --watch run index.tsx
   Compare to `npm run <script>` or `yarn <script>`
 </Note>
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun [bun flags] run <script> [script flags]
 ```
 
@@ -90,7 +90,7 @@ bun run clean
 rm -rf dist && echo 'Done.'
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Cleaning...
 Done.
 ```
@@ -111,7 +111,7 @@ To see a list of available scripts, run `bun run` without any arguments.
 bun run
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 quickstart scripts:
 
  bun run clean
@@ -127,7 +127,7 @@ Bun respects lifecycle hooks. For instance, `bun run clean` will execute `precle
 
 ### `--bun`
 
-It's common for `package.json` scripts to reference locally-installed CLIs like `vite` or `next`. These CLIs are often JavaScript files marked with a [shebang](https://en.wikipedia.org/wiki/Shebang_\(Unix\)) to indicate that they should be executed with `node`.
+It's common for `package.json` scripts to reference locally-installed CLIs like `vite` or `next`. These CLIs are often JavaScript files marked with a [shebang](<https://en.wikipedia.org/wiki/Shebang_(Unix)>) to indicate that they should be executed with `node`.
 
 ```js cli.js icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/javascript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=dd7b5268d2e9410910a69804de702737" theme={"theme":{"light":"github-light","dark":"dracula"}}
 #!/usr/bin/env node
@@ -164,7 +164,7 @@ Find more details in the docs page for [filter](/pm/filter#running-scripts-with-
 echo "console.log('Hello')" | bun run -
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Hello
 ```
 
@@ -175,7 +175,7 @@ echo "console.log!('This is TypeScript!' as any)" > secretly-typescript.js
 bun run - < secretly-typescript.js
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 This is TypeScript!
 ```
 
@@ -219,11 +219,11 @@ When there is a package.json script and a file with the same name, `bun run` pri
 3. Binaries from project packages, eg `bun add eslint && bun run eslint`
 4. (`bun run` only) System commands, eg `bun run ls`
 
-***
+---
 
 # CLI Usage
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run <file or script>
 ```
 
@@ -515,14 +515,14 @@ bun run <file or script>
 
 Run a JavaScript or TypeScript file:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run ./index.js
 bun run ./index.tsx
 ```
 
 Run a package.json script:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run dev
 bun run lint
 ```

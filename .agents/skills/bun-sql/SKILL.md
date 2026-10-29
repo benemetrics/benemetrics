@@ -36,19 +36,19 @@ const sqliteResults = await sqlite`
 
 ### Features
 
-* Tagged template literals to protect against SQL injection
-* Transactions
-* Named & positional parameters
-* Connection pooling
-* `BigInt` support
-* SASL Auth support (SCRAM-SHA-256), MD5, and Clear Text
-* Connection timeouts
-* Returning rows as data objects, arrays of arrays, or Buffer
-* Binary protocol support makes it faster
-* TLS support (and auth mode)
-* Automatic configuration with environment variable
+- Tagged template literals to protect against SQL injection
+- Transactions
+- Named & positional parameters
+- Connection pooling
+- `BigInt` support
+- SASL Auth support (SCRAM-SHA-256), MD5, and Clear Text
+- Connection timeouts
+- Returning rows as data objects, arrays of arrays, or Buffer
+- Binary protocol support makes it faster
+- TLS support (and auth mode)
+- Automatic configuration with environment variable
 
-***
+---
 
 ## Database Support
 
@@ -58,9 +58,9 @@ const sqliteResults = await sqlite`
 
 PostgreSQL is used when:
 
-* The connection string doesn't match SQLite or MySQL patterns (it's the fallback adapter)
-* The connection string explicitly uses `postgres://` or `postgresql://` protocols
-* No connection string is provided and environment variables point to PostgreSQL
+- The connection string doesn't match SQLite or MySQL patterns (it's the fallback adapter)
+- The connection string explicitly uses `postgres://` or `postgresql://` protocols
+- No connection string is provided and environment variables point to PostgreSQL
 
 ```ts title="db.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { sql } from "bun";
@@ -97,7 +97,7 @@ const mysql3 = new SQL({
 const users = await mysql`SELECT * FROM users WHERE id = ${userId}`;
 
 // Transactions work the same as PostgreSQL
-await mysql.begin(async tx => {
+await mysql.begin(async (tx) => {
   await tx`INSERT INTO users (name) VALUES (${"Alice"})`;
   await tx`UPDATE accounts SET balance = balance - 100 WHERE user_id = ${userId}`;
 });
@@ -113,39 +113,40 @@ await mysql`INSERT INTO users ${mysql(newUsers)}`;
 <Accordion title="MySQL Connection String Formats">
   MySQL accepts various URL formats for connection strings:
 
-  ```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-  // Standard mysql:// protocol
-  new SQL("mysql://user:pass@localhost:3306/database");
-  new SQL("mysql://user:pass@localhost/database"); // Default port 3306
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+// Standard mysql:// protocol
+new SQL("mysql://user:pass@localhost:3306/database");
+new SQL("mysql://user:pass@localhost/database"); // Default port 3306
 
-  // mysql2:// protocol (compatibility with mysql2 npm package)
-  new SQL("mysql2://user:pass@localhost:3306/database");
+// mysql2:// protocol (compatibility with mysql2 npm package)
+new SQL("mysql2://user:pass@localhost:3306/database");
 
-  // With query parameters
-  new SQL("mysql://user:pass@localhost/db?ssl=true");
+// With query parameters
+new SQL("mysql://user:pass@localhost/db?ssl=true");
 
-  // Unix socket connection
-  new SQL("mysql://user:pass@/database?socket=/var/run/mysqld/mysqld.sock");
-  ```
+// Unix socket connection
+new SQL("mysql://user:pass@/database?socket=/var/run/mysqld/mysqld.sock");
+```
+
 </Accordion>
 
 <Accordion title="MySQL-Specific Features">
   MySQL databases support:
 
-  * **Prepared statements**: Automatically created for parameterized queries with statement caching
-  * **Binary protocol**: For better performance with prepared statements and accurate type handling
-  * **Multiple result sets**: Support for stored procedures returning multiple result sets
-  * **Authentication plugins**: Support for mysql\_native\_password, caching\_sha2\_password (MySQL 8.0 default), and sha256\_password
-  * **SSL/TLS connections**: Configurable SSL modes similar to PostgreSQL
-  * **Connection attributes**: Client information sent to server for monitoring
-  * **Query pipelining**: Execute multiple prepared statements without waiting for responses
+- **Prepared statements**: Automatically created for parameterized queries with statement caching
+- **Binary protocol**: For better performance with prepared statements and accurate type handling
+- **Multiple result sets**: Support for stored procedures returning multiple result sets
+- **Authentication plugins**: Support for mysql\_native\_password, caching\_sha2\_password (MySQL 8.0 default), and sha256\_password
+- **SSL/TLS connections**: Configurable SSL modes similar to PostgreSQL
+- **Connection attributes**: Client information sent to server for monitoring
+- **Query pipelining**: Execute multiple prepared statements without waiting for responses
 </Accordion>
 
 ### SQLite
 
 SQLite support is built into Bun.SQL, providing the same tagged template literal interface:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { SQL } from "bun";
 
 // In-memory database
@@ -168,30 +169,30 @@ const sql3 = new SQL("myapp.db", { adapter: "sqlite" });
 <Accordion title="SQLite Connection String Formats">
   SQLite accepts various URL formats for connection strings:
 
-  ```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-  // Standard sqlite:// protocol
-  new SQL("sqlite://path/to/database.db");
-  new SQL("sqlite:path/to/database.db"); // Without slashes
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+// Standard sqlite:// protocol
+new SQL("sqlite://path/to/database.db");
+new SQL("sqlite:path/to/database.db"); // Without slashes
 
-  // file:// protocol (also recognized as SQLite)
-  new SQL("file://path/to/database.db");
-  new SQL("file:path/to/database.db");
+// file:// protocol (also recognized as SQLite)
+new SQL("file://path/to/database.db");
+new SQL("file:path/to/database.db");
 
-  // Special :memory: database
-  new SQL(":memory:");
-  new SQL("sqlite://:memory:");
-  new SQL("file://:memory:");
+// Special :memory: database
+new SQL(":memory:");
+new SQL("sqlite://:memory:");
+new SQL("file://:memory:");
 
-  // Relative and absolute paths
-  new SQL("sqlite://./local.db"); // Relative to current directory
-  new SQL("sqlite://../parent/db.db"); // Parent directory
-  new SQL("sqlite:///absolute/path.db"); // Absolute path
+// Relative and absolute paths
+new SQL("sqlite://./local.db"); // Relative to current directory
+new SQL("sqlite://../parent/db.db"); // Parent directory
+new SQL("sqlite:///absolute/path.db"); // Absolute path
 
-  // With query parameters
-  new SQL("sqlite://data.db?mode=ro"); // Read-only mode
-  new SQL("sqlite://data.db?mode=rw"); // Read-write mode (no create)
-  new SQL("sqlite://data.db?mode=rwc"); // Read-write-create mode (default)
-  ```
+// With query parameters
+new SQL("sqlite://data.db?mode=ro"); // Read-only mode
+new SQL("sqlite://data.db?mode=rw"); // Read-write mode (no create)
+new SQL("sqlite://data.db?mode=rwc"); // Read-write-create mode (default)
+```
 
   <Note>
     Simple filenames without a protocol (like `"myapp.db"`) require explicitly specifying `{ adapter: "sqlite" }` to avoid ambiguity with PostgreSQL.
@@ -201,34 +202,34 @@ const sql3 = new SQL("myapp.db", { adapter: "sqlite" });
 <Accordion title="SQLite-Specific Options">
   SQLite databases support additional configuration options:
 
-  ```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-  const sql = new SQL({
-    adapter: "sqlite",
-    filename: "app.db",
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+const sql = new SQL({
+  adapter: "sqlite",
+  filename: "app.db",
 
-    // SQLite-specific options
-    readonly: false, // Open in read-only mode
-    create: true, // Create database if it doesn't exist
-    readwrite: true, // Open for reading and writing
+  // SQLite-specific options
+  readonly: false, // Open in read-only mode
+  create: true, // Create database if it doesn't exist
+  readwrite: true, // Open for reading and writing
 
-    // Additional Bun:sqlite options
-    strict: true, // Enable strict mode
-    safeIntegers: false, // Use JavaScript numbers for integers
-  });
-  ```
+  // Additional Bun:sqlite options
+  strict: true, // Enable strict mode
+  safeIntegers: false, // Use JavaScript numbers for integers
+});
+```
 
-  Query parameters in the URL are parsed to set these options:
+Query parameters in the URL are parsed to set these options:
 
-  * `?mode=ro` → `readonly: true`
-  * `?mode=rw` → `readonly: false, create: false`
-  * `?mode=rwc` → `readonly: false, create: true` (default)
+- `?mode=ro` → `readonly: true`
+- `?mode=rw` → `readonly: false, create: false`
+- `?mode=rwc` → `readonly: false, create: true` (default)
 </Accordion>
 
 ## Inserting data
 
 You can pass JavaScript values directly to the SQL template literal and escaping will be handled for you.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { sql } from "bun";
 
 // Basic insert with direct values
@@ -255,7 +256,7 @@ const [newUser] = await sql`
 
 You can also pass arrays of objects to the SQL template literal and it will be expanded to a `INSERT INTO ... VALUES ...` statement.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const users = [
   { name: "Alice", email: "alice@example.com" },
   { name: "Bob", email: "bob@example.com" },
@@ -269,7 +270,7 @@ await sql`INSERT INTO users ${sql(users)}`;
 
 You can use `sql(object, ...string)` to pick which columns to insert. Each of the columns must be defined on the object.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const user = {
   name: "Alice",
   email: "alice@example.com",
@@ -280,7 +281,7 @@ await sql`INSERT INTO users ${sql(user, "name", "email")}`;
 // Only inserts name and email columns, ignoring other fields
 ```
 
-***
+---
 
 ## Query Results
 
@@ -290,14 +291,14 @@ By default, Bun's SQL client returns query results as arrays of objects, where e
 
 The `sql``.values()` method returns rows as arrays of values rather than objects. Each row becomes an array where the values are in the same order as the columns in your query.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const rows = await sql`SELECT * FROM users`.values();
 console.log(rows);
 ```
 
 This returns something like:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 [
   ["Alice", "alice@example.com"],
   ["Bob", "bob@example.com"],
@@ -310,12 +311,12 @@ This returns something like:
 
 The `.raw()` method returns rows as arrays of `Buffer` objects. This can be useful for working with binary data or for performance reasons.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const rows = await sql`SELECT * FROM users`.raw();
 console.log(rows); // [[Buffer, Buffer], [Buffer, Buffer], [Buffer, Buffer]]
 ```
 
-***
+---
 
 ## SQL Fragments
 
@@ -325,7 +326,7 @@ A common need in database applications is the ability to construct queries dynam
 
 When you need to reference tables or schemas dynamically, use the `sql()` helper to ensure proper escaping:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Safely reference tables dynamically
 await sql`SELECT * FROM ${sql("users")}`;
 
@@ -337,7 +338,7 @@ await sql`SELECT * FROM ${sql("public.users")}`;
 
 You can use the `sql()` helper to build queries with conditional clauses. This allows you to create flexible queries that adapt to your application's needs:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Optional WHERE clauses
 const filterAge = true;
 const minAge = 21;
@@ -353,7 +354,7 @@ await sql`
 
 You can use `sql(object, ...string)` to pick which columns to update. Each of the columns must be defined on the object. If the columns are not informed all keys will be used to update the row.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 await sql`UPDATE users SET ${sql(user, "name", "email")} WHERE id = ${user.id}`;
 // uses all keys from the object to update the row
 await sql`UPDATE users SET ${sql(user)} WHERE id = ${user.id}`;
@@ -363,7 +364,7 @@ await sql`UPDATE users SET ${sql(user)} WHERE id = ${user.id}`;
 
 Value lists can also be created dynamically, making where in queries simple too. Optionally you can pass a array of objects and inform what key to use to create the list.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 await sql`SELECT * FROM users WHERE id IN ${sql([1, 2, 3])}`;
 
 const users = [
@@ -378,7 +379,7 @@ await sql`SELECT * FROM users WHERE id IN ${sql(users, "id")}`;
 
 The `sql.array` helper creates PostgreSQL array literals from JavaScript arrays:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Create array literals for PostgreSQL
 await sql`INSERT INTO tags (items) VALUES (${sql.array(["red", "blue", "green"])})`;
 // Generates: INSERT INTO tags (items) VALUES (ARRAY['red', 'blue', 'green'])
@@ -390,7 +391,7 @@ await sql`SELECT * FROM products WHERE ids = ANY(${sql.array([1, 2, 3])})`;
 
 <Note>`sql.array` is PostgreSQL-only. Multi-dimensional arrays and NULL elements may not be supported yet.</Note>
 
-***
+---
 
 ## `sql``.simple()`
 
@@ -398,7 +399,7 @@ The PostgreSQL wire protocol supports two types of queries: "simple" and "extend
 
 To run multiple statements in a single query, use `sql``.simple()`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Multiple statements in one query
 await sql`
   SELECT 1;
@@ -414,7 +415,7 @@ Note that simple queries cannot use parameters (`${value}`). If you need paramet
 
 You can use the `sql.file` method to read a query from a file and execute it, if the file includes $1, $2, etc you can pass parameters to the query. If no parameters are used it can execute multiple commands per file.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const result = await sql.file("query.sql", [1, 2, 3]);
 ```
 
@@ -422,7 +423,7 @@ const result = await sql.file("query.sql", [1, 2, 3]);
 
 You can use the `sql.unsafe` function to execute raw SQL strings. Use this with caution, as it will not escape user input. Executing more than one command per query is allowed if no parameters are used.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Multiple commands without parameters
 const result = await sql.unsafe(`
   SELECT ${userColumns} FROM users;
@@ -430,7 +431,10 @@ const result = await sql.unsafe(`
 `);
 
 // Using parameters (only one command is allowed)
-const result = await sql.unsafe("SELECT " + dangerous + " FROM users WHERE id = $1", [id]);
+const result = await sql.unsafe(
+  "SELECT " + dangerous + " FROM users WHERE id = $1",
+  [id],
+);
 ```
 
 ### Execute and Cancelling Queries
@@ -438,13 +442,13 @@ const result = await sql.unsafe("SELECT " + dangerous + " FROM users WHERE id = 
 Bun's SQL is lazy, which means it will only start executing when awaited or executed with `.execute()`.
 You can cancel a query that is currently executing by calling the `cancel()` method on the query object.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const query = sql`SELECT * FROM users`.execute();
 setTimeout(() => query.cancel(), 100);
 await query;
 ```
 
-***
+---
 
 ## Database Environment Variables
 
@@ -458,10 +462,10 @@ When using `Bun.sql()` without arguments or `new SQL()` with a connection string
 
 MySQL is automatically selected when the connection string matches these patterns:
 
-* `mysql://...` - MySQL protocol URLs
-* `mysql2://...` - MySQL2 protocol URLs (compatibility alias)
+- `mysql://...` - MySQL protocol URLs
+- `mysql2://...` - MySQL2 protocol URLs (compatibility alias)
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // These all use MySQL automatically (no adapter needed)
 const sql1 = new SQL("mysql://user:pass@localhost/mydb");
 const sql2 = new SQL("mysql2://user:pass@localhost:3306/mydb");
@@ -475,13 +479,13 @@ DATABASE_URL="mysql2://user:pass@localhost:3306/mydb" bun run app.js
 
 SQLite is automatically selected when the connection string matches these patterns:
 
-* `:memory:` - In-memory database
-* `sqlite://...` - SQLite protocol URLs
-* `sqlite:...` - SQLite protocol without slashes
-* `file://...` - File protocol URLs
-* `file:...` - File protocol without slashes
+- `:memory:` - In-memory database
+- `sqlite://...` - SQLite protocol URLs
+- `sqlite:...` - SQLite protocol without slashes
+- `file://...` - File protocol URLs
+- `file:...` - File protocol without slashes
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // These all use SQLite automatically (no adapter needed)
 const sql1 = new SQL(":memory:");
 const sql2 = new SQL("sqlite://app.db");
@@ -497,7 +501,7 @@ DATABASE_URL="file://./data/app.db" bun run app.js
 
 PostgreSQL is the default for connection strings that don't match MySQL or SQLite patterns:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 # PostgreSQL is detected for these patterns
 DATABASE_URL="postgres://user:pass@localhost:5432/mydb" bun run app.js
 DATABASE_URL="postgresql://user:pass@localhost:5432/mydb" bun run app.js
@@ -510,7 +514,7 @@ DATABASE_URL="localhost:5432/mydb" bun run app.js
 
 MySQL connections can be configured via environment variables:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 # Primary connection URL (checked first)
 MYSQL_URL="mysql://user:pass@localhost:3306/mydb"
 
@@ -558,7 +562,7 @@ If no connection URL is provided, the system checks for the following individual
 
 SQLite connections can be configured via `DATABASE_URL` when it contains a SQLite-compatible URL:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 # These are all recognized as SQLite
 DATABASE_URL=":memory:"
 DATABASE_URL="sqlite://./app.db"
@@ -567,13 +571,13 @@ DATABASE_URL="file:///absolute/path/to/db.sqlite"
 
 **Note:** PostgreSQL-specific environment variables (`POSTGRES_URL`, `PGHOST`, etc.) are ignored when using SQLite.
 
-***
+---
 
 ## Runtime Preconnection
 
 Bun can preconnect to PostgreSQL at startup to improve performance by establishing database connections before your application code runs. This is useful for reducing connection latency on the first database query.
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 # Enable PostgreSQL preconnection
 bun --sql-preconnect index.js
 
@@ -586,7 +590,7 @@ bun --sql-preconnect --hot index.js
 
 The `--sql-preconnect` flag will automatically establish a PostgreSQL connection using your configured environment variables at startup. If the connection fails, it won't crash your application - the error will be handled gracefully.
 
-***
+---
 
 ## Connection Options
 
@@ -594,7 +598,7 @@ You can configure your database connection manually by passing options to the SQ
 
 ### MySQL Options
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { SQL } from "bun";
 
 const sql = new SQL({
@@ -627,7 +631,7 @@ const sql = new SQL({
   // },
 
   // Callbacks
-  onconnect: client => {
+  onconnect: (client) => {
     console.log("Connected to MySQL");
   },
   onclose: (client, err) => {
@@ -642,7 +646,7 @@ const sql = new SQL({
 
 ### PostgreSQL Options
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { SQL } from "bun";
 
 const sql = new SQL({
@@ -676,10 +680,10 @@ const sql = new SQL({
   // },
 
   // Callbacks
-  onconnect: client => {
+  onconnect: (client) => {
     console.log("Connected to PostgreSQL");
   },
-  onclose: client => {
+  onclose: (client) => {
     console.log("PostgreSQL connection closed");
   },
 });
@@ -687,7 +691,7 @@ const sql = new SQL({
 
 ### SQLite Options
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { SQL } from "bun";
 
 const sql = new SQL({
@@ -705,10 +709,10 @@ const sql = new SQL({
   safeIntegers: false, // Use BigInt for integers exceeding JS number range
 
   // Callbacks
-  onconnect: client => {
+  onconnect: (client) => {
     console.log("SQLite database opened");
   },
-  onclose: client => {
+  onclose: (client) => {
     console.log("SQLite database closed");
   },
 });
@@ -721,13 +725,13 @@ const sql = new SQL({
   * **Memory Databases**: Using `:memory:` creates a temporary database that exists only for the connection lifetime.
 </Accordion>
 
-***
+---
 
 ## Dynamic passwords
 
 When clients need to use alternative authentication schemes such as access tokens or connections to databases with rotating passwords, provide either a synchronous or asynchronous function that will resolve the dynamic password value at connection time.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { SQL } from "bun";
 
 const sql = new SQL(url, {
@@ -738,7 +742,7 @@ const sql = new SQL(url, {
 });
 ```
 
-***
+---
 
 ## SQLite-Specific Features
 
@@ -746,7 +750,7 @@ const sql = new SQL(url, {
 
 SQLite executes queries synchronously, unlike PostgreSQL which uses asynchronous I/O. However, the API remains consistent using Promises:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const sqlite = new SQL("sqlite://app.db");
 
 // Works the same as PostgreSQL, but executes synchronously under the hood
@@ -760,7 +764,7 @@ const user = await sqlite`SELECT * FROM users WHERE id = ${userId}`;
 
 You can use PRAGMA statements to configure SQLite behavior:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const sqlite = new SQL("sqlite://app.db");
 
 // Enable foreign keys
@@ -777,7 +781,7 @@ const integrity = await sqlite`PRAGMA integrity_check`;
 
 SQLite has a more flexible type system than PostgreSQL:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // SQLite stores data in 5 storage classes: NULL, INTEGER, REAL, TEXT, BLOB
 const sqlite = new SQL("sqlite://app.db");
 
@@ -795,7 +799,7 @@ await sqlite`
 await sqlite`INSERT INTO flexible VALUES (${1}, ${"text"}, ${123.45}, ${Buffer.from("binary")})`;
 ```
 
-***
+---
 
 ## Transactions
 
@@ -805,8 +809,8 @@ The `BEGIN` command is sent automatically, including any optional configurations
 
 ### Basic Transactions
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-await sql.begin(async tx => {
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+await sql.begin(async (tx) => {
   // All queries in this function run in a transaction
   await tx`INSERT INTO users (name) VALUES (${"Alice"})`;
   await tx`UPDATE accounts SET balance = balance - 100 WHERE user_id = 1`;
@@ -818,8 +822,8 @@ await sql.begin(async tx => {
 
 It's also possible to pipeline the requests in a transaction if needed by returning an array with queries from the callback function like this:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-await sql.begin(async tx => {
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+await sql.begin(async (tx) => {
   return [
     tx`INSERT INTO users (name) VALUES (${"Alice"})`,
     tx`UPDATE accounts SET balance = balance - 100 WHERE user_id = 1`,
@@ -831,11 +835,11 @@ await sql.begin(async tx => {
 
 Savepoints in SQL create intermediate checkpoints within a transaction, enabling partial rollbacks without affecting the entire operation. They are useful in complex transactions, allowing error recovery and maintaining consistent results.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-await sql.begin(async tx => {
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+await sql.begin(async (tx) => {
   await tx`INSERT INTO users (name) VALUES (${"Alice"})`;
 
-  await tx.savepoint(async sp => {
+  await tx.savepoint(async (sp) => {
     // This part can be rolled back separately
     await sp`UPDATE users SET status = 'active'`;
     if (someCondition) {
@@ -860,9 +864,9 @@ PostgreSQL natively supports them through prepared transactions, while MySQL use
 
 If any exceptions occur during the distributed transaction and aren't caught, the system will automatically rollback all changes. When everything proceeds normally, you maintain the flexibility to either commit or rollback the transaction later.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Begin a distributed transaction
-await sql.beginDistributed("tx1", async tx => {
+await sql.beginDistributed("tx1", async (tx) => {
   await tx`INSERT INTO users (name) VALUES (${"Alice"})`;
 });
 
@@ -872,7 +876,7 @@ await sql.commitDistributed("tx1");
 await sql.rollbackDistributed("tx1");
 ```
 
-***
+---
 
 ## Authentication
 
@@ -882,7 +886,7 @@ Bun supports SCRAM-SHA-256 (SASL), MD5, and Clear Text authentication. SASL is r
 
 PostgreSQL supports different SSL/TLS modes to control how secure connections are established. These modes determine the behavior when connecting and the level of certificate verification performed.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const sql = new SQL({
   hostname: "localhost",
   username: "user",
@@ -903,21 +907,23 @@ const sql = new SQL({
 
 The SSL mode can also be specified in connection strings:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Using prefer mode
 const sql = new SQL("postgres://user:password@localhost/mydb?sslmode=prefer");
 
 // Using verify-full mode
-const sql = new SQL("postgres://user:password@localhost/mydb?sslmode=verify-full");
+const sql = new SQL(
+  "postgres://user:password@localhost/mydb?sslmode=verify-full",
+);
 ```
 
-***
+---
 
 ## Connection Pooling
 
 Bun's SQL client automatically manages a connection pool, which is a pool of database connections that are reused for multiple queries. This helps to reduce the overhead of establishing and closing connections for each query, and it also helps to manage the number of concurrent connections to the database.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const sql = new SQL({
   // Pool configuration
   max: 20, // Maximum 20 concurrent connections
@@ -929,7 +935,7 @@ const sql = new SQL({
 
 No connection will be made until a query is made.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const sql = Bun.SQL(); // no connection are created
 
 await sql`...`; // pool is started until max is reached (if possible), first available connection is used
@@ -946,13 +952,13 @@ await sql.close({ timeout: 5 }); // wait 5 seconds and close all connections fro
 await sql.close({ timeout: 0 }); // close all connections from the pool immediately
 ```
 
-***
+---
 
 ## Reserved Connections
 
 Bun enables you to reserve a connection from the pool, and returns a client that wraps the single connection. This can be used for running queries on an isolated connection.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Get exclusive connection from pool
 const reserved = await sql.reserve();
 
@@ -970,13 +976,13 @@ try {
 } // Automatically released
 ```
 
-***
+---
 
 ## Prepared Statements
 
 By default, Bun's SQL client automatically creates named prepared statements for queries where it can be inferred that the query is static. This provides better performance. However, you can change this behavior by setting `prepare: false` in the connection options:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const sql = new SQL({
   // ... other options ...
   prepare: false, // Disable persisting named prepared statements on the server
@@ -987,20 +993,20 @@ When `prepare: false` is set:
 
 Queries are still executed using the "extended" protocol, but they are executed using [unnamed prepared statements](https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY), an unnamed prepared statement lasts only until the next Parse statement specifying the unnamed statement as destination is issued.
 
-* Parameter binding is still safe against SQL injection
-* Each query is parsed and planned from scratch by the server
-* Queries will not be [pipelined](https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-PIPELINING)
+- Parameter binding is still safe against SQL injection
+- Each query is parsed and planned from scratch by the server
+- Queries will not be [pipelined](https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-PIPELINING)
 
 You might want to use `prepare: false` when:
 
-* Using PGBouncer in transaction mode (though since PGBouncer 1.21.0, protocol-level named prepared statements are supported when configured properly)
-* Debugging query execution plans
-* Working with dynamic SQL where query plans need to be regenerated frequently
-* More than one command per query will not be supported (unless you use `sql``.simple()`)
+- Using PGBouncer in transaction mode (though since PGBouncer 1.21.0, protocol-level named prepared statements are supported when configured properly)
+- Debugging query execution plans
+- Working with dynamic SQL where query plans need to be regenerated frequently
+- More than one command per query will not be supported (unless you use `sql``.simple()`)
 
 Note that disabling prepared statements may impact performance for queries that are executed frequently with different parameters, as the server needs to parse and plan each query from scratch.
 
-***
+---
 
 ## Error Handling
 
@@ -1008,7 +1014,7 @@ The client provides typed errors for different failure scenarios. Errors are dat
 
 ### Error Classes
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { SQL } from "bun";
 
 try {
@@ -1034,68 +1040,69 @@ try {
 <Accordion title="PostgreSQL-Specific Error Codes">
   ### PostgreSQL Connection Errors
 
-  | Connection Errors                 | Description                                          |
-  | --------------------------------- | ---------------------------------------------------- |
-  | `ERR_POSTGRES_CONNECTION_CLOSED`  | Connection was terminated or never established       |
-  | `ERR_POSTGRES_CONNECTION_TIMEOUT` | Failed to establish connection within timeout period |
-  | `ERR_POSTGRES_IDLE_TIMEOUT`       | Connection closed due to inactivity                  |
-  | `ERR_POSTGRES_LIFETIME_TIMEOUT`   | Connection exceeded maximum lifetime                 |
-  | `ERR_POSTGRES_TLS_NOT_AVAILABLE`  | SSL/TLS connection not available                     |
-  | `ERR_POSTGRES_TLS_UPGRADE_FAILED` | Failed to upgrade connection to SSL/TLS              |
+| Connection Errors                 | Description                                          |
+| --------------------------------- | ---------------------------------------------------- |
+| `ERR_POSTGRES_CONNECTION_CLOSED`  | Connection was terminated or never established       |
+| `ERR_POSTGRES_CONNECTION_TIMEOUT` | Failed to establish connection within timeout period |
+| `ERR_POSTGRES_IDLE_TIMEOUT`       | Connection closed due to inactivity                  |
+| `ERR_POSTGRES_LIFETIME_TIMEOUT`   | Connection exceeded maximum lifetime                 |
+| `ERR_POSTGRES_TLS_NOT_AVAILABLE`  | SSL/TLS connection not available                     |
+| `ERR_POSTGRES_TLS_UPGRADE_FAILED` | Failed to upgrade connection to SSL/TLS              |
 
-  ### Authentication Errors
+### Authentication Errors
 
-  | Authentication Errors                            | Description                              |
-  | ------------------------------------------------ | ---------------------------------------- |
-  | `ERR_POSTGRES_AUTHENTICATION_FAILED_PBKDF2`      | Password authentication failed           |
-  | `ERR_POSTGRES_UNKNOWN_AUTHENTICATION_METHOD`     | Server requested unknown auth method     |
-  | `ERR_POSTGRES_UNSUPPORTED_AUTHENTICATION_METHOD` | Server requested unsupported auth method |
-  | `ERR_POSTGRES_INVALID_SERVER_KEY`                | Invalid server key during authentication |
-  | `ERR_POSTGRES_INVALID_SERVER_SIGNATURE`          | Invalid server signature                 |
-  | `ERR_POSTGRES_SASL_SIGNATURE_INVALID_BASE64`     | Invalid SASL signature encoding          |
-  | `ERR_POSTGRES_SASL_SIGNATURE_MISMATCH`           | SASL signature verification failed       |
+| Authentication Errors                            | Description                              |
+| ------------------------------------------------ | ---------------------------------------- |
+| `ERR_POSTGRES_AUTHENTICATION_FAILED_PBKDF2`      | Password authentication failed           |
+| `ERR_POSTGRES_UNKNOWN_AUTHENTICATION_METHOD`     | Server requested unknown auth method     |
+| `ERR_POSTGRES_UNSUPPORTED_AUTHENTICATION_METHOD` | Server requested unsupported auth method |
+| `ERR_POSTGRES_INVALID_SERVER_KEY`                | Invalid server key during authentication |
+| `ERR_POSTGRES_INVALID_SERVER_SIGNATURE`          | Invalid server signature                 |
+| `ERR_POSTGRES_SASL_SIGNATURE_INVALID_BASE64`     | Invalid SASL signature encoding          |
+| `ERR_POSTGRES_SASL_SIGNATURE_MISMATCH`           | SASL signature verification failed       |
 
-  ### Query Errors
+### Query Errors
 
-  | Query Errors                         | Description                                |
-  | ------------------------------------ | ------------------------------------------ |
-  | `ERR_POSTGRES_SYNTAX_ERROR`          | Invalid SQL syntax (extends `SyntaxError`) |
-  | `ERR_POSTGRES_SERVER_ERROR`          | General error from PostgreSQL server       |
-  | `ERR_POSTGRES_INVALID_QUERY_BINDING` | Invalid parameter binding                  |
-  | `ERR_POSTGRES_QUERY_CANCELLED`       | Query was cancelled                        |
-  | `ERR_POSTGRES_NOT_TAGGED_CALL`       | Query was called without a tagged call     |
+| Query Errors                         | Description                                |
+| ------------------------------------ | ------------------------------------------ |
+| `ERR_POSTGRES_SYNTAX_ERROR`          | Invalid SQL syntax (extends `SyntaxError`) |
+| `ERR_POSTGRES_SERVER_ERROR`          | General error from PostgreSQL server       |
+| `ERR_POSTGRES_INVALID_QUERY_BINDING` | Invalid parameter binding                  |
+| `ERR_POSTGRES_QUERY_CANCELLED`       | Query was cancelled                        |
+| `ERR_POSTGRES_NOT_TAGGED_CALL`       | Query was called without a tagged call     |
 
-  ### Data Type Errors
+### Data Type Errors
 
-  | Data Type Errors                                        | Description                           |
-  | ------------------------------------------------------- | ------------------------------------- |
-  | `ERR_POSTGRES_INVALID_BINARY_DATA`                      | Invalid binary data format            |
-  | `ERR_POSTGRES_INVALID_BYTE_SEQUENCE`                    | Invalid byte sequence                 |
-  | `ERR_POSTGRES_INVALID_BYTE_SEQUENCE_FOR_ENCODING`       | Encoding error                        |
-  | `ERR_POSTGRES_INVALID_CHARACTER`                        | Invalid character in data             |
-  | `ERR_POSTGRES_OVERFLOW`                                 | Numeric overflow                      |
-  | `ERR_POSTGRES_UNSUPPORTED_BYTEA_FORMAT`                 | Unsupported binary format             |
-  | `ERR_POSTGRES_UNSUPPORTED_INTEGER_SIZE`                 | Integer size not supported            |
-  | `ERR_POSTGRES_MULTIDIMENSIONAL_ARRAY_NOT_SUPPORTED_YET` | Multidimensional arrays not supported |
-  | `ERR_POSTGRES_NULLS_IN_ARRAY_NOT_SUPPORTED_YET`         | NULL values in arrays not supported   |
+| Data Type Errors                                        | Description                           |
+| ------------------------------------------------------- | ------------------------------------- |
+| `ERR_POSTGRES_INVALID_BINARY_DATA`                      | Invalid binary data format            |
+| `ERR_POSTGRES_INVALID_BYTE_SEQUENCE`                    | Invalid byte sequence                 |
+| `ERR_POSTGRES_INVALID_BYTE_SEQUENCE_FOR_ENCODING`       | Encoding error                        |
+| `ERR_POSTGRES_INVALID_CHARACTER`                        | Invalid character in data             |
+| `ERR_POSTGRES_OVERFLOW`                                 | Numeric overflow                      |
+| `ERR_POSTGRES_UNSUPPORTED_BYTEA_FORMAT`                 | Unsupported binary format             |
+| `ERR_POSTGRES_UNSUPPORTED_INTEGER_SIZE`                 | Integer size not supported            |
+| `ERR_POSTGRES_MULTIDIMENSIONAL_ARRAY_NOT_SUPPORTED_YET` | Multidimensional arrays not supported |
+| `ERR_POSTGRES_NULLS_IN_ARRAY_NOT_SUPPORTED_YET`         | NULL values in arrays not supported   |
 
-  ### Protocol Errors
+### Protocol Errors
 
-  | Protocol Errors                         | Description                 |
-  | --------------------------------------- | --------------------------- |
-  | `ERR_POSTGRES_EXPECTED_REQUEST`         | Expected client request     |
-  | `ERR_POSTGRES_EXPECTED_STATEMENT`       | Expected prepared statement |
-  | `ERR_POSTGRES_INVALID_BACKEND_KEY_DATA` | Invalid backend key data    |
-  | `ERR_POSTGRES_INVALID_MESSAGE`          | Invalid protocol message    |
-  | `ERR_POSTGRES_INVALID_MESSAGE_LENGTH`   | Invalid message length      |
-  | `ERR_POSTGRES_UNEXPECTED_MESSAGE`       | Unexpected message type     |
+| Protocol Errors                         | Description                 |
+| --------------------------------------- | --------------------------- |
+| `ERR_POSTGRES_EXPECTED_REQUEST`         | Expected client request     |
+| `ERR_POSTGRES_EXPECTED_STATEMENT`       | Expected prepared statement |
+| `ERR_POSTGRES_INVALID_BACKEND_KEY_DATA` | Invalid backend key data    |
+| `ERR_POSTGRES_INVALID_MESSAGE`          | Invalid protocol message    |
+| `ERR_POSTGRES_INVALID_MESSAGE_LENGTH`   | Invalid message length      |
+| `ERR_POSTGRES_UNEXPECTED_MESSAGE`       | Unexpected message type     |
 
-  ### Transaction Errors
+### Transaction Errors
 
-  | Transaction Errors                       | Description                           |
-  | ---------------------------------------- | ------------------------------------- |
-  | `ERR_POSTGRES_UNSAFE_TRANSACTION`        | Unsafe transaction operation detected |
-  | `ERR_POSTGRES_INVALID_TRANSACTION_STATE` | Invalid transaction state             |
+| Transaction Errors                       | Description                           |
+| ---------------------------------------- | ------------------------------------- |
+| `ERR_POSTGRES_UNSAFE_TRANSACTION`        | Unsafe transaction operation detected |
+| `ERR_POSTGRES_INVALID_TRANSACTION_STATE` | Invalid transaction state             |
+
 </Accordion>
 
 ### SQLite-Specific Errors
@@ -1120,32 +1127,33 @@ SQLite errors provide error codes and numbers that correspond to SQLite's standa
   | `SQLITE_MISUSE`     | 21    | Library used incorrectly                             |
   | `SQLITE_AUTH`       | 23    | Authorization denied                                 |
 
-  Example error handling:
+Example error handling:
 
-  ```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-  const sqlite = new SQL("sqlite://app.db");
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+const sqlite = new SQL("sqlite://app.db");
 
-  try {
-    await sqlite`INSERT INTO users (id, name) VALUES (1, 'Alice')`;
-    await sqlite`INSERT INTO users (id, name) VALUES (1, 'Bob')`; // Duplicate ID
-  } catch (error) {
-    if (error instanceof SQL.SQLiteError) {
-      if (error.code === "SQLITE_CONSTRAINT") {
-        console.log("Constraint violation:", error.message);
-        // Handle unique constraint violation
-      }
+try {
+  await sqlite`INSERT INTO users (id, name) VALUES (1, 'Alice')`;
+  await sqlite`INSERT INTO users (id, name) VALUES (1, 'Bob')`; // Duplicate ID
+} catch (error) {
+  if (error instanceof SQL.SQLiteError) {
+    if (error.code === "SQLITE_CONSTRAINT") {
+      console.log("Constraint violation:", error.message);
+      // Handle unique constraint violation
     }
   }
-  ```
+}
+```
+
 </Accordion>
 
-***
+---
 
 ## Numbers and BigInt
 
 Bun's SQL client includes special handling for large numbers that exceed the range of a 53-bit integer. Here's how it works:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { sql } from "bun";
 
 const [{ x, y }] = await sql`SELECT 9223372036854777 as x, 12345 as y`;
@@ -1154,13 +1162,13 @@ console.log(typeof x, x); // "string" "9223372036854777"
 console.log(typeof y, y); // "number" 12345
 ```
 
-***
+---
 
 ## BigInt Instead of Strings
 
 If you need large numbers as BigInt instead of strings, you can enable this by setting the `bigint` option to `true` when initializing the SQL client:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const sql = new SQL({
   bigint: true,
 });
@@ -1170,17 +1178,17 @@ const [{ x }] = await sql`SELECT 9223372036854777 as x`;
 console.log(typeof x, x); // "bigint" 9223372036854777n
 ```
 
-***
+---
 
 ## Roadmap
 
 There's still some things we haven't finished yet.
 
-* Connection preloading via `--db-preconnect` Bun CLI flag
-* Column name transforms (e.g. `snake_case` to `camelCase`). This is mostly blocked on a unicode-aware implementation of changing the case in C++ using WebKit's `WTF::String`.
-* Column type transforms
+- Connection preloading via `--db-preconnect` Bun CLI flag
+- Column name transforms (e.g. `snake_case` to `camelCase`). This is mostly blocked on a unicode-aware implementation of changing the case in C++ using WebKit's `WTF::String`.
+- Column type transforms
 
-***
+---
 
 ## Database-Specific Features
 
@@ -1188,9 +1196,9 @@ There's still some things we haven't finished yet.
 
 MySQL supports multiple authentication plugins that are automatically negotiated:
 
-* **`mysql_native_password`** - Traditional MySQL authentication, widely compatible
-* **`caching_sha2_password`** - Default in MySQL 8.0+, more secure with RSA key exchange
-* **`sha256_password`** - SHA-256 based authentication
+- **`mysql_native_password`** - Traditional MySQL authentication, widely compatible
+- **`caching_sha2_password`** - Default in MySQL 8.0+, more secure with RSA key exchange
+- **`sha256_password`** - SHA-256 based authentication
 
 The client automatically handles authentication plugin switching when requested by the server, including secure password exchange over non-SSL connections.
 
@@ -1198,7 +1206,7 @@ The client automatically handles authentication plugin switching when requested 
 
 MySQL uses server-side prepared statements for all parameterized queries:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // This automatically creates a prepared statement on the server
 const user = await mysql`SELECT * FROM users WHERE id = ${userId}`;
 
@@ -1220,7 +1228,7 @@ const [users, orders, products] = await Promise.all([
 
 MySQL can return multiple result sets from multi-statement queries:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const mysql = new SQL("mysql://user:pass@localhost/mydb");
 
 // Multi-statement queries with simple() method
@@ -1238,7 +1246,7 @@ Bun.SQL automatically uses `utf8mb4` character set for MySQL connections, ensuri
 
 Bun automatically sends client information to MySQL for better monitoring:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // These attributes are sent automatically:
 // _client_name: "Bun"
 // _client_version: <bun version>
@@ -1282,30 +1290,31 @@ We haven't implemented `LOAD DATA INFILE` support yet
 
 We haven't implemented these yet:
 
-* `COPY` support
-* `LISTEN` support
-* `NOTIFY` support
+- `COPY` support
+- `LISTEN` support
+- `NOTIFY` support
 
 We also haven't implemented some of the more uncommon features like:
 
-* GSSAPI authentication
-* `SCRAM-SHA-256-PLUS` support
-* Point & PostGIS types
-* All the multi-dimensional integer array types (only a couple of the types are supported)
+- GSSAPI authentication
+- `SCRAM-SHA-256-PLUS` support
+- Point & PostGIS types
+- All the multi-dimensional integer array types (only a couple of the types are supported)
 
-***
+---
 
 ## Common Patterns & Best Practices
 
 ### Working with MySQL Result Sets
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Getting insert ID after INSERT
 const result = await mysql`INSERT INTO users (name) VALUES (${"Alice"})`;
 console.log(result.lastInsertRowid); // MySQL's LAST_INSERT_ID()
 
 // Handling affected rows
-const updated = await mysql`UPDATE users SET active = ${false} WHERE age < ${18}`;
+const updated =
+  await mysql`UPDATE users SET active = ${false} WHERE age < ${18}`;
 console.log(updated.affectedRows); // Number of rows updated
 
 // Using MySQL-specific functions
@@ -1315,7 +1324,7 @@ const uuid = await mysql`SELECT UUID() as id`;
 
 ### MySQL Error Handling
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 try {
   await mysql`INSERT INTO users (email) VALUES (${"duplicate@email.com"})`;
 } catch (error) {
@@ -1338,7 +1347,7 @@ try {
 4. **Index properly**: MySQL relies heavily on indexes for query performance
 5. **Use `utf8mb4` charset**: It's set by default and handles all Unicode characters
 
-***
+---
 
 ## Frequently Asked Questions
 
@@ -1353,6 +1362,7 @@ try {
     * URLs starting with `mysql://` or `mysql2://` use MySQL
     * URLs matching SQLite patterns (`:memory:`, `sqlite://`, `file://`) use SQLite
     * Everything else defaults to PostgreSQL
+
   </Accordion>
 
   <Accordion title="Are MySQL stored procedures supported?">
@@ -1365,6 +1375,7 @@ try {
     // Get OUT parameter
     const outParam = await mysql`SELECT @total_orders as total`;
     ```
+
   </Accordion>
 
   <Accordion title="Can I use MySQL-specific SQL syntax?">
@@ -1377,10 +1388,11 @@ try {
     await mysql`DESCRIBE users`;
     await mysql`EXPLAIN SELECT * FROM users WHERE id = ${id}`;
     ```
+
   </Accordion>
 </AccordionGroup>
 
-***
+---
 
 ## Why not just use an existing library?
 

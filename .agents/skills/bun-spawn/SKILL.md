@@ -11,14 +11,14 @@ description: Spawn child processes with `Bun.spawn` or `Bun.spawnSync`
 
 Provide a command as an array of strings. The result of `Bun.spawn()` is a `Bun.Subprocess` object.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const proc = Bun.spawn(["bun", "--version"]);
 console.log(await proc.exited); // 0
 ```
 
 The second argument to `Bun.spawn` is a parameters object that can be used to configure the subprocess.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const proc = Bun.spawn(["bun", "--version"], {
   cwd: "./path/to/subdir", // specify a working directory
   env: { ...process.env, FOO: "bar" }, // specify environment variables
@@ -34,9 +34,11 @@ proc.pid; // process ID of subprocess
 
 By default, the input stream of the subprocess is undefined; it can be configured with the `stdin` parameter.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const proc = Bun.spawn(["cat"], {
-  stdin: await fetch("https://raw.githubusercontent.com/oven-sh/bun/main/examples/hashing.js"),
+  stdin: await fetch(
+    "https://raw.githubusercontent.com/oven-sh/bun/main/examples/hashing.js",
+  ),
 });
 
 const text = await proc.stdout.text();
@@ -58,7 +60,7 @@ console.log(text); // "const input = "hello world".repeat(400); ..."
 
 The `"pipe"` option lets incrementally write to the subprocess's input stream from the parent process.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const proc = Bun.spawn(["cat"], {
   stdin: "pipe", // return a FileSink for writing
 });
@@ -79,7 +81,7 @@ proc.stdin.end();
 
 Passing a `ReadableStream` to `stdin` lets you pipe data from a JavaScript `ReadableStream` directly to the subprocess's input:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const stream = new ReadableStream({
   start(controller) {
     controller.enqueue("Hello from ");
@@ -101,7 +103,7 @@ console.log(output); // "Hello from ReadableStream!"
 
 You can read results from the subprocess via the `stdout` and `stderr` properties. By default these are instances of `ReadableStream`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const proc = Bun.spawn(["bun", "--version"]);
 const text = await proc.stdout.text();
 console.log(text); // => "1.3.3\n"
@@ -264,7 +266,7 @@ Meanwhile the child process can send messages to its parent using with `process.
 process.send("Hello from child as string");
 process.send({ message: "Hello from child as object" });
 
-process.on("message", message => {
+process.on("message", (message) => {
   // print message from parent
   console.log(message);
 });
@@ -280,12 +282,12 @@ process.send({ message: "Hello from child as object" });
 
 The `serialization` option controls the underlying communication format between the two processes:
 
-* `advanced`: (default) Messages are serialized using the JSC `serialize` API, which supports cloning [everything `structuredClone` supports](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm). This does not support transferring ownership of objects.
-* `json`: Messages are serialized using `JSON.stringify` and `JSON.parse`, which does not support as many object types as `advanced` does.
+- `advanced`: (default) Messages are serialized using the JSC `serialize` API, which supports cloning [everything `structuredClone` supports](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm). This does not support transferring ownership of objects.
+- `json`: Messages are serialized using `JSON.stringify` and `JSON.parse`, which does not support as many object types as `advanced` does.
 
 To disconnect the IPC channel from the parent process, call:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 childProc.disconnect();
 ```
 
@@ -317,13 +319,13 @@ if (typeof Bun !== "undefined") {
 }
 ```
 
-***
+---
 
 ## Terminal (PTY) support
 
 For interactive terminal applications, you can spawn a subprocess with a pseudo-terminal (PTY) attached using the `terminal` option. This makes the subprocess think it's running in a real terminal, enabling features like colored output, cursor movement, and interactive prompts.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const proc = Bun.spawn(["bash"], {
   terminal: {
     cols: 80,
@@ -347,10 +349,10 @@ proc.terminal.close();
 
 When the `terminal` option is provided:
 
-* The subprocess sees `process.stdout.isTTY` as `true`
-* `stdin`, `stdout`, and `stderr` are all connected to the terminal
-* `proc.stdin`, `proc.stdout`, and `proc.stderr` return `null` — use the terminal instead
-* Access the terminal via `proc.terminal`
+- The subprocess sees `process.stdout.isTTY` as `true`
+- `stdin`, `stdout`, and `stderr` are all connected to the terminal
+- `proc.stdin`, `proc.stdout`, and `proc.stderr` return `null` — use the terminal instead
+- Access the terminal via `proc.terminal`
 
 ### Terminal options
 
@@ -367,7 +369,7 @@ When the `terminal` option is provided:
 
 The `Terminal` object returned by `proc.terminal` has the following methods:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Write data to the terminal
 proc.terminal.write("echo hello\n");
 
@@ -389,7 +391,7 @@ proc.terminal.close();
 
 You can create a terminal independently and reuse it across multiple subprocesses:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 await using terminal = new Bun.Terminal({
   cols: 80,
   rows: 24,
@@ -411,16 +413,16 @@ await proc2.exited;
 
 When passing an existing `Terminal` object:
 
-* The terminal can be reused across multiple spawns
-* You control when to close the terminal
-* The `exit` callback fires when you call `terminal.close()`, not when each subprocess exits
-* Use `proc.exited` to detect individual subprocess exits
+- The terminal can be reused across multiple spawns
+- You control when to close the terminal
+- The `exit` callback fires when you call `terminal.close()`, not when each subprocess exits
+- Use `proc.exited` to detect individual subprocess exits
 
 This is useful for running multiple commands in sequence through the same terminal session.
 
 <Note>Terminal support is only available on POSIX systems (Linux, macOS). It is not available on Windows.</Note>
 
-***
+---
 
 ## Blocking API (`Bun.spawnSync()`)
 
@@ -430,7 +432,7 @@ Bun provides a synchronous equivalent of `Bun.spawn` called `Bun.spawnSync`. Thi
 2. The `stdout` and `stderr` properties are instances of `Buffer` instead of `ReadableStream`.
 3. There is no `stdin` property. Use `Bun.spawn` to incrementally write to the subprocess's input stream.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const proc = Bun.spawnSync(["echo", "hello"]);
 
 console.log(proc.stdout.toString());
@@ -439,7 +441,7 @@ console.log(proc.stdout.toString());
 
 As a rule of thumb, the asynchronous `Bun.spawn` API is better for HTTP servers and apps, and `Bun.spawnSync` is better for building command-line tools.
 
-***
+---
 
 ## Benchmarks
 
@@ -454,7 +456,7 @@ Bun's `spawnSync` spawns processes 60% faster than the Node.js `child_process` m
 bun spawn.mjs
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 cpu: Apple M1 Max
 runtime: bun 1.x (arm64-darwin)
 
@@ -467,7 +469,7 @@ spawnSync echo hi  888.14 µs/iter    (821.83 µs … 1.2 ms) 905.92 µs      1 
 node spawn.node.mjs
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 cpu: Apple M1 Max
 runtime: node v18.9.1 (arm64-darwin)
 
@@ -476,7 +478,7 @@ benchmark              time (avg)             (min … max)       p75       p99 
 spawnSync echo hi    1.47 ms/iter     (1.14 ms … 2.64 ms)   1.57 ms   2.37 ms   2.52 ms
 ```
 
-***
+---
 
 ## Reference
 
@@ -485,10 +487,15 @@ A reference of the Spawn API and types are shown below. The real types have comp
 ```ts See Typescript Definitions expandable theme={"theme":{"light":"github-light","dark":"dracula"}}
 interface Bun {
   spawn(command: string[], options?: SpawnOptions.OptionsObject): Subprocess;
-  spawnSync(command: string[], options?: SpawnOptions.OptionsObject): SyncSubprocess;
+  spawnSync(
+    command: string[],
+    options?: SpawnOptions.OptionsObject,
+  ): SyncSubprocess;
 
   spawn(options: { cmd: string[] } & SpawnOptions.OptionsObject): Subprocess;
-  spawnSync(options: { cmd: string[] } & SpawnOptions.OptionsObject): SyncSubprocess;
+  spawnSync(
+    options: { cmd: string[] } & SpawnOptions.OptionsObject,
+  ): SyncSubprocess;
 }
 
 namespace SpawnOptions {
@@ -544,9 +551,12 @@ namespace SpawnOptions {
 
 interface Subprocess extends AsyncDisposable {
   readonly stdin: FileSink | number | undefined | null;
-  readonly stdout: ReadableStream<Uint8Array<ArrayBuffer>> | number | undefined | null;
-  readonly stderr: ReadableStream<Uint8Array<ArrayBuffer>> | number | undefined | null;
-  readonly readable: ReadableStream<Uint8Array<ArrayBuffer>> | number | undefined | null;
+  readonly stdout:
+    ReadableStream<Uint8Array<ArrayBuffer>> | number | undefined | null;
+  readonly stderr:
+    ReadableStream<Uint8Array<ArrayBuffer>> | number | undefined | null;
+  readonly readable:
+    ReadableStream<Uint8Array<ArrayBuffer>> | number | undefined | null;
   readonly terminal: Terminal | undefined;
   readonly pid: number;
   readonly exited: Promise<number>;

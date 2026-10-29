@@ -7,7 +7,7 @@ description: Build an app with Next.js and Bun
 
 [Next.js](https://nextjs.org/) is a React framework for building full-stack web applications. It supports server-side rendering, static site generation, API routes, and more. Bun provides fast package installation and can run Next.js development and production servers.
 
-***
+---
 
 <Steps>
   <Step title="Create a new Next.js app">
@@ -16,6 +16,7 @@ description: Build an app with Next.js and Bun
     ```sh terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
     bun create next-app@latest my-bun-app
     ```
+
   </Step>
 
   <Step title="Start the dev server">
@@ -29,6 +30,7 @@ description: Build an app with Next.js and Bun
     This starts the Next.js dev server with Bun's runtime.
 
     Open [`http://localhost:3000`](http://localhost:3000) with your browser to see the result. Any changes you make to `app/page.tsx` will be hot-reloaded in the browser.
+
   </Step>
 
   <Step title="Update scripts in package.json">
@@ -43,10 +45,11 @@ description: Build an app with Next.js and Bun
       }
     }
     ```
+
   </Step>
 </Steps>
 
-***
+---
 
 ## Hosting
 
@@ -78,7 +81,7 @@ Next.js applications on Bun can be deployed to various platforms.
   </Card>
 </Columns>
 
-***
+---
 
 ## Templates
 
@@ -92,6 +95,6 @@ Next.js applications on Bun can be deployed to various platforms.
   </Card>
 </Columns>
 
-***
+---
 
 [→ See Next.js's official documentation](https://nextjs.org/docs) for more information on building and deploying Next.js applications.

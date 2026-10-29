@@ -15,9 +15,15 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
+import {
+  app,
+  ADMIN_TOKEN,
+  ADMIN_HEADERS,
+  ADMIN_TOKEN_RAW,
+} from "./test-helpers";
 const PROJECT_NAME = `Issues UI ${Date.now()}`;
-const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+const uniq = () =>
+  Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
 let baseUrl = "";
 let view: Bun.WebView;
@@ -37,12 +43,18 @@ async function adminRequest(
 }
 
 async function issueStatus(): Promise<string | null> {
-  const response = await adminRequest("GET", `/api/admin/issues?query=${encodeURIComponent(`app:${appRecord.id}`)}`);
+  const response = await adminRequest(
+    "GET",
+    `/api/admin/issues?query=${encodeURIComponent(`app:${appRecord.id}`)}`,
+  );
   const body = (await response.json()) as { data?: Array<{ status: string }> };
   return body.data?.[0]?.status ?? null;
 }
 
-async function waitForIssueStatus(expected: string, timeoutMs = 15000): Promise<void> {
+async function waitForIssueStatus(
+  expected: string,
+  timeoutMs = 15000,
+): Promise<void> {
   const start = Date.now();
   let last: string | null = null;
   while (Date.now() - start < timeoutMs) {
@@ -53,7 +65,10 @@ async function waitForIssueStatus(expected: string, timeoutMs = 15000): Promise<
   throw new Error(`issue status stayed "${last}", expected "${expected}"`);
 }
 
-async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string> {
+async function waitForTextInUI(
+  text: string,
+  timeoutMs = 15000,
+): Promise<string> {
   const start = Date.now();
   let body = "";
   while (Date.now() - start < timeoutMs) {
@@ -69,7 +84,11 @@ async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string>
 }
 
 /** Waits for a `.data-row` containing `rowText` to appear/disappear. */
-async function waitForRow(rowText: string, present: boolean, timeoutMs = 15000): Promise<void> {
+async function waitForRow(
+  rowText: string,
+  present: boolean,
+  timeoutMs = 15000,
+): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const found =
@@ -80,11 +99,16 @@ async function waitForRow(rowText: string, present: boolean, timeoutMs = 15000):
     if (found === present) return;
     await Bun.sleep(400);
   }
-  throw new Error(`row "${rowText}" ${present ? "never appeared" : "never disappeared"}`);
+  throw new Error(
+    `row "${rowText}" ${present ? "never appeared" : "never disappeared"}`,
+  );
 }
 
 /** Clicks a `.row-action` with the given label inside the row containing `rowText`. */
-async function clickRowAction(rowText: string, actionLabel: string): Promise<boolean> {
+async function clickRowAction(
+  rowText: string,
+  actionLabel: string,
+): Promise<boolean> {
   return (
     (await view.evaluate(`(() => {
       const rows = Array.from(document.querySelectorAll(".data-row"));

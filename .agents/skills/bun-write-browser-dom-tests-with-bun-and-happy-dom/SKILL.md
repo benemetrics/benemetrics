@@ -7,7 +7,7 @@ description: Write browser DOM tests with Bun and happy-dom
 
 You can write and run browser tests with Bun's test runner in conjunction with [Happy DOM](https://github.com/capricorn86/happy-dom). Happy DOM implements mocked versions of browser APIs like `document` and `location`.
 
-***
+---
 
 To get started, install `happy-dom`.
 
@@ -15,7 +15,7 @@ To get started, install `happy-dom`.
 bun add -d @happy-dom/global-registrator
 ```
 
-***
+---
 
 This module exports a "registrator" that injects the mocked browser APIs to the global scope.
 
@@ -25,9 +25,9 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 GlobalRegistrator.register();
 ```
 
-***
+---
 
-We need to make sure this file is executed before any of our test files. That's a job for Bun's built-in [*preload*]() functionality. Create a `bunfig.toml` file in the root of your project (if it doesn't already exist) and add the following lines.
+We need to make sure this file is executed before any of our test files. That's a job for Bun's built-in [_preload_](<>) functionality. Create a `bunfig.toml` file in the root of your project (if it doesn't already exist) and add the following lines.
 
 The `./happydom.ts` file should contain the registration code above.
 
@@ -36,7 +36,7 @@ The `./happydom.ts` file should contain the registration code above.
 preload = "./happydom.ts"
 ```
 
-***
+---
 
 Now running `bun test` inside our project will automatically execute `happydom.ts` first. We can start writing tests that use browser APIs.
 
@@ -50,7 +50,7 @@ test("set button text", () => {
 });
 ```
 
-***
+---
 
 With Happy DOM properly configured, this test runs as expected.
 
@@ -58,7 +58,7 @@ With Happy DOM properly configured, this test runs as expected.
 bun test
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 
 dom.test.ts:
 ✓ set button text [0.82ms]
@@ -69,6 +69,6 @@ dom.test.ts:
 Ran 1 tests across 1 files. 1 total [125.00ms]
 ```
 
-***
+---
 
 Refer to the [Happy DOM repo](https://github.com/capricorn86/happy-dom) and [Docs > Test runner > DOM](/test/dom) for complete documentation on writing browser tests with Bun.

@@ -97,7 +97,9 @@ export const permissionRuleDAO = {
     return rule;
   },
 
-  findByName: async (name: string): Promise<PermissionRuleRecord | undefined> => {
+  findByName: async (
+    name: string,
+  ): Promise<PermissionRuleRecord | undefined> => {
     const [row] = await db
       .select(ruleFields)
       .from(permissionRules)

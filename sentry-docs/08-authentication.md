@@ -1,6 +1,7 @@
 # 8. Authentication — None, OIDC, OAuth2
 
 Sentry supports multiple authentication methods, but it's important to distinguish between:
+
 - **Client/SDK authentication** (for sending events): Only DSN-based authentication (None method)
 - **Server/Admin authentication** (for accessing Sentry UI/API): OIDC and OAuth2
 
@@ -10,11 +11,11 @@ This guide covers the three primary authentication modes and clarifies which are
 
 ## Overview
 
-| Auth Mode | Use Case | Complexity |
-|-----------|----------|------------|
-| **None (DSN-only)** | Development, internal tools, server-to-server | Low |
-| **OIDC (OpenID Connect)** | Enterprise SSO, identity providers (Okta, Auth0, Azure AD) | Medium |
-| **OAuth2** | Third-party integrations, custom apps, delegated access | Medium-High |
+| Auth Mode                 | Use Case                                                   | Complexity  |
+| ------------------------- | ---------------------------------------------------------- | ----------- |
+| **None (DSN-only)**       | Development, internal tools, server-to-server              | Low         |
+| **OIDC (OpenID Connect)** | Enterprise SSO, identity providers (Okta, Auth0, Azure AD) | Medium      |
+| **OAuth2**                | Third-party integrations, custom apps, delegated access    | Medium-High |
 
 ---
 
@@ -57,13 +58,13 @@ Sentry.init({
 
 ## Authentication Summary by Endpoint
 
-| Endpoint Category | Paths | Auth Method | Credentials |
-|-------------------|-------|-------------|-------------|
-| **Sentry Ingestion** | `/api/:projectId/envelope/`, `/api/:projectId/store/` | DSN (None) | `sentry_key` query param or `X-Sentry-Auth` header |
-| **Sentry Feature Flag Evaluation** | `/api/sentry/flags/evaluate`, `/api/sentry/flags/stream` | DSN (None) | `sentry_key` query param or Bearer token with DSN public key |
-| **OpenFlag (OpenFeature) Evaluation** | `/v1/flags/:key` | None | — |
-| **Admin Feature Flags** | `/api/admin/feature-flags/*` | OAuth2/OIDC | `Authorization: Bearer <token>` |
-| **Admin Segments** | `/api/admin/feature-flags/segments/*` | OAuth2/OIDC | `Authorization: Bearer <token>` |
+| Endpoint Category                     | Paths                                                    | Auth Method | Credentials                                                  |
+| ------------------------------------- | -------------------------------------------------------- | ----------- | ------------------------------------------------------------ |
+| **Sentry Ingestion**                  | `/api/:projectId/envelope/`, `/api/:projectId/store/`    | DSN (None)  | `sentry_key` query param or `X-Sentry-Auth` header           |
+| **Sentry Feature Flag Evaluation**    | `/api/sentry/flags/evaluate`, `/api/sentry/flags/stream` | DSN (None)  | `sentry_key` query param or Bearer token with DSN public key |
+| **OpenFlag (OpenFeature) Evaluation** | `/v1/flags/:key`                                         | None        | —                                                            |
+| **Admin Feature Flags**               | `/api/admin/feature-flags/*`                             | OAuth2/OIDC | `Authorization: Bearer <token>`                              |
+| **Admin Segments**                    | `/api/admin/feature-flags/segments/*`                    | OAuth2/OIDC | `Authorization: Bearer <token>`                              |
 
 ---
 
@@ -83,14 +84,14 @@ User → Sentry → IdP (Okta/Auth0/Azure AD) → User
 
 ### Supported IdPs
 
-| IdP | Configuration |
-|-----|---------------|
-| **Okta** | OIDC Web App integration |
-| **Auth0** | Regular Web Application |
+| IdP                     | Configuration                  |
+| ----------------------- | ------------------------------ |
+| **Okta**                | OIDC Web App integration       |
+| **Auth0**               | Regular Web Application        |
 | **Azure AD / Entra ID** | App Registration (multitenant) |
-| **Google Workspace** | OAuth 2.0 Client ID |
-| **Keycloak** | OpenID Connect Client |
-| **Generic OIDC** | Any OIDC-compliant provider |
+| **Google Workspace**    | OAuth 2.0 Client ID            |
+| **Keycloak**            | OpenID Connect Client          |
+| **Generic OIDC**        | Any OIDC-compliant provider    |
 
 ### Sentry Server (Self-Hosted) Configuration
 
@@ -129,7 +130,7 @@ import * as Sentry from "@sentry/<your-platform>";
 
 // Set user context from OIDC ID token claims
 Sentry.setUser({
-  id: idToken.sub,           // Subject (unique user ID)
+  id: idToken.sub, // Subject (unique user ID)
   email: idToken.email,
   username: idToken.preferred_username,
   name: idToken.name,
@@ -157,16 +158,22 @@ const jwksClient = fetchJwks({
   rateLimit: true,
 });
 
-export async function validateOIDCToken(token: string): Promise<JwtPayload | null> {
+export async function validateOIDCToken(
+  token: string,
+): Promise<JwtPayload | null> {
   try {
-    const decoded = verify(token, (header, callback) => {
-      jwksClient.getSigningKey(header.kid, (err, key) => {
-        callback(err, key?.getPublicKey());
-      });
-    }, {
-      issuer: process.env.OIDC_ISSUER_URL,
-      audience: process.env.OIDC_CLIENT_ID,
-    });
+    const decoded = verify(
+      token,
+      (header, callback) => {
+        jwksClient.getSigningKey(header.kid, (err, key) => {
+          callback(err, key?.getPublicKey());
+        });
+      },
+      {
+        issuer: process.env.OIDC_ISSUER_URL,
+        audience: process.env.OIDC_CLIENT_ID,
+      },
+    );
     return decoded as JwtPayload;
   } catch {
     return null;
@@ -209,12 +216,12 @@ User → Your App → Sentry (Authorization Server) → User
 
 ### OAuth2 Flows
 
-| Flow | Use Case |
-|------|----------|
-| **Authorization Code** | Web apps, server-side apps (most secure) |
-| **Authorization Code + PKCE** | SPAs, mobile apps (public clients) |
-| **Client Credentials** | Server-to-server, daemon processes |
-| **Device Code** | CLI tools, IoT devices |
+| Flow                          | Use Case                                 |
+| ----------------------------- | ---------------------------------------- |
+| **Authorization Code**        | Web apps, server-side apps (most secure) |
+| **Authorization Code + PKCE** | SPAs, mobile apps (public clients)       |
+| **Client Credentials**        | Server-to-server, daemon processes       |
+| **Device Code**               | CLI tools, IoT devices                   |
 
 ### Registering an OAuth2 Application
 
@@ -227,22 +234,22 @@ User → Your App → Sentry (Authorization Server) → User
 
 ### Scopes Reference
 
-| Scope | Description |
-|-------|-------------|
-| `event:read` | Read events/issues |
-| `event:write` | Create events (ingestion) |
-| `event:admin` | Manage events (delete, merge) |
-| `org:read` | Read organization info |
-| `org:write` | Manage organization |
-| `project:read` | Read projects |
-| `project:write` | Create/update projects |
-| `project:admin` | Delete projects, manage keys |
-| `team:read` | Read teams |
-| `team:write` | Manage teams |
-| `member:read` | Read members |
-| `member:write` | Invite/remove members |
-| `user:read` | Read user profile |
-| `user:email` | Read user email |
+| Scope           | Description                   |
+| --------------- | ----------------------------- |
+| `event:read`    | Read events/issues            |
+| `event:write`   | Create events (ingestion)     |
+| `event:admin`   | Manage events (delete, merge) |
+| `org:read`      | Read organization info        |
+| `org:write`     | Manage organization           |
+| `project:read`  | Read projects                 |
+| `project:write` | Create/update projects        |
+| `project:admin` | Delete projects, manage keys  |
+| `team:read`     | Read teams                    |
+| `team:write`    | Manage teams                  |
+| `member:read`   | Read members                  |
+| `member:write`  | Invite/remove members         |
+| `user:read`     | Read user profile             |
+| `user:email`    | Read user email               |
 
 ### Authorization Code Flow (Web App)
 
@@ -362,11 +369,11 @@ export async function sendEvent(eventData: object) {
     {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(eventData),
-    }
+    },
   );
   return response.json();
 }
@@ -405,7 +412,7 @@ Sentry.init({
   // No DSN needed when using auth token directly
   // But you can still use DSN for convenience
   dsn: process.env.SENTRY_DSN,
-  
+
   // Custom transport to add OAuth token
   transport: (options) => {
     return {
@@ -414,7 +421,7 @@ Sentry.init({
         const response = await fetch(options.url, {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
             "User-Agent": options.headers["User-Agent"],
           },
@@ -431,16 +438,16 @@ Sentry.init({
 
 ## Comparison Matrix
 
-| Feature | None (DSN) | OIDC | OAuth2 |
-|---------|------------|------|--------|
-| **User Authentication** | ❌ | ✅ | ✅ (via your app) |
-| **SSO Support** | ❌ | ✅ | ❌ |
-| **API Access** | ❌ (ingestion only) | ❌ | ✅ Full API |
-| **Delegated Access** | ❌ | ❌ | ✅ |
-| **Token Expiry** | N/A | Session-based | Access: 1h, Refresh: 90d |
-| **Revocation** | DSN rotation | IdP session | Token revocation |
-| **Audit Trail** | Limited | IdP logs | Sentry audit log |
-| **Setup Complexity** | Low | Medium | Medium-High |
+| Feature                 | None (DSN)          | OIDC          | OAuth2                   |
+| ----------------------- | ------------------- | ------------- | ------------------------ |
+| **User Authentication** | ❌                  | ✅            | ✅ (via your app)        |
+| **SSO Support**         | ❌                  | ✅            | ❌                       |
+| **API Access**          | ❌ (ingestion only) | ❌            | ✅ Full API              |
+| **Delegated Access**    | ❌                  | ❌            | ✅                       |
+| **Token Expiry**        | N/A                 | Session-based | Access: 1h, Refresh: 90d |
+| **Revocation**          | DSN rotation        | IdP session   | Token revocation         |
+| **Audit Trail**         | Limited             | IdP logs      | Sentry audit log         |
+| **Setup Complexity**    | Low                 | Medium        | Medium-High              |
 
 ---
 
@@ -527,14 +534,14 @@ Sentry.init({ transport });
 
 ## Troubleshooting
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| `invalid_grant` | Expired/invalid refresh token | Re-run authorization flow |
-| `invalid_scope` | Scope not granted | Re-authorize with correct scopes |
-| `redirect_uri_mismatch` | URI doesn't match registration | Update OAuth app or use exact URI |
-| `unauthorized_client` | Client not allowed for flow | Check client type (confidential/public) |
-| OIDC: `issuer mismatch` | Wrong issuer URL | Verify issuer matches IdP exactly |
-| OIDC: `claims missing` | IdP not sending required claims | Configure IdP to send email, profile |
+| Issue                   | Cause                           | Solution                                |
+| ----------------------- | ------------------------------- | --------------------------------------- |
+| `invalid_grant`         | Expired/invalid refresh token   | Re-run authorization flow               |
+| `invalid_scope`         | Scope not granted               | Re-authorize with correct scopes        |
+| `redirect_uri_mismatch` | URI doesn't match registration  | Update OAuth app or use exact URI       |
+| `unauthorized_client`   | Client not allowed for flow     | Check client type (confidential/public) |
+| OIDC: `issuer mismatch` | Wrong issuer URL                | Verify issuer matches IdP exactly       |
+| OIDC: `claims missing`  | IdP not sending required claims | Configure IdP to send email, profile    |
 
 ---
 
@@ -542,14 +549,14 @@ Sentry.init({ transport });
 
 ```typescript
 // Environment variables needed
-SENTRY_DSN="https://public@sentry.io/123"           // DSN (None)
-SENTRY_AUTH_TOKEN="sntrys_..."                       // Auth token (legacy)
-SENTRY_CLIENT_ID="oauth-client-id"                   // OAuth2
-SENTRY_CLIENT_SECRET="oauth-client-secret"           // OAuth2
-SENTRY_REDIRECT_URI="https://app.com/callback"       // OAuth2
-OIDC_ISSUER_URL="https://your-domain.okta.com"       // OIDC
-OIDC_CLIENT_ID="oidc-client-id"                      // OIDC
-OIDC_CLIENT_SECRET="oidc-client-secret"              // OIDC
+SENTRY_DSN = "https://public@sentry.io/123"; // DSN (None)
+SENTRY_AUTH_TOKEN = "sntrys_..."; // Auth token (legacy)
+SENTRY_CLIENT_ID = "oauth-client-id"; // OAuth2
+SENTRY_CLIENT_SECRET = "oauth-client-secret"; // OAuth2
+SENTRY_REDIRECT_URI = "https://app.com/callback"; // OAuth2
+OIDC_ISSUER_URL = "https://your-domain.okta.com"; // OIDC
+OIDC_CLIENT_ID = "oidc-client-id"; // OIDC
+OIDC_CLIENT_SECRET = "oidc-client-secret"; // OIDC
 ```
 
 ---

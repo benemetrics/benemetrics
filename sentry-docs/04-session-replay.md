@@ -4,15 +4,15 @@
 
 ## What Session Replay Captures (Frontend/Mobile)
 
-| Captured | Not Captured |
-|----------|--------------|
-| DOM mutations (HTML/CSS) | Video/audio |
-| Mouse clicks, scrolls, hovers | Password/credit card fields (masked by default) |
-| Form inputs (masked by default) | `data-sentry-ignore` elements |
-| Console logs & errors | WebGL/Canvas content (optional) |
-| Network requests (XHR/fetch) | LocalStorage/IndexedDB (optional) |
-| Viewport resize, orientation | |
-| Touch gestures (mobile) | |
+| Captured                        | Not Captured                                    |
+| ------------------------------- | ----------------------------------------------- |
+| DOM mutations (HTML/CSS)        | Video/audio                                     |
+| Mouse clicks, scrolls, hovers   | Password/credit card fields (masked by default) |
+| Form inputs (masked by default) | `data-sentry-ignore` elements                   |
+| Console logs & errors           | WebGL/Canvas content (optional)                 |
+| Network requests (XHR/fetch)    | LocalStorage/IndexedDB (optional)               |
+| Viewport resize, orientation    |                                                 |
+| Touch gestures (mobile)         |                                                 |
 
 ## Backend Role: Trace Context Propagation
 
@@ -30,13 +30,16 @@ app.get("/", (req, res) => {
   const transaction = Sentry.getCurrentScope().getTransaction();
   const traceHeaders = transaction?.toTraceparent();
   const traceState = transaction?.toTracestate();
-  
+
   // Option A: Inject into HTML template
   if (req.headers.accept?.includes("text/html")) {
-    const html = renderApp({ sentryTrace: traceHeaders, sentryTraceState: traceState });
+    const html = renderApp({
+      sentryTrace: traceHeaders,
+      sentryTraceState: traceState,
+    });
     return res.send(html);
   }
-  
+
   // Option B: Return in API response headers
   res.set({
     "sentry-trace": traceHeaders || "",
@@ -150,8 +153,12 @@ import * as Sentry from "@sentry/react"; // or @sentry/vue, @sentry/svelte, etc.
 import { Replay } from "@sentry/replay";
 
 // Get trace headers from server-rendered HTML or API response
-const sentryTrace = document.querySelector('meta[name="sentry-trace"]')?.content;
-const sentryTraceState = document.querySelector('meta[name="sentry-trace-state"]')?.content;
+const sentryTrace = document.querySelector(
+  'meta[name="sentry-trace"]',
+)?.content;
+const sentryTraceState = document.querySelector(
+  'meta[name="sentry-trace-state"]',
+)?.content;
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
@@ -160,18 +167,20 @@ Sentry.init({
       // Capture 100% of error sessions, 10% of all sessions
       replaysOnErrorSampleRate: 1.0,
       replaysSessionSampleRate: 0.1,
-      
+
       // Link to backend trace
       tracePropagationTargets: ["api.example.com"],
     }),
   ],
-  
+
   // Continue trace from backend
   initialScope: {
-    propagationContext: sentryTrace ? {
-      traceId: sentryTrace.split("-")[1],
-      parentSpanId: sentryTrace.split("-")[2],
-    } : undefined,
+    propagationContext: sentryTrace
+      ? {
+          traceId: sentryTrace.split("-")[1],
+          parentSpanId: sentryTrace.split("-")[2],
+        }
+      : undefined,
   },
 });
 ```
@@ -180,17 +189,17 @@ Sentry.init({
 <!-- HTML Template (any template engine) -->
 <!DOCTYPE html>
 <html>
-<head>
-  <!-- Sentry trace context from backend -->
-  <meta name="sentry-trace" content="{{sentryTrace}}">
-  <meta name="sentry-trace-state" content="{{sentryTraceState}}">
-  
-  <!-- Sentry SDK loads and reads these automatically -->
-  <script src="https://browser.sentry-cdn.com/.../bundle.min.js"></script>
-</head>
-<body>
-  <div id="root"></div>
-</body>
+  <head>
+    <!-- Sentry trace context from backend -->
+    <meta name="sentry-trace" content="{{sentryTrace}}" />
+    <meta name="sentry-trace-state" content="{{sentryTraceState}}" />
+
+    <!-- Sentry SDK loads and reads these automatically -->
+    <script src="https://browser.sentry-cdn.com/.../bundle.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>
 ```
 
@@ -273,29 +282,27 @@ Sentry.init({
   integrations: [
     Replay({
       // Sampling
-      replaysOnErrorSampleRate: 1.0,    // 100% sessions with errors
-      replaysSessionSampleRate: 0.1,    // 10% of all sessions
-      
+      replaysOnErrorSampleRate: 1.0, // 100% sessions with errors
+      replaysSessionSampleRate: 0.1, // 10% of all sessions
+
       // Performance
-      maxReplayDuration: 60000,         // Max 60 seconds
-      bufferSize: 1024 * 1024,          // 1MB buffer
-      
+      maxReplayDuration: 60000, // Max 60 seconds
+      bufferSize: 1024 * 1024, // 1MB buffer
+
       // Privacy
-      maskAllText: false,               // Mask text content
-      blockAllMedia: false,             // Block images/video
+      maskAllText: false, // Mask text content
+      blockAllMedia: false, // Block images/video
       mask: {
         // Custom masking rules (CSS selectors)
         ".credit-card": true,
         "[data-sensitive]": true,
       },
-      
+
       // Network
-      networkRequestBodies: true,       // Capture request bodies
-      networkResponseBodies: true,      // Capture response bodies
-      networkDetailAllowUrls: [
-        "https://api.example.com/**",
-      ],
-      
+      networkRequestBodies: true, // Capture request bodies
+      networkResponseBodies: true, // Capture response bodies
+      networkDetailAllowUrls: ["https://api.example.com/**"],
+
       // Callbacks
       beforeAddRecordingEvent(event) {
         // Filter/modify events before sending
@@ -313,8 +320,8 @@ Sentry.init({
 ```typescript
 // Automatic masking (enabled by default)
 Replay({
-  maskAllText: true,        // All text → ••••
-  blockAllMedia: true,      // Images/video → blocked
+  maskAllText: true, // All text → ••••
+  blockAllMedia: true, // Images/video → blocked
 });
 
 // Selective masking
@@ -351,17 +358,18 @@ Replay({
   <sensitive-component></sensitive-component>
 </div>
 
-<input data-sentry-mask>  <!-- Value masked but structure recorded -->
+<input data-sentry-mask />
+<!-- Value masked but structure recorded -->
 ```
 
 ## Cost Control
 
-| Setting | Default | Recommended |
-|---------|---------|-------------|
-| `replaysSessionSampleRate` | 0 | 0.01–0.1 (1–10%) |
-| `replaysOnErrorSampleRate` | 1.0 | 1.0 (keep) |
-| `maxReplayDuration` | 60000ms | 30000–60000ms |
-| `bufferSize` | 1MB | 512KB–2MB |
+| Setting                    | Default | Recommended      |
+| -------------------------- | ------- | ---------------- |
+| `replaysSessionSampleRate` | 0       | 0.01–0.1 (1–10%) |
+| `replaysOnErrorSampleRate` | 1.0     | 1.0 (keep)       |
+| `maxReplayDuration`        | 60000ms | 30000–60000ms    |
+| `bufferSize`               | 1MB     | 512KB–2MB        |
 
 **Estimated cost:** ~50KB/session → 10K sessions = ~500MB/month
 
@@ -375,23 +383,23 @@ import * as Sentry from "@sentry/node";
 
 export function addRequestContext(req, res, next) {
   const scope = Sentry.getCurrentScope();
-  
+
   scope.setContext("request", {
     method: req.method,
     url: req.url,
     headers: req.headers,
     query: req.query,
   });
-  
+
   if (req.user) {
     scope.setUser({ id: req.user.id, email: req.user.email });
   }
-  
+
   scope.setTags({
     route: req.path,
     user_agent: req.headers["user-agent"] || "unknown",
   });
-  
+
   next();
 }
 ```
@@ -473,7 +481,7 @@ curl -i http://localhost:3000/api/test
 
 ```javascript
 // In browser console
-Sentry.getCurrentScope().getPropagationContext()
+Sentry.getCurrentScope().getPropagationContext();
 // Should show traceId, spanId from backend
 ```
 
@@ -481,9 +489,13 @@ Sentry.getCurrentScope().getPropagationContext()
 
 ```tsx
 // Frontend button
-<button onClick={() => {
-  fetch("/api/trigger-error").then(r => r.json())
-}}>Trigger Backend Error</button>
+<button
+  onClick={() => {
+    fetch("/api/trigger-error").then((r) => r.json());
+  }}
+>
+  Trigger Backend Error
+</button>;
 
 // Backend route (any platform)
 app.get("/api/trigger-error", () => {
@@ -495,13 +507,13 @@ Check Sentry: Issue should show **both** backend trace + frontend replay.
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
+| Issue              | Solution                                                           |
+| ------------------ | ------------------------------------------------------------------ |
 | No replay in issue | Check `replaysOnErrorSampleRate: 1.0`, verify frontend SDK version |
-| Trace not linking | Ensure `sentry-trace` header passed from backend to frontend |
-| Replay not loading | Check CORS, network tab for `replay` endpoint errors |
-| High bandwidth | Lower `replaysSessionSampleRate`, reduce `maxReplayDuration` |
-| PII in replay | Add `mask` rules, use `data-sentry-ignore` |
+| Trace not linking  | Ensure `sentry-trace` header passed from backend to frontend       |
+| Replay not loading | Check CORS, network tab for `replay` endpoint errors               |
+| High bandwidth     | Lower `replaysSessionSampleRate`, reduce `maxReplayDuration`       |
+| PII in replay      | Add `mask` rules, use `data-sentry-ignore`                         |
 
 ## Architecture Summary
 

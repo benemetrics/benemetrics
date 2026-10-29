@@ -7,7 +7,12 @@
 
 import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { startTestServer, waitForEventListItem, ADMIN_TOKEN, type TestServer } from "./test-helpers";
+import {
+  startTestServer,
+  waitForEventListItem,
+  ADMIN_TOKEN,
+  type TestServer,
+} from "./test-helpers";
 
 let SERVER_URL = "";
 let testServer: TestServer | null = null;
@@ -21,7 +26,7 @@ interface TestResult {
 async function apiRequest(
   method: string,
   path: string,
-  body?: unknown
+  body?: unknown,
 ): Promise<Response> {
   const url = new URL(`${SERVER_URL}${path}`);
   const options: RequestInit = {
@@ -45,11 +50,15 @@ async function fetchEvent(eventId: string): Promise<TestResult | null> {
 
 async function fetchAllEvents(): Promise<TestResult[]> {
   const response = await apiRequest("GET", "/events");
-  const body = (await response.json()) as { data?: TestResult[] } | TestResult[];
+  const body = (await response.json()) as
+    { data?: TestResult[] } | TestResult[];
   return Array.isArray(body) ? body : (body.data ?? []);
 }
 
-async function waitForEvent(eventId: string, timeout: number = 5000): Promise<TestResult | null> {
+async function waitForEvent(
+  eventId: string,
+  timeout: number = 5000,
+): Promise<TestResult | null> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const event = await fetchEvent(eventId);
@@ -90,7 +99,9 @@ describe("Release Tracking (02-release-tracking.md)", () => {
   });
 
   it("sends events with release information and fetches it", async () => {
-    const eventId = Sentry.captureException(new Error("Error in release 2.3.1"));
+    const eventId = Sentry.captureException(
+      new Error("Error in release 2.3.1"),
+    );
     expect(eventId).toBeDefined();
 
     await Sentry.flush(5000);
@@ -174,7 +185,7 @@ describe("Release Tracking (02-release-tracking.md)", () => {
     const span = Sentry.startInactiveSpan({
       name: "GET /api/health",
       op: "http.server",
-      attributes: { "release": "2.3.1-abc123" },
+      attributes: { release: "2.3.1-abc123" },
     });
     expect(span).toBeDefined();
     const traceId = span.spanContext().traceId;

@@ -9,7 +9,7 @@ The `Bun.file()` function accepts a path and returns a `BunFile` instance. The `
 
 To read the file into a `Uint8Array` instance, retrieve the contents of the `BunFile` with `.bytes()`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const path = "/path/to/package.json";
 const file = Bun.file(path);
 
@@ -19,6 +19,6 @@ byteArray[0]; // first byteArray
 byteArray.length; // length of byteArray
 ```
 
-***
+---
 
 Refer to [API > Binary data > Typed arrays](/runtime/binary-data#typedarray) for more information on working with `Uint8Array` and other binary data formats in Bun.

@@ -14,21 +14,21 @@ Feature flags are **scoped to a project** (optionally narrowed to one of its app
 
 ### Feature Flag
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | UUID | Primary key |
-| `key` | string | Globally unique; used in evaluation requests |
-| `name` | string | Human-readable |
-| `description` | string | Optional |
-| `type` | enum | `boolean` \| `string` \| `number` \| `json` |
-| `defaultValue` | string/number/boolean | Fallback when no variant matches |
-| `variants` | JSON array | Weighted variants; defaults generated if omitted |
-| `targetingRules` | JSON array | Attribute-based rules (first match wins) |
-| `segments` | UUID array | References to audience segments |
-| `status` | enum | `draft` \| `active` \| `paused` \| `archived` |
-| `rolloutPercentage` | integer | 0–100; outside rollout returns control variant |
-| `experiment` | JSON object? | Experiment configuration (see below) |
-| `createdAt` / `updatedAt` | ISO strings | Timestamps |
+| Field                     | Type                  | Notes                                            |
+| ------------------------- | --------------------- | ------------------------------------------------ |
+| `id`                      | UUID                  | Primary key                                      |
+| `key`                     | string                | Globally unique; used in evaluation requests     |
+| `name`                    | string                | Human-readable                                   |
+| `description`             | string                | Optional                                         |
+| `type`                    | enum                  | `boolean` \| `string` \| `number` \| `json`      |
+| `defaultValue`            | string/number/boolean | Fallback when no variant matches                 |
+| `variants`                | JSON array            | Weighted variants; defaults generated if omitted |
+| `targetingRules`          | JSON array            | Attribute-based rules (first match wins)         |
+| `segments`                | UUID array            | References to audience segments                  |
+| `status`                  | enum                  | `draft` \| `active` \| `paused` \| `archived`    |
+| `rolloutPercentage`       | integer               | 0–100; outside rollout returns control variant   |
+| `experiment`              | JSON object?          | Experiment configuration (see below)             |
+| `createdAt` / `updatedAt` | ISO strings           | Timestamps                                       |
 
 **Uniqueness**: `key` unique per scope (`project_id`, `app_id`).
 
@@ -45,14 +45,15 @@ Feature flags are **scoped to a project** (optionally narrowed to one of its app
 }
 ```
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `key` | string | Unique within flag |
-| `name` | string | Human-readable |
-| `value` | any | Typed per flag `type` |
+| Field    | Type    | Notes                              |
+| -------- | ------- | ---------------------------------- |
+| `key`    | string  | Unique within flag                 |
+| `name`   | string  | Human-readable                     |
+| `value`  | any     | Typed per flag `type`              |
 | `weight` | integer | 0–100; sums to 100 across variants |
 
 **Defaults** (when `variants` omitted):
+
 - `boolean` type → `control`/`treatment` 50/50
 - Other types → single `default` variant at 100%
 
@@ -67,11 +68,11 @@ Feature flags are **scoped to a project** (optionally narrowed to one of its app
 }
 ```
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `attribute` | string | Dot-path: `user.*` or `context.*` |
-| `operator` | enum | See supported operators below |
-| `value` | any | Comparison value |
+| Field        | Type    | Notes                                                                     |
+| ------------ | ------- | ------------------------------------------------------------------------- |
+| `attribute`  | string  | Dot-path: `user.*` or `context.*`                                         |
+| `operator`   | enum    | See supported operators below                                             |
+| `value`      | any     | Comparison value                                                          |
 | `variantKey` | string? | If present: assignment rule. If absent: eligibility gate (all must match) |
 
 **Supported operators**: `equals`, `not_equals`, `contains`, `not_contains`, `starts_with`, `ends_with`, `in`, `not_in`, `greater_than`, `less_than`, `greater_than_or_equal`, `less_than_or_equal`.
@@ -80,13 +81,13 @@ Feature flags are **scoped to a project** (optionally narrowed to one of its app
 
 ### Segment
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | UUID | Primary key |
-| `name` | string | Human-readable |
-| `description` | string | Optional |
-| `rules` | JSON array | Same targeting rule schema (no `variantKey`) |
-| `createdAt` | ISO string | |
+| Field         | Type       | Notes                                        |
+| ------------- | ---------- | -------------------------------------------- |
+| `id`          | UUID       | Primary key                                  |
+| `name`        | string     | Human-readable                               |
+| `description` | string     | Optional                                     |
+| `rules`       | JSON array | Same targeting rule schema (no `variantKey`) |
+| `createdAt`   | ISO string |                                              |
 
 **Evaluation**: All rules in a segment must match (AND). If matched, weighted variant assignment by hashed `user.id`.
 
@@ -106,15 +107,15 @@ Feature flags are **scoped to a project** (optionally narrowed to one of its app
 }
 ```
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `enabled` | boolean | Activates experiment behavior |
-| `hypothesis` | string | Description for reporting |
-| `primaryMetric` | string | Metric name for statistical comparison |
-| `confidenceLevel` | number | 0.90 / 0.95 / 0.99 (default 0.95) |
+| Field               | Type    | Notes                                               |
+| ------------------- | ------- | --------------------------------------------------- |
+| `enabled`           | boolean | Activates experiment behavior                       |
+| `hypothesis`        | string  | Description for reporting                           |
+| `primaryMetric`     | string  | Metric name for statistical comparison              |
+| `confidenceLevel`   | number  | 0.90 / 0.95 / 0.99 (default 0.95)                   |
 | `minimumSampleSize` | integer | Minimum participants per variant for recommendation |
-| `status` | enum | `running` \| `paused` \| `completed` |
-| `guardrailMetrics` | array | Safety metrics that can auto-pause the flag |
+| `status`            | enum    | `running` \| `paused` \| `completed`                |
+| `guardrailMetrics`  | array   | Safety metrics that can auto-pause the flag         |
 
 ---
 
@@ -147,6 +148,7 @@ Deterministic, stateless, consistent across evaluations.
 ### Assignment Persistence
 
 When experiment enabled:
+
 1. Check `experiment_assignments` for existing `(flagId, userId)`
 2. If exists: return stored variant (sticky assignment)
 3. If not: run evaluation pipeline, persist assignment with context snapshot
@@ -155,6 +157,7 @@ When experiment enabled:
 ### Metric Recording
 
 `POST /api/sentry/flags/experiment/track`:
+
 - Validates assignment exists for user
 - Records metric row: `flagId`, `variantKey`, `userId`, `metricName`, `value` (default 1)
 - **Guardrail check**: If metric matches a guardrail with `action: "pause"` and `value > threshold`, flag status → `paused` immediately
@@ -162,6 +165,7 @@ When experiment enabled:
 ### Statistical Analysis
 
 Results computed on demand (`GET /api/admin/experiments/:flagId/results`):
+
 - Participants per variant: `COUNT(*)` from `experiment_assignments`
 - Conversions per variant: `COUNT(*)` from `experiment_metrics` where `metricName = primaryMetric`
 - **Wilson score interval** for conversion rate confidence intervals
@@ -189,6 +193,7 @@ POST /api/sentry/flags/evaluate
   flags: string[]
 }
 ```
+
 → Returns `{ evaluations: Array<{ flagKey, variantKey, value, reason, errorCode?, assignmentId? }>, evaluatedAt }`
 
 ### Experiment Tracking
@@ -197,6 +202,7 @@ POST /api/sentry/flags/evaluate
 POST /api/sentry/flags/experiment/track
 { flagKey, userId, metric, value? }
 ```
+
 → Records metric; may trigger guardrail auto-pause.
 
 ### SSE Push Stream
@@ -204,6 +210,7 @@ POST /api/sentry/flags/experiment/track
 ```
 GET /api/sentry/flags/stream?flags=key1,key2
 ```
+
 - Sends `snapshot` on connect (full flag configs)
 - Sends `configuration_changed` on flag CRUD/status change (the change is published to the `sentry.flags.changed` stream subject and fanned out by every instance)
 - Heartbeat `: ping` every 20s
@@ -215,7 +222,9 @@ GET /api/sentry/flags/stream?flags=key1,key2
 POST /v1/flags/:key
 { targetingKey, context? }
 ```
+
 → Single-flag response: `{ variant, value, reason, errorCode? }`
+
 - Uses same evaluation engine with assignment persistence
 
 ---
@@ -224,39 +233,41 @@ POST /v1/flags/:key
 
 Prefix: `/api/admin/feature-flags`
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/feature-flags` | Create flag (status `draft`) |
-| `GET` | `/feature-flags` | List (filter: `status`, `type`, `search`; paginated) |
-| `GET` | `/feature-flags/:id` | Get one |
-| `PATCH` | `/feature-flags/:id` | Update fields |
-| `POST` | `/feature-flags/:id/status` | Change status (`draft|active|paused|archived`) |
-| `DELETE` | `/feature-flags/:id` | Delete — **draft only** |
+| Method   | Path                        | Description                                          |
+| -------- | --------------------------- | ---------------------------------------------------- |
+| `POST`   | `/feature-flags`            | Create flag (status `draft`)                         |
+| `GET`    | `/feature-flags`            | List (filter: `status`, `type`, `search`; paginated) |
+| `GET`    | `/feature-flags/:id`        | Get one                                              |
+| `PATCH`  | `/feature-flags/:id`        | Update fields                                        |
+| `POST`   | `/feature-flags/:id/status` | Change status (`draft                                | active | paused | archived`) |
+| `DELETE` | `/feature-flags/:id`        | Delete — **draft only**                              |
 
 ### Experiments (Admin-Token Only)
 
 Prefix: `/api/admin/experiments`
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/:flagId/start` | Start the experiment (`status: "running"`) |
-| `POST` | `/:flagId/stop` | Stop the experiment (`status: "completed"`) |
-| `POST` | `/:flagId/promote` | Promote the recommended winner (weight 100) |
-| `GET` | `/:flagId/results` | Results dashboard: participants, conversions, Wilson CI, z-test p-value, recommendation |
-| `GET` | `/:flagId/users` | Assignments per variant (filter `variantKey`, `search`; paginated) |
-| `GET` | `/:flagId/users/:userId` | One user's stored assignment |
+| Method | Path                     | Description                                                                             |
+| ------ | ------------------------ | --------------------------------------------------------------------------------------- |
+| `POST` | `/:flagId/start`         | Start the experiment (`status: "running"`)                                              |
+| `POST` | `/:flagId/stop`          | Stop the experiment (`status: "completed"`)                                             |
+| `POST` | `/:flagId/promote`       | Promote the recommended winner (weight 100)                                             |
+| `GET`  | `/:flagId/results`       | Results dashboard: participants, conversions, Wilson CI, z-test p-value, recommendation |
+| `GET`  | `/:flagId/users`         | Assignments per variant (filter `variantKey`, `search`; paginated)                      |
+| `GET`  | `/:flagId/users/:userId` | One user's stored assignment                                                            |
 
 > The SDK-facing surface evaluates and tracks only. Experiment results and
 > participant identities are admin-only — they are never served from
 > `/api/sentry/flags/*`.
 
 **Lifecycle**:
+
 - `draft` → `active` → `paused` / `archived`
 - `active` → `paused` via status endpoint or guardrail auto-pause
 - `archived` is terminal
 - Only `draft` flags deletable (safety)
 
 **Flag body** (validated by ArkType):
+
 ```json
 {
   "key": "string",
@@ -276,18 +287,18 @@ Prefix: `/api/admin/experiments`
 
 ## 7. Invariants (Must Not Break)
 
-| Invariant | Enforcement |
-|-----------|-------------|
-| Flag key unique per scope | Unique index on `(project_id, app_id, key)` |
-| Variants weight sum = 100 | Validation on create/update |
-| Targeting rule attribute path valid (`user.*` or `context.*`) | Schema validation |
-| Segment rules use same operator set as targeting rules | Shared type; validation |
-| Experiment assignment sticky | Unique index on `(flagId, userId)`; read-before-write with race handling |
-| Guardrail auto-pause atomic | Status update in same transaction as metric record |
-| Statistical methods use Wilson interval + z-test | Pure functions in `backend/feature-flags/stats.ts` |
-| Non-active flags never assign treatment variants | Evaluation returns control immediately |
-| SSE stream sends snapshot on connect | `sendSnapshot` called in stream `start` |
-| OpenFeature endpoint compatible wire format | Returns `{ variant, value, reason, errorCode? }` |
+| Invariant                                                     | Enforcement                                                              |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Flag key unique per scope                                     | Unique index on `(project_id, app_id, key)`                              |
+| Variants weight sum = 100                                     | Validation on create/update                                              |
+| Targeting rule attribute path valid (`user.*` or `context.*`) | Schema validation                                                        |
+| Segment rules use same operator set as targeting rules        | Shared type; validation                                                  |
+| Experiment assignment sticky                                  | Unique index on `(flagId, userId)`; read-before-write with race handling |
+| Guardrail auto-pause atomic                                   | Status update in same transaction as metric record                       |
+| Statistical methods use Wilson interval + z-test              | Pure functions in `backend/feature-flags/stats.ts`                       |
+| Non-active flags never assign treatment variants              | Evaluation returns control immediately                                   |
+| SSE stream sends snapshot on connect                          | `sendSnapshot` called in stream `start`                                  |
+| OpenFeature endpoint compatible wire format                   | Returns `{ variant, value, reason, errorCode? }`                         |
 
 ---
 

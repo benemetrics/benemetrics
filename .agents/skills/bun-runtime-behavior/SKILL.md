@@ -72,7 +72,7 @@ test("fast test", () => {
 }, 1000); // 1 second timeout
 
 test("slow test", async () => {
-  await new Promise(resolve => setTimeout(resolve, 8000));
+  await new Promise((resolve) => setTimeout(resolve, 8000));
 }, 10000); // 10 second timeout
 ```
 
@@ -137,7 +137,7 @@ Promise.reject(new Error("Unhandled rejection"));
 You can set up custom error handlers in your test setup:
 
 ```ts title="test-setup.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-process.on("uncaughtException", error => {
+process.on("uncaughtException", (error) => {
   console.error("Uncaught Exception:", error);
   process.exit(1);
 });
@@ -191,7 +191,7 @@ bun test --env-file .env.test
 
 ### Installation-related Flags
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 # Affect any network requests or auto-installs during test execution
 bun test --prefer-offline
 bun test --frozen-lockfile
@@ -260,7 +260,18 @@ vi.fn();
 You can also import them explicitly if you prefer:
 
 ```ts title="test.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-import { test, it, describe, expect, beforeAll, beforeEach, afterAll, afterEach, jest, vi } from "bun:test";
+import {
+  test,
+  it,
+  describe,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterAll,
+  afterEach,
+  jest,
+  vi,
+} from "bun:test";
 ```
 
 ## Process Integration
@@ -269,9 +280,9 @@ import { test, it, describe, expect, beforeAll, beforeEach, afterAll, afterEach,
 
 `bun test` uses standard exit codes:
 
-* `0`: All tests passed, no unhandled errors
-* `1`: Test failures occurred
-* `>1`: Number of unhandled errors (even if tests passed)
+- `0`: All tests passed, no unhandled errors
+- `1`: Test failures occurred
+- `>1`: Number of unhandled errors (even if tests passed)
 
 ### Signal Handling
 
@@ -307,15 +318,15 @@ if (process.env.CI) {
 
 The test runner runs all tests in a single process by default. This provides:
 
-* **Faster startup** - No need to spawn multiple processes
-* **Shared memory** - Efficient resource usage
-* **Simple debugging** - All tests in one process
+- **Faster startup** - No need to spawn multiple processes
+- **Shared memory** - Efficient resource usage
+- **Simple debugging** - All tests in one process
 
 However, this means:
 
-* Tests share global state (use lifecycle hooks to clean up)
-* One test crash can affect others
-* No true parallelization of individual tests
+- Tests share global state (use lifecycle hooks to clean up)
+- One test crash can affect others
+- No true parallelization of individual tests
 
 ### Memory Management
 

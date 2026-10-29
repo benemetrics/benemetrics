@@ -30,7 +30,7 @@ serve({
 });
 ```
 
-***
+---
 
 <Note>
   **Linux only** — Windows and macOS ignore the `reusePort` option. This is an operating system limitation with
@@ -66,6 +66,6 @@ process.on("SIGINT", kill);
 process.on("exit", kill);
 ```
 
-***
+---
 
 Bun has also implemented the `node:cluster` module, but this is a faster, simple, and limited alternative.

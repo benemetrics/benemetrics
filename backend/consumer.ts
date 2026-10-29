@@ -5,12 +5,7 @@
 
 import { processIngestedEvent } from "./alerting/evaluation";
 import { parseIssueDigests } from "./issues/tracking";
-import {
-  jetstream2,
-  nats,
-  SIDE_EFFECTS_CONSUMER,
-  STREAM_NAME,
-} from "./nats";
+import { jetstream2, nats, SIDE_EFFECTS_CONSUMER, STREAM_NAME } from "./nats";
 import type { SentryEventMessage } from "./protocol/events";
 import { recordReleaseFromEvent } from "./releases/tracking";
 
@@ -19,7 +14,13 @@ import { recordReleaseFromEvent } from "./releases/tracking";
 async function applyEventMessage(event: SentryEventMessage): Promise<void> {
   if (!event.appId) return;
   const digests = parseIssueDigests(event.issueEvents, event.envelopeItems);
-  processIngestedEvent(event.appId, digests, event.receivedAt, event.id, event.projectId);
+  processIngestedEvent(
+    event.appId,
+    digests,
+    event.receivedAt,
+    event.id,
+    event.projectId,
+  );
   try {
     await recordReleaseFromEvent(event);
   } catch (err) {
@@ -40,7 +41,9 @@ void (async () => {
     try {
       const payload = message.string();
       // Handle batched events (JSONEachRow format)
-      const lines = payload.split("\n").filter((line) => line.trim().length > 0);
+      const lines = payload
+        .split("\n")
+        .filter((line) => line.trim().length > 0);
       for (const line of lines) {
         await applyEventMessage(JSON.parse(line) as SentryEventMessage);
       }

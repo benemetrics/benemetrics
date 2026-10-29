@@ -3,7 +3,7 @@ import { sourceMapTokenDAO, hashUploadToken } from "db/dao/source-map-tokens";
 import type { SourceMapTokenAuthRecord } from "db/dao/source-map-tokens";
 import { unauthorized } from "backend/errors";
 import * as jose from "jose";
-import * as client from 'openid-client';
+import * as client from "openid-client";
 
 export interface SentryAuthTarget {
   publicKey: string;
@@ -20,19 +20,24 @@ export interface UploadAuthResult {
   token?: SourceMapTokenAuthRecord;
 }
 
-
 const allowInsecure = env.OIDC_ALLOW_INSECURE_HTTP === "true";
-const config = env.OIDC_ISSUER && env.OIDC_CLIENT_ID
-  ? await client.discovery(
-    new URL(env.OIDC_ISSUER),
-    env.OIDC_CLIENT_ID,
-    env.OIDC_CLIENT_SECRET,
-    undefined,
-    allowInsecure ? { execute: [client.allowInsecureRequests] } : undefined,
-  )
-  : null
+const config =
+  env.OIDC_ISSUER && env.OIDC_CLIENT_ID
+    ? await client.discovery(
+        new URL(env.OIDC_ISSUER),
+        env.OIDC_CLIENT_ID,
+        env.OIDC_CLIENT_SECRET,
+        undefined,
+        allowInsecure ? { execute: [client.allowInsecureRequests] } : undefined,
+      )
+    : null;
 const jwksURI = config?.serverMetadata().jwks_uri;
-const jwks = jwksURI ? jose.createRemoteJWKSet(new URL(jwksURI), { timeoutDuration: 5_000, cacheMaxAge: 600_000 }) : null;
+const jwks = jwksURI
+  ? jose.createRemoteJWKSet(new URL(jwksURI), {
+      timeoutDuration: 5_000,
+      cacheMaxAge: 600_000,
+    })
+  : null;
 
 // The groups claim, split on the delimiters the common IdPs use.
 function readGroups(payload: jose.JWTPayload) {
@@ -43,9 +48,11 @@ function readGroups(payload: jose.JWTPayload) {
     : typeof raw === "string"
       ? raw.split(/[\s,;|]+/)
       : [];
-  return new Set(list
-    .map((group) => String(group).trim().toLowerCase())
-    .filter((group) => group.length > 0));
+  return new Set(
+    list
+      .map((group) => String(group).trim().toLowerCase())
+      .filter((group) => group.length > 0),
+  );
 }
 
 const verifyWithIdP = async (token: string) => {
@@ -67,9 +74,15 @@ const verifyWithIdP = async (token: string) => {
     console.log(error);
     return null;
   }
-}
+};
 
-export const resolveIdentity = async ({ request, store }: { request: Request, store: { allowedGroups?: Set<string> } }) => {
+export const resolveIdentity = async ({
+  request,
+  store,
+}: {
+  request: Request;
+  store: { allowedGroups?: Set<string> };
+}) => {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) throw unauthorized();
   const allowedGroups = store.allowedGroups ?? new Set();
@@ -79,21 +92,27 @@ export const resolveIdentity = async ({ request, store }: { request: Request, st
   switch (type) {
     case "Bearer": {
       const identity = await verifyWithIdP(token);
-      if (identity && allowedGroups.intersection(identity.groups).size > 0) return { user: identity };
+      if (identity && allowedGroups.intersection(identity.groups).size > 0)
+        return { user: identity };
       throw unauthorized();
     }
-    default: throw unauthorized();
+    default:
+      throw unauthorized();
   }
-}
+};
 
 // Sentry SDK authentication: the DSN public key is sent either as the
 // `sentry_key` query parameter or inside the `X-Sentry-Auth` header.
-export function validateAuth(request: Request, target: SentryAuthTarget): SentryAuthResult {
+export function validateAuth(
+  request: Request,
+  target: SentryAuthTarget,
+): SentryAuthResult {
   const authHeader = request.headers.get("X-Sentry-Auth");
   const url = new URL(request.url);
 
   const sentryKey =
-    url.searchParams.get("sentry_key") ?? authHeader?.match(/sentry_key=([^,]+)/)?.[1];
+    url.searchParams.get("sentry_key") ??
+    authHeader?.match(/sentry_key=([^,]+)/)?.[1];
 
   if (!sentryKey) return { valid: false };
 
@@ -102,7 +121,9 @@ export function validateAuth(request: Request, target: SentryAuthTarget): Sentry
 
 // Tokens are scoped to one project and stored hashed;
 // only the bearer (SENTRY_AUTH_TOKEN) or X-Upload-Token header is accepted.
-export async function validateUploadAuth(request: Request): Promise<UploadAuthResult> {
+export async function validateUploadAuth(
+  request: Request,
+): Promise<UploadAuthResult> {
   const bearer = request.headers.get("Authorization");
   const raw =
     (bearer?.startsWith("Bearer ") ? bearer.slice(7) : undefined) ??
@@ -111,8 +132,7 @@ export async function validateUploadAuth(request: Request): Promise<UploadAuthRe
   if (!raw) return { valid: false, error: "Missing upload token" };
   const token = await sourceMapTokenDAO.findByHash(hashUploadToken(raw));
   if (!token) return { valid: false, error: "Invalid upload token" };
-  if (token.revokedAt)
-    return { valid: false, error: "Revoked upload token" };
+  if (token.revokedAt) return { valid: false, error: "Revoked upload token" };
   if (token.expiresAt && token.expiresAt <= new Date().toISOString())
     return { valid: false, error: "Expired upload token" };
 

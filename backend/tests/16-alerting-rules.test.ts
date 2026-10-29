@@ -20,7 +20,12 @@ import {
 } from "../clickhouse";
 import type { MetricSample } from "../protocol/metrics";
 import { issueDAO } from "db/dao/issues";
-import { handleFetch as fetch, TEST_ORIGIN, waitForStoredEvent, ADMIN_TOKEN } from "./test-helpers";
+import {
+  handleFetch as fetch,
+  TEST_ORIGIN,
+  waitForStoredEvent,
+  ADMIN_TOKEN,
+} from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
 
@@ -29,7 +34,8 @@ let webhookServer: any;
 let webhookUrl = "";
 const webhookCalls: Array<{ url: string; body: Record<string, unknown> }> = [];
 
-const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+const uniq = () =>
+  Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
 async function apiRequest(
   method: string,
@@ -58,9 +64,15 @@ interface AlertApp {
 
 async function makeApp(): Promise<AlertApp> {
   const project = await json<{ id: string }>(
-    await apiRequest("POST", "/api/admin/projects", { name: `AlertProj-${uniq()}` }),
+    await apiRequest("POST", "/api/admin/projects", {
+      name: `AlertProj-${uniq()}`,
+    }),
   );
-  const appRecord = await json<{ id: string; ingestKey: string; publicKey: string }>(
+  const appRecord = await json<{
+    id: string;
+    ingestKey: string;
+    publicKey: string;
+  }>(
     await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `AlertApp-${uniq()}`,
     }),
@@ -77,7 +89,10 @@ async function makeApp(): Promise<AlertApp> {
 // evaluation ordered after any ingestion-triggered issue tracking
 // (cooldowns keep it one-shot). The sweeper reads the samples, so waiting
 // for them is what makes the evaluation deterministic.
-async function ingestEvent(app: AlertApp, event: Record<string, unknown>): Promise<Response> {
+async function ingestEvent(
+  app: AlertApp,
+  event: Record<string, unknown>,
+): Promise<Response> {
   const response = await fetch(
     `${baseUrl}/api/${app.ingestKey}/store/?sentry_key=${encodeURIComponent(app.publicKey)}`,
     {
@@ -127,11 +142,18 @@ async function waitFor<T>(
   return last;
 }
 
-function errorEvent(id: string, message: string, level = "error"): Record<string, unknown> {
+function errorEvent(
+  id: string,
+  message: string,
+  level = "error",
+): Record<string, unknown> {
   return { event_id: id, level, message, environment: "test" };
 }
 
-function transactionEvent(id: string, duration: number): Record<string, unknown> {
+function transactionEvent(
+  id: string,
+  duration: number,
+): Record<string, unknown> {
   return {
     event_id: id,
     transaction: "GET /api/test",
@@ -201,16 +223,26 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(detail.config.url).toBe(webhookUrl);
 
       const patched = await json<{ config: Record<string, unknown> }>(
-        await apiRequest("PATCH", `/api/admin/alerting/channels/${created.id}`, {
-          config: { url: `${webhookUrl}?patched=1` },
-        }),
+        await apiRequest(
+          "PATCH",
+          `/api/admin/alerting/channels/${created.id}`,
+          {
+            config: { url: `${webhookUrl}?patched=1` },
+          },
+        ),
       );
       expect(patched.config.url).toBe(`${webhookUrl}?patched=1`);
 
-      const removed = await apiRequest("DELETE", `/api/admin/alerting/channels/${created.id}`);
+      const removed = await apiRequest(
+        "DELETE",
+        `/api/admin/alerting/channels/${created.id}`,
+      );
       expect(removed.status).toBe(200);
 
-      const gone = await apiRequest("GET", `/api/admin/alerting/channels/${created.id}`);
+      const gone = await apiRequest(
+        "GET",
+        `/api/admin/alerting/channels/${created.id}`,
+      );
       expect(gone.status).toBe(404);
     });
 
@@ -222,9 +254,30 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
           config: { url: webhookUrl },
         }),
       );
-      expect((await apiRequest("DELETE", `/api/admin/alerting/channels/${channel.id}`)).status).toBe(200);
-      expect((await apiRequest("DELETE", `/api/admin/alerting/channels/${channel.id}`)).status).toBe(200);
-      expect((await apiRequest("DELETE", `/api/admin/alerting/channels/${crypto.randomUUID()}`)).status).toBe(200);
+      expect(
+        (
+          await apiRequest(
+            "DELETE",
+            `/api/admin/alerting/channels/${channel.id}`,
+          )
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await apiRequest(
+            "DELETE",
+            `/api/admin/alerting/channels/${channel.id}`,
+          )
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await apiRequest(
+            "DELETE",
+            `/api/admin/alerting/channels/${crypto.randomUUID()}`,
+          )
+        ).status,
+      ).toBe(200);
 
       const rule = await json<{ id: string }>(
         await apiRequest("POST", "/api/admin/alerting/rules", {
@@ -235,9 +288,22 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
           windowSeconds: 60,
         }),
       );
-      expect((await apiRequest("DELETE", `/api/admin/alerting/rules/${rule.id}`)).status).toBe(200);
-      expect((await apiRequest("DELETE", `/api/admin/alerting/rules/${rule.id}`)).status).toBe(200);
-      expect((await apiRequest("DELETE", `/api/admin/alerting/rules/${crypto.randomUUID()}`)).status).toBe(200);
+      expect(
+        (await apiRequest("DELETE", `/api/admin/alerting/rules/${rule.id}`))
+          .status,
+      ).toBe(200);
+      expect(
+        (await apiRequest("DELETE", `/api/admin/alerting/rules/${rule.id}`))
+          .status,
+      ).toBe(200);
+      expect(
+        (
+          await apiRequest(
+            "DELETE",
+            `/api/admin/alerting/rules/${crypto.randomUUID()}`,
+          )
+        ).status,
+      ).toBe(200);
     });
 
     it("rejects duplicate channel names within the same scope (409)", async () => {
@@ -285,15 +351,22 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(created).toHaveLength(1);
 
       // Keep the global scope clean for later tests.
-      await apiRequest("DELETE", `/api/admin/alerting/channels/${created[0]!.id}`);
+      await apiRequest(
+        "DELETE",
+        `/api/admin/alerting/channels/${created[0]!.id}`,
+      );
     });
 
     it("rejects an unknown channel type (400)", async () => {
-      const response = await apiRequest("POST", "/api/admin/alerting/channels", {
-        name: `bad-${uniq()}`,
-        type: "carrier-pigeon",
-        config: {},
-      });
+      const response = await apiRequest(
+        "POST",
+        "/api/admin/alerting/channels",
+        {
+          name: `bad-${uniq()}`,
+          type: "carrier-pigeon",
+          config: {},
+        },
+      );
       expect(response.status).toBe(400);
     });
   });
@@ -322,16 +395,28 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
 
       const scopedChannels = await json<{
         data: Array<{ name: string; appId: string | null }>;
-      }>(await apiRequest("GET", `/api/admin/alerting/channels?appId=${appRecord.id}`));
+      }>(
+        await apiRequest(
+          "GET",
+          `/api/admin/alerting/channels?appId=${appRecord.id}`,
+        ),
+      );
       expect(scopedChannels.data).toHaveLength(1);
       expect(scopedChannels.data[0]!.name).toBe(`shared-${tag}`);
       expect(scopedChannels.data[0]!.appId).toBe(appRecord.id);
 
       const effective = await json<{
         channels: Array<{ name: string; config: Record<string, unknown> }>;
-      }>(await apiRequest("GET", `/api/admin/alerting/apps/${appRecord.id}/effective`));
+      }>(
+        await apiRequest(
+          "GET",
+          `/api/admin/alerting/apps/${appRecord.id}/effective`,
+        ),
+      );
 
-      const shared = effective.channels.find((channel) => channel.name === `shared-${tag}`);
+      const shared = effective.channels.find(
+        (channel) => channel.name === `shared-${tag}`,
+      );
       expect(shared).toBeDefined();
       expect(shared!.config.scope).toBe("app");
 
@@ -353,15 +438,20 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         type: "webhook",
         config: { url: webhookUrl, scope: "global" },
       });
-      const projectScoped = await apiRequest("POST", "/api/admin/alerting/channels", {
-        name: `shared-${tag}`,
-        type: "webhook",
-        config: { url: webhookUrl, scope: "project" },
-        projectId: appRecord.projectId,
-      });
+      const projectScoped = await apiRequest(
+        "POST",
+        "/api/admin/alerting/channels",
+        {
+          name: `shared-${tag}`,
+          type: "webhook",
+          config: { url: webhookUrl, scope: "project" },
+          projectId: appRecord.projectId,
+        },
+      );
       expect(projectScoped.status).toBe(200);
       expect(
-        ((await projectScoped.json()) as { projectId: string | null }).projectId,
+        ((await projectScoped.json()) as { projectId: string | null })
+          .projectId,
       ).toBe(appRecord.projectId);
 
       const effective = await json<{
@@ -370,9 +460,16 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
           config: Record<string, unknown>;
           projectId: string | null;
         }>;
-      }>(await apiRequest("GET", `/api/admin/alerting/apps/${appRecord.id}/effective`));
+      }>(
+        await apiRequest(
+          "GET",
+          `/api/admin/alerting/apps/${appRecord.id}/effective`,
+        ),
+      );
 
-      const shared = effective.channels.find((channel) => channel.name === `shared-${tag}`);
+      const shared = effective.channels.find(
+        (channel) => channel.name === `shared-${tag}`,
+      );
       expect(shared).toBeDefined();
       expect(shared!.config.scope).toBe("project");
       expect(shared!.projectId).toBe(appRecord.projectId);
@@ -400,7 +497,12 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
 
       const scopedRules = await json<{
         data: Array<{ name: string; appId: string | null; threshold: number }>;
-      }>(await apiRequest("GET", `/api/admin/alerting/rules?appId=${appRecord.id}`));
+      }>(
+        await apiRequest(
+          "GET",
+          `/api/admin/alerting/rules?appId=${appRecord.id}`,
+        ),
+      );
       expect(scopedRules.data).toHaveLength(1);
       expect(scopedRules.data[0]!.name).toBe(`errors-${tag}`);
       expect(scopedRules.data[0]!.appId).toBe(appRecord.id);
@@ -408,7 +510,12 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
 
       const effective = await json<{
         rules: Array<{ name: string; threshold: number }>;
-      }>(await apiRequest("GET", `/api/admin/alerting/apps/${appRecord.id}/effective`));
+      }>(
+        await apiRequest(
+          "GET",
+          `/api/admin/alerting/apps/${appRecord.id}/effective`,
+        ),
+      );
 
       const rule = effective.rules.find((r) => r.name === `errors-${tag}`);
       expect(rule).toBeDefined();
@@ -473,7 +580,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
 
       // The editor PATCHes the whole definition: the tag filters and the
       // message template are set and cleared through the same surface.
-      const filtered = await json<{ filters: { tags?: Record<string, string> }; message: string | null }>(
+      const filtered = await json<{
+        filters: { tags?: Record<string, string> };
+        message: string | null;
+      }>(
         await apiRequest("PATCH", `/api/admin/alerting/rules/${created.id}`, {
           filters: { tags: { tier: "gold" } },
           message: "{{rule.name}}: {{metric}} is {{value}}",
@@ -482,7 +592,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(filtered.filters).toEqual({ tags: { tier: "gold" } });
       expect(filtered.message).toBe("{{rule.name}}: {{metric}} is {{value}}");
 
-      const cleared = await json<{ filters: { tags?: Record<string, string> }; message: string | null }>(
+      const cleared = await json<{
+        filters: { tags?: Record<string, string> };
+        message: string | null;
+      }>(
         await apiRequest("PATCH", `/api/admin/alerting/rules/${created.id}`, {
           filters: { tags: {} },
           message: null,
@@ -491,10 +604,16 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       expect(cleared.filters).toEqual({});
       expect(cleared.message).toBe(null);
 
-      const removed = await apiRequest("DELETE", `/api/admin/alerting/rules/${created.id}`);
+      const removed = await apiRequest(
+        "DELETE",
+        `/api/admin/alerting/rules/${created.id}`,
+      );
       expect(removed.status).toBe(200);
 
-      const gone = await apiRequest("GET", `/api/admin/alerting/rules/${created.id}`);
+      const gone = await apiRequest(
+        "GET",
+        `/api/admin/alerting/rules/${created.id}`,
+      );
       expect(gone.status).toBe(404);
     });
 
@@ -561,7 +680,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<Record<string, unknown>> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length > 0,
       );
@@ -609,7 +731,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         }),
       );
 
-      const created = await json<{ thresholdFactor: number | null; threshold: number | null }>(
+      const created = await json<{
+        thresholdFactor: number | null;
+        threshold: number | null;
+      }>(
         await apiRequest("POST", "/api/admin/alerting/rules", {
           name: ruleName,
           metric: "error_count",
@@ -646,7 +771,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       await evaluateRulesForApp(appRecord.id);
       await new Promise((resolve) => setTimeout(resolve, 300));
       const preIncidents = await json<{ data: unknown[] }>(
-        await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+        await apiRequest(
+          "GET",
+          `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+        ),
       );
       expect(preIncidents.data.length).toBe(0);
 
@@ -662,7 +790,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<Record<string, unknown>> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length > 0,
       );
@@ -716,7 +847,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<Record<string, unknown>> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length > 0,
       );
@@ -755,7 +889,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       await waitFor(
         async () =>
           json<{ data: unknown[] }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length === 1,
       );
@@ -767,7 +904,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       const incidents = await json<{ data: unknown[] }>(
-        await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+        await apiRequest(
+          "GET",
+          `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+        ),
       );
       expect(incidents.data.length).toBe(1);
     });
@@ -795,13 +935,22 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         appId: appRecord.id,
       });
 
-      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "just an error", "error"));
-      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "fatal!", "fatal"));
+      await ingestEvent(
+        appRecord,
+        errorEvent(crypto.randomUUID(), "just an error", "error"),
+      );
+      await ingestEvent(
+        appRecord,
+        errorEvent(crypto.randomUUID(), "fatal!", "fatal"),
+      );
 
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<Record<string, unknown>> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length > 0,
       );
@@ -833,8 +982,14 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         appId: appRecord.id,
       });
 
-      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "distinct problem A"));
-      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "distinct problem B"));
+      await ingestEvent(
+        appRecord,
+        errorEvent(crypto.randomUUID(), "distinct problem A"),
+      );
+      await ingestEvent(
+        appRecord,
+        errorEvent(crypto.randomUUID(), "distinct problem B"),
+      );
 
       // The issues are tracked by the consumer; the rule counts them.
       await waitForTrackedIssues(appRecord.id, 2);
@@ -843,7 +998,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<Record<string, unknown>> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length > 0,
       );
@@ -970,7 +1128,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         });
       }
 
-      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "duplicate"));
+      await ingestEvent(
+        appRecord,
+        errorEvent(crypto.randomUUID(), "duplicate"),
+      );
 
       const incidents = await waitFor(
         async () =>
@@ -1071,13 +1232,16 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         appId: appRecord.id,
       });
 
-      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "dead letter"));
+      await ingestEvent(
+        appRecord,
+        errorEvent(crypto.randomUUID(), "dead letter"),
+      );
 
       const letters = await waitFor(
         async () =>
-          json<{ data: Array<{ id: string; error: string; attempts: number }> }>(
-            await apiRequest("GET", "/api/admin/alerting/dead-letters"),
-          ),
+          json<{
+            data: Array<{ id: string; error: string; attempts: number }>;
+          }>(await apiRequest("GET", "/api/admin/alerting/dead-letters")),
         (body) => body.data.length > 0,
       );
       const letter = letters.data[0]!;
@@ -1129,13 +1293,16 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         appId: appRecord.id,
       });
 
-      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "dead letter"));
+      await ingestEvent(
+        appRecord,
+        errorEvent(crypto.randomUUID(), "dead letter"),
+      );
 
       const letters = await waitFor(
         async () =>
-          json<{ data: Array<{ id: string; error: string; attempts: number }> }>(
-            await apiRequest("GET", "/api/admin/alerting/dead-letters"),
-          ),
+          json<{
+            data: Array<{ id: string; error: string; attempts: number }>;
+          }>(await apiRequest("GET", "/api/admin/alerting/dead-letters")),
         (body) => body.data.length > 0,
       );
       const letter = letters.data[0]!;
@@ -1181,7 +1348,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<{ id: string }> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length > 0,
       );
@@ -1191,15 +1361,22 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         acknowledgedAt: string | null;
         acknowledgedBy: string | null;
       }>(
-        await apiRequest("POST", `/api/admin/alerting/incidents/${incidentId}/acknowledge`),
+        await apiRequest(
+          "POST",
+          `/api/admin/alerting/incidents/${incidentId}/acknowledge`,
+        ),
       );
       expect(acknowledged.acknowledgedAt).toBeTruthy();
       expect(acknowledged.acknowledgedBy).toBeTruthy();
 
       const assigned = await json<{ assignee: string | null }>(
-        await apiRequest("POST", `/api/admin/alerting/incidents/${incidentId}/assign`, {
-          assignee: "oncall",
-        }),
+        await apiRequest(
+          "POST",
+          `/api/admin/alerting/incidents/${incidentId}/assign`,
+          {
+            assignee: "oncall",
+          },
+        ),
       );
       expect(assigned.assignee).toBe("oncall");
     });
@@ -1228,16 +1405,22 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         message: "{{rule.name}} saw {{value}} {{metric}} above {{threshold}}",
       });
 
-      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "templated"));
+      await ingestEvent(
+        appRecord,
+        errorEvent(crypto.randomUUID(), "templated"),
+      );
 
       const bodies = await waitForWebhook(
-        (body) => typeof body.message === "string" && body.message.includes("above"),
+        (body) =>
+          typeof body.message === "string" && body.message.includes("above"),
       );
       const notification = bodies.find((body) =>
         String(body.message ?? "").includes("above"),
       );
       expect(notification).toBeDefined();
-      expect(String(notification!.message)).toContain("saw 1 error_count above 0");
+      expect(String(notification!.message)).toContain(
+        "saw 1 error_count above 0",
+      );
     });
 
     it("fires a traffic-drop rule (event_count below the threshold)", async () => {
@@ -1270,7 +1453,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<Record<string, unknown>> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length > 0,
       );
@@ -1349,7 +1535,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<Record<string, unknown>> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length > 0,
       );
@@ -1392,7 +1581,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<Record<string, unknown>> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length > 0,
       );
@@ -1428,13 +1620,19 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       // p95 of [100, 200, 300, 400, 500] (ClickHouse quantile with linear
       // interpolation) is 480.
       for (const duration of [100, 200, 300, 400, 500]) {
-        await ingestEvent(appRecord, transactionEvent(crypto.randomUUID(), duration));
+        await ingestEvent(
+          appRecord,
+          transactionEvent(crypto.randomUUID(), duration),
+        );
       }
 
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<Record<string, unknown>> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length > 0,
       );
@@ -1476,9 +1674,14 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         appId: appRecord.id,
       });
 
-      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "multi-channel failure"));
+      await ingestEvent(
+        appRecord,
+        errorEvent(crypto.randomUUID(), "multi-channel failure"),
+      );
 
-      const bodies = await waitForWebhook((body) => typeof body.text === "string");
+      const bodies = await waitForWebhook(
+        (body) => typeof body.text === "string",
+      );
       const texts = bodies.map((body) => String(body.text ?? ""));
       expect(texts.some((text) => text.includes(ruleName))).toBe(true);
       expect(texts.length).toBeGreaterThanOrEqual(2);
@@ -1507,12 +1710,18 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
         appId: appRecord.id,
       });
 
-      await ingestEvent(appRecord, errorEvent(crypto.randomUUID(), "email stub test"));
+      await ingestEvent(
+        appRecord,
+        errorEvent(crypto.randomUUID(), "email stub test"),
+      );
 
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<Record<string, unknown>> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.length > 0,
       );
@@ -1590,7 +1799,9 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       }>(await apiRequest("POST", `/api/admin/alerting/rules/${rule.id}/test`));
 
       expect(result.results[0]!.ok).toBe(false);
-      expect(result.results[0]!.error).toContain("email notifier requires config.host");
+      expect(result.results[0]!.error).toContain(
+        "email notifier requires config.host",
+      );
     });
 
     it("isolates a failing webhook from the other channels", async () => {
@@ -1666,7 +1877,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       await waitFor(
         async () =>
           json<{ data: Array<{ status: string }> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.some((incident) => incident.status === "firing"),
       );
@@ -1682,7 +1896,10 @@ describe("Alerting (channels, rules, threshold evaluation)", () => {
       const incidents = await waitFor(
         async () =>
           json<{ data: Array<{ status: string; resolvedAt: string | null }> }>(
-            await apiRequest("GET", `/api/admin/alerting/incidents?appId=${appRecord.id}`),
+            await apiRequest(
+              "GET",
+              `/api/admin/alerting/incidents?appId=${appRecord.id}`,
+            ),
           ),
         (body) => body.data.every((incident) => incident.status === "resolved"),
         8000,

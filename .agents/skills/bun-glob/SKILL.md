@@ -11,7 +11,7 @@ description: Use Bun's fast native implementation of file globbing
 
 **Scan a directory for files matching `*.ts`**:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { Glob } from "bun";
 
 const glob = new Glob("**/*.ts");
@@ -24,7 +24,7 @@ for await (const file of glob.scan(".")) {
 
 **Match a string against a glob pattern**:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { Glob } from "bun";
 
 const glob = new Glob("*.ts");
@@ -35,7 +35,7 @@ glob.match("index.js"); // => false
 
 `Glob` is a class which implements the following interface:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 class Glob {
   scan(root: string | ScanOptions): AsyncIterable<string>;
   scanSync(root: string | ScanOptions): Iterable<string>;
@@ -92,7 +92,7 @@ Bun supports the following glob patterns:
 
 ### `?` - Match any single character
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const glob = new Glob("???.ts");
 glob.match("foo.ts"); // => true
 glob.match("foobar.ts"); // => false
@@ -100,7 +100,7 @@ glob.match("foobar.ts"); // => false
 
 ### `*` - Matches zero or more characters, except for path separators (`/` or `\`)
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const glob = new Glob("*.ts");
 glob.match("index.ts"); // => true
 glob.match("src/index.ts"); // => false
@@ -108,7 +108,7 @@ glob.match("src/index.ts"); // => false
 
 ### `**` - Match any number of characters including `/`
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const glob = new Glob("**/*.ts");
 glob.match("index.ts"); // => true
 glob.match("src/index.ts"); // => true
@@ -117,16 +117,16 @@ glob.match("src/index.js"); // => false
 
 ### `[ab]` - Matches one of the characters contained in the brackets, as well as character ranges
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const glob = new Glob("ba[rz].ts");
 glob.match("bar.ts"); // => true
 glob.match("baz.ts"); // => true
 glob.match("bat.ts"); // => false
 ```
 
-You can use character ranges (e.g `[0-9]`, `[a-z]`) as well as the negation operators `^` or `!` to match anything *except* the characters contained within the braces (e.g `[^ab]`, `[!a-z]`)
+You can use character ranges (e.g `[0-9]`, `[a-z]`) as well as the negation operators `^` or `!` to match anything _except_ the characters contained within the braces (e.g `[^ab]`, `[!a-z]`)
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const glob = new Glob("ba[a-z][0-9][^4-9].ts");
 glob.match("bar01.ts"); // => true
 glob.match("baz83.ts"); // => true
@@ -137,7 +137,7 @@ glob.match("ba0a8.ts"); // => false
 
 ### `{a,b,c}` - Match any of the given patterns
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const glob = new Glob("{a,b,c}.ts");
 glob.match("a.ts"); // => true
 glob.match("b.ts"); // => true
@@ -149,7 +149,7 @@ These match patterns can be deeply nested (up to 10 levels), and contain any of 
 
 ### `!` - Negates the result at the start of a pattern
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const glob = new Glob("!index.ts");
 glob.match("index.ts"); // => false
 glob.match("foo.ts"); // => true
@@ -157,7 +157,7 @@ glob.match("foo.ts"); // => true
 
 ### `\` - Escapes any of the special characters above
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const glob = new Glob("\\!index.ts");
 glob.match("!index.ts"); // => true
 glob.match("index.ts"); // => false
@@ -167,7 +167,7 @@ glob.match("index.ts"); // => false
 
 Bun also implements Node.js's `fs.glob()` functions with additional features:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { glob, globSync, promises } from "node:fs";
 
 // Array of patterns
@@ -181,5 +181,5 @@ const filtered = await promises.glob("**/*", {
 
 All three functions (`fs.glob()`, `fs.globSync()`, `fs.promises.glob()`) support:
 
-* Array of patterns as the first argument
-* `exclude` option to filter results
+- Array of patterns as the first argument
+- `exclude` option to filter results

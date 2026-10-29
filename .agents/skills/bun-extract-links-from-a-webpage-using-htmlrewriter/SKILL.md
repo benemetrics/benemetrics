@@ -32,7 +32,7 @@ async function extractLinks(url: string) {
 await extractLinks("https://bun.com");
 ```
 
-***
+---
 
 ## Convert relative URLs to absolute
 
@@ -48,10 +48,12 @@ async function extractLinksFromURL(url: string) {
       const href = el.getAttribute("href");
       if (href) {
         // Convert relative URLs to absolute // [!code ++]
-        try { // [!code ++]
+        try {
+          // [!code ++]
           const absoluteURL = new URL(href, url).href; // [!code ++]
           links.add(absoluteURL);
-        } catch { // [!code ++]
+        } catch {
+          // [!code ++]
           links.add(href); // [!code ++]
         } // [!code ++]
       }
@@ -66,6 +68,6 @@ async function extractLinksFromURL(url: string) {
 const websiteLinks = await extractLinksFromURL("https://example.com");
 ```
 
-***
+---
 
 See [Docs > API > HTMLRewriter](/runtime/html-rewriter) for complete documentation on HTML transformation with Bun.

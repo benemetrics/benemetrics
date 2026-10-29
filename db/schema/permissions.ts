@@ -1,7 +1,16 @@
-import { pgTable, text, integer, index, uniqueIndex, uuid, boolean } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  integer,
+  index,
+  uniqueIndex,
+  uuid,
+  boolean,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
-import { apps, projects } from "./project";
+import { projects } from "./project";
+import { apps } from "./app";
 
 // A group rule: every identity whose token carries the group gets the scope.
 // The group name is the provider's claim value, stored lowercased.
@@ -17,8 +26,12 @@ export const permissionRules = pgTable(
     appFixes: text("app_fixes").notNull().default("[]"),
     isEnabled: boolean("is_enabled").notNull().default(false),
     canWrite: boolean("can_write").notNull().default(false),
-    createdAt: isoTimestamp("created_at").notNull().default(sql`now()`),
-    updatedAt: isoTimestamp("updated_at").notNull().default(sql`now()`),
+    createdAt: isoTimestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: isoTimestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
   },
   (table) => ({
     nameUnique: uniqueIndex("permission_rules_name_idx").on(table.name),
@@ -35,13 +48,17 @@ export const permissionGrants = pgTable(
     identityId: text("identity_id").notNull(),
     // A display label for the admin UI; the identity id stays the key.
     label: text("label"),
-    
+
     projectFixes: text("project_fixes").notNull().default("[]"),
     appFixes: text("app_fixes").notNull().default("[]"),
     isEnabled: boolean("is_enabled").notNull().default(false),
     canWrite: boolean("can_write").notNull().default(false),
-    createdAt: isoTimestamp("created_at").notNull().default(sql`now()`),
-    updatedAt: isoTimestamp("updated_at").notNull().default(sql`now()`),
+    createdAt: isoTimestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: isoTimestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
   },
   (table) => ({
     identityUnique: uniqueIndex("permission_grants_identity_id_idx").on(
@@ -50,15 +67,11 @@ export const permissionGrants = pgTable(
   }),
 );
 
-export const permissionsProjectApp = pgTable(
-  "permissions", 
-  {
-    permissionGrant: permissionGrants.id,
-    projectId: projects.id,
-    appId: apps.id,
-  }
-)
-
+export const permissionsProjectApp = pgTable("permissions", {
+  permissionGrant: permissionGrants.id,
+  projectId: projects.id,
+  appId: apps.id,
+});
 
 export type PermissionRuleRow = typeof permissionRules.$inferSelect;
 export type PermissionRuleInsert = typeof permissionRules.$inferInsert;

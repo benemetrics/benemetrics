@@ -9,10 +9,7 @@ import type { AlertRuleHistory } from "backend/protocol/alerting";
 import { cursorAfter, cursorLimit, type CursorPage } from "./cursor";
 import type { Executor } from "./executor";
 
-type AlertRuleHistoryCreateInput = Omit<
-  AlertRuleHistoryInsert,
-  "id"
-> & {
+type AlertRuleHistoryCreateInput = Omit<AlertRuleHistoryInsert, "id"> & {
   id?: string;
 };
 

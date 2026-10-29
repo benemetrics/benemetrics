@@ -17,8 +17,8 @@ In general, it's recommended to add a `bunfig.toml` file to your project root, a
 
 To configure Bun globally, you can also create a `.bunfig.toml` file at one of the following paths:
 
-* `$HOME/.bunfig.toml`
-* `$XDG_CONFIG_HOME/.bunfig.toml`
+- `$HOME/.bunfig.toml`
+- `$XDG_CONFIG_HOME/.bunfig.toml`
 
 If both a global and local `bunfig` are detected, the results are shallow-merged, with local overriding global. CLI flags will override `bunfig` setting where applicable.
 
@@ -49,10 +49,10 @@ jsxImportSource = "react"
 
 Refer to the tsconfig docs for more information on these fields.
 
-* [`jsx`](https://www.typescriptlang.org/tsconfig#jsx)
-* [`jsxFactory`](https://www.typescriptlang.org/tsconfig#jsxFactory)
-* [`jsxFragment`](https://www.typescriptlang.org/tsconfig#jsxFragment)
-* [`jsxImportSource`](https://www.typescriptlang.org/tsconfig#jsxImportSource)
+- [`jsx`](https://www.typescriptlang.org/tsconfig#jsx)
+- [`jsxFactory`](https://www.typescriptlang.org/tsconfig#jsxFactory)
+- [`jsxFragment`](https://www.typescriptlang.org/tsconfig#jsxFragment)
+- [`jsxImportSource`](https://www.typescriptlang.org/tsconfig#jsxImportSource)
 
 ### `smol`
 
@@ -95,19 +95,19 @@ Configure how Bun maps file extensions to loaders. This is useful for loading fi
 
 Bun supports the following loaders:
 
-* `jsx`
-* `js`
-* `ts`
-* `tsx`
-* `css`
-* `file`
-* `json`
-* `toml`
-* `wasm`
-* `napi`
-* `base64`
-* `dataurl`
-* `text`
+- `jsx`
+- `js`
+- `ts`
+- `tsx`
+- `css`
+- `file`
+- `json`
+- `toml`
+- `wasm`
+- `napi`
+- `base64`
+- `dataurl`
+- `text`
 
 ### `telemetry`
 
@@ -324,9 +324,9 @@ concurrentTestGlob = "**/concurrent-*.test.ts"
 
 This is useful for:
 
-* Gradually migrating test suites to concurrent execution
-* Running integration tests concurrently while keeping unit tests sequential
-* Separating fast concurrent tests from tests that require sequential execution
+- Gradually migrating test suites to concurrent execution
+- Running integration tests concurrently while keeping unit tests sequential
+- Separating fast concurrent tests from tests that require sequential execution
 
 The `--concurrent` CLI flag will override this setting when specified.
 
@@ -641,10 +641,10 @@ scanner = "@acme/bun-security-scanner"
 
 When a security scanner is configured:
 
-* Auto-install is automatically disabled for security
-* Packages are scanned before installation
-* Installation is cancelled if fatal issues are found
-* Security warnings are displayed during installation
+- Auto-install is automatically disabled for security
+- Packages are scanned before installation
+- Installation is cancelled if fatal issues are found
+- Security warnings are displayed during installation
 
 Learn more about [using and writing security scanners](/pm/security-scanner-api).
 
@@ -704,14 +704,14 @@ bun = true
 
 You can test this by running:
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun --bun which node # /path/to/bun
 bun which node # /path/to/node
 ```
 
 This option is equivalent to prefixing all `bun run` commands with `--bun`:
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun --bun run dev
 bun --bun dev
 bun run --bun dev
@@ -735,23 +735,23 @@ bun run dev
 echo "Running \"dev\"..."
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Running "dev"...
 ```
 
 With this option, the command being run will not be printed to the console:
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun run dev
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Running "dev"...
 ```
 
 This is equivalent to passing `--silent` to all `bun run` commands:
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun --silent run dev
 bun --silent dev
 bun run --silent dev

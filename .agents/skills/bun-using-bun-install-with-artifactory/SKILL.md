@@ -9,7 +9,7 @@ description: Using bun install with Artifactory
 
 To use it with `bun install`, add a `bunfig.toml` file to your project with the following contents:
 
-***
+---
 
 ### Configure with bunfig.toml
 
@@ -22,7 +22,7 @@ url = "https://MY_SUBDOMAIN.jfrog.io/artifactory/api/npm/npm/_auth=MY_TOKEN"
 # url = "$NPM_CONFIG_REGISTRY"
 ```
 
-***
+---
 
 ### Configure with `$NPM_CONFIG_REGISTRY`
 

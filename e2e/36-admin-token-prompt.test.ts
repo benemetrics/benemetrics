@@ -52,8 +52,8 @@ afterAll(async () => {
 
 describe("Admin token prompt", () => {
   it("appears when no provider is configured and no token is stored", async () => {
-    const body = await waitForUI(
-      (text) => text.includes("Sign in to Glitchlog"),
+    const body = await waitForUI((text) =>
+      text.includes("Sign in to Glitchlog"),
     );
 
     expect(body).toContain("Sign in to Glitchlog");

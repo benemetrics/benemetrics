@@ -86,7 +86,9 @@ function issueConditions(filter: IssueFilter): SQL[] {
     conditions.push(inArray(issues.fingerprint, filter.fingerprints));
   }
   if (filter.excludedFingerprints) {
-    conditions.push(notInArray(issues.fingerprint, filter.excludedFingerprints));
+    conditions.push(
+      notInArray(issues.fingerprint, filter.excludedFingerprints),
+    );
   }
   for (const text of filter.text ?? []) {
     const pattern = `%${text.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
@@ -101,18 +103,28 @@ function issueConditions(filter: IssueFilter): SQL[] {
     );
   }
   if (filter.firstSeen) {
-    if (filter.firstSeen.gte) conditions.push(gte(issues.firstSeen, filter.firstSeen.gte));
-    if (filter.firstSeen.gt) conditions.push(gt(issues.firstSeen, filter.firstSeen.gt));
-    if (filter.firstSeen.lte) conditions.push(lte(issues.firstSeen, filter.firstSeen.lte));
-    if (filter.firstSeen.lt) conditions.push(lt(issues.firstSeen, filter.firstSeen.lt));
-    if (filter.firstSeen.eq) conditions.push(eq(issues.firstSeen, filter.firstSeen.eq));
+    if (filter.firstSeen.gte)
+      conditions.push(gte(issues.firstSeen, filter.firstSeen.gte));
+    if (filter.firstSeen.gt)
+      conditions.push(gt(issues.firstSeen, filter.firstSeen.gt));
+    if (filter.firstSeen.lte)
+      conditions.push(lte(issues.firstSeen, filter.firstSeen.lte));
+    if (filter.firstSeen.lt)
+      conditions.push(lt(issues.firstSeen, filter.firstSeen.lt));
+    if (filter.firstSeen.eq)
+      conditions.push(eq(issues.firstSeen, filter.firstSeen.eq));
   }
   if (filter.lastSeen) {
-    if (filter.lastSeen.gte) conditions.push(gte(issues.lastSeen, filter.lastSeen.gte));
-    if (filter.lastSeen.gt) conditions.push(gt(issues.lastSeen, filter.lastSeen.gt));
-    if (filter.lastSeen.lte) conditions.push(lte(issues.lastSeen, filter.lastSeen.lte));
-    if (filter.lastSeen.lt) conditions.push(lt(issues.lastSeen, filter.lastSeen.lt));
-    if (filter.lastSeen.eq) conditions.push(eq(issues.lastSeen, filter.lastSeen.eq));
+    if (filter.lastSeen.gte)
+      conditions.push(gte(issues.lastSeen, filter.lastSeen.gte));
+    if (filter.lastSeen.gt)
+      conditions.push(gt(issues.lastSeen, filter.lastSeen.gt));
+    if (filter.lastSeen.lte)
+      conditions.push(lte(issues.lastSeen, filter.lastSeen.lte));
+    if (filter.lastSeen.lt)
+      conditions.push(lt(issues.lastSeen, filter.lastSeen.lt));
+    if (filter.lastSeen.eq)
+      conditions.push(eq(issues.lastSeen, filter.lastSeen.eq));
   }
   if (filter.timesSeen) {
     const { operator, value } = filter.timesSeen;
@@ -279,7 +291,8 @@ export const issueDAO = {
         : alternatives.length > 0
           ? or(...alternatives)
           : undefined;
-    const where = scope && condition ? and(scope, condition) : (scope ?? condition);
+    const where =
+      scope && condition ? and(scope, condition) : (scope ?? condition);
 
     const data = await db
       .select(issueFields)

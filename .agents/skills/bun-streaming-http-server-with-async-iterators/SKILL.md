@@ -27,7 +27,7 @@ Bun.serve({
 });
 ```
 
-***
+---
 
 You can pass any async iterable directly to `Response`:
 

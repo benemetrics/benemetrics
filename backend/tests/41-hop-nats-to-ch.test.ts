@@ -9,7 +9,10 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import type { NatsConnection } from "@nats-io/transport-node";
-import { jetstream as createJetstream, type JetStreamClient } from "@nats-io/jetstream";
+import {
+  jetstream as createJetstream,
+  type JetStreamClient,
+} from "@nats-io/jetstream";
 import { listStoredEvents } from "../events-store";
 import {
   connectTestNats,
@@ -32,7 +35,10 @@ afterAll(async () => {
 });
 
 function publishEventMessage(message: Record<string, unknown>) {
-  return jetstream.publish(TEST_EVENTS_SUBJECT, new TextEncoder().encode(JSON.stringify(message)));
+  return jetstream.publish(
+    TEST_EVENTS_SUBJECT,
+    new TextEncoder().encode(JSON.stringify(message)),
+  );
 }
 
 describe("Hop 2: NATS -> ClickHouse", () => {

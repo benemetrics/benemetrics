@@ -7,16 +7,16 @@ description: How Bun handles package lifecycle scripts securely
 
 > How Bun handles package lifecycle scripts securely
 
-Packages on `npm` can define *lifecycle scripts* in their `package.json`. Some of the most common are below, but there are [many others](https://docs.npmjs.com/cli/v10/using-npm/scripts).
+Packages on `npm` can define _lifecycle scripts_ in their `package.json`. Some of the most common are below, but there are [many others](https://docs.npmjs.com/cli/v10/using-npm/scripts).
 
-* `preinstall`: Runs before the package is installed
-* `postinstall`: Runs after the package is installed
-* `preuninstall`: Runs before the package is uninstalled
-* `prepublishOnly`: Runs before the package is published
+- `preinstall`: Runs before the package is installed
+- `postinstall`: Runs after the package is installed
+- `preuninstall`: Runs before the package is uninstalled
+- `prepublishOnly`: Runs before the package is published
 
 These scripts are arbitrary shell commands that the package manager is expected to read and execute at the appropriate time. But executing arbitrary scripts represents a potential security risk, so—unlike other `npm` clients—Bun does not execute arbitrary lifecycle scripts by default.
 
-***
+---
 
 ## `postinstall`
 
@@ -32,7 +32,7 @@ The `postinstall` script is particularly important. It's widely used to build or
 }
 ```
 
-***
+---
 
 ## `trustedDependencies`
 
@@ -57,7 +57,7 @@ The top 500 npm packages with lifecycle scripts are allowed by default. You can 
   packages from spoofing trusted package names through local file paths or git repositories.
 </Note>
 
-***
+---
 
 ## `--ignore-scripts`
 

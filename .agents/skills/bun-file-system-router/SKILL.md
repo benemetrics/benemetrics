@@ -13,7 +13,7 @@ This API is primarily intended for library authors. At the moment only Next.js-s
 
 The `FileSystemRouter` class can resolve routes against a `pages` directory. (The Next.js 13 `app` directory is not yet supported.) Consider the following `pages` directory:
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 pages
 ├── index.tsx
 ├── settings.tsx
@@ -47,7 +47,7 @@ router.match("/");
 
 Query parameters will be parsed and returned in the `query` property.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 router.match("/settings?foo=bar");
 
 // =>
@@ -65,7 +65,7 @@ router.match("/settings?foo=bar");
 
 The router will automatically parse URL parameters and return them in the `params` property:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 router.match("/blog/my-cool-post");
 
 // =>
@@ -83,19 +83,19 @@ router.match("/blog/my-cool-post");
 
 The `.match()` method also accepts `Request` and `Response` objects. The `url` property will be used to resolve the route.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 router.match(new Request("https://example.com/blog/my-cool-post"));
 ```
 
 The router will read the directory contents on initialization. To re-scan the files, use the `.reload()` method.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 router.reload();
 ```
 
 ## Reference
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 interface Bun {
   class FileSystemRouter {
     constructor(params: {

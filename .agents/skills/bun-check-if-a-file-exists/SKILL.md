@@ -14,6 +14,6 @@ const file = Bun.file(path);
 await file.exists(); // boolean;
 ```
 
-***
+---
 
 Refer to [API > File I/O](/runtime/file-io) for more information on working with `BunFile`.

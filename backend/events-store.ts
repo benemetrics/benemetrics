@@ -18,7 +18,9 @@ export async function findStoredEventById(
   return findClickHouseEvent(id);
 }
 
-export async function findStoredEventByIdOrThrow(id: string): Promise<StoredEvent> {
+export async function findStoredEventByIdOrThrow(
+  id: string,
+): Promise<StoredEvent> {
   const event = await findStoredEventById(id);
   if (!event) throw notFound("Event", id);
   return event;

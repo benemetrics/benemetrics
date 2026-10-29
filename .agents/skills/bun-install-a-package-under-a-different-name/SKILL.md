@@ -11,7 +11,7 @@ To install an npm package under an alias:
 bun add my-custom-name@npm:zod
 ```
 
-***
+---
 
 The `zod` package can now be imported as `my-custom-name`.
 
@@ -21,6 +21,6 @@ import { z } from "my-custom-name";
 z.string();
 ```
 
-***
+---
 
 See [Docs > Package manager](/pm/cli/install) for complete documentation of Bun's package manager.

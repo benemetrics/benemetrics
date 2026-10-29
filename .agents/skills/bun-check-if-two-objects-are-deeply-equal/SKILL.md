@@ -14,7 +14,7 @@ const b = { a: 1, b: 2, c: { d: 3 } };
 Bun.deepEquals(a, b); // true
 ```
 
-***
+---
 
 Pass `true` as a third argument to enable strict mode. This is used internally by `expect().toStrictEqual()` in Bun's [test runner](/test/writing-tests).
 
@@ -37,6 +37,6 @@ class Foo {
 Bun.deepEquals(new Foo(), { a: 1 }, true); // false
 ```
 
-***
+---
 
 See [Docs > API > Utils](/runtime/utils) for more useful utilities.

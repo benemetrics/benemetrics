@@ -1,5 +1,9 @@
 import { db } from "db";
-import { permissionGrants, permissionRules, permissionsProjectApp } from "db/schema/permissions";
+import {
+  permissionGrants,
+  permissionRules,
+  permissionsProjectApp,
+} from "db/schema/permissions";
 import { desc, eq } from "drizzle-orm";
 import { conflict, internalError, notFound } from "backend/errors";
 import { cursorAfter, cursorLimit } from "./cursor";
@@ -32,7 +36,8 @@ export const permissionGrantDAO = {
       .onConflictDoNothing({ target: permissionGrants.identityId })
       .returning(grantFields);
 
-    if (!row) throw conflict(`Permission grant already exists: ${input.identityId}`);
+    if (!row)
+      throw conflict(`Permission grant already exists: ${input.identityId}`);
     return row;
   },
 
@@ -69,10 +74,7 @@ export const permissionGrantDAO = {
       .limit(limit);
   },
 
-  updateOrThrow: async (
-    id: string,
-    data: Partial<PermissionGrantInput>,
-  ) => {
+  updateOrThrow: async (id: string, data: Partial<PermissionGrantInput>) => {
     const [row] = await db
       .update(permissionGrants)
       .set({
@@ -89,27 +91,41 @@ export const permissionGrantDAO = {
 
   getUserGrantWithPermissions: async (identityId: string) => {
     const x = await db
-      .select({ projectId: permissionsProjectApp.projectId, appId: permissionsProjectApp.appId })
+      .select({
+        projectId: permissionsProjectApp.projectId,
+        appId: permissionsProjectApp.appId,
+      })
       .from(permissionGrants)
       .where(eq(permissionGrants.identityId, identityId))
-      .rightJoin(permissionsProjectApp, eq(permissionsProjectApp.permissionGrant, permissionGrants.id))
+      .rightJoin(
+        permissionsProjectApp,
+        eq(permissionsProjectApp.permissionGrant, permissionGrants.id),
+      );
 
-    return { projectIds: x.map(({ projectId }) => projectId), appsIds: x.map(({ appId }) => appId) }
+    return {
+      projectIds: x.map(({ projectId }) => projectId),
+      appsIds: x.map(({ appId }) => appId),
+    };
   },
 
   getAllowedGroups: async () => {
-    const groups = await db.select({ group: permissionRules.group }).from(permissionRules);
+    const groups = await db
+      .select({ group: permissionRules.group })
+      .from(permissionRules);
     return new Set(groups.map(({ group }) => group));
   },
 
-  delete: async (id: string) => db
-    .delete(permissionGrants)
-    .where(eq(permissionGrants.id, id))
-    .returning({ id: permissionGrants.id }),
+  delete: async (id: string) =>
+    db
+      .delete(permissionGrants)
+      .where(eq(permissionGrants.id, id))
+      .returning({ id: permissionGrants.id }),
 
   // The identities the system knows about (every identity that has a grant).
   // Feeds the user dropdown on the grant form so no one pastes a raw id.
-  listIdentities: async (): Promise<Array<{ id: string; label: string | null }>> => {
+  listIdentities: async (): Promise<
+    Array<{ id: string; label: string | null }>
+  > => {
     const rows = await db
       .select({
         id: permissionGrants.identityId,

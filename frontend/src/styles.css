@@ -61,7 +61,8 @@
   --input: oklch(0.9 0.006 90);
   --ring: oklch(0.52 0.2 258);
   --code: oklch(0.965 0.005 90);
-  --glow: 0 0 0 1px color-mix(in oklab, var(--primary) 30%, transparent),
+  --glow:
+    0 0 0 1px color-mix(in oklab, var(--primary) 30%, transparent),
     0 10px 30px -14px color-mix(in oklab, var(--primary) 40%, transparent);
 }
 
@@ -84,7 +85,9 @@
 }
 
 @utility panel-hover {
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s;
   &:hover {
     border-color: color-mix(in oklab, var(--primary) 50%, var(--border));
     box-shadow: var(--glow);
@@ -92,7 +95,8 @@
 }
 
 @utility grid-bg {
-  background-image: linear-gradient(var(--color-border) 1px, transparent 1px),
+  background-image:
+    linear-gradient(var(--color-border) 1px, transparent 1px),
     linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
   background-size: 32px 32px;
   mask-image: radial-gradient(ellipse at top, black, transparent 70%);

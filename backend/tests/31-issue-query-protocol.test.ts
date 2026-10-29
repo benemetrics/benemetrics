@@ -10,7 +10,8 @@ import { handleFetch as fetch, TEST_ORIGIN, ADMIN_TOKEN } from "./test-helpers";
 import { issueDAO } from "db/dao/issues";
 import { appDAO, projectDAO } from "db/dao/project";
 
-const uniq = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+const uniq = () =>
+  Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 
 interface IssueRow {
   id: string;
@@ -49,7 +50,10 @@ async function apiRequest(
 async function listRaw(query: string, sort?: string): Promise<ListResponse> {
   const params = new URLSearchParams({ query, limit: "50" });
   if (sort) params.set("sort", sort);
-  const response = await apiRequest("GET", `/api/admin/issues?${params.toString()}`);
+  const response = await apiRequest(
+    "GET",
+    `/api/admin/issues?${params.toString()}`,
+  );
   expect(response.status).toBe(200);
   return (await response.json()) as ListResponse;
 }
@@ -60,7 +64,10 @@ async function list(terms = "", sort?: string): Promise<ListResponse> {
     limit: "50",
   });
   if (sort) params.set("sort", sort);
-  const response = await apiRequest("GET", `/api/admin/issues?${params.toString()}`);
+  const response = await apiRequest(
+    "GET",
+    `/api/admin/issues?${params.toString()}`,
+  );
   expect(response.status).toBe(200);
   return (await response.json()) as ListResponse;
 }
@@ -138,9 +145,13 @@ describe("Issue query protocol", () => {
     const unresolved = await list("is:unresolved");
     expect(unresolved.data.length).toBe(4);
 
-    await apiRequest("PATCH", `/api/admin/issues/${(await list("is:unresolved")).data[0]!.id}`, {
-      status: "resolved",
-    });
+    await apiRequest(
+      "PATCH",
+      `/api/admin/issues/${(await list("is:unresolved")).data[0]!.id}`,
+      {
+        status: "resolved",
+      },
+    );
 
     const resolved = await list("is:resolved");
     expect(resolved.data.length).toBe(1);
@@ -206,8 +217,12 @@ describe("Issue query protocol", () => {
     });
 
     // The first alternative holds the first app, the second the other one.
-    const or = await listRaw(`app:${appId} is:unresolved | app:${otherAppId} is:resolved`);
-    const and = await listRaw(`app:${appId} is:unresolved app:${otherAppId} is:resolved`);
+    const or = await listRaw(
+      `app:${appId} is:unresolved | app:${otherAppId} is:resolved`,
+    );
+    const and = await listRaw(
+      `app:${appId} is:unresolved app:${otherAppId} is:resolved`,
+    );
     expect(new Set(or.data.map((issue) => issue.appId)).size).toBe(2);
     expect(or.data.length).toBeGreaterThan(and.data.length);
   });
@@ -216,7 +231,10 @@ describe("Issue query protocol", () => {
     const params = new URLSearchParams({
       query: "is:unresolved level:error timesSeen:>4",
     });
-    const response = await apiRequest("GET", `/api/admin/issues?${params.toString()}`);
+    const response = await apiRequest(
+      "GET",
+      `/api/admin/issues?${params.toString()}`,
+    );
     expect(response.status).toBe(200);
     const result = (await response.json()) as ListResponse;
     expect(result.meta.terms).toEqual([
@@ -236,7 +254,10 @@ describe("Issue query protocol", () => {
 
   it("paginates with a cursor", async () => {
     const scope = encodeURIComponent(`project:${projectId}`);
-    const first = await apiRequest("GET", `/api/admin/issues?query=${scope}&limit=2`);
+    const first = await apiRequest(
+      "GET",
+      `/api/admin/issues?query=${scope}&limit=2`,
+    );
     expect(first.status).toBe(200);
     const page = (await first.json()) as ListResponse;
     expect(page.data.length).toBe(2);
@@ -251,10 +272,17 @@ describe("Issue query protocol", () => {
   });
 
   it("rejects an unknown key, a reserved key and an unknown sort", async () => {
-    expect((await apiRequest("GET", "/api/admin/issues?query=nope%3A1")).status).toBe(400);
-    expect((await apiRequest("GET", "/api/admin/issues?query=assigned%3Ax")).status).toBe(400);
+    expect(
+      (await apiRequest("GET", "/api/admin/issues?query=nope%3A1")).status,
+    ).toBe(400);
+    expect(
+      (await apiRequest("GET", "/api/admin/issues?query=assigned%3Ax")).status,
+    ).toBe(400);
     // `users` is a real sort now (synced from the issue index); `priority` stays reserved.
-    expect((await apiRequest("GET", "/api/admin/issues?query=&sort=priority")).status).toBe(400);
+    expect(
+      (await apiRequest("GET", "/api/admin/issues?query=&sort=priority"))
+        .status,
+    ).toBe(400);
   });
 
   it("404s an app, project or environment that does not exist", async () => {

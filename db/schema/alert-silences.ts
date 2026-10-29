@@ -21,7 +21,10 @@ export const alertSilences = pgTable(
     updatedAt: isoTimestamp("updated_at").notNull(),
   },
   (table) => ({
-    scopeIdx: index("alert_silences_scope_idx").on(table.scopeType, table.scopeId),
+    scopeIdx: index("alert_silences_scope_idx").on(
+      table.scopeType,
+      table.scopeId,
+    ),
   }),
 );
 

@@ -15,7 +15,7 @@ import { ensureSigningKey, readPublicJwk } from "./oidc-fixture";
 const CLIENT_ID = "e2e-spa";
 const EMAIL = "sso@example.com";
 
-let app: typeof import("../backend/index")["default"];
+let app: (typeof import("../backend/index"))["default"];
 let provider: ReturnType<typeof Bun.serve>;
 let issuer = "";
 let baseUrl = "";
@@ -130,7 +130,9 @@ beforeAll(async () => {
   let printedToken = "";
   console.log = (...args: unknown[]) => {
     for (const arg of args) {
-      const match = String(arg).match(/\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/);
+      const match = String(arg).match(
+        /\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/,
+      );
       if (match) printedToken = match[0];
     }
     return originalLog(...args);
@@ -180,8 +182,12 @@ async function challengeOf(verifier: string): Promise<string> {
     new TextEncoder().encode(verifier),
   );
   let binary = "";
-  for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  for (const byte of new Uint8Array(digest))
+    binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 async function waitForEmail(timeoutMs = 20000): Promise<string> {

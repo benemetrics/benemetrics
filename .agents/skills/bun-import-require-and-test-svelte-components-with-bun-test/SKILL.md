@@ -35,7 +35,13 @@ plugin({
   setup(builder) {
     builder.onLoad({ filter: /\.svelte(\?[^.]+)?$/ }, ({ path }) => {
       try {
-        const source = readFileSync(path.substring(0, path.includes("?") ? path.indexOf("?") : path.length), "utf-8");
+        const source = readFileSync(
+          path.substring(
+            0,
+            path.includes("?") ? path.indexOf("?") : path.length,
+          ),
+          "utf-8",
+        );
 
         const result = compile(source, {
           filetitle: path,
@@ -55,7 +61,7 @@ plugin({
 });
 ```
 
-***
+---
 
 Add this to `bunfig.toml` to tell Bun to preload the plugin, so it loads before your tests run.
 
@@ -68,7 +74,7 @@ preload = ["./svelte-loader.ts"]
 # test.preload = ["./svelte-loader.ts"]
 ```
 
-***
+---
 
 Add an example `.svelte` file in your project.
 
@@ -81,7 +87,7 @@ Add an example `.svelte` file in your project.
 <button on:click="{()" ="">(count += 1)}>+1</button>
 ```
 
-***
+---
 
 Now you can `import` or `require` `*.svelte` files in your tests, and it will load the Svelte component as a JavaScript module.
 
@@ -105,7 +111,7 @@ test("Counter increments when clicked", async () => {
 });
 ```
 
-***
+---
 
 Use `bun test` to run your tests.
 

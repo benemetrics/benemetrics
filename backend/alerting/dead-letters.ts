@@ -51,7 +51,8 @@ let workerTimer: ReturnType<typeof setInterval> | null = null;
  * process alive). */
 export function startDeadLetterWorker(): void {
   if (workerTimer !== null) return;
-  const intervalMs = Number(process.env.ALERT_DEAD_LETTER_INTERVAL_MS) || 60_000;
+  const intervalMs =
+    Number(process.env.ALERT_DEAD_LETTER_INTERVAL_MS) || 60_000;
   workerTimer = setInterval(() => {
     void retryDeadLetters().catch((error: unknown) => {
       console.error(

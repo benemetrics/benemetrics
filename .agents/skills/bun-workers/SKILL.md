@@ -26,7 +26,7 @@ Like in browsers, [`Worker`](https://developer.mozilla.org/en-US/docs/Web/API/Wo
 const worker = new Worker("./worker.ts");
 
 worker.postMessage("hello");
-worker.onmessage = event => {
+worker.onmessage = (event) => {
   console.log(event.data);
 };
 ```
@@ -45,7 +45,7 @@ self.onmessage = (event: MessageEvent) => {
 
 To prevent TypeScript errors when using `self`, add this line to the top of your worker file.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 declare var self: Worker;
 ```
 
@@ -53,7 +53,7 @@ You can use `import` and `export` syntax in your worker code. Unlike in browsers
 
 To simplify error handling, the initial script to load is resolved at the time `new Worker(url)` is called.
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 const worker = new Worker("/not-found.js");
 // throws an error immediately
 ```
@@ -84,18 +84,24 @@ const worker = new Worker("./worker.ts", {
 
 You can also pass a `blob:` URL to `Worker`. This is useful for creating workers from strings or other sources.
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
-const blob = new Blob([`self.onmessage = (event: MessageEvent) => postMessage(event.data)`], {
-  type: "application/typescript",
-});
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
+const blob = new Blob(
+  [`self.onmessage = (event: MessageEvent) => postMessage(event.data)`],
+  {
+    type: "application/typescript",
+  },
+);
 const url = URL.createObjectURL(blob);
 const worker = new Worker(url);
 ```
 
 Like the rest of Bun, workers created from `blob:` URLs support TypeScript, JSX, and other file types out of the box. You can communicate it should be loaded via typescript either via `type` or by passing a `filename` to the `File` constructor.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-const file = new File([`self.onmessage = (event: MessageEvent) => postMessage(event.data)`], "worker.ts");
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+const file = new File(
+  [`self.onmessage = (event: MessageEvent) => postMessage(event.data)`],
+  "worker.ts",
+);
 const url = URL.createObjectURL(file);
 const worker = new Worker(url);
 ```
@@ -128,16 +134,16 @@ Bun includes optimized fast paths for `postMessage` to dramatically improve perf
 
 The simple object fast path activates when the object:
 
-* Is a plain object with no prototype chain modifications
-* Contains only enumerable, configurable data properties
-* Has no indexed properties or getter/setter methods
-* All property values are primitives or strings
+- Is a plain object with no prototype chain modifications
+- Contains only enumerable, configurable data properties
+- Has no indexed properties or getter/setter methods
+- All property values are primitives or strings
 
 With these fast paths, Bun's `postMessage` performs **2-241x faster** because the message length no longer has a meaningful impact on performance.
 
 **Bun (with fast paths):**
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 postMessage({ prop: 11 chars string, ...9 more props }) - 648ns
 postMessage({ prop: 14 KB string, ...9 more props })    - 719ns
 postMessage({ prop: 3 MB string, ...9 more props })     - 1.26µs
@@ -145,13 +151,13 @@ postMessage({ prop: 3 MB string, ...9 more props })     - 1.26µs
 
 **Node.js v24.6.0 (for comparison):**
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 postMessage({ prop: 11 chars string, ...9 more props }) - 1.19µs
 postMessage({ prop: 14 KB string, ...9 more props })    - 2.69µs
 postMessage({ prop: 3 MB string, ...9 more props })     - 304µs
 ```
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 // String fast path - optimized
 postMessage("Hello, worker!");
 
@@ -171,7 +177,7 @@ postMessage({
 });
 ```
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 // On the worker thread, `postMessage` is automatically "routed" to the parent thread.
 postMessage({ hello: "world" });
 
@@ -181,16 +187,16 @@ worker.postMessage({ hello: "world" });
 
 To receive messages, use the [`message` event handler](https://developer.mozilla.org/en-US/docs/Web/API/Worker/message_event) on the worker and main thread.
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Worker thread:
-self.addEventListener("message", event => {
+self.addEventListener("message", (event) => {
   console.log(event.data);
 });
 // or use the setter:
 // self.onmessage = fn
 
 // if on the main thread
-worker.addEventListener("message", event => {
+worker.addEventListener("message", (event) => {
   console.log(event.data);
 });
 // or use the setter:
@@ -221,7 +227,7 @@ The `"close"` event is emitted when a worker has been terminated. It can take so
 ```ts index.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 const worker = new Worker(new URL("worker.ts", import.meta.url).href);
 
-worker.addEventListener("close", event => {
+worker.addEventListener("close", (event) => {
   console.log("worker is being closed");
 });
 ```
@@ -298,7 +304,7 @@ console.log(config); // => { apiUrl: "https://api.example.com" }
 Listen for worker creation events using `process.emit()`:
 
 ```ts title="index.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-process.on("worker", worker => {
+process.on("worker", (worker) => {
   console.log("New worker created:", worker.threadId);
 });
 ```
@@ -307,7 +313,7 @@ process.on("worker", worker => {
 
 You can check if you're in the main thread by checking `Bun.isMainThread`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 if (Bun.isMainThread) {
   console.log("I'm the main thread");
 } else {

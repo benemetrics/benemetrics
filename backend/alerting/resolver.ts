@@ -1,4 +1,3 @@
-
 import { appDAO } from "db/dao/project";
 import { alertChannelDAO } from "db/dao/alert-channels";
 import { alertRuleDAO } from "db/dao/alert-rules";
@@ -23,15 +22,21 @@ export async function resolveEffectiveAlertConfig(scope: {
     const app = await appDAO.findById(appId);
     projectId = app?.projectId ?? null;
   }
-  const [globalChannels, projectChannels, appChannels, globalRules, projectRules, appRules] =
-    await Promise.all([
-      alertChannelDAO.list(null),
-      projectId ? alertChannelDAO.list({ projectId }) : Promise.resolve([]),
-      appId ? alertChannelDAO.list({ appId }) : Promise.resolve([]),
-      alertRuleDAO.list(null),
-      projectId ? alertRuleDAO.list({ projectId }) : Promise.resolve([]),
-      appId ? alertRuleDAO.list({ appId }) : Promise.resolve([]),
-    ]);
+  const [
+    globalChannels,
+    projectChannels,
+    appChannels,
+    globalRules,
+    projectRules,
+    appRules,
+  ] = await Promise.all([
+    alertChannelDAO.list(null),
+    projectId ? alertChannelDAO.list({ projectId }) : Promise.resolve([]),
+    appId ? alertChannelDAO.list({ appId }) : Promise.resolve([]),
+    alertRuleDAO.list(null),
+    projectId ? alertRuleDAO.list({ projectId }) : Promise.resolve([]),
+    appId ? alertRuleDAO.list({ appId }) : Promise.resolve([]),
+  ]);
 
   return {
     channels: mergeByName(

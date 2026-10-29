@@ -9,11 +9,11 @@ description: Fix the "can't be opened because it is from an unidentified develop
 
 Compile your executable using the `--compile` flag.
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun build --compile ./path/to/entry.ts --outfile myapp
 ```
 
-***
+---
 
 List your available signing identities. One of these will be your signing identity that you pass to the `codesign` command. This command requires macOS.
 
@@ -21,12 +21,12 @@ List your available signing identities. One of these will be your signing identi
 security find-identity -v -p codesigning
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 1. XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX "Developer ID Application: Your Name (ZZZZZZZZZZ)"
    1 valid identities found
 ```
 
-***
+---
 
 Optional, but recommended: create an `entitlements.plist` file with the necessary permissions for the JavaScript engine to work correctly.
 
@@ -49,7 +49,7 @@ Optional, but recommended: create an `entitlements.plist` file with the necessar
 </plist>
 ```
 
-***
+---
 
 Sign your executable using the `codesign` command and verify it works.
 
@@ -58,6 +58,6 @@ codesign --entitlements entitlements.plist -vvvv --deep --sign "XXXXXXXXXX" ./my
 codesign -vvv --verify ./myapp
 ```
 
-***
+---
 
 For more information on macOS codesigning, refer to [Apple's Code Signing documentation](https://developer.apple.com/documentation/security/code_signing_services). For details about creating single-file executables with Bun, see [Standalone Executables](/bundler/executables). This guide requires Bun v1.2.4 or newer.

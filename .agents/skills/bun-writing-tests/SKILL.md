@@ -57,8 +57,8 @@ Alternatively, use the `done` callback to signal completion. If you include the 
 ```ts title="math.test.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { expect, test } from "bun:test";
 
-test("2 * 2", done => {
-  Promise.resolve(2 * 2).then(result => {
+test("2 * 2", (done) => {
+  Promise.resolve(2 * 2).then((result) => {
     expect(result).toEqual(4);
     done();
   });
@@ -246,8 +246,8 @@ test.todoIf(macOS)("runs on posix", () => {
 
 Use `test.failing()` when you know a test is currently failing but you want to track it and be notified when it starts passing. This inverts the test result:
 
-* A failing test marked with `.failing()` will pass
-* A passing test marked with `.failing()` will fail (with a message indicating it's now passing and should be fixed)
+- A failing test marked with `.failing()` will pass
+- A passing test marked with `.failing()` will fail (with a message indicating it's now passing and should be fixed)
 
 ```ts math.test.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 // This will pass because the test is failing as expected
@@ -335,8 +335,8 @@ describe.each([
 
 How arguments are passed to your test function depends on the structure of your test cases:
 
-* If a table row is an array (like `[1, 2, 3]`), each element is passed as an individual argument
-* If a row is not an array (like an object), it's passed as a single argument
+- If a table row is an array (like `[1, 2, 3]`), each element is passed as an individual argument
+- If a row is not an array (like an object), it's passed as a single argument
 
 ```ts title="example.test.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Array items passed as individual arguments
@@ -351,7 +351,7 @@ test.each([
 test.each([
   { a: 1, b: 2, expected: 3 },
   { a: 4, b: 5, expected: 9 },
-])("add($a, $b) = $expected", data => {
+])("add($a, $b) = $expected", (data) => {
   expect(data.a + data.b).toBe(data.expected);
 });
 ```
@@ -394,7 +394,7 @@ test.each([
 });
 
 // %# for index
-test.each(["apple", "banana"])("fruit #%# is %s", fruit => {
+test.each(["apple", "banana"])("fruit #%# is %s", (fruit) => {
   // "fruit #0 is apple"
   // "fruit #1 is banana"
 });
@@ -486,106 +486,106 @@ Bun implements the following matchers. Full Jest compatibility is on the roadmap
 
 | Status | Matcher            |
 | ------ | ------------------ |
-| ✅      | `.not`             |
-| ✅      | `.toBe()`          |
-| ✅      | `.toEqual()`       |
-| ✅      | `.toBeNull()`      |
-| ✅      | `.toBeUndefined()` |
-| ✅      | `.toBeNaN()`       |
-| ✅      | `.toBeDefined()`   |
-| ✅      | `.toBeFalsy()`     |
-| ✅      | `.toBeTruthy()`    |
-| ✅      | `.toStrictEqual()` |
+| ✅     | `.not`             |
+| ✅     | `.toBe()`          |
+| ✅     | `.toEqual()`       |
+| ✅     | `.toBeNull()`      |
+| ✅     | `.toBeUndefined()` |
+| ✅     | `.toBeNaN()`       |
+| ✅     | `.toBeDefined()`   |
+| ✅     | `.toBeFalsy()`     |
+| ✅     | `.toBeTruthy()`    |
+| ✅     | `.toStrictEqual()` |
 
 ### String and Array Matchers
 
 | Status | Matcher               |
 | ------ | --------------------- |
-| ✅      | `.toContain()`        |
-| ✅      | `.toHaveLength()`     |
-| ✅      | `.toMatch()`          |
-| ✅      | `.toContainEqual()`   |
-| ✅      | `.stringContaining()` |
-| ✅      | `.stringMatching()`   |
-| ✅      | `.arrayContaining()`  |
+| ✅     | `.toContain()`        |
+| ✅     | `.toHaveLength()`     |
+| ✅     | `.toMatch()`          |
+| ✅     | `.toContainEqual()`   |
+| ✅     | `.stringContaining()` |
+| ✅     | `.stringMatching()`   |
+| ✅     | `.arrayContaining()`  |
 
 ### Object Matchers
 
 | Status | Matcher                 |
 | ------ | ----------------------- |
-| ✅      | `.toHaveProperty()`     |
-| ✅      | `.toMatchObject()`      |
-| ✅      | `.toContainAllKeys()`   |
-| ✅      | `.toContainValue()`     |
-| ✅      | `.toContainValues()`    |
-| ✅      | `.toContainAllValues()` |
-| ✅      | `.toContainAnyValues()` |
-| ✅      | `.objectContaining()`   |
+| ✅     | `.toHaveProperty()`     |
+| ✅     | `.toMatchObject()`      |
+| ✅     | `.toContainAllKeys()`   |
+| ✅     | `.toContainValue()`     |
+| ✅     | `.toContainValues()`    |
+| ✅     | `.toContainAllValues()` |
+| ✅     | `.toContainAnyValues()` |
+| ✅     | `.objectContaining()`   |
 
 ### Number Matchers
 
 | Status | Matcher                     |
 | ------ | --------------------------- |
-| ✅      | `.toBeCloseTo()`            |
-| ✅      | `.closeTo()`                |
-| ✅      | `.toBeGreaterThan()`        |
-| ✅      | `.toBeGreaterThanOrEqual()` |
-| ✅      | `.toBeLessThan()`           |
-| ✅      | `.toBeLessThanOrEqual()`    |
+| ✅     | `.toBeCloseTo()`            |
+| ✅     | `.closeTo()`                |
+| ✅     | `.toBeGreaterThan()`        |
+| ✅     | `.toBeGreaterThanOrEqual()` |
+| ✅     | `.toBeLessThan()`           |
+| ✅     | `.toBeLessThanOrEqual()`    |
 
 ### Function and Class Matchers
 
 | Status | Matcher             |
 | ------ | ------------------- |
-| ✅      | `.toThrow()`        |
-| ✅      | `.toBeInstanceOf()` |
+| ✅     | `.toThrow()`        |
+| ✅     | `.toBeInstanceOf()` |
 
 ### Promise Matchers
 
 | Status | Matcher       |
 | ------ | ------------- |
-| ✅      | `.resolves()` |
-| ✅      | `.rejects()`  |
+| ✅     | `.resolves()` |
+| ✅     | `.rejects()`  |
 
 ### Mock Function Matchers
 
 | Status | Matcher                       |
 | ------ | ----------------------------- |
-| ✅      | `.toHaveBeenCalled()`         |
-| ✅      | `.toHaveBeenCalledTimes()`    |
-| ✅      | `.toHaveBeenCalledWith()`     |
-| ✅      | `.toHaveBeenLastCalledWith()` |
-| ✅      | `.toHaveBeenNthCalledWith()`  |
-| ✅      | `.toHaveReturned()`           |
-| ✅      | `.toHaveReturnedTimes()`      |
-| ✅      | `.toHaveReturnedWith()`       |
-| ✅      | `.toHaveLastReturnedWith()`   |
-| ✅      | `.toHaveNthReturnedWith()`    |
+| ✅     | `.toHaveBeenCalled()`         |
+| ✅     | `.toHaveBeenCalledTimes()`    |
+| ✅     | `.toHaveBeenCalledWith()`     |
+| ✅     | `.toHaveBeenLastCalledWith()` |
+| ✅     | `.toHaveBeenNthCalledWith()`  |
+| ✅     | `.toHaveReturned()`           |
+| ✅     | `.toHaveReturnedTimes()`      |
+| ✅     | `.toHaveReturnedWith()`       |
+| ✅     | `.toHaveLastReturnedWith()`   |
+| ✅     | `.toHaveNthReturnedWith()`    |
 
 ### Snapshot Matchers
 
 | Status | Matcher                                 |
 | ------ | --------------------------------------- |
-| ✅      | `.toMatchSnapshot()`                    |
-| ✅      | `.toMatchInlineSnapshot()`              |
-| ✅      | `.toThrowErrorMatchingSnapshot()`       |
-| ✅      | `.toThrowErrorMatchingInlineSnapshot()` |
+| ✅     | `.toMatchSnapshot()`                    |
+| ✅     | `.toMatchInlineSnapshot()`              |
+| ✅     | `.toThrowErrorMatchingSnapshot()`       |
+| ✅     | `.toThrowErrorMatchingInlineSnapshot()` |
 
 ### Utility Matchers
 
 | Status | Matcher            |
 | ------ | ------------------ |
-| ✅      | `.extend`          |
-| ✅      | `.anything()`      |
-| ✅      | `.any()`           |
-| ✅      | `.assertions()`    |
-| ✅      | `.hasAssertions()` |
+| ✅     | `.extend`          |
+| ✅     | `.anything()`      |
+| ✅     | `.any()`           |
+| ✅     | `.assertions()`    |
+| ✅     | `.hasAssertions()` |
 
 ### Not Yet Implemented
 
 | Status | Matcher                    |
 | ------ | -------------------------- |
-| ❌      | `.addSnapshotSerializer()` |
+| ❌     | `.addSnapshotSerializer()` |
 
 ## Best Practices
 

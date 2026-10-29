@@ -15,7 +15,7 @@ test("snapshot", () => {
 });
 ```
 
-***
+---
 
 The first time this test is executed, Bun will write a snapshot file to disk in a directory called `__snapshots__` that lives alongside the test file.
 
@@ -26,7 +26,7 @@ test
 └── snap.test.ts
 ```
 
-***
+---
 
 To regenerate snapshots, use the `--update-snapshots` flag.
 
@@ -34,7 +34,7 @@ To regenerate snapshots, use the `--update-snapshots` flag.
 bun test --update-snapshots
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 test/snap.test.ts:
 ✓ snapshot [0.86ms]
 
@@ -45,6 +45,6 @@ test/snap.test.ts:
 Ran 1 tests across 1 files. [102.00ms]
 ```
 
-***
+---
 
 See [Docs > Test Runner > Snapshots](/test/snapshots) for complete documentation on snapshots with the Bun test runner.

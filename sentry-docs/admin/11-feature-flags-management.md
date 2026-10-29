@@ -17,6 +17,7 @@ Feature flags allow you to control feature rollouts, run A/B tests, and manage f
 Create a new feature flag. Requires **Admin OAuth2/OIDC authentication**.
 
 **Request:**
+
 ```json
 {
   "key": "new-checkout-flow",
@@ -34,6 +35,7 @@ Create a new feature flag. Requires **Admin OAuth2/OIDC authentication**.
 ```
 
 **Response:**
+
 ```json
 {
   "id": "ff_123",
@@ -58,15 +60,17 @@ Create a new feature flag. Requires **Admin OAuth2/OIDC authentication**.
 List all feature flags with filtering and pagination. Requires **Admin OAuth2/OIDC authentication**.
 
 **Query Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `status` | string | Filter by status: `draft`, `active`, `paused`, `archived` |
-| `type` | string | Filter by type: `boolean`, `string`, `number`, `json` |
-| `search` | string | Search by key or name |
-| `page` | number | Page number (default: 1) |
-| `limit` | number | Items per page (default: 20) |
+
+| Parameter | Type   | Description                                               |
+| --------- | ------ | --------------------------------------------------------- |
+| `status`  | string | Filter by status: `draft`, `active`, `paused`, `archived` |
+| `type`    | string | Filter by type: `boolean`, `string`, `number`, `json`     |
+| `search`  | string | Search by key or name                                     |
+| `page`    | number | Page number (default: 1)                                  |
+| `limit`   | number | Items per page (default: 20)                              |
 
 **Response:**
+
 ```json
 {
   "data": [
@@ -89,6 +93,7 @@ List all feature flags with filtering and pagination. Requires **Admin OAuth2/OI
 Get a specific feature flag with full details. Requires **Admin OAuth2/OIDC authentication**.
 
 **Response:**
+
 ```json
 {
   "id": "ff_123",
@@ -127,6 +132,7 @@ Get a specific feature flag with full details. Requires **Admin OAuth2/OIDC auth
 Update a feature flag (partial update). Requires **Admin OAuth2/OIDC authentication**.
 
 **Request:**
+
 ```json
 {
   "name": "Updated Checkout Flow",
@@ -145,6 +151,7 @@ Update a feature flag (partial update). Requires **Admin OAuth2/OIDC authenticat
 Change feature flag status. Requires **Admin OAuth2/OIDC authentication**.
 
 **Request:**
+
 ```json
 { "status": "active" }
 ```
@@ -164,6 +171,7 @@ Delete a feature flag (only allowed for `draft` status). Requires **Admin OAuth2
 Targeting rules determine which users receive which variant.
 
 ### Rule Structure
+
 ```json
 {
   "id": "tr_1",
@@ -175,26 +183,28 @@ Targeting rules determine which users receive which variant.
 ```
 
 ### Supported Attributes
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `user.id` | string | User ID |
-| `user.email` | string | User email |
-| `user.name` | string | User name |
-| `user.createdAt` | date | Account creation date |
-| `user.custom.*` | any | Custom user attributes |
-| `context.ip` | string | Client IP address |
-| `context.country` | string | Country code (ISO) |
-| `context.device` | string | Device type |
-| `context.browser` | string | Browser name |
+
+| Attribute         | Type   | Description            |
+| ----------------- | ------ | ---------------------- |
+| `user.id`         | string | User ID                |
+| `user.email`      | string | User email             |
+| `user.name`       | string | User name              |
+| `user.createdAt`  | date   | Account creation date  |
+| `user.custom.*`   | any    | Custom user attributes |
+| `context.ip`      | string | Client IP address      |
+| `context.country` | string | Country code (ISO)     |
+| `context.device`  | string | Device type            |
+| `context.browser` | string | Browser name           |
 
 ### Operators by Type
-| Attribute Type | Operators |
-|----------------|-----------|
-| String | `equals`, `not_equals`, `contains`, `not_contains`, `starts_with`, `ends_with`, `in`, `not_in` |
-| Number | `equals`, `not_equals`, `greater_than`, `less_than`, `greater_than_or_equal`, `less_than_or_equal`, `in`, `not_in` |
-| Date | `before`, `after`, `on`, `between` |
-| Boolean | `equals`, `not_equals` |
-| Array | `in`, `not_in`, `contains`, `not_contains` |
+
+| Attribute Type | Operators                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------ |
+| String         | `equals`, `not_equals`, `contains`, `not_contains`, `starts_with`, `ends_with`, `in`, `not_in`                     |
+| Number         | `equals`, `not_equals`, `greater_than`, `less_than`, `greater_than_or_equal`, `less_than_or_equal`, `in`, `not_in` |
+| Date           | `before`, `after`, `on`, `between`                                                                                 |
+| Boolean        | `equals`, `not_equals`                                                                                             |
+| Array          | `in`, `not_in`, `contains`, `not_contains`                                                                         |
 
 ---
 
@@ -207,13 +217,22 @@ Segments are reusable user groups that can be targeted across multiple feature f
 Create a new segment. Requires **Admin OAuth2/OIDC authentication**.
 
 **Request:**
+
 ```json
 {
   "name": "Premium Users",
   "description": "Users with active premium subscription",
   "rules": [
-    { "attribute": "user.custom.subscription_tier", "operator": "equals", "value": "premium" },
-    { "attribute": "user.custom.subscription_status", "operator": "equals", "value": "active" }
+    {
+      "attribute": "user.custom.subscription_tier",
+      "operator": "equals",
+      "value": "premium"
+    },
+    {
+      "attribute": "user.custom.subscription_status",
+      "operator": "equals",
+      "value": "active"
+    }
   ]
 }
 ```
@@ -227,6 +246,7 @@ List all segments. Requires **Admin OAuth2/OIDC authentication**.
 Get a segment. Requires **Admin OAuth2/OIDC authentication**.
 
 **Response:**
+
 ```json
 {
   "id": "seg_1",
@@ -253,8 +273,18 @@ Feature flags support A/B testing through variant weights and statistical analys
   "defaultValue": "blue",
   "variants": [
     { "key": "control", "name": "Blue Button", "value": "blue", "weight": 33 },
-    { "key": "variant_a", "name": "Green Button", "value": "green", "weight": 33 },
-    { "key": "variant_b", "name": "Orange Button", "value": "orange", "weight": 34 }
+    {
+      "key": "variant_a",
+      "name": "Green Button",
+      "value": "green",
+      "weight": 33
+    },
+    {
+      "key": "variant_b",
+      "name": "Orange Button",
+      "value": "orange",
+      "weight": 34
+    }
   ],
   "experiment": {
     "enabled": true,
@@ -272,6 +302,7 @@ Feature flags support A/B testing through variant weights and statistical analys
 Get experiment results with statistical significance.
 
 **Response:**
+
 ```json
 {
   "featureFlagId": "ff_123",
@@ -288,7 +319,7 @@ Get experiment results with statistical significance.
       "name": "Blue Button",
       "participants": 3421,
       "conversions": 1026,
-      "conversionRate": 0.300,
+      "conversionRate": 0.3,
       "confidenceInterval": [0.284, 0.316]
     },
     {
@@ -331,14 +362,16 @@ Get experiment results with statistical significance.
 Get users assigned to each variant for a feature flag.
 
 **Query Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `variantKey` | string | Filter by variant |
-| `page` | number | Page number |
-| `limit` | number | Items per page |
-| `search` | string | Search by user ID, email, or name |
+
+| Parameter    | Type   | Description                       |
+| ------------ | ------ | --------------------------------- |
+| `variantKey` | string | Filter by variant                 |
+| `page`       | number | Page number                       |
+| `limit`      | number | Items per page                    |
+| `search`     | string | Search by user ID, email, or name |
 
 **Response:**
+
 ```json
 {
   "featureFlagId": "ff_123",
@@ -365,6 +398,7 @@ Get users assigned to each variant for a feature flag.
 Get feature flag evaluation for a specific user.
 
 **Response:**
+
 ```json
 {
   "featureFlagId": "ff_123",
@@ -387,6 +421,7 @@ Get feature flag evaluation for a specific user.
 Evaluate feature flags for a user context (used by SDKs). Requires **Sentry DSN authentication** (sentry_key query param or Bearer token with DSN public key).
 
 **Request:**
+
 ```json
 {
   "user": {
@@ -409,6 +444,7 @@ Evaluate feature flags for a user context (used by SDKs). Requires **Sentry DSN 
 ```
 
 **Response:**
+
 ```json
 {
   "evaluations": [
@@ -438,6 +474,7 @@ Evaluate feature flags for a user context (used by SDKs). Requires **Sentry DSN 
 Evaluate a single flag for a user, using the [OpenFeature Web Flag Evaluation API](https://openfeature.dev) ("OpenFlag") wire format — one flag per request, targeted by `targetingKey`.
 
 **Request:**
+
 ```json
 {
   "targetingKey": "user_123",
@@ -449,6 +486,7 @@ Evaluate a single flag for a user, using the [OpenFeature Web Flag Evaluation AP
 ```
 
 **Response (success):**
+
 ```json
 {
   "variant": "treatment",
@@ -458,6 +496,7 @@ Evaluate a single flag for a user, using the [OpenFeature Web Flag Evaluation AP
 ```
 
 **Response (unknown flag):**
+
 ```json
 {
   "variant": "default",
@@ -476,6 +515,7 @@ Evaluate a single flag for a user, using the [OpenFeature Web Flag Evaluation AP
 Get audit trail for a feature flag. Requires **Admin OAuth2/OIDC authentication**.
 
 **Response:**
+
 ```json
 {
   "entries": [
@@ -514,14 +554,14 @@ import { FeatureFlagsClient } from "@sentry/feature-flags";
 const client = new FeatureFlagsClient({
   dsn: process.env.SENTRY_DSN,
   organization: "my-org",
-  project: "my-project"
+  project: "my-project",
 });
 
 // Evaluate flags for a user
 const flags = await client.evaluate({
   userId: "user_123",
   email: "john@company.com",
-  custom: { subscription_tier: "premium" }
+  custom: { subscription_tier: "premium" },
 });
 
 // Check a specific flag
@@ -532,7 +572,7 @@ if (flags["new-checkout-flow"]) {
 // Track experiment event
 client.track("checkout_completion", {
   flagKey: "checkout-button-color",
-  variantKey: flags["checkout-button-color"]?.variantKey
+  variantKey: flags["checkout-button-color"]?.variantKey,
 });
 ```
 
@@ -544,7 +584,7 @@ import { useFeatureFlag } from "@sentry/feature-flags/react";
 function CheckoutButton() {
   const { value: showNewFlow } = useFeatureFlag("new-checkout-flow");
   const { value: buttonColor } = useFeatureFlag("checkout-button-color");
-  
+
   return (
     <button className={`btn btn-${buttonColor}`}>
       {showNewFlow ? "New Checkout" : "Checkout"}
@@ -558,23 +598,34 @@ function CheckoutButton() {
 ## Rollout Strategies
 
 ### Percentage Rollout
+
 Gradually increase rollout percentage:
+
 ```
 Week 1: 10% → Week 2: 25% → Week 3: 50% → Week 4: 100%
 ```
 
 ### Canary Release
+
 Target specific users first:
+
 ```json
 {
   "targetingRules": [
-    { "attribute": "user.id", "operator": "in", "value": ["internal-user-1", "internal-user-2"], "variantKey": "treatment" }
+    {
+      "attribute": "user.id",
+      "operator": "in",
+      "value": ["internal-user-1", "internal-user-2"],
+      "variantKey": "treatment"
+    }
   ]
 }
 ```
 
 ### Progressive Rollout with Metrics Guard
+
 Automatically pause if error rate increases:
+
 ```json
 {
   "experiment": {

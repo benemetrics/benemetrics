@@ -15,7 +15,7 @@ test.skip("unimplemented feature", () => {
 });
 ```
 
-***
+---
 
 Running `bun test` will not execute this test. It will be marked as skipped in the terminal output.
 
@@ -23,7 +23,7 @@ Running `bun test` will not execute this test. It will be marked as skipped in t
 bun test
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 test.test.ts:
 ✓ add [0.03ms]
 ✓ multiply [0.02ms]
@@ -36,9 +36,9 @@ test.test.ts:
 Ran 3 tests across 1 files. [74.00ms]
 ```
 
-***
+---
 
 See also:
 
-* [Mark a test as a todo](/guides/test/todo-tests)
-* [Docs > Test runner > Writing tests](/test/writing-tests)
+- [Mark a test as a todo](/guides/test/todo-tests)
+- [Docs > Test runner > Writing tests](/test/writing-tests)

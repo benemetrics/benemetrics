@@ -19,7 +19,7 @@ registry = { url = "https://registry.npmjs.org", token = "123456" }
 registry = "https://usertitle:password@registry.npmjs.org"
 ```
 
-***
+---
 
 Your `bunfig.toml` can reference environment variables. Bun automatically loads environment variables from `.env.local`, `.env.[NODE_ENV]`, and `.env`. See [Docs > Environment variables](/runtime/environment-variables) for more information.
 
@@ -28,6 +28,6 @@ Your `bunfig.toml` can reference environment variables. Bun automatically loads 
 registry = { url = "https://registry.npmjs.org", token = "$npm_token" }
 ```
 
-***
+---
 
 See [Docs > Package manager](/pm/cli/install) for complete documentation of Bun's package manager.

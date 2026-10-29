@@ -9,7 +9,7 @@ Bun's package manager supports npm `"workspaces"`. This allows you to split a co
 
 Clone [this sample project](https://github.com/colinhacks/bun-workspaces) to experiment with workspaces.
 
-***
+---
 
 The root `package.json` should not contain any `"dependencies"`, `"devDependencies"`, etc. Each individual package should be self-contained and declare its own dependencies. Similarly, it's conventional to declare `"private": true` to avoid accidentally publishing the root package to `npm`.
 
@@ -21,9 +21,9 @@ The root `package.json` should not contain any `"dependencies"`, `"devDependenci
 }
 ```
 
-***
+---
 
-It's common to place all packages in a `packages` directory. The `"workspaces"` field in package.json supports glob patterns, so you can use `packages/*` to indicate that each subdirectory of `packages` should be considered separate *package* (also known as a workspace).
+It's common to place all packages in a `packages` directory. The `"workspaces"` field in package.json supports glob patterns, so you can use `packages/*` to indicate that each subdirectory of `packages` should be considered separate _package_ (also known as a workspace).
 
 ```txt File Tree icon="folder-tree" theme={"theme":{"light":"github-light","dark":"dracula"}}
 .
@@ -36,7 +36,7 @@ It's common to place all packages in a `packages` directory. The `"workspaces"` 
         └── package.json
 ```
 
-***
+---
 
 To add dependencies between workspaces, use the `"workspace:*"` syntax. Here we're adding `stuff-a` as a dependency of `stuff-b`.
 
@@ -49,7 +49,7 @@ To add dependencies between workspaces, use the `"workspace:*"` syntax. Here we'
 }
 ```
 
-***
+---
 
 Once added, run `bun install` from the project root to install dependencies for all workspaces.
 
@@ -57,7 +57,7 @@ Once added, run `bun install` from the project root to install dependencies for 
 bun install
 ```
 
-***
+---
 
 To add npm dependencies to a particular workspace, just `cd` to the appropriate directory and run `bun add` commands as you would normally. Bun will detect that you are in a workspace and hoist the dependency as needed.
 
@@ -66,6 +66,6 @@ cd packages/stuff-a
 bun add zod
 ```
 
-***
+---
 
 See [Docs > Package manager](/pm/cli/install) for complete documentation of Bun's package manager.

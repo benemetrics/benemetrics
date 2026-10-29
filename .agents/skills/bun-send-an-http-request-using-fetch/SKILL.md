@@ -12,7 +12,7 @@ const response = await fetch("https://bun.com");
 const html = await response.text(); // HTML string
 ```
 
-***
+---
 
 To send a `POST` request to an API endpoint.
 

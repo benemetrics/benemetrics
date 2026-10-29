@@ -73,29 +73,37 @@ afterAll(async () => {
 });
 
 describe("wire-up: token + create project", () => {
-  it(
-    "creates a project through the real UI",
-    async () => {
-      await view.navigate(`${baseUrl}/ui`);
-      await view.evaluate("(() => { localStorage.clear(); sessionStorage.clear(); })()");
-      await view.navigate(`${baseUrl}/ui/overview`);
+  it("creates a project through the real UI", async () => {
+    await view.navigate(`${baseUrl}/ui`);
+    await view.evaluate(
+      "(() => { localStorage.clear(); sessionStorage.clear(); })()",
+    );
+    await view.navigate(`${baseUrl}/ui/overview`);
 
-      // 1. token prompt -> submit the fresh boot token
-      const prompt = await waitForUI((t) => t.includes("Sign in to Glitchlog"));
-      if (!prompt.includes("Sign in to Glitchlog")) throw new Error(`no token prompt, body: ${prompt.slice(0, 400)}`);
-      const typed = await typeInto('input[name="token"]', ADMIN_TOKEN_RAW);
-      if (!typed) throw new Error("token input missing");
-      await clickButton("Continue");
-      const ready = await waitForUI((t) => t.includes("Projects"), 20000);
-      if (!ready.includes("Projects")) throw new Error(`session did not resolve, body: ${ready.slice(0, 400)}`);
-      console.log("STEP1 token+session: OK");
+    // 1. token prompt -> submit the fresh boot token
+    const prompt = await waitForUI((t) => t.includes("Sign in to Glitchlog"));
+    if (!prompt.includes("Sign in to Glitchlog"))
+      throw new Error(`no token prompt, body: ${prompt.slice(0, 400)}`);
+    const typed = await typeInto('input[name="token"]', ADMIN_TOKEN_RAW);
+    if (!typed) throw new Error("token input missing");
+    await clickButton("Continue");
+    const ready = await waitForUI((t) => t.includes("Projects"), 20000);
+    if (!ready.includes("Projects"))
+      throw new Error(`session did not resolve, body: ${ready.slice(0, 400)}`);
+    console.log("STEP1 token+session: OK");
 
-      // 2. New project -> form -> submit
-      if (!(await clickButton("New project"))) throw new Error("New project button not found");
-      const formOpen = await waitForUI((t) => t.includes("New project") && t.includes("Name"));
-      if (!(await typeInto('input[placeholder="Payments"]', "Wireup Verify"))) throw new Error("project name input missing, body: " + formOpen.slice(0, 300));
-      // Log every API call the page makes from here on.
-      await view.evaluate(`(() => {
+    // 2. New project -> form -> submit
+    if (!(await clickButton("New project")))
+      throw new Error("New project button not found");
+    const formOpen = await waitForUI(
+      (t) => t.includes("New project") && t.includes("Name"),
+    );
+    if (!(await typeInto('input[placeholder="Payments"]', "Wireup Verify")))
+      throw new Error(
+        "project name input missing, body: " + formOpen.slice(0, 300),
+      );
+    // Log every API call the page makes from here on.
+    await view.evaluate(`(() => {
         window.__calls = [];
         const orig = window.fetch.bind(window);
         window.fetch = (...args) => {
@@ -104,44 +112,55 @@ describe("wire-up: token + create project", () => {
         };
         return true;
       })()`);
-      await clickButton("Create project");
+    await clickButton("Create project");
 
-      // Watch where the SPA goes for a few seconds.
-      const seen = new Set<string>();
-      for (let i = 0; i < 20; i++) {
-        seen.add(await url());
-        await Bun.sleep(250);
-      }
-      console.log("PATH TIMELINE:", [...seen].join(" -> "));
+    // Watch where the SPA goes for a few seconds.
+    const seen = new Set<string>();
+    for (let i = 0; i < 20; i++) {
+      seen.add(await url());
+      await Bun.sleep(250);
+    }
+    console.log("PATH TIMELINE:", [...seen].join(" -> "));
 
-      // List projects with the page's own credential.
-      const listOut = (await view.evaluate(`(async () => {
+    // List projects with the page's own credential.
+    const listOut =
+      (await view.evaluate(`(async () => {
         const cred = sessionStorage.getItem("benemetrics.credential") ?? "";
         const res = await fetch("/api/admin/projects?limit=100", { headers: { authorization: "API-Key " + cred } });
         return res.status + " " + (await res.text()).slice(0, 300);
       })()`)) ?? "";
-      console.log("PROJECT LIST:", listOut);
-        const calls = (await view.evaluate("JSON.stringify(window.__calls ?? [])")) ?? "[]";
-        console.log("PAGE FETCH LOG:", calls);
-        const main = (await view.evaluate("document.querySelector('main')?.innerHTML?.slice(0, 400) ?? 'no-main'")) ?? "";
-        console.log("MAIN HTML:", main);
+    console.log("PROJECT LIST:", listOut);
+    const calls =
+      (await view.evaluate("JSON.stringify(window.__calls ?? [])")) ?? "[]";
+    console.log("PAGE FETCH LOG:", calls);
+    const main =
+      (await view.evaluate(
+        "document.querySelector('main')?.innerHTML?.slice(0, 400) ?? 'no-main'",
+      )) ?? "";
+    console.log("MAIN HTML:", main);
 
-      // 3. should navigate to the project page
-      const landed = await waitForUI((t) => t.includes("Wireup Verify"), 20000);
-      const path = await url();
-      if (!landed.includes("Wireup Verify") || !path.includes("/projects/")) {
-        const mainHtml = (await view.evaluate("document.querySelector('main')?.innerHTML?.slice(0, 600) ?? 'no-main'")) ?? "";
-        const bodyText = (await view.evaluate("document.body?.innerText")) ?? "";
-        throw new Error(`create failed — path: ${path}, main: ${mainHtml}, bodyText: ${JSON.stringify(bodyText.slice(0, 300))}`);
-      }
-      console.log("STEP2 create+navigate: OK ->", path);
+    // 3. should navigate to the project page
+    const landed = await waitForUI((t) => t.includes("Wireup Verify"), 20000);
+    const path = await url();
+    if (!landed.includes("Wireup Verify") || !path.includes("/projects/")) {
+      const mainHtml =
+        (await view.evaluate(
+          "document.querySelector('main')?.innerHTML?.slice(0, 600) ?? 'no-main'",
+        )) ?? "";
+      const bodyText = (await view.evaluate("document.body?.innerText")) ?? "";
+      throw new Error(
+        `create failed — path: ${path}, main: ${mainHtml}, bodyText: ${JSON.stringify(bodyText.slice(0, 300))}`,
+      );
+    }
+    console.log("STEP2 create+navigate: OK ->", path);
 
-      // 4. the projects list shows it
-      await view.navigate(`${baseUrl}/ui/overview`);
-      const list = await waitForUI((t) => t.includes("Wireup Verify"), 20000);
-      if (!listOut.includes("Wireup Verify")) throw new Error(`project missing from list, body: ${listOut.slice(0, 600)}`);
-      console.log("STEP3 list shows project: OK");
-    },
-    120000,
-  );
+    // 4. the projects list shows it
+    await view.navigate(`${baseUrl}/ui/overview`);
+    const list = await waitForUI((t) => t.includes("Wireup Verify"), 20000);
+    if (!listOut.includes("Wireup Verify"))
+      throw new Error(
+        `project missing from list, body: ${listOut.slice(0, 600)}`,
+      );
+    console.log("STEP3 list shows project: OK");
+  }, 120000);
 });

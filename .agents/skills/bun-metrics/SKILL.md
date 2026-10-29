@@ -11,11 +11,12 @@ description: Monitor server activity with built-in metrics
 
 Monitor server activity with built-in counters:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const server = Bun.serve({
   fetch(req, server) {
     return new Response(
-      `Active requests: ${server.pendingRequests}\n` + `Active WebSockets: ${server.pendingWebSockets}`,
+      `Active requests: ${server.pendingRequests}\n` +
+        `Active WebSockets: ${server.pendingWebSockets}`,
     );
   },
 });
@@ -25,7 +26,7 @@ const server = Bun.serve({
 
 Get count of subscribers for a WebSocket topic:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const server = Bun.serve({
   fetch(req, server) {
     const chatUsers = server.subscriberCount("chat");

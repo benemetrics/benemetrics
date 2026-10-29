@@ -23,7 +23,9 @@ const originalLog = console.log.bind(console);
 let printedToken = "";
 console.log = (...args: unknown[]) => {
   for (const arg of args) {
-    const match = String(arg).match(/\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/);
+    const match = String(arg).match(
+      /\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/,
+    );
     if (match) printedToken = match[0];
   }
   return originalLog(...args);
@@ -48,7 +50,10 @@ export const ADMIN_HEADERS: Record<string, string> = {
 };
 
 /** fetch-shaped, but routed through `app.handle` (no network). */
-export function handleFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
+export function handleFetch(
+  input: string | URL | Request,
+  init?: RequestInit,
+): Promise<Response> {
   if (input instanceof Request) return app.handle(input);
 
   // No network hop means no automatic Host header; set it so request-derived
@@ -71,21 +76,29 @@ export interface TestApp {
 
 /** Provisions a project + app through the admin API (no server started). */
 export async function startTestApp(): Promise<TestApp> {
-  const projectResponse = await handleFetch(`${TEST_ORIGIN}/api/admin/projects`, {
-    method: "POST",
-    headers: ADMIN_HEADERS,
-    body: JSON.stringify({ name: `E2E Project ${crypto.randomUUID().slice(0, 8)}` }),
-  });
+  const projectResponse = await handleFetch(
+    `${TEST_ORIGIN}/api/admin/projects`,
+    {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify({
+        name: `E2E Project ${crypto.randomUUID().slice(0, 8)}`,
+      }),
+    },
+  );
   if (!projectResponse.ok) {
     throw new Error(`Failed to create test project: ${projectResponse.status}`);
   }
   const project = (await projectResponse.json()) as { id: string };
 
-  const appResponse = await handleFetch(`${TEST_ORIGIN}/api/admin/projects/${project.id}/apps`, {
-    method: "POST",
-    headers: ADMIN_HEADERS,
-    body: JSON.stringify({ name: "E2E App" }),
-  });
+  const appResponse = await handleFetch(
+    `${TEST_ORIGIN}/api/admin/projects/${project.id}/apps`,
+    {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify({ name: "E2E App" }),
+    },
+  );
   if (!appResponse.ok) {
     throw new Error(`Failed to create test app: ${appResponse.status}`);
   }
@@ -141,7 +154,10 @@ export async function waitForStoredEvent(
 }
 
 /** Polls an admin GET until it succeeds (event reads lag behind ingestion). */
-export async function waitForApiGet<T>(path: string, timeoutMs = 10000): Promise<T> {
+export async function waitForApiGet<T>(
+  path: string,
+  timeoutMs = 10000,
+): Promise<T> {
   const response = await waitFor(
     () => handleFetch(`${TEST_ORIGIN}${path}`, { headers: ADMIN_HEADERS }),
     (result) => result.status === 200,
@@ -188,7 +204,8 @@ export async function waitForConsumerAck(
       async () => {
         const info = await manager.consumers.info(TEST_STREAM, consumer);
         return (
-          info.ack_floor.stream_seq >= streamSeq && (info.num_ack_pending ?? 0) === 0
+          info.ack_floor.stream_seq >= streamSeq &&
+          (info.num_ack_pending ?? 0) === 0
         );
       },
       (done) => done,

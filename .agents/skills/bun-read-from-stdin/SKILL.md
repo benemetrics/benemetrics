@@ -16,7 +16,7 @@ for await (const line of console) {
 }
 ```
 
-***
+---
 
 Running this file results in a never-ending interactive prompt that echoes whatever the user types.
 
@@ -24,14 +24,14 @@ Running this file results in a never-ending interactive prompt that echoes whate
 bun run index.ts
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Type something: hello
 You typed: hello
 Type something: hello again
 You typed: hello again
 ```
 
-***
+---
 
 Bun also exposes stdin as a `BunFile` via `Bun.stdin`. This is useful for incrementally reading large inputs that are piped into the `bun` process.
 
@@ -46,7 +46,7 @@ for await (const chunk of Bun.stdin.stream()) {
 }
 ```
 
-***
+---
 
 This will print the input that is piped into the `bun` process.
 
@@ -54,10 +54,10 @@ This will print the input that is piped into the `bun` process.
 echo "hello" | bun run stdin.ts
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Chunk: hello
 ```
 
-***
+---
 
 See [Docs > API > Utils](/runtime/utils) for more useful utilities.

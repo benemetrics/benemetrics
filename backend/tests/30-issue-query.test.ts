@@ -37,7 +37,9 @@ describe("Issue query grammar", () => {
   it("splits the query into OR alternatives", () => {
     const groups = parseGroups("is:unresolved | is:resolved app:checkout");
     expect(groups.length).toBe(2);
-    expect(groups[0]).toEqual([{ kind: "status", value: "unresolved", negated: false }]);
+    expect(groups[0]).toEqual([
+      { kind: "status", value: "unresolved", negated: false },
+    ]);
     expect(groups[1]).toHaveLength(2);
     expect(groups[1]![1]).toMatchObject({ kind: "app", value: "checkout" });
   });
@@ -63,8 +65,14 @@ describe("Issue query grammar", () => {
   });
 
   it("parses every key", () => {
-    expect(parse("app:checkout")[0]).toMatchObject({ kind: "app", value: "checkout" });
-    expect(parse("project:web")[0]).toMatchObject({ kind: "project", value: "web" });
+    expect(parse("app:checkout")[0]).toMatchObject({
+      kind: "app",
+      value: "checkout",
+    });
+    expect(parse("project:web")[0]).toMatchObject({
+      kind: "project",
+      value: "web",
+    });
     expect(parse("environment:production")[0]).toMatchObject({
       kind: "environment",
       value: "production",
@@ -137,7 +145,10 @@ describe("Issue query grammar", () => {
   });
 
   it("treats a bare timesSeen as an exact count", () => {
-    expect(parse("timesSeen:42")[0]).toMatchObject({ operator: "=", value: 42 });
+    expect(parse("timesSeen:42")[0]).toMatchObject({
+      operator: "=",
+      value: 42,
+    });
   });
 
   it("parses several terms", () => {

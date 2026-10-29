@@ -13,12 +13,12 @@ yarn test # [!code --]
 bun test # [!code ++]
 ```
 
-***
+---
 
 There's often no need for code changes.
 
-* Bun internally re-writes imports from `@jest/globals` to use the `bun:test` equivalents.
-* If you're relying on Jest to inject `test`, `expect`, etc. as globals, Bun does that too.
+- Bun internally re-writes imports from `@jest/globals` to use the `bun:test` equivalents.
+- If you're relying on Jest to inject `test`, `expect`, etc. as globals, Bun does that too.
 
 But if you'd rather switch to the `bun:test` imports, you can do that too.
 
@@ -27,21 +27,21 @@ import { test, expect } from "@jest/globals"; // [!code --]
 import { test, expect } from "bun:test"; // [!code ++]
 ```
 
-***
+---
 
 Since Bun v1.2.19, you can enable **TypeScript support** for global test functions with a single triple-slash directive. This makes migrating from Jest even easier since you only need to add the directive once in your entire project:
 
-Add this directive to *just one file* in your project, such as:
+Add this directive to _just one file_ in your project, such as:
 
-* A `global.d.ts` file in your project root
-* Your test `preload.ts` setup file (if using `preload` in bunfig.toml)
-* Any single `.ts` file that TypeScript includes in your compilation
+- A `global.d.ts` file in your project root
+- Your test `preload.ts` setup file (if using `preload` in bunfig.toml)
+- Any single `.ts` file that TypeScript includes in your compilation
 
 ```ts title="global.d.ts" icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 /// <reference types="bun-types/test-globals" />
 ```
 
-***
+---
 
 Once added, all test files in your project automatically get TypeScript support for Jest globals:
 
@@ -61,15 +61,15 @@ describe("my test suite", () => {
 });
 ```
 
-***
+---
 
 Bun implements the vast majority of Jest's matchers, but compatibility isn't 100% yet. Refer to the full compatibility table at [Docs > Test runner > Writing tests](/test/writing-tests#matchers).
 
 Some notable missing features:
 
-* `expect().toHaveReturned()`
+- `expect().toHaveReturned()`
 
-***
+---
 
 If you're using `testEnvironment: "jsdom"` to run your tests in a browser-like environment, you should follow the [DOM testing with Bun and happy-dom](/guides/test/happy-dom) guide to inject browser APIs into the global scope. This guide relies on [`happy-dom`](https://github.com/capricorn86/happy-dom), which is a leaner and faster alternative to [`jsdom`](https://github.com/jsdom/jsdom).
 
@@ -80,7 +80,7 @@ At the moment jsdom does not work in Bun due to its internal use of V8 APIs. Tra
 preload = ["./happy-dom.ts"]
 ```
 
-***
+---
 
 Replace `bail` in your Jest config with the `--bail` CLI flag.
 
@@ -88,7 +88,7 @@ Replace `bail` in your Jest config with the `--bail` CLI flag.
 bun test --bail=3
 ```
 
-***
+---
 
 Replace `collectCoverage` with the `--coverage` CLI flag.
 
@@ -96,7 +96,7 @@ Replace `collectCoverage` with the `--coverage` CLI flag.
 bun test --coverage
 ```
 
-***
+---
 
 Replace `testTimeout` with the `--test-timeout` CLI flag.
 
@@ -104,23 +104,23 @@ Replace `testTimeout` with the `--test-timeout` CLI flag.
 bun test --timeout 10000
 ```
 
-***
+---
 
 Many other flags become irrelevant or obsolete when using `bun test`.
 
-* `transform` — Bun supports TypeScript & JSX. Other file types can be configured with [Plugins](/runtime/plugins).
-* `extensionsToTreatAsEsm`
-* `haste` — Bun uses it's own internal source maps
-* `watchman`, `watchPlugins`, `watchPathIgnorePatterns` — use `--watch` to run tests in watch mode
-* `verbose` — set `logLevel: "debug"` in [`bunfig.toml`](/runtime/bunfig#loglevel)
+- `transform` — Bun supports TypeScript & JSX. Other file types can be configured with [Plugins](/runtime/plugins).
+- `extensionsToTreatAsEsm`
+- `haste` — Bun uses it's own internal source maps
+- `watchman`, `watchPlugins`, `watchPathIgnorePatterns` — use `--watch` to run tests in watch mode
+- `verbose` — set `logLevel: "debug"` in [`bunfig.toml`](/runtime/bunfig#loglevel)
 
-***
+---
 
 Settings that aren't mentioned here are not supported or have no equivalent. Please [file a feature request](https://github.com/oven-sh/bun) if something important is missing.
 
-***
+---
 
 See also:
 
-* [Mark a test as a todo](/guides/test/todo-tests)
-* [Docs > Test runner > Writing tests](/test/writing-tests)
+- [Mark a test as a todo](/guides/test/todo-tests)
+- [Docs > Test runner > Writing tests](/test/writing-tests)

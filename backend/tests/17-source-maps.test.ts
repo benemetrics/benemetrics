@@ -7,7 +7,11 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { ADMIN_HEADERS, handleFetch as fetch, TEST_ORIGIN } from "./test-helpers";
+import {
+  ADMIN_HEADERS,
+  handleFetch as fetch,
+  TEST_ORIGIN,
+} from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
 
@@ -112,11 +116,11 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
     );
     expect(badProject.status).toBe(404);
 
-    const badApp = await adminRequest(
-      "POST",
-      "/api/admin/source-map-tokens",
-      { name: "bad", projectId, appId: crypto.randomUUID() },
-    );
+    const badApp = await adminRequest("POST", "/api/admin/source-map-tokens", {
+      name: "bad",
+      projectId,
+      appId: crypto.randomUUID(),
+    });
     expect(badApp.status).toBe(404);
   });
 
@@ -136,7 +140,10 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
     const rotatedBody = (await rotated.json()) as any;
     expect(rotatedBody.token).toMatch(/^smt_/);
 
-    const revoked = await adminRequest("DELETE", `/api/admin/source-map-tokens/${tokenId}`);
+    const revoked = await adminRequest(
+      "DELETE",
+      `/api/admin/source-map-tokens/${tokenId}`,
+    );
     expect(revoked.status).toBe(200);
   });
 
@@ -181,13 +188,17 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
   });
 
   it("resolves a source map position", async () => {
-    const resolveRes = await adminRequest("POST", "/api/admin/source-maps/resolve", {
-      projectId,
-      release: "1.0.0",
-      filename: "app.js.map",
-      line: 1,
-      column: 1,
-    });
+    const resolveRes = await adminRequest(
+      "POST",
+      "/api/admin/source-maps/resolve",
+      {
+        projectId,
+        release: "1.0.0",
+        filename: "app.js.map",
+        line: 1,
+        column: 1,
+      },
+    );
     expect(resolveRes.status).toBe(200);
     const resolveBody = (await resolveRes.json()) as any;
     expect(resolveBody.filename).toBe("app.js.map");
@@ -217,7 +228,10 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
     const listBody = (await listRes.json()) as any;
     const artifactId = listBody.data[0]!.id;
 
-    const deleted = await adminRequest("DELETE", `/api/admin/source-maps/${artifactId}`);
+    const deleted = await adminRequest(
+      "DELETE",
+      `/api/admin/source-maps/${artifactId}`,
+    );
     expect(deleted.status).toBe(200);
 
     const gone = await adminRequest(
@@ -225,6 +239,8 @@ describe("Source Maps (sentry-cli compatible upload + symbolication)", () => {
       `/api/admin/source-maps?projectId=${projectId}&appId=${appId}&release=1.0.0`,
     );
     const goneBody = (await gone.json()) as any;
-    expect(goneBody.data.some((a: { id: string }) => a.id === artifactId)).toBe(false);
+    expect(goneBody.data.some((a: { id: string }) => a.id === artifactId)).toBe(
+      false,
+    );
   });
 });

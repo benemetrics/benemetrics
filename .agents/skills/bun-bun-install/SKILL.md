@@ -34,11 +34,11 @@ bun install
 
 Running `bun install` will:
 
-* **Install** all `dependencies`, `devDependencies`, and `optionalDependencies`. Bun will install `peerDependencies` by default.
-* **Run** your project's `{pre|post}install` and `{pre|post}prepare` scripts at the appropriate time. For security reasons Bun *does not execute* lifecycle scripts of installed dependencies.
-* **Write** a `bun.lock` lockfile to the project root.
+- **Install** all `dependencies`, `devDependencies`, and `optionalDependencies`. Bun will install `peerDependencies` by default.
+- **Run** your project's `{pre|post}install` and `{pre|post}prepare` scripts at the appropriate time. For security reasons Bun _does not execute_ lifecycle scripts of installed dependencies.
+- **Write** a `bun.lock` lockfile to the project root.
 
-***
+---
 
 ## Logging
 
@@ -49,7 +49,7 @@ bun install --verbose # debug logging
 bun install --silent  # no logging
 ```
 
-***
+---
 
 ## Lifecycle scripts
 
@@ -80,7 +80,7 @@ BUN_FEATURE_FLAG_DISABLE_NATIVE_DEPENDENCY_LINKER=1 bun install
 BUN_FEATURE_FLAG_DISABLE_IGNORE_SCRIPTS=1 bun install
 ```
 
-***
+---
 
 ## Workspaces
 
@@ -97,7 +97,7 @@ Bun supports `"workspaces"` in package.json. For complete documentation refer to
 }
 ```
 
-***
+---
 
 ## Installing dependencies for specific packages
 
@@ -113,11 +113,11 @@ bun install --filter './packages/pkg-a'
 
 For more information on filtering with `bun install`, refer to [Package Manager > Filtering](/pm/filter#bun-install-and-bun-outdated)
 
-***
+---
 
 ## Overrides and resolutions
 
-Bun supports npm's `"overrides"` and Yarn's `"resolutions"` in `package.json`. These are mechanisms for specifying a version range for *metadependencies*—the dependencies of your dependencies. Refer to [Package manager > Overrides and resolutions](/pm/overrides) for complete documentation.
+Bun supports npm's `"overrides"` and Yarn's `"resolutions"` in `package.json`. These are mechanisms for specifying a version range for _metadependencies_—the dependencies of your dependencies. Refer to [Package manager > Overrides and resolutions](/pm/overrides) for complete documentation.
 
 ```json package.json icon="file-json" theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
@@ -125,13 +125,14 @@ Bun supports npm's `"overrides"` and Yarn's `"resolutions"` in `package.json`. T
   "dependencies": {
     "foo": "^2.0.0"
   },
-  "overrides": { // [!code ++]
+  "overrides": {
+    // [!code ++]
     "bar": "~4.4.0" // [!code ++]
   } // [!code ++]
 }
 ```
 
-***
+---
 
 ## Global packages
 
@@ -142,7 +143,7 @@ bun install --global cowsay # or `bun install -g cowsay`
 cowsay "Bun!"
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
  ______
 < Bun! >
  ------
@@ -153,7 +154,7 @@ cowsay "Bun!"
                 ||     ||
 ```
 
-***
+---
 
 ## Production mode
 
@@ -171,7 +172,7 @@ bun install --frozen-lockfile
 
 For more information on Bun's lockfile `bun.lock`, refer to [Package manager > Lockfile](/pm/lockfile).
 
-***
+---
 
 ## Omitting dependencies
 
@@ -187,7 +188,7 @@ bun install --omit dev
 bun install --omit=dev --omit=peer --omit=optional
 ```
 
-***
+---
 
 ## Dry run
 
@@ -197,7 +198,7 @@ To perform a dry run (i.e. don't actually install anything):
 bun install --dry-run
 ```
 
-***
+---
 
 ## Non-npm dependencies
 
@@ -216,7 +217,7 @@ Bun supports installing dependencies from Git, GitHub, and local or remotely-hos
 }
 ```
 
-***
+---
 
 ## Installation strategies
 
@@ -244,13 +245,13 @@ Isolated installs create a central package store in `node_modules/.bun/` with sy
 
 The default linker strategy depends on whether you're starting fresh or have an existing project:
 
-* **New workspaces/monorepos**: `isolated` (prevents phantom dependencies)
-* **New single-package projects**: `hoisted` (traditional npm behavior)
-* **Existing projects (made pre-v1.3.2)**: `hoisted` (preserves backward compatibility)
+- **New workspaces/monorepos**: `isolated` (prevents phantom dependencies)
+- **New single-package projects**: `hoisted` (traditional npm behavior)
+- **Existing projects (made pre-v1.3.2)**: `hoisted` (preserves backward compatibility)
 
 The default is controlled by a `configVersion` field in your lockfile. For a detailed explanation, see [Package manager > Isolated installs](/pm/isolated-installs).
 
-***
+---
 
 ## Minimum release age
 
@@ -274,17 +275,17 @@ minimumReleaseAgeExcludes = ["@types/node", "typescript"]
 
 When the minimum age filter is active:
 
-* Only affects new package resolution - existing packages in `bun.lock` remain unchanged
-* All dependencies (direct and transitive) are filtered to meet the age requirement when being resolved
-* When versions are blocked by the age gate, a stability check detects rapid bugfix patterns
-  * If multiple versions were published close together just outside your age gate, it extends the filter to skip those potentially unstable versions and selects an older, more mature version
-  * Searches up to 7 days after the age gate, however if still finding rapid releases it ignores stability check
-  * Exact version requests (like `package@1.1.1`) still respect the age gate but bypass the stability check
-* Versions without a `time` field are treated as passing the age check (npm registry should always provide timestamps)
+- Only affects new package resolution - existing packages in `bun.lock` remain unchanged
+- All dependencies (direct and transitive) are filtered to meet the age requirement when being resolved
+- When versions are blocked by the age gate, a stability check detects rapid bugfix patterns
+  - If multiple versions were published close together just outside your age gate, it extends the filter to skip those potentially unstable versions and selects an older, more mature version
+  - Searches up to 7 days after the age gate, however if still finding rapid releases it ignores stability check
+  - Exact version requests (like `package@1.1.1`) still respect the age gate but bypass the stability check
+- Versions without a `time` field are treated as passing the age check (npm registry should always provide timestamps)
 
 For more advanced security scanning, including integration with services & custom filtering, see [Package manager > Security Scanner API](/pm/security-scanner-api).
 
-***
+---
 
 ## Configuration
 
@@ -418,7 +419,7 @@ bun stores normalized `cpu` and `os` values from npm in the lockfile, along with
 
 You can override the target platform for package selection:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun install --cpu=x64 --os=linux
 ```
 
@@ -442,7 +443,7 @@ Prior to Bun 1.2, the lockfile was binary and called `bun.lockb`. Old lockfiles 
 
 To delete the cache:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun pm cache rm
 # or
 rm -rf ~/.bun/install/cache
@@ -454,28 +455,28 @@ rm -rf ~/.bun/install/cache
 
 **`hardlink`** is the default backend on Linux. Benchmarking showed it to be the fastest on Linux.
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 rm -rf node_modules
 bun install --backend hardlink
 ```
 
 **`clonefile`** is the default backend on macOS. Benchmarking showed it to be the fastest on macOS. It is only available on macOS.
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 rm -rf node_modules
 bun install --backend clonefile
 ```
 
 **`clonefile_each_dir`** is similar to `clonefile`, except it clones each file individually per directory. It is only available on macOS and tends to perform slower than `clonefile`. Unlike `clonefile`, this does not recursively clone subdirectories in one system call.
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 rm -rf node_modules
 bun install --backend clonefile_each_dir
 ```
 
 **`copyfile`** is the fallback used when any of the above fail, and is the slowest. on macOS, it uses `fcopyfile()` and on linux it uses `copy_file_range()`.
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 rm -rf node_modules
 bun install --backend copyfile
 ```
@@ -484,7 +485,7 @@ bun install --backend copyfile
 
 If you install with `--backend=symlink`, Node.js won't resolve node\_modules of dependencies unless each dependency has its own node\_modules folder or you pass `--preserve-symlinks` to `node` or `bun`. See [Node.js documentation on `--preserve-symlinks`](https://nodejs.org/api/cli.html#--preserve-symlinks).
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 rm -rf node_modules
 bun install --backend symlink
 bun --preserve-symlinks ./my-file.js
@@ -512,10 +513,10 @@ The migration process handles:
 
 ### Lockfile Migration
 
-* Converts `pnpm-lock.yaml` to `bun.lock` format
-* Preserves package versions and resolution information
-* Maintains dependency relationships and peer dependencies
-* Handles patched dependencies with integrity hashes
+- Converts `pnpm-lock.yaml` to `bun.lock` format
+- Preserves package versions and resolution information
+- Maintains dependency relationships and peer dependencies
+- Handles patched dependencies with integrity hashes
 
 ### Workspace Configuration
 
@@ -573,19 +574,19 @@ Dependencies using pnpm's `catalog:` protocol are preserved:
 
 The following pnpm configuration is migrated from both `pnpm-lock.yaml` and `pnpm-workspace.yaml`:
 
-* **Overrides**: Moved from `pnpm.overrides` to root-level `overrides` in `package.json`
-* **Patched Dependencies**: Moved from `pnpm.patchedDependencies` to root-level `patchedDependencies` in `package.json`
-* **Workspace Overrides**: Applied from `pnpm-workspace.yaml` to root `package.json`
+- **Overrides**: Moved from `pnpm.overrides` to root-level `overrides` in `package.json`
+- **Patched Dependencies**: Moved from `pnpm.patchedDependencies` to root-level `patchedDependencies` in `package.json`
+- **Workspace Overrides**: Applied from `pnpm-workspace.yaml` to root `package.json`
 
 ### Requirements
 
-* Requires pnpm lockfile version 7 or higher
-* Workspace packages must have a `name` field in their `package.json`
-* All catalog entries referenced by dependencies must exist in the catalogs definition
+- Requires pnpm lockfile version 7 or higher
+- Workspace packages must have a `name` field in their `package.json`
+- All catalog entries referenced by dependencies must exist in the catalogs definition
 
 After migration, you can safely remove `pnpm-lock.yaml` and `pnpm-workspace.yaml` files.
 
-***
+---
 
 ## CLI Usage
 

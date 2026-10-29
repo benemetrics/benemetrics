@@ -1,6 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { api, PAGE_SIZE, feedCredential } from "../lib/api";
-import { subscribeLiveFeed, type LiveEventItem, type LiveFeedStatus } from "../lib/live-events";
+import {
+  subscribeLiveFeed,
+  type LiveEventItem,
+  type LiveFeedStatus,
+} from "../lib/live-events";
 import { useAppRecord } from "./app-record-context";
 
 export type IssueStatus = "unresolved" | "resolved" | "ignored";
@@ -25,13 +29,22 @@ export interface IssueSummary {
 function statusList(status: IssueStatus, appId: string) {
   if (status === "ignored") return Promise.resolve([] as IssueSummary[]);
   return api["api/admin/issues"]
-    .get({ query: { query: `app:${appId} is:${status}`, sort: "new", limit: PAGE_SIZE } })
+    .get({
+      query: {
+        query: `app:${appId} is:${status}`,
+        sort: "new",
+        limit: PAGE_SIZE,
+      },
+    })
     .then((res: { error?: unknown; data?: unknown }) =>
       res.error ? null : (res.data as { data: IssueSummary[] }).data,
     );
 }
 
-export function useAppIssues(projectId: string | undefined, appId: string | undefined) {
+export function useAppIssues(
+  projectId: string | undefined,
+  appId: string | undefined,
+) {
   const [issues, setIssues] = useState<IssueSummary[] | null>(null);
   const [error, setError] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +55,10 @@ export function useAppIssues(projectId: string | undefined, appId: string | unde
     if (!projectId || !appId) return;
     let alive = true;
     setLoading(true);
-    const [unresolved, resolved] = await Promise.all([statusList("unresolved", appId), statusList("resolved", appId)]);
+    const [unresolved, resolved] = await Promise.all([
+      statusList("unresolved", appId),
+      statusList("resolved", appId),
+    ]);
     if (!alive) return;
     if (unresolved === null || resolved === null) {
       setError(500);
@@ -85,10 +101,16 @@ export function useAppIssues(projectId: string | undefined, appId: string | unde
   // The backend contract carries only unresolved/resolved (protocol/issues.ts);
   // "ignored" is a UI-only state and never hits the API.
   const updateIssueStatus = useCallback(
-    async (issueId: string, status: "unresolved" | "resolved"): Promise<boolean> => {
+    async (
+      issueId: string,
+      status: "unresolved" | "resolved",
+    ): Promise<boolean> => {
       const res = await api["api/admin/issues"][issueId].patch({ status });
       if (res.error) return false;
-      setIssues((prev) => prev?.map((i) => (i.id === issueId ? { ...i, status } : i)) ?? prev);
+      setIssues(
+        (prev) =>
+          prev?.map((i) => (i.id === issueId ? { ...i, status } : i)) ?? prev,
+      );
       return true;
     },
     [],

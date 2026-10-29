@@ -15,7 +15,9 @@ const originalLog = console.log.bind(console);
 let printedToken = "";
 console.log = (...args: unknown[]) => {
   for (const arg of args) {
-    const match = String(arg).match(/\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/);
+    const match = String(arg).match(
+      /\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/,
+    );
     if (match) printedToken = match[0];
   }
   return originalLog(...args);
@@ -77,7 +79,10 @@ export async function waitForEventById(
 
 /** Polls the events list until an item matches; returns the item or null. */
 export async function waitForEventListItem<
-  T extends { id: string; itemTypes: string[] } = { id: string; itemTypes: string[] },
+  T extends { id: string; itemTypes: string[] } = {
+    id: string;
+    itemTypes: string[];
+  },
 >(
   baseUrl: string,
   predicate: (item: T) => boolean,
@@ -116,18 +121,23 @@ export async function startTestServer(): Promise<TestServer> {
   const projectResponse = await fetch(`${baseUrl}/api/admin/projects`, {
     method: "POST",
     headers: ADMIN_HEADERS,
-    body: JSON.stringify({ name: `E2E Project ${crypto.randomUUID().slice(0, 8)}` }),
+    body: JSON.stringify({
+      name: `E2E Project ${crypto.randomUUID().slice(0, 8)}`,
+    }),
   });
   if (!projectResponse.ok) {
     throw new Error(`Failed to create test project: ${projectResponse.status}`);
   }
   const project = (await projectResponse.json()) as { id: string };
 
-  const appResponse = await fetch(`${baseUrl}/api/admin/projects/${project.id}/apps`, {
-    method: "POST",
-    headers: ADMIN_HEADERS,
-    body: JSON.stringify({ name: "E2E App" }),
-  });
+  const appResponse = await fetch(
+    `${baseUrl}/api/admin/projects/${project.id}/apps`,
+    {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify({ name: "E2E App" }),
+    },
+  );
   if (!appResponse.ok) {
     throw new Error(`Failed to create test app: ${appResponse.status}`);
   }

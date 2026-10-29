@@ -25,7 +25,10 @@ interface MetricSample {
 
 const RELOAD_DEBOUNCE_MS = 500;
 
-export function useMetrics(appId: string | undefined, metric: string = "error_count") {
+export function useMetrics(
+  appId: string | undefined,
+  metric: string = "error_count",
+) {
   const [series, setSeries] = useState<MetricSeries | null>(null);
   const [loading, setLoading] = useState(true);
   const [live, setLive] = useState<LiveFeedStatus>("closed");

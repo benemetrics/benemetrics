@@ -80,10 +80,7 @@ export const alertDeadLetterDAO = {
   },
 
   // The rows whose retry is due — the worker drains them.
-  listDue: async (
-    now: string,
-    limit = 20,
-  ): Promise<AlertDeadLetter[]> =>
+  listDue: async (now: string, limit = 20): Promise<AlertDeadLetter[]> =>
     await db
       .select(deadLetterFields)
       .from(alertDeadLetters)
@@ -112,7 +109,10 @@ export const alertDeadLetterDAO = {
   scheduleNow: async (id: string): Promise<void> => {
     await db
       .update(alertDeadLetters)
-      .set({ nextAttemptAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+      .set({
+        nextAttemptAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
       .where(eq(alertDeadLetters.id, id));
   },
 
@@ -125,5 +125,10 @@ export const alertDeadLetterDAO = {
   },
 
   count: async (): Promise<number> =>
-    Number(await db.$count(alertDeadLetters, and(eq(alertDeadLetters.id, alertDeadLetters.id)))),
+    Number(
+      await db.$count(
+        alertDeadLetters,
+        and(eq(alertDeadLetters.id, alertDeadLetters.id)),
+      ),
+    ),
 };

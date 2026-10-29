@@ -9,10 +9,10 @@ description: Automatic reloading in Bun with --watch and --hot modes
 
 Bun supports two kinds of automatic reloading via CLI flags:
 
-* `--watch` mode, which hard restarts Bun's process when imported files change.
-* `--hot` mode, which soft reloads the code (without restarting the process) when imported files change.
+- `--watch` mode, which hard restarts Bun's process when imported files change.
+- `--hot` mode, which soft reloads the code (without restarting the process) when imported files change.
 
-***
+---
 
 ## `--watch` mode
 
@@ -35,7 +35,7 @@ In `--watch` mode, Bun keeps track of all imported files and watches them for ch
 <Note>
   **⚡️ Reloads are fast.** The filesystem watchers you're probably used to have several layers of libraries wrapping the native APIs or worse, rely on polling.
 
-  Instead, Bun uses operating system native filesystem watcher APIs like kqueue or inotify to detect changes to files. Bun also does a number of optimizations to enable it scale to larger projects (such as setting a high rlimit for file descriptors, statically allocated file path buffers, reuse file descriptors when possible, etc).
+Instead, Bun uses operating system native filesystem watcher APIs like kqueue or inotify to detect changes to files. Bun also does a number of optimizations to enable it scale to larger projects (such as setting a high rlimit for file descriptors, statically allocated file path buffers, reuse file descriptors when possible, etc).
 </Note>
 
 The following examples show Bun live-reloading a file as it is edited, with VSCode configured to save the file [on each keystroke](https://code.visualstudio.com/docs/editor/codebasics#_save-auto-save).
@@ -81,7 +81,7 @@ bun --watch test
   It can be used in combination with `--watch`, for example: `bun build --watch --no-clear-screen`.
 </Note>
 
-***
+---
 
 ## `--hot` mode
 
@@ -120,7 +120,7 @@ If you run this file with `bun --hot server.ts`, you'll see the reload count inc
 bun --hot index.ts
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 Reloaded 1 times
 Reloaded 2 times
 Reloaded 3 times
@@ -151,10 +151,10 @@ Bun.serve({
 <Accordion title="Implementation details">
   On hot reload, Bun:
 
-  * Resets the internal `require` cache and ES module registry (`Loader.registry`)
-  * Runs the garbage collector synchronously (to minimize memory leaks, at the cost of runtime performance)
-  * Re-transpiles all of your code from scratch (including sourcemaps)
-  * Re-evaluates the code with JavaScriptCore
+- Resets the internal `require` cache and ES module registry (`Loader.registry`)
+- Runs the garbage collector synchronously (to minimize memory leaks, at the cost of runtime performance)
+- Re-transpiles all of your code from scratch (including sourcemaps)
+- Re-evaluates the code with JavaScriptCore
 
-  This implementation isn't particularly optimized. It re-transpiles files that haven't changed. It makes no attempt at incremental compilation. It's a starting point.
+This implementation isn't particularly optimized. It re-transpiles files that haven't changed. It makes no attempt at incremental compilation. It's a starting point.
 </Accordion>

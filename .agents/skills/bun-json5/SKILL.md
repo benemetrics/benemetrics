@@ -9,17 +9,17 @@ description: Use Bun's built-in support for JSON5 files through both runtime API
 
 In Bun, JSON5 is a first-class citizen alongside JSON, TOML, and YAML. You can:
 
-* Parse and stringify JSON5 with `Bun.JSON5.parse` and `Bun.JSON5.stringify`
-* `import` & `require` JSON5 files as modules at runtime (including hot reloading & watch mode support)
-* `import` & `require` JSON5 files in frontend apps via Bun's bundler
+- Parse and stringify JSON5 with `Bun.JSON5.parse` and `Bun.JSON5.stringify`
+- `import` & `require` JSON5 files as modules at runtime (including hot reloading & watch mode support)
+- `import` & `require` JSON5 files in frontend apps via Bun's bundler
 
-***
+---
 
 ## Conformance
 
 Bun's JSON5 parser passes 100% of the [official JSON5 test suite](https://github.com/json5/json5-tests). The parser is written in Zig for optimal performance. You can view our [translated test suite](https://github.com/oven-sh/bun/blob/main/test/js/bun/json5/json5-test-suite.test.ts) to see every test case.
 
-***
+---
 
 ## Runtime API
 
@@ -27,7 +27,7 @@ Bun's JSON5 parser passes 100% of the [official JSON5 test suite](https://github
 
 Parse a JSON5 string into a JavaScript value.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { JSON5 } from "bun";
 
 const data = JSON5.parse(`{
@@ -53,17 +53,17 @@ console.log(data);
 
 JSON5 is a superset of JSON based on ECMAScript 5.1 syntax. It supports:
 
-* **Comments**: single-line (`//`) and multi-line (`/* */`)
-* **Trailing commas**: in objects and arrays
-* **Unquoted keys**: valid ECMAScript 5.1 identifiers can be used as keys
-* **Single-quoted strings**: in addition to double-quoted strings
-* **Multi-line strings**: using backslash line continuations
-* **Hex numbers**: `0xFF`
-* **Leading & trailing decimal points**: `.5` and `5.`
-* **Infinity and NaN**: positive and negative
-* **Explicit plus sign**: `+42`
+- **Comments**: single-line (`//`) and multi-line (`/* */`)
+- **Trailing commas**: in objects and arrays
+- **Unquoted keys**: valid ECMAScript 5.1 identifiers can be used as keys
+- **Single-quoted strings**: in addition to double-quoted strings
+- **Multi-line strings**: using backslash line continuations
+- **Hex numbers**: `0xFF`
+- **Leading & trailing decimal points**: `.5` and `5.`
+- **Infinity and NaN**: positive and negative
+- **Explicit plus sign**: `+42`
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const data = JSON5.parse(`{
   // Unquoted keys
   unquoted: 'keys work',
@@ -91,7 +91,7 @@ line 2',
 
 `Bun.JSON5.parse()` throws a `SyntaxError` if the input is invalid JSON5:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 try {
   JSON5.parse("{invalid}");
 } catch (error) {
@@ -103,7 +103,7 @@ try {
 
 Stringify a JavaScript value to a JSON5 string.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { JSON5 } from "bun";
 
 const str = JSON5.stringify({ name: "my-app", version: "1.0.0" });
@@ -115,7 +115,7 @@ console.log(str);
 
 Pass a `space` argument to format the output with indentation:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const pretty = JSON5.stringify(
   {
     name: "my-app",
@@ -139,7 +139,7 @@ console.log(pretty);
 
 The `space` argument can be a number (number of spaces) or a string (used as the indent character):
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Tab indentation
 JSON5.stringify(data, null, "\t");
 ```
@@ -148,12 +148,12 @@ JSON5.stringify(data, null, "\t");
 
 Unlike `JSON.stringify`, `JSON5.stringify` preserves special numeric values:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 JSON5.stringify({ inf: Infinity, ninf: -Infinity, nan: NaN });
 // {inf:Infinity,ninf:-Infinity,nan:NaN}
 ```
 
-***
+---
 
 ## Module Import
 
@@ -210,7 +210,7 @@ console.log(config.database.name); // "myapp"
 const { database, features } = require("./config.json5");
 ```
 
-***
+---
 
 ## Hot Reloading with JSON5
 
@@ -250,7 +250,7 @@ Run with hot reloading:
 bun --hot server.ts
 ```
 
-***
+---
 
 ## Bundler Integration
 
@@ -262,14 +262,14 @@ bun build app.ts --outdir=dist
 
 This means:
 
-* Zero runtime JSON5 parsing overhead in production
-* Smaller bundle sizes
-* Tree-shaking support for unused properties (named imports)
+- Zero runtime JSON5 parsing overhead in production
+- Smaller bundle sizes
+- Tree-shaking support for unused properties (named imports)
 
 ### Dynamic Imports
 
 JSON5 files can be dynamically imported:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const config = await import("./config.json5");
 ```

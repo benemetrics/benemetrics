@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { api, PAGE_SIZE, feedCredential } from "../lib/api";
-import { subscribeLiveFeed, type LiveEventItem, type LiveFeedStatus } from "../lib/live-events";
+import {
+  subscribeLiveFeed,
+  type LiveEventItem,
+  type LiveFeedStatus,
+} from "../lib/live-events";
 import { useAppRecord } from "./app-record-context";
 
 export interface EventRecord {
@@ -12,7 +16,10 @@ export interface EventRecord {
   feedback: Record<string, unknown> | null;
 }
 
-export function useEvents(projectId: string | undefined, appId: string | undefined) {
+export function useEvents(
+  projectId: string | undefined,
+  appId: string | undefined,
+) {
   const [events, setEvents] = useState<EventRecord[] | null>(null);
   const [error, setError] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,17 +31,19 @@ export function useEvents(projectId: string | undefined, appId: string | undefin
     if (!projectId || !appId) return;
     let alive = true;
     setLoading(true);
-    api["events"].get({ query: { appId, limit: PAGE_SIZE } }).then((res: { error?: unknown; data?: unknown; status?: number }) => {
-      if (!alive) return;
-      if (res.error) {
-        setError(res.status ?? 500);
-        setEvents(null);
-      } else {
-        setError(null);
-        setEvents((res.data as { data: EventRecord[] }).data);
-      }
-      setLoading(false);
-    });
+    api["events"]
+      .get({ query: { appId, limit: PAGE_SIZE } })
+      .then((res: { error?: unknown; data?: unknown; status?: number }) => {
+        if (!alive) return;
+        if (res.error) {
+          setError(res.status ?? 500);
+          setEvents(null);
+        } else {
+          setError(null);
+          setEvents((res.data as { data: EventRecord[] }).data);
+        }
+        setLoading(false);
+      });
     return () => {
       alive = false;
     };
@@ -51,7 +60,9 @@ export function useEvents(projectId: string | undefined, appId: string | undefin
         onItem: (item: LiveEventItem) => {
           if (item.appId !== appId) return;
           setEvents((prev) =>
-            prev?.some((e) => e.id === item.id) ? prev : [item as EventRecord, ...(prev ?? [])],
+            prev?.some((e) => e.id === item.id)
+              ? prev
+              : [item as EventRecord, ...(prev ?? [])],
           );
         },
       },

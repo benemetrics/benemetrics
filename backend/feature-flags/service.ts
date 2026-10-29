@@ -28,7 +28,9 @@ function controlKeyOf(variants: FeatureFlagVariant[]): string {
   return control?.key ?? "control";
 }
 
-export async function computeResults(flag: ParsedFeatureFlag): Promise<ExperimentResults> {
+export async function computeResults(
+  flag: ParsedFeatureFlag,
+): Promise<ExperimentResults> {
   const experiment = flag.experiment ?? { enabled: false };
   const confidenceLevel = experiment.confidenceLevel ?? 0.95;
   const minimumSampleSize = experiment.minimumSampleSize ?? 0;
@@ -39,8 +41,12 @@ export async function computeResults(flag: ParsedFeatureFlag): Promise<Experimen
     experimentMetricDAO.countByVariant(flag.id, primaryMetric),
   ]);
 
-  const participantMap = new Map(participants.map((row) => [row.variantKey, row.count]));
-  const conversionMap = new Map(conversions.map((row) => [row.variantKey, row.count]));
+  const participantMap = new Map(
+    participants.map((row) => [row.variantKey, row.count]),
+  );
+  const conversionMap = new Map(
+    conversions.map((row) => [row.variantKey, row.count]),
+  );
 
   const controlKey = controlKeyOf(flag.variants);
   const variantInputs = flag.variants.map((variant) => ({
@@ -50,8 +56,11 @@ export async function computeResults(flag: ParsedFeatureFlag): Promise<Experimen
     conversions: conversionMap.get(variant.key) ?? 0,
   }));
 
-  const controlInput = variantInputs.find((v) => v.key === controlKey) ?? variantInputs[0];
-  const stats = variantInputs.map((input) => buildVariantStats(input, confidenceLevel));
+  const controlInput =
+    variantInputs.find((v) => v.key === controlKey) ?? variantInputs[0];
+  const stats = variantInputs.map((input) =>
+    buildVariantStats(input, confidenceLevel),
+  );
 
   for (const stat of stats) {
     if (stat.key === controlKey || !controlInput) continue;

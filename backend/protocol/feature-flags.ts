@@ -2,7 +2,19 @@ import { type as arktype } from "arktype";
 
 type FeatureFlagType = "boolean" | "string" | "number" | "json";
 type FeatureFlagStatus = "draft" | "active" | "paused" | "archived";
-type Operator = "equals" | "not_equals" | "contains" | "not_contains" | "starts_with" | "ends_with" | "in" | "not_in" | "greater_than" | "less_than" | "greater_than_or_equal" | "less_than_or_equal";
+type Operator =
+  | "equals"
+  | "not_equals"
+  | "contains"
+  | "not_contains"
+  | "starts_with"
+  | "ends_with"
+  | "in"
+  | "not_in"
+  | "greater_than"
+  | "less_than"
+  | "greater_than_or_equal"
+  | "less_than_or_equal";
 
 export const targetingOperatorSchema = arktype(
   "'equals' | 'not_equals' | 'contains' | 'not_contains' | 'starts_with' | 'ends_with' | 'in' | 'not_in' | 'greater_than' | 'less_than' | 'greater_than_or_equal' | 'less_than_or_equal'",
@@ -60,7 +72,11 @@ interface ExperimentConfig {
   primaryMetric?: string;
   minimumSampleSize?: number;
   confidenceLevel?: number;
-  guardrailMetrics?: Array<{ metric: string; threshold: number; action: "pause" | "alert" }>;
+  guardrailMetrics?: Array<{
+    metric: string;
+    threshold: number;
+    action: "pause" | "alert";
+  }>;
 }
 
 interface FeatureFlag {
@@ -203,7 +219,18 @@ interface ExperimentResults {
 
 interface ExperimentUsersResponse {
   featureFlagId: string;
-  variants: Record<string, { userCount: number; users: Array<{ id: string; variantKey: string; assignedAt: string; context: unknown }> }>;
+  variants: Record<
+    string,
+    {
+      userCount: number;
+      users: Array<{
+        id: string;
+        variantKey: string;
+        assignedAt: string;
+        context: unknown;
+      }>;
+    }
+  >;
 }
 
 interface ExperimentUserEvaluation {
@@ -216,11 +243,25 @@ interface ExperimentUserEvaluation {
 }
 
 export type {
-  FeatureFlagType, FeatureFlagStatus, Operator,
-  FeatureFlagVariant, TargetingRule, ExperimentConfig,
-  FeatureFlag, Segment,
-  FeatureFlagCreateRequest, FeatureFlagUpdateRequest, FeatureFlagListResponse,
-  EvaluationRequest, EvaluationResponse, EvaluationItem,
-  ExperimentAssignment, ExperimentMetric, ExperimentTrackRequest,
-  VariantResult, ExperimentResults, ExperimentUsersResponse, ExperimentUserEvaluation
+  FeatureFlagType,
+  FeatureFlagStatus,
+  Operator,
+  FeatureFlagVariant,
+  TargetingRule,
+  ExperimentConfig,
+  FeatureFlag,
+  Segment,
+  FeatureFlagCreateRequest,
+  FeatureFlagUpdateRequest,
+  FeatureFlagListResponse,
+  EvaluationRequest,
+  EvaluationResponse,
+  EvaluationItem,
+  ExperimentAssignment,
+  ExperimentMetric,
+  ExperimentTrackRequest,
+  VariantResult,
+  ExperimentResults,
+  ExperimentUsersResponse,
+  ExperimentUserEvaluation,
 };

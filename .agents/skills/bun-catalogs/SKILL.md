@@ -141,10 +141,10 @@ Bun supports two ways to define catalogs:
 
 ## Benefits of Using Catalogs
 
-* **Consistency**: Ensures all packages use the same version of critical dependencies
-* **Maintenance**: Update a dependency version in one place instead of across multiple package.json files
-* **Clarity**: Makes it obvious which dependencies are standardized across your monorepo
-* **Simplicity**: No need for complex version resolution strategies or external tools
+- **Consistency**: Ensures all packages use the same version of critical dependencies
+- **Maintenance**: Update a dependency version in one place instead of across multiple package.json files
+- **Clarity**: Makes it obvious which dependencies are standardized across your monorepo
+- **Simplicity**: No need for complex version resolution strategies or external tools
 
 ## Real-World Example
 
@@ -241,8 +241,8 @@ Then run `bun install` to update all packages.
 
 Bun's lockfile tracks catalog versions, making it easy to ensure consistent installations across different environments. The lockfile includes:
 
-* The catalog definitions from your package.json
-* The resolution of each cataloged dependency
+- The catalog definitions from your package.json
+- The resolution of each cataloged dependency
 
 ```json bun.lock(excerpt) icon="file-json" theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
@@ -281,10 +281,10 @@ Bun's lockfile tracks catalog versions, making it easy to ensure consistent inst
 
 ## Limitations and Edge Cases
 
-* Catalog references must match a dependency defined in either `catalog` or one of the named `catalogs`
-* Empty strings and whitespace in catalog names are ignored (treated as default catalog)
-* Invalid dependency versions in catalogs will fail to resolve during `bun install`
-* Catalogs are only available within workspaces; they cannot be used outside the monorepo
+- Catalog references must match a dependency defined in either `catalog` or one of the named `catalogs`
+- Empty strings and whitespace in catalog names are ignored (treated as default catalog)
+- Invalid dependency versions in catalogs will fail to resolve during `bun install`
+- Catalogs are only available within workspaces; they cannot be used outside the monorepo
 
 Bun's catalog system provides a powerful yet simple way to maintain consistency across your monorepo without introducing additional complexity to your workflow.
 

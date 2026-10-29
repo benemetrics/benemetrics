@@ -21,14 +21,16 @@ Consider the following files.
   ```ts index.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
   import { hello } from "./hello";
 
-  hello();
-  ```
+hello();
 
-  ```ts hello.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  export function hello() {
-    console.log("Hello world!");
-  }
-  ```
+````
+
+```ts hello.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
+export function hello() {
+  console.log("Hello world!");
+}
+````
+
 </CodeGroup>
 
 When we run `index.ts`, it prints "Hello world!".
@@ -40,20 +42,20 @@ Hello world!
 
 In this case, we are importing from `./hello`, a relative path with no extension. **Extensioned imports are optional but supported.** To resolve this import, Bun will check for the following files in order:
 
-* `./hello.tsx`
-* `./hello.jsx`
-* `./hello.ts`
-* `./hello.mjs`
-* `./hello.js`
-* `./hello.cjs`
-* `./hello.json`
-* `./hello/index.tsx`
-* `./hello/index.jsx`
-* `./hello/index.ts`
-* `./hello/index.mjs`
-* `./hello/index.js`
-* `./hello/index.cjs`
-* `./hello/index.json`
+- `./hello.tsx`
+- `./hello.jsx`
+- `./hello.ts`
+- `./hello.mjs`
+- `./hello.js`
+- `./hello.cjs`
+- `./hello.json`
+- `./hello/index.tsx`
+- `./hello/index.jsx`
+- `./hello/index.ts`
+- `./hello/index.mjs`
+- `./hello/index.js`
+- `./hello/index.cjs`
+- `./hello/index.json`
 
 Import paths can optionally include extensions. If an extension is present, Bun will only check for a file with that exact extension.
 
@@ -76,21 +78,23 @@ Bun supports both ES modules (`import`/`export` syntax) and CommonJS modules (`r
   ```js index.js icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/javascript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=dd7b5268d2e9410910a69804de702737" theme={"theme":{"light":"github-light","dark":"dracula"}}
   const { hello } = require("./hello");
 
-  hello();
-  ```
+hello();
 
-  ```js hello.js icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/javascript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=dd7b5268d2e9410910a69804de702737" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  function hello() {
-    console.log("Hello world!");
-  }
+````
 
-  exports.hello = hello;
-  ```
+```js hello.js icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/javascript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=dd7b5268d2e9410910a69804de702737" theme={"theme":{"light":"github-light","dark":"dracula"}}
+function hello() {
+  console.log("Hello world!");
+}
+
+exports.hello = hello;
+````
+
 </CodeGroup>
 
 That said, using CommonJS is discouraged in new projects.
 
-***
+---
 
 ## Module systems
 
@@ -116,30 +120,30 @@ const { baz } = require("./baz.tsx");
 <Accordion title="What is a CommonJS module?">
   In 2016, ECMAScript added support for [ES Modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules). ES Modules are the standard for JavaScript modules. However, millions of npm packages still use CommonJS modules.
 
-  CommonJS modules are modules that use `module.exports` to export values. Typically, `require` is used to import CommonJS modules.
+CommonJS modules are modules that use `module.exports` to export values. Typically, `require` is used to import CommonJS modules.
 
-  ```ts my-commonjs.cjs icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/javascript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=dd7b5268d2e9410910a69804de702737" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  const stuff = require("./stuff");
-  module.exports = { stuff };
-  ```
+```ts my-commonjs.cjs icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/javascript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=dd7b5268d2e9410910a69804de702737" theme={"theme":{"light":"github-light","dark":"dracula"}}
+const stuff = require("./stuff");
+module.exports = { stuff };
+```
 
-  The biggest difference between CommonJS and ES Modules is that CommonJS modules are synchronous, while ES Modules are asynchronous. There are other differences too.
+The biggest difference between CommonJS and ES Modules is that CommonJS modules are synchronous, while ES Modules are asynchronous. There are other differences too.
 
-  * ES Modules support top-level `await` and CommonJS modules don't.
-  * ES Modules are always in [strict mode](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode), while CommonJS modules are not.
-  * Browsers do not have native support for CommonJS modules, but they do have native support for ES Modules via `<script type="module">`.
-  * CommonJS modules are not statically analyzable, while ES Modules only allow static imports and exports.
+- ES Modules support top-level `await` and CommonJS modules don't.
+- ES Modules are always in [strict mode](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode), while CommonJS modules are not.
+- Browsers do not have native support for CommonJS modules, but they do have native support for ES Modules via `<script type="module">`.
+- CommonJS modules are not statically analyzable, while ES Modules only allow static imports and exports.
 
-  **CommonJS Modules:** These are a type of module system used in JavaScript. One key feature of CommonJS modules is that they load and execute synchronously. This means that when you import a CommonJS module, the code in that module runs immediately, and your program waits for it to finish before moving on to the next task. It's similar to reading a book from start to finish without skipping pages.
+**CommonJS Modules:** These are a type of module system used in JavaScript. One key feature of CommonJS modules is that they load and execute synchronously. This means that when you import a CommonJS module, the code in that module runs immediately, and your program waits for it to finish before moving on to the next task. It's similar to reading a book from start to finish without skipping pages.
 
-  **ES Modules (ESM):** These are another type of module system introduced in JavaScript. They have a slightly different behavior compared to CommonJS. In ESM, static imports (imports made using `import` statements) are synchronous, just like CommonJS. This means that when you import an ESM using a regular `import` statement, the code in that module runs immediately, and your program proceeds in a step-by-step manner. Think of it like reading a book page by page.
+**ES Modules (ESM):** These are another type of module system introduced in JavaScript. They have a slightly different behavior compared to CommonJS. In ESM, static imports (imports made using `import` statements) are synchronous, just like CommonJS. This means that when you import an ESM using a regular `import` statement, the code in that module runs immediately, and your program proceeds in a step-by-step manner. Think of it like reading a book page by page.
 
-  **Dynamic imports:** Now, here comes the part that might be confusing. ES Modules also support importing modules on the fly via the `import()` function. This is called a "dynamic import" and it's asynchronous, so it doesn't block the main program execution. Instead, it fetches and loads the module in the background while your program continues to run. Once the module is ready, you can use it. This is like getting additional information from a book while you're still reading it, without having to pause your reading.
+**Dynamic imports:** Now, here comes the part that might be confusing. ES Modules also support importing modules on the fly via the `import()` function. This is called a "dynamic import" and it's asynchronous, so it doesn't block the main program execution. Instead, it fetches and loads the module in the background while your program continues to run. Once the module is ready, you can use it. This is like getting additional information from a book while you're still reading it, without having to pause your reading.
 
-  **In summary:**
+**In summary:**
 
-  * CommonJS modules and static ES Modules (`import` statements) work in a similar synchronous way, like reading a book from start to finish.
-  * ES Modules also offer the option to import modules asynchronously using the `import()` function. This is like looking up additional information in the middle of reading the book without stopping.
+- CommonJS modules and static ES Modules (`import` statements) work in a similar synchronous way, like reading a book from start to finish.
+- ES Modules also offer the option to import modules asynchronously using the `import()` function. This is like looking up additional information in the middle of reading the book without stopping.
 </Accordion>
 
 ### Using `import`
@@ -169,7 +173,7 @@ The only exception to this rule is top-level await. You can't `require()` a file
 
 Fortunately, very few libraries use top-level await, so this is rarely a problem. But if you're using top-level await in your application code, make sure that file isn't being `require()` from elsewhere in your application. Instead, you should use `import` or [dynamic `import()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import).
 
-***
+---
 
 ## Importing packages
 
@@ -185,11 +189,11 @@ The full specification of this algorithm are officially documented in the [Node.
 
 Bun supports `NODE_PATH` for additional module resolution directories:
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 NODE_PATH=./packages bun run src/index.js
 ```
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // packages/foo/index.js
 export const hello = "world";
 
@@ -199,7 +203,7 @@ import { hello } from "foo";
 
 Multiple paths use the platform's delimiter (`:` on Unix, `;` on Windows):
 
-```bash  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```bash theme={"theme":{"light":"github-light","dark":"dracula"}}
 NODE_PATH=./packages:./lib bun run src/index.js  # Unix/macOS
 NODE_PATH=./packages;./lib bun run src/index.js  # Windows
 ```
@@ -219,7 +223,7 @@ Once it finds the `foo` package, Bun reads the `package.json` to determine how t
 }
 ```
 
-Whichever one of these conditions occurs *first* in the `package.json` is used to determine the package's entrypoint.
+Whichever one of these conditions occurs _first_ in the `package.json` is used to determine the package's entrypoint.
 
 Bun respects subpath [`"exports"`](https://nodejs.org/api/packages.html#subpath-exports) and [`"imports"`](https://nodejs.org/api/packages.html#imports).
 
@@ -293,7 +297,7 @@ await Bun.build({
 });
 ```
 
-***
+---
 
 ## Path re-mapping
 
@@ -324,20 +328,20 @@ Bun also supports [Node.js-style subpath imports](https://nodejs.org/api/package
 <Accordion title="Low-level details of CommonJS interop in Bun">
   Bun's JavaScript runtime has native support for CommonJS. When Bun's JavaScript transpiler detects usages of `module.exports`, it treats the file as CommonJS. The module loader will then wrap the transpiled module in a function shaped like this:
 
-  ```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
-  (function (module, exports, require) {
-    // transpiled module
-  })(module, exports, require);
-  ```
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
+(function (module, exports, require) {
+  // transpiled module
+})(module, exports, require);
+```
 
-  `module`, `exports`, and `require` are very much like the `module`, `exports`, and `require` in Node.js. These are assigned via a [`with scope`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/with) in C++. An internal `Map` stores the `exports` object to handle cyclical `require` calls before the module is fully loaded.
+`module`, `exports`, and `require` are very much like the `module`, `exports`, and `require` in Node.js. These are assigned via a [`with scope`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/with) in C++. An internal `Map` stores the `exports` object to handle cyclical `require` calls before the module is fully loaded.
 
-  Once the CommonJS module is successfully evaluated, a Synthetic Module Record is created with the `default` ES Module [export set to `module.exports`](https://github.com/oven-sh/bun/blob/9b6913e1a674ceb7f670f917fc355bb8758c6c72/src/bun.js/bindings/CommonJSModuleRecord.cpp#L212-L213) and keys of the `module.exports` object are re-exported as named exports (if the `module.exports` object is an object).
+Once the CommonJS module is successfully evaluated, a Synthetic Module Record is created with the `default` ES Module [export set to `module.exports`](https://github.com/oven-sh/bun/blob/9b6913e1a674ceb7f670f917fc355bb8758c6c72/src/bun.js/bindings/CommonJSModuleRecord.cpp#L212-L213) and keys of the `module.exports` object are re-exported as named exports (if the `module.exports` object is an object).
 
-  When using Bun's bundler, this works differently. The bundler will wrap the CommonJS module in a `require_${moduleName}` function which returns the `module.exports` object.
+When using Bun's bundler, this works differently. The bundler will wrap the CommonJS module in a `require_${moduleName}` function which returns the `module.exports` object.
 </Accordion>
 
-***
+---
 
 ## `import.meta`
 

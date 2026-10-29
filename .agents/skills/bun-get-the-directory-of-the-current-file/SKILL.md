@@ -11,6 +11,6 @@ Bun provides a handful of module-specific utilities on the [`import.meta`](/runt
 import.meta.dir; // => "/a/b"
 ```
 
-***
+---
 
 See [Docs > API > import.meta](/runtime/module-resolution#import-meta) for complete documentation.

@@ -11,7 +11,7 @@ To install TypeScript definitions for Bun's built-in APIs in your project, insta
 bun add -d @types/bun # dev dependency
 ```
 
-***
+---
 
 Below is the full set of recommended `compilerOptions` for a Bun project. With this `tsconfig.json`, you can use top-level await, extensioned or extensionless imports, and JSX.
 
@@ -47,6 +47,6 @@ Below is the full set of recommended `compilerOptions` for a Bun project. With t
 }
 ```
 
-***
+---
 
 Refer to [Ecosystem > TypeScript](/runtime/typescript) for a complete guide to TypeScript support in Bun.

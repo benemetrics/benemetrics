@@ -41,12 +41,20 @@ const PULL_CONSUMERS: Array<{
   subject: string;
   deliverPolicy?: DeliverPolicy;
 }> = [
-    { name: "clickhouse-events", subject: EVENTS_STREAM_SUBJECT },
-    { name: "clickhouse-metrics", subject: METRICS_SUBJECT },
-    // A fresh consumer must not replay the whole stream.
-    { name: SIDE_EFFECTS_CONSUMER, subject: EVENTS_STREAM_SUBJECT, deliverPolicy: DeliverPolicy.New },
-    { name: FLAGS_CONSUMER, subject: FLAG_CHANGE_SUBJECT, deliverPolicy: DeliverPolicy.New },
-  ];
+  { name: "clickhouse-events", subject: EVENTS_STREAM_SUBJECT },
+  { name: "clickhouse-metrics", subject: METRICS_SUBJECT },
+  // A fresh consumer must not replay the whole stream.
+  {
+    name: SIDE_EFFECTS_CONSUMER,
+    subject: EVENTS_STREAM_SUBJECT,
+    deliverPolicy: DeliverPolicy.New,
+  },
+  {
+    name: FLAGS_CONSUMER,
+    subject: FLAG_CHANGE_SUBJECT,
+    deliverPolicy: DeliverPolicy.New,
+  },
+];
 
 const INIT_ATTEMPTS = Number(env.INIT_RETRY_ATTEMPTS) || 5;
 const INIT_RETRY_DELAY_MS = Number(env.INIT_RETRY_DELAY_MS) || 1000;
@@ -58,10 +66,15 @@ function describe(err: unknown): string {
 // The stream's disk is bounded: a flood (or a long outage) fills it and the
 // publish fails with a 503 instead of growing the disk without limit. The
 // SDKs retry the 503, so the backpressure reaches the sender.
-const STREAM_MAX_BYTES = Number(env.NATS_STREAM_MAX_BYTES) || 1024 * 1024 * 1024;
+const STREAM_MAX_BYTES =
+  Number(env.NATS_STREAM_MAX_BYTES) || 1024 * 1024 * 1024;
 
 async function ensureStream(manager: JetStreamManager): Promise<void> {
-  const subjects = [EVENTS_STREAM_SUBJECT, METRICS_SUBJECT, FLAG_CHANGE_SUBJECT];
+  const subjects = [
+    EVENTS_STREAM_SUBJECT,
+    METRICS_SUBJECT,
+    FLAG_CHANGE_SUBJECT,
+  ];
   const info = await manager.streams.info(STREAM_NAME).catch(() => null);
   if (!info) {
     await manager.streams.add({
@@ -91,7 +104,9 @@ async function ensurePullConsumers(manager: JetStreamManager): Promise<void> {
       filter_subject: subject,
       ...(deliverPolicy ? { deliver_policy: deliverPolicy } : {}),
     };
-    const existing = await manager.consumers.info(STREAM_NAME, name).catch(() => null);
+    const existing = await manager.consumers
+      .info(STREAM_NAME, name)
+      .catch(() => null);
     // An existing durable keeps its deliver policy; only the shard filter
     // is migrated in place.
     if (existing) {
@@ -125,7 +140,7 @@ async function initNats(): Promise<NatsConnection> {
         await ensureStream(manager);
         await ensurePullConsumers(manager);
       } catch (err) {
-        await nc.close().catch(() => { });
+        await nc.close().catch(() => {});
         throw err;
       }
       connection = nc;
@@ -159,7 +174,9 @@ export async function publishEvent(
   await jetstream2.publish(subject, payload, { timeout: 2000 });
 }
 
-export async function publishMetricSamples(samples: Uint8Array[]): Promise<void> {
+export async function publishMetricSamples(
+  samples: Uint8Array[],
+): Promise<void> {
   if (samples.length === 0) return;
   const totalLength = samples.reduce((acc, curr) => acc + curr.length, 0);
   const payload = new Uint8Array(totalLength);
@@ -196,7 +213,9 @@ export async function consumeFlagChanges(
   const consumer = await jetstream2.consumers.get(STREAM_NAME, FLAGS_CONSUMER);
   for await (const message of await consumer.consume()) {
     try {
-      handler(JSON.parse(message.string()) as { type: string; flagKey: string });
+      handler(
+        JSON.parse(message.string()) as { type: string; flagKey: string },
+      );
     } catch (err) {
       console.error(
         "[flags] Failed to handle the change event:",

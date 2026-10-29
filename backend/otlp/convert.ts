@@ -32,9 +32,7 @@ function randomHex(length: number): string {
   return crypto.randomUUID().replace(/-/g, "").slice(0, length);
 }
 
-function nanoToSeconds(
-  nano: string | number | undefined,
-): number | undefined {
+function nanoToSeconds(nano: string | number | undefined): number | undefined {
   if (nano === undefined || nano === null) return undefined;
   const str = String(nano);
   if (!/^\d+$/.test(str)) {
@@ -171,9 +169,7 @@ function buildChildSpan(span: OtlpSpan): Record<string, unknown> {
   };
 }
 
-export function convertOtlpToEnvelopes(
-  raw: string,
-): OtlpEnvelope[] | null {
+export function convertOtlpToEnvelopes(raw: string): OtlpEnvelope[] | null {
   let parsed: OtlpExportTraceServiceRequest;
   try {
     parsed = JSON.parse(raw) as OtlpExportTraceServiceRequest;
@@ -217,11 +213,9 @@ export function convertOtlpToEnvelopes(
         .filter((id): id is string => Boolean(id)),
     );
     const segmentIndex = items.findIndex(
-      (item) =>
-        !item.span.parentSpanId || !spanIds.has(item.span.parentSpanId),
+      (item) => !item.span.parentSpanId || !spanIds.has(item.span.parentSpanId),
     );
-    const segment =
-      segmentIndex >= 0 ? (items[segmentIndex] ?? first) : first;
+    const segment = segmentIndex >= 0 ? (items[segmentIndex] ?? first) : first;
 
     const transaction = buildTransaction(segment.span, segment.tags);
     transaction.spans = items
@@ -243,7 +237,9 @@ export function convertOtlpToEnvelopes(
     envelopes.push({
       id: eventId,
       envelopeHeader: JSON.stringify(header),
-      envelopeItems: JSON.stringify([{ header: itemHeader, payload: transaction }]),
+      envelopeItems: JSON.stringify([
+        { header: itemHeader, payload: transaction },
+      ]),
       items: [{ header: itemHeader, payload: transaction }],
     });
   }

@@ -6,15 +6,15 @@ This document describes the Sentry ingestion protocol that a compatible server m
 
 All payload formats below are derived from the following official sources:
 
-| Source | URL | Covers |
-|--------|-----|--------|
-| **Sentry Envelope Spec** | https://develop.sentry.dev/sdk/envelopes/ | Envelope format, item headers, authentication |
-| **Sentry Event Payloads** | https://develop.sentry.dev/sdk/event-payloads/ | Event, transaction, session, profile, replay, check-in, user_feedback schemas |
-| **Sentry Ingestion API** | https://docs.sentry.io/api/events/ | HTTP endpoints, headers, rate limiting, responses |
-| **Sentry TypeScript SDK Types** | https://github.com/getsentry/sentry-javascript/tree/master/packages/types | TypeScript interfaces for all payload types |
-| **Sentry Protocol (Legacy)** | https://docs.sentry.io/api/events/ | Legacy `/store/` endpoint |
-| **OpenTelemetry Semantic Conventions** | https://opentelemetry.io/docs/specs/semconv/ | Span attributes, status codes |
-| **Sentry Relay (Ingestion Service)** | https://github.com/getsentry/relay | Server-side processing, rate limiting headers |
+| Source                                 | URL                                                                       | Covers                                                                        |
+| -------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **Sentry Envelope Spec**               | https://develop.sentry.dev/sdk/envelopes/                                 | Envelope format, item headers, authentication                                 |
+| **Sentry Event Payloads**              | https://develop.sentry.dev/sdk/event-payloads/                            | Event, transaction, session, profile, replay, check-in, user_feedback schemas |
+| **Sentry Ingestion API**               | https://docs.sentry.io/api/events/                                        | HTTP endpoints, headers, rate limiting, responses                             |
+| **Sentry TypeScript SDK Types**        | https://github.com/getsentry/sentry-javascript/tree/master/packages/types | TypeScript interfaces for all payload types                                   |
+| **Sentry Protocol (Legacy)**           | https://docs.sentry.io/api/events/                                        | Legacy `/store/` endpoint                                                     |
+| **OpenTelemetry Semantic Conventions** | https://opentelemetry.io/docs/specs/semconv/                              | Span attributes, status codes                                                 |
+| **Sentry Relay (Ingestion Service)**   | https://github.com/getsentry/relay                                        | Server-side processing, rate limiting headers                                 |
 
 ## Protocol Overview
 
@@ -47,11 +47,13 @@ DSN Format: https://<public_key>@<host>/<project_id>
 ```
 
 Headers:
+
 ```
 X-Sentry-Auth: Sentry sentry_key=<public_key>, sentry_version=7, sentry_client=<sdk_name>/<version>
 ```
 
 Or via URL:
+
 ```
 POST /api/<project_id>/envelope/?sentry_key=<public_key>
 ```
@@ -73,14 +75,14 @@ All data is sent as **envelopes** — a newline-delimited format:
 
 ```json
 {
-  "event_id": "uuid-v4",           // Optional: for event items
-  "sent_at": "2024-01-15T10:30:00.000Z",  // ISO 8601
-  "dsn": "https://key@host/123",   // Optional
+  "event_id": "uuid-v4", // Optional: for event items
+  "sent_at": "2024-01-15T10:30:00.000Z", // ISO 8601
+  "dsn": "https://key@host/123", // Optional
   "sdk": {
     "name": "sentry.javascript.bun",
     "version": "8.0.0",
     "integrations": ["http", "console"],
-    "packages": [{"name": "npm:@sentry/bun", "version": "8.0.0"}]
+    "packages": [{ "name": "npm:@sentry/bun", "version": "8.0.0" }]
   }
 }
 ```
@@ -91,10 +93,10 @@ All data is sent as **envelopes** — a newline-delimited format:
 
 ```json
 {
-  "type": "event",           // event | transaction | session | profile | replay_event | check_in | user_feedback
+  "type": "event", // event | transaction | session | profile | replay_event | check_in | user_feedback
   "content_type": "application/json",
-  "length": 1234,            // Bytes
-  "filename": "event.json"   // Optional
+  "length": 1234, // Bytes
+  "filename": "event.json" // Optional
 }
 ```
 
@@ -274,10 +276,7 @@ Varies by type (see below).
     { "timestamp": 100, "stack_id": 0, "thread_id": 1 },
     { "timestamp": 101, "stack_id": 1, "thread_id": 1 }
   ],
-  "stacks": [
-    { "frames": [0, 1, 2] },
-    { "frames": [0, 3, 4] }
-  ],
+  "stacks": [{ "frames": [0, 1, 2] }, { "frames": [0, 3, 4] }],
   "frames": [
     { "function": "processOrder", "filename": "orders.ts", "lineno": 10 },
     { "function": "validateOrder", "filename": "orders.ts", "lineno": 50 }
@@ -310,7 +309,7 @@ Varies by type (see below).
 {
   "type": "check_in",
   "monitor_slug": "nightly-backup",
-  "status": "in_progress",  // in_progress | ok | error
+  "status": "in_progress", // in_progress | ok | error
   "check_in_id": "checkin-uuid",
   "duration": 300,
   "monitor_config": {
@@ -348,12 +347,14 @@ POST /envelope/ (with sentry_key query param)
 ```
 
 **Headers:**
+
 ```
 Content-Type: application/x-sentry-envelope
 X-Sentry-Auth: Sentry sentry_key=...
 ```
 
 **Response:**
+
 ```
 200 OK
 {
@@ -371,6 +372,7 @@ POST /store/ (with sentry_key)
 ```
 
 **Headers:**
+
 ```
 Content-Type: application/json
 X-Sentry-Auth: Sentry sentry_key=...
@@ -379,6 +381,7 @@ X-Sentry-Auth: Sentry sentry_key=...
 **Body:** Event JSON (not envelope)
 
 **Response:**
+
 ```
 200 OK
 {"id": "event_id"}
@@ -404,12 +407,12 @@ POST /api/{project_id}/attachments/?event_id=...
 
 ## Required Headers for All Requests
 
-| Header | Required | Description |
-|--------|----------|-------------|
-| `Content-Type` | Yes | `application/x-sentry-envelope` or `application/json` |
-| `X-Sentry-Auth` | Yes* | Authentication (or query param) |
-| `User-Agent` | No | SDK identification |
-| `Accept` | No | `application/json` |
+| Header          | Required | Description                                           |
+| --------------- | -------- | ----------------------------------------------------- |
+| `Content-Type`  | Yes      | `application/x-sentry-envelope` or `application/json` |
+| `X-Sentry-Auth` | Yes*     | Authentication (or query param)                       |
+| `User-Agent`    | No       | SDK identification                                    |
+| `Accept`        | No       | `application/json`                                    |
 
 *Can use `?sentry_key=<public_key>` query parameter instead.
 
@@ -418,6 +421,7 @@ POST /api/{project_id}/attachments/?event_id=...
 ## Rate Limiting
 
 Return `429 Too Many Requests` with headers:
+
 ```
 Retry-After: 60
 X-Sentry-Rate-Limit: 1000;w=3600
@@ -428,44 +432,45 @@ X-Sentry-Rate-Limit-Remaining: 0
 
 ## Error Responses
 
-| Code | Meaning |
-|------|---------|
-| 200 | Accepted |
-| 400 | Invalid payload |
-| 401 | Invalid DSN/key |
-| 403 | Project disabled/quota exceeded |
-| 429 | Rate limited |
-| 500 | Server error |
+| Code | Meaning                         |
+| ---- | ------------------------------- |
+| 200  | Accepted                        |
+| 400  | Invalid payload                 |
+| 401  | Invalid DSN/key                 |
+| 403  | Project disabled/quota exceeded |
+| 429  | Rate limited                    |
+| 500  | Server error                    |
 
 **Source:** [Sentry Ingestion API](https://docs.sentry.io/api/events/) — Response codes documentation.
 
 ## Feature Mapping to Protocol
 
-| Feature | Protocol Items | Key Fields |
-|---------|---------------|------------|
-| **Error Tracking** | `event` | `exception`, `contexts.request`, `breadcrumbs` |
-| **Release Tracking** | `event`, `transaction`, `session` | `release`, `environment` |
-| **Performance** | `transaction` | `spans`, `measurements`, `trace_id` |
-| **Session Replay** | `replay_event` | `replay_id`, `segment_id`, `events` |
-| **Breadcrumbs** | `event` (embedded) | `breadcrumbs.values` |
-| **Alerting** | `check_in`, `metric` (custom) | `monitor_slug`, `status` |
+| Feature              | Protocol Items                    | Key Fields                                     |
+| -------------------- | --------------------------------- | ---------------------------------------------- |
+| **Error Tracking**   | `event`                           | `exception`, `contexts.request`, `breadcrumbs` |
+| **Release Tracking** | `event`, `transaction`, `session` | `release`, `environment`                       |
+| **Performance**      | `transaction`                     | `spans`, `measurements`, `trace_id`            |
+| **Session Replay**   | `replay_event`                    | `replay_id`, `segment_id`, `events`            |
+| **Breadcrumbs**      | `event` (embedded)                | `breadcrumbs.values`                           |
+| **Alerting**         | `check_in`, `metric` (custom)     | `monitor_slug`, `status`                       |
 
 ## Data Retention Requirements
 
-| Data Type | Minimum Retention |
-|-----------|-------------------|
-| Events (errors) | 90 days |
-| Transactions | 30 days |
-| Sessions | 90 days |
-| Profiles | 14 days |
-| Replays | 7 days |
-| Check-ins | 90 days |
+| Data Type       | Minimum Retention |
+| --------------- | ----------------- |
+| Events (errors) | 90 days           |
+| Transactions    | 30 days           |
+| Sessions        | 90 days           |
+| Profiles        | 14 days           |
+| Replays         | 7 days            |
+| Check-ins       | 90 days           |
 
 **Source:** [Sentry Data Retention](https://docs.sentry.io/product/accounts/data-retention/) — Default retention periods by data type.
 
 ## Compression
 
 Clients may send gzipped envelopes:
+
 ```
 Content-Encoding: gzip
 ```
@@ -477,6 +482,7 @@ Server must support decompression.
 ## SDK Compatibility
 
 Your server must accept envelopes from:
+
 - `@sentry/bun` (Node/Bun)
 - `@sentry/node` (Node.js)
 - `@sentry/javascript` (Browser)
@@ -500,4 +506,4 @@ Your server must accept envelopes from:
 
 ---
 
-*This specification covers the ingestion protocol. See individual feature docs for processing requirements.*
+_This specification covers the ingestion protocol. See individual feature docs for processing requirements._

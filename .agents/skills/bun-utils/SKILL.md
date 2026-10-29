@@ -40,7 +40,7 @@ Bun.main;
 
 This is particular useful for determining whether a script is being directly executed, as opposed to being imported by another script.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 if (import.meta.path === Bun.main) {
   // this script is being directly executed
 } else {
@@ -56,7 +56,7 @@ This is analogous to the [`require.main = module` trick](https://stackoverflow.c
 
 Returns a `Promise` that resolves after the given number of milliseconds.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 console.log("hello");
 await Bun.sleep(1000);
 console.log("hello one second later!");
@@ -64,7 +64,7 @@ console.log("hello one second later!");
 
 Alternatively, pass a `Date` object to receive a `Promise` that resolves at that point in time.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const oneSecondInFuture = new Date(Date.now() + 1000);
 
 console.log("hello");
@@ -78,7 +78,7 @@ console.log("hello one second later!");
 
 A blocking synchronous version of `Bun.sleep`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 console.log("hello");
 Bun.sleepSync(1000); // blocks thread for one second
 console.log("hello one second later!");
@@ -90,14 +90,14 @@ console.log("hello one second later!");
 
 Returns the path to an executable, similar to typing `which` in your terminal.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const ls = Bun.which("ls");
 console.log(ls); // "/usr/bin/ls"
 ```
 
 By default Bun looks at the current `PATH` environment variable to determine the path. To configure `PATH`:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const ls = Bun.which("ls", {
   PATH: "/usr/local/bin:/usr/bin:/bin",
 });
@@ -106,7 +106,7 @@ console.log(ls); // "/usr/bin/ls"
 
 Pass a `cwd` option to resolve for executable from within a specific directory.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const ls = Bun.which("ls", {
   cwd: "/tmp",
   PATH: "",
@@ -121,7 +121,7 @@ You can think of this as a builtin alternative to the [`which`](https://www.npmj
 
 `Bun.randomUUIDv7()` returns a [UUID v7](https://www.ietf.org/archive/id/draft-peabody-dispatch-new-uuid-format-01.html#name-uuidv7-layout-and-bit-order), which is monotonic and suitable for sorting and databases.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { randomUUIDv7 } from "bun";
 
 const id = randomUUIDv7();
@@ -134,13 +134,19 @@ The `timestamp` parameter defaults to the current time in milliseconds. When the
 
 The final 8 bytes of the UUID are a cryptographically secure random value. It uses the same random number generator used by `crypto.randomUUID()` (which comes from BoringSSL, which in turn comes from the platform-specific system random number generator usually provided by the underlying hardware).
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 namespace Bun {
-  function randomUUIDv7(encoding?: "hex" | "base64" | "base64url" = "hex", timestamp?: number = Date.now()): string;
+  function randomUUIDv7(
+    encoding?: "hex" | "base64" | "base64url" = "hex",
+    timestamp?: number = Date.now(),
+  ): string;
   /**
    * If you pass "buffer", you get a 16-byte buffer instead of a string.
    */
-  function randomUUIDv7(encoding: "buffer", timestamp?: number = Date.now()): Buffer;
+  function randomUUIDv7(
+    encoding: "buffer",
+    timestamp?: number = Date.now(),
+  ): Buffer;
 
   // If you only pass a timestamp, you get a hex string
   function randomUUIDv7(timestamp?: number = Date.now()): string;
@@ -166,7 +172,7 @@ const base64url = Bun.randomUUIDv7("base64url");
 
 Reads a promise's result without `await` or `.then`, but only if the promise has already fulfilled or rejected.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { peek } from "bun";
 
 const promise = Promise.resolve("hi");
@@ -178,7 +184,7 @@ console.log(result); // "hi"
 
 This is important when attempting to reduce number of extraneous microticks in performance-sensitive code. It's an advanced API and you probably shouldn't use it unless you know what you're doing.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { peek } from "bun";
 import { expect, test } from "bun:test";
 
@@ -203,14 +209,16 @@ test("peek", () => {
   // If we peek a rejected promise, it:
   // - returns the error
   // - does not mark the promise as handled
-  const rejected = Promise.reject(new Error("Successfully tested promise rejection"));
+  const rejected = Promise.reject(
+    new Error("Successfully tested promise rejection"),
+  );
   expect(peek(rejected).message).toBe("Successfully tested promise rejection");
 });
 ```
 
 The `peek.status` function lets you read the status of a promise without resolving it.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { peek } from "bun";
 import { expect, test } from "bun:test";
 
@@ -230,7 +238,7 @@ test("peek.status", () => {
 
 Opens a file in your default editor. Bun auto-detects your editor via the `$VISUAL` or `$EDITOR` environment variables.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const currentFile = import.meta.url;
 Bun.openInEditor(currentFile);
 ```
@@ -244,7 +252,7 @@ editor = "code" # [!code ++]
 
 Or specify an editor with the `editor` param. You can also specify a line and column number.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.openInEditor(import.meta.url, {
   editor: "vscode", // or "subl"
   line: 10,
@@ -256,7 +264,7 @@ Bun.openInEditor(import.meta.url, {
 
 Recursively checks if two objects are equivalent. This is used internally by `expect().toEqual()` in `bun:test`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const foo = { a: 1, b: 2, c: { d: 3 } };
 
 // true
@@ -268,7 +276,7 @@ Bun.deepEquals(foo, { a: 1, b: 2, c: { d: 4 } });
 
 A third boolean parameter can be used to enable "strict" mode. This is used by `expect().toStrictEqual()` in the test runner.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const a = { entries: [1, 2] };
 const b = { entries: [1, 2], extra: undefined };
 
@@ -278,7 +286,7 @@ Bun.deepEquals(a, b, true); // => false
 
 In strict mode, the following are considered unequal:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // undefined values
 Bun.deepEquals({}, { a: undefined }, true); // false
 
@@ -301,11 +309,11 @@ Bun.deepEquals(new Foo(), { a: 1 }, true); // false
 
 Escapes the following characters from an input string:
 
-* `"` becomes `&quot;`
-* `&` becomes `&amp;`
-* `'` becomes `&#x27;`
-* `<` becomes `&lt;`
-* `>` becomes `&gt;`
+- `"` becomes `&quot;`
+- `&` becomes `&amp;`
+- `'` becomes `&#x27;`
+- `<` becomes `&lt;`
+- `>` becomes `&gt;`
 
 This function is optimized for large input. On an M1X, it processes 480 MB/s -
 20 GB/s, depending on how much data is being escaped and whether there is non-ascii
@@ -320,7 +328,7 @@ Supports ANSI escape codes, emoji, and wide characters.
 
 Example usage:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.stringWidth("hello"); // => 5
 Bun.stringWidth("\u001b[31mhello\u001b[0m"); // => 5
 Bun.stringWidth("\u001b[31mhello\u001b[0m", { countAnsiEscapeCodes: true }); // => 12
@@ -328,16 +336,16 @@ Bun.stringWidth("\u001b[31mhello\u001b[0m", { countAnsiEscapeCodes: true }); // 
 
 This is useful for:
 
-* Aligning text in a terminal
-* Quickly checking if a string contains ANSI escape codes
-* Measuring the width of a string in a terminal
+- Aligning text in a terminal
+- Quickly checking if a string contains ANSI escape codes
+- Measuring the width of a string in a terminal
 
 This API is designed to match the popular "string-width" package, so that
 existing code can be easily ported to Bun and vice versa.
 
 [In this benchmark](https://github.com/oven-sh/bun/blob/5147c0ba7379d85d4d1ed0714b84d6544af917eb/bench/snippets/string-width.mjs#L13), `Bun.stringWidth` is a \~6,756x faster than the `string-width` npm package for input larger than about 500 characters. Big thanks to [sindresorhus](https://github.com/sindresorhus) for their work on `string-width`!
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 ❯ bun string-width.mjs
 cpu: 13th Gen Intel(R) Core(TM) i9-13900
 runtime: bun 1.0.29 (x64-linux)
@@ -358,69 +366,70 @@ To make `Bun.stringWidth` fast, we've implemented it in Zig using optimized SIMD
 <Accordion title="View full benchmark">
   As a reminder, 1 nanosecond (ns) is 1 billionth of a second. Here's a quick reference for converting between units:
 
-  | Unit | 1 Millisecond |
-  | ---- | ------------- |
-  | ns   | 1,000,000     |
-  | µs   | 1,000         |
-  | ms   | 1             |
+| Unit | 1 Millisecond |
+| ---- | ------------- |
+| ns   | 1,000,000     |
+| µs   | 1,000         |
+| ms   | 1             |
 
-  ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  ❯ bun string-width.mjs
-  cpu: 13th Gen Intel(R) Core(TM) i9-13900
-  runtime: bun 1.0.29 (x64-linux)
+```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
+❯ bun string-width.mjs
+cpu: 13th Gen Intel(R) Core(TM) i9-13900
+runtime: bun 1.0.29 (x64-linux)
 
-  benchmark                                          time (avg)             (min … max)       p75       p99      p995
-  ------------------------------------------------------------------------------------- -----------------------------
-  Bun.stringWidth      5 chars ascii              16.45 ns/iter   (16.27 ns … 19.71 ns)  16.48 ns  16.93 ns  17.21 ns
-  Bun.stringWidth     50 chars ascii              19.42 ns/iter   (18.61 ns … 27.85 ns)  19.35 ns   21.7 ns  22.31 ns
-  Bun.stringWidth    500 chars ascii              37.09 ns/iter   (36.77 ns … 41.11 ns)  37.07 ns  38.84 ns  38.99 ns
-  Bun.stringWidth  5,000 chars ascii              216.9 ns/iter  (215.8 ns … 228.54 ns) 216.23 ns 228.52 ns 228.53 ns
-  Bun.stringWidth 25,000 chars ascii               1.01 µs/iter     (1.01 µs … 1.01 µs)   1.01 µs   1.01 µs   1.01 µs
-  Bun.stringWidth      7 chars ascii+emoji         54.2 ns/iter   (53.36 ns … 58.19 ns)  54.23 ns  57.55 ns  57.94 ns
-  Bun.stringWidth     70 chars ascii+emoji       354.26 ns/iter (350.51 ns … 363.96 ns) 355.93 ns 363.11 ns 363.96 ns
-  Bun.stringWidth    700 chars ascii+emoji          3.3 µs/iter      (3.27 µs … 3.4 µs)    3.3 µs    3.4 µs    3.4 µs
-  Bun.stringWidth  7,000 chars ascii+emoji        32.69 µs/iter   (32.22 µs … 45.27 µs)   32.7 µs  34.57 µs  34.68 µs
-  Bun.stringWidth 35,000 chars ascii+emoji       163.35 µs/iter (161.17 µs … 170.79 µs) 163.82 µs 169.66 µs 169.93 µs
-  Bun.stringWidth      8 chars ansi+emoji         66.15 ns/iter   (65.17 ns … 69.97 ns)  66.12 ns   69.8 ns  69.87 ns
-  Bun.stringWidth     80 chars ansi+emoji        492.95 ns/iter  (488.05 ns … 499.5 ns)  494.8 ns 498.58 ns  499.5 ns
-  Bun.stringWidth    800 chars ansi+emoji          4.73 µs/iter     (4.71 µs … 4.88 µs)   4.72 µs   4.88 µs   4.88 µs
-  Bun.stringWidth  8,000 chars ansi+emoji         47.02 µs/iter   (46.37 µs … 67.44 µs)  46.96 µs  49.57 µs  49.63 µs
-  Bun.stringWidth 40,000 chars ansi+emoji        234.45 µs/iter (231.78 µs … 240.98 µs) 234.92 µs 236.34 µs 236.62 µs
-  Bun.stringWidth     19 chars ansi+emoji+ascii  135.46 ns/iter (133.67 ns … 143.26 ns) 135.32 ns 142.55 ns 142.77 ns
-  Bun.stringWidth    190 chars ansi+emoji+ascii    1.17 µs/iter     (1.16 µs … 1.17 µs)   1.17 µs   1.17 µs   1.17 µs
-  Bun.stringWidth  1,900 chars ansi+emoji+ascii   11.45 µs/iter   (11.26 µs … 20.41 µs)  11.45 µs  12.08 µs  12.11 µs
-  Bun.stringWidth 19,000 chars ansi+emoji+ascii  114.06 µs/iter (112.86 µs … 120.06 µs) 114.25 µs 115.86 µs 116.15 µs
-  Bun.stringWidth 95,000 chars ansi+emoji+ascii  572.69 µs/iter (565.52 µs … 607.22 µs) 572.45 µs 604.86 µs 605.21 µs
-  ```
+benchmark                                          time (avg)             (min … max)       p75       p99      p995
+------------------------------------------------------------------------------------- -----------------------------
+Bun.stringWidth      5 chars ascii              16.45 ns/iter   (16.27 ns … 19.71 ns)  16.48 ns  16.93 ns  17.21 ns
+Bun.stringWidth     50 chars ascii              19.42 ns/iter   (18.61 ns … 27.85 ns)  19.35 ns   21.7 ns  22.31 ns
+Bun.stringWidth    500 chars ascii              37.09 ns/iter   (36.77 ns … 41.11 ns)  37.07 ns  38.84 ns  38.99 ns
+Bun.stringWidth  5,000 chars ascii              216.9 ns/iter  (215.8 ns … 228.54 ns) 216.23 ns 228.52 ns 228.53 ns
+Bun.stringWidth 25,000 chars ascii               1.01 µs/iter     (1.01 µs … 1.01 µs)   1.01 µs   1.01 µs   1.01 µs
+Bun.stringWidth      7 chars ascii+emoji         54.2 ns/iter   (53.36 ns … 58.19 ns)  54.23 ns  57.55 ns  57.94 ns
+Bun.stringWidth     70 chars ascii+emoji       354.26 ns/iter (350.51 ns … 363.96 ns) 355.93 ns 363.11 ns 363.96 ns
+Bun.stringWidth    700 chars ascii+emoji          3.3 µs/iter      (3.27 µs … 3.4 µs)    3.3 µs    3.4 µs    3.4 µs
+Bun.stringWidth  7,000 chars ascii+emoji        32.69 µs/iter   (32.22 µs … 45.27 µs)   32.7 µs  34.57 µs  34.68 µs
+Bun.stringWidth 35,000 chars ascii+emoji       163.35 µs/iter (161.17 µs … 170.79 µs) 163.82 µs 169.66 µs 169.93 µs
+Bun.stringWidth      8 chars ansi+emoji         66.15 ns/iter   (65.17 ns … 69.97 ns)  66.12 ns   69.8 ns  69.87 ns
+Bun.stringWidth     80 chars ansi+emoji        492.95 ns/iter  (488.05 ns … 499.5 ns)  494.8 ns 498.58 ns  499.5 ns
+Bun.stringWidth    800 chars ansi+emoji          4.73 µs/iter     (4.71 µs … 4.88 µs)   4.72 µs   4.88 µs   4.88 µs
+Bun.stringWidth  8,000 chars ansi+emoji         47.02 µs/iter   (46.37 µs … 67.44 µs)  46.96 µs  49.57 µs  49.63 µs
+Bun.stringWidth 40,000 chars ansi+emoji        234.45 µs/iter (231.78 µs … 240.98 µs) 234.92 µs 236.34 µs 236.62 µs
+Bun.stringWidth     19 chars ansi+emoji+ascii  135.46 ns/iter (133.67 ns … 143.26 ns) 135.32 ns 142.55 ns 142.77 ns
+Bun.stringWidth    190 chars ansi+emoji+ascii    1.17 µs/iter     (1.16 µs … 1.17 µs)   1.17 µs   1.17 µs   1.17 µs
+Bun.stringWidth  1,900 chars ansi+emoji+ascii   11.45 µs/iter   (11.26 µs … 20.41 µs)  11.45 µs  12.08 µs  12.11 µs
+Bun.stringWidth 19,000 chars ansi+emoji+ascii  114.06 µs/iter (112.86 µs … 120.06 µs) 114.25 µs 115.86 µs 116.15 µs
+Bun.stringWidth 95,000 chars ansi+emoji+ascii  572.69 µs/iter (565.52 µs … 607.22 µs) 572.45 µs 604.86 µs 605.21 µs
+```
 
-  ```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  ❯ node string-width.mjs
-  cpu: 13th Gen Intel(R) Core(TM) i9-13900
-  runtime: node v21.4.0 (x64-linux)
+```bash terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
+❯ node string-width.mjs
+cpu: 13th Gen Intel(R) Core(TM) i9-13900
+runtime: node v21.4.0 (x64-linux)
 
-  benchmark                                           time (avg)             (min … max)       p75       p99      p995
-  -------------------------------------------------------------------------------------- -----------------------------
-  npm/string-width      5 chars ascii               3.19 µs/iter     (3.13 µs … 3.48 µs)   3.25 µs   3.48 µs   3.48 µs
-  npm/string-width     50 chars ascii              20.09 µs/iter  (18.93 µs … 435.06 µs)  19.49 µs  21.89 µs  22.59 µs
-  npm/string-width    500 chars ascii             249.71 µs/iter (239.97 µs … 293.18 µs) 250.93 µs  276.7 µs 281.45 µs
-  npm/string-width  5,000 chars ascii               6.69 ms/iter     (6.58 ms … 6.76 ms)   6.72 ms   6.76 ms   6.76 ms
-  npm/string-width 25,000 chars ascii             139.57 ms/iter (137.17 ms … 143.28 ms) 140.49 ms 143.28 ms 143.28 ms
-  npm/string-width      7 chars ascii+emoji          3.7 µs/iter     (3.62 µs … 3.94 µs)   3.73 µs   3.94 µs   3.94 µs
-  npm/string-width     70 chars ascii+emoji        23.93 µs/iter   (22.44 µs … 331.2 µs)  23.15 µs  25.98 µs   30.2 µs
-  npm/string-width    700 chars ascii+emoji       251.65 µs/iter (237.78 µs … 444.69 µs) 252.92 µs 325.89 µs 354.08 µs
-  npm/string-width  7,000 chars ascii+emoji         4.95 ms/iter     (4.82 ms … 5.19 ms)      5 ms   5.04 ms   5.19 ms
-  npm/string-width 35,000 chars ascii+emoji        96.93 ms/iter  (94.39 ms … 102.58 ms)  97.68 ms 102.58 ms 102.58 ms
-  npm/string-width      8 chars ansi+emoji          3.92 µs/iter     (3.45 µs … 4.57 µs)   4.09 µs   4.57 µs   4.57 µs
-  npm/string-width     80 chars ansi+emoji         24.46 µs/iter     (22.87 µs … 4.2 ms)  23.54 µs  25.89 µs  27.41 µs
-  npm/string-width    800 chars ansi+emoji        259.62 µs/iter (246.76 µs … 480.12 µs) 258.65 µs 349.84 µs 372.55 µs
-  npm/string-width  8,000 chars ansi+emoji          5.46 ms/iter     (5.41 ms … 5.57 ms)   5.48 ms   5.55 ms   5.57 ms
-  npm/string-width 40,000 chars ansi+emoji        108.91 ms/iter  (107.55 ms … 109.5 ms) 109.25 ms  109.5 ms  109.5 ms
-  npm/string-width     19 chars ansi+emoji+ascii    6.53 µs/iter     (6.35 µs … 6.75 µs)   6.54 µs   6.75 µs   6.75 µs
-  npm/string-width    190 chars ansi+emoji+ascii   55.52 µs/iter  (52.59 µs … 352.73 µs)  54.19 µs  80.77 µs 167.21 µs
-  npm/string-width  1,900 chars ansi+emoji+ascii  701.71 µs/iter (653.94 µs … 893.78 µs)  715.3 µs 855.37 µs  872.9 µs
-  npm/string-width 19,000 chars ansi+emoji+ascii   27.19 ms/iter   (26.89 ms … 27.41 ms)  27.28 ms  27.41 ms  27.41 ms
-  npm/string-width 95,000 chars ansi+emoji+ascii     3.68 s/iter        (3.66 s … 3.7 s)    3.69 s     3.7 s     3.7 s
-  ```
+benchmark                                           time (avg)             (min … max)       p75       p99      p995
+-------------------------------------------------------------------------------------- -----------------------------
+npm/string-width      5 chars ascii               3.19 µs/iter     (3.13 µs … 3.48 µs)   3.25 µs   3.48 µs   3.48 µs
+npm/string-width     50 chars ascii              20.09 µs/iter  (18.93 µs … 435.06 µs)  19.49 µs  21.89 µs  22.59 µs
+npm/string-width    500 chars ascii             249.71 µs/iter (239.97 µs … 293.18 µs) 250.93 µs  276.7 µs 281.45 µs
+npm/string-width  5,000 chars ascii               6.69 ms/iter     (6.58 ms … 6.76 ms)   6.72 ms   6.76 ms   6.76 ms
+npm/string-width 25,000 chars ascii             139.57 ms/iter (137.17 ms … 143.28 ms) 140.49 ms 143.28 ms 143.28 ms
+npm/string-width      7 chars ascii+emoji          3.7 µs/iter     (3.62 µs … 3.94 µs)   3.73 µs   3.94 µs   3.94 µs
+npm/string-width     70 chars ascii+emoji        23.93 µs/iter   (22.44 µs … 331.2 µs)  23.15 µs  25.98 µs   30.2 µs
+npm/string-width    700 chars ascii+emoji       251.65 µs/iter (237.78 µs … 444.69 µs) 252.92 µs 325.89 µs 354.08 µs
+npm/string-width  7,000 chars ascii+emoji         4.95 ms/iter     (4.82 ms … 5.19 ms)      5 ms   5.04 ms   5.19 ms
+npm/string-width 35,000 chars ascii+emoji        96.93 ms/iter  (94.39 ms … 102.58 ms)  97.68 ms 102.58 ms 102.58 ms
+npm/string-width      8 chars ansi+emoji          3.92 µs/iter     (3.45 µs … 4.57 µs)   4.09 µs   4.57 µs   4.57 µs
+npm/string-width     80 chars ansi+emoji         24.46 µs/iter     (22.87 µs … 4.2 ms)  23.54 µs  25.89 µs  27.41 µs
+npm/string-width    800 chars ansi+emoji        259.62 µs/iter (246.76 µs … 480.12 µs) 258.65 µs 349.84 µs 372.55 µs
+npm/string-width  8,000 chars ansi+emoji          5.46 ms/iter     (5.41 ms … 5.57 ms)   5.48 ms   5.55 ms   5.57 ms
+npm/string-width 40,000 chars ansi+emoji        108.91 ms/iter  (107.55 ms … 109.5 ms) 109.25 ms  109.5 ms  109.5 ms
+npm/string-width     19 chars ansi+emoji+ascii    6.53 µs/iter     (6.35 µs … 6.75 µs)   6.54 µs   6.75 µs   6.75 µs
+npm/string-width    190 chars ansi+emoji+ascii   55.52 µs/iter  (52.59 µs … 352.73 µs)  54.19 µs  80.77 µs 167.21 µs
+npm/string-width  1,900 chars ansi+emoji+ascii  701.71 µs/iter (653.94 µs … 893.78 µs)  715.3 µs 855.37 µs  872.9 µs
+npm/string-width 19,000 chars ansi+emoji+ascii   27.19 ms/iter   (26.89 ms … 27.41 ms)  27.28 ms  27.41 ms  27.41 ms
+npm/string-width 95,000 chars ansi+emoji+ascii     3.68 s/iter        (3.66 s … 3.7 s)    3.69 s     3.7 s     3.7 s
+```
+
 </Accordion>
 
 TypeScript definition:
@@ -450,35 +459,35 @@ namespace Bun {
 }
 ```
 
-***
+---
 
 ## `Bun.fileURLToPath()`
 
 Converts a `file://` URL to an absolute path.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const path = Bun.fileURLToPath(new URL("file:///foo/bar.txt"));
 console.log(path); // "/foo/bar.txt"
 ```
 
-***
+---
 
 ## `Bun.pathToFileURL()`
 
 Converts an absolute path to a `file://` URL.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const url = Bun.pathToFileURL("/foo/bar.txt");
 console.log(url); // "file:///foo/bar.txt"
 ```
 
-***
+---
 
 ## `Bun.gzipSync()`
 
 Compresses a `Uint8Array` using zlib's GZIP algorithm.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const buf = Buffer.from("hello".repeat(100)); // Buffer extends Uint8Array
 const compressed = Bun.gzipSync(buf);
 
@@ -561,13 +570,13 @@ Optionally, pass a parameters object as the second argument:
   ```
 </Accordion>
 
-***
+---
 
 ## `Bun.gunzipSync()`
 
 Decompresses a `Uint8Array` using zlib's GUNZIP algorithm.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const buf = Buffer.from("hello".repeat(100)); // Buffer extends Uint8Array
 const compressed = Bun.gzipSync(buf);
 
@@ -577,13 +586,13 @@ dec.decode(uncompressed);
 // => "hellohellohello..."
 ```
 
-***
+---
 
 ## `Bun.deflateSync()`
 
 Compresses a `Uint8Array` using zlib's DEFLATE algorithm.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const buf = Buffer.from("hello".repeat(100));
 const compressed = Bun.deflateSync(buf);
 
@@ -593,13 +602,13 @@ compressed; // => Uint8Array(12)
 
 The second argument supports the same set of configuration options as [`Bun.gzipSync`](#bun-gzipsync).
 
-***
+---
 
 ## `Bun.inflateSync()`
 
 Decompresses a `Uint8Array` using zlib's INFLATE algorithm.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const buf = Buffer.from("hello".repeat(100));
 const compressed = Bun.deflateSync(buf);
 
@@ -609,13 +618,13 @@ dec.decode(decompressed);
 // => "hellohellohello..."
 ```
 
-***
+---
 
 ## `Bun.zstdCompress()` / `Bun.zstdCompressSync()`
 
 Compresses a `Uint8Array` using the Zstandard algorithm.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const buf = Buffer.from("hello".repeat(100));
 
 // Synchronous
@@ -631,7 +640,7 @@ const compressedLevel = Bun.zstdCompressSync(buf, { level: 6 });
 
 Decompresses a `Uint8Array` using the Zstandard algorithm.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const buf = Buffer.from("hello".repeat(100));
 const compressed = Bun.zstdCompressSync(buf);
 
@@ -645,13 +654,13 @@ dec.decode(decompressedSync);
 // => "hellohellohello..."
 ```
 
-***
+---
 
 ## `Bun.inspect()`
 
 Serializes an object to a `string` exactly as it would be printed by `console.log`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const obj = { foo: "bar" };
 const str = Bun.inspect(obj);
 // => '{\nfoo: "bar" \n}'
@@ -665,7 +674,7 @@ const str = Bun.inspect(arr);
 
 This is the symbol that Bun uses to implement `Bun.inspect`. You can override this to customize how your objects are printed. It is identical to `util.inspect.custom` in Node.js.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 class Foo {
   [Bun.inspect.custom]() {
     return "foo";
@@ -680,7 +689,7 @@ console.log(foo); // => "foo"
 
 Format tabular data into a string. Like [`console.table`](https://developer.mozilla.org/en-US/docs/Web/API/console/table_static), except it returns a string rather than printing to the console.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 console.log(
   Bun.inspect.table([
     { a: 1, b: 2, c: 3 },
@@ -700,7 +709,7 @@ console.log(
 
 Additionally, you can pass an array of property names to display only a subset of properties.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 console.log(
   Bun.inspect.table(
     [
@@ -721,7 +730,7 @@ console.log(
 
 You can also conditionally enable ANSI colors by passing `{ colors: true }`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 console.log(
   Bun.inspect.table(
     [
@@ -735,24 +744,24 @@ console.log(
 );
 ```
 
-***
+---
 
 ## `Bun.nanoseconds()`
 
 Returns the number of nanoseconds since the current `bun` process started, as a `number`. Useful for high-precision timing and benchmarking.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.nanoseconds();
 // => 7288958
 ```
 
-***
+---
 
 ## `Bun.readableStreamTo*()`
 
 Bun implements a set of convenience functions for asynchronously consuming the body of a `ReadableStream` and converting it to various binary formats.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const stream = (await fetch("https://bun.com")).body;
 stream; // => ReadableStream
 
@@ -782,13 +791,13 @@ await Bun.readableStreamToFormData(stream);
 await Bun.readableStreamToFormData(stream, multipartFormBoundary);
 ```
 
-***
+---
 
 ## `Bun.resolveSync()`
 
 Resolves a file path or module specifier using Bun's internal module resolution algorithm. The first argument is the path to resolve, and the second argument is the "root". If no match is found, an `Error` is thrown.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.resolveSync("./foo.ts", "/path/to/project");
 // => "/path/to/project/foo.ts"
 
@@ -798,18 +807,18 @@ Bun.resolveSync("zod", "/path/to/project");
 
 To resolve relative to the current working directory, pass `process.cwd()` or `"."` as the root.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.resolveSync("./foo.ts", process.cwd());
 Bun.resolveSync("./foo.ts", "/path/to/project");
 ```
 
 To resolve relative to the directory containing the current file, pass `import.meta.dir`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.resolveSync("./foo.ts", import.meta.dir);
 ```
 
-***
+---
 
 ## `Bun.stripANSI()`
 
@@ -819,7 +828,7 @@ Bun.resolveSync("./foo.ts", import.meta.dir);
 
 Strip ANSI escape codes from a string. This is useful for removing colors and formatting from terminal output.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const coloredText = "\u001b[31mHello\u001b[0m \u001b[32mWorld\u001b[0m";
 const plainText = Bun.stripANSI(coloredText);
 console.log(plainText); // => "Hello World"
@@ -835,7 +844,7 @@ console.log(Bun.stripANSI(formatted)); // => "Bold and underlined"
 bun bench/snippets/strip-ansi.mjs
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 cpu: Apple M3 Max
 runtime: bun 1.2.21 (arm64-darwin)
 
@@ -858,7 +867,7 @@ Bun.stripANSI 212,992 chars long-ansi    227.65 µs/iter 234.50 µs
 node bench/snippets/strip-ansi.mjs
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 cpu: Apple M3 Max
 runtime: node 24.6.0 (arm64-darwin)
 
@@ -878,7 +887,7 @@ npm/strip-ansi 212,992 chars long-ansi      1.36 ms/iter   1.38 ms
 
 ```
 
-***
+---
 
 ## `Bun.wrapAnsi()`
 
@@ -888,19 +897,22 @@ npm/strip-ansi 212,992 chars long-ansi      1.36 ms/iter   1.38 ms
 
 Wrap text to a specified column width while preserving ANSI escape codes, hyperlinks, and handling Unicode/emoji width correctly. This is a native, high-performance alternative to the popular [`wrap-ansi`](https://www.npmjs.com/package/wrap-ansi) npm package.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Basic wrapping at 20 columns
 Bun.wrapAnsi("The quick brown fox jumps over the lazy dog", 20);
 // => "The quick brown fox\njumps over the lazy\ndog"
 
 // Preserves ANSI escape codes
-Bun.wrapAnsi("\u001b[31mThe quick brown fox jumps over the lazy dog\u001b[0m", 20);
+Bun.wrapAnsi(
+  "\u001b[31mThe quick brown fox jumps over the lazy dog\u001b[0m",
+  20,
+);
 // => "\u001b[31mThe quick brown fox\njumps over the lazy\ndog\u001b[0m"
 ```
 
 ### Options
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.wrapAnsi("Hello World", 5, {
   hard: true, // Break words that exceed column width (default: false)
   wordWrap: true, // Wrap at word boundaries (default: true)
@@ -966,13 +978,13 @@ namespace Bun {
 }
 ```
 
-***
+---
 
 ## `serialize` & `deserialize` in `bun:jsc`
 
 To save a JavaScript value into an ArrayBuffer & back, use `serialize` and `deserialize` from the `"bun:jsc"` module.
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { serialize, deserialize } from "bun:jsc";
 
 const buf = serialize({ foo: "bar" });
@@ -982,13 +994,13 @@ console.log(obj); // => { foo: "bar" }
 
 Internally, [`structuredClone`](https://developer.mozilla.org/en-US/docs/Web/API/structuredClone) and [`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) serialize and deserialize the same way. This exposes the underlying [HTML Structured Clone Algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm) to JavaScript as an ArrayBuffer.
 
-***
+---
 
 ## `estimateShallowMemoryUsageOf` in `bun:jsc`
 
 The `estimateShallowMemoryUsageOf` function returns a best-effort estimate of the memory usage of an object in bytes, excluding the memory usage of properties or other objects it references. For accurate per-object memory usage, use `Bun.generateHeapSnapshot`.
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { estimateShallowMemoryUsageOf } from "bun:jsc";
 
 const obj = { foo: "bar" };

@@ -1,9 +1,4 @@
-import {
-  pgTable,
-  text,
-  index,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
 
@@ -19,8 +14,12 @@ export const alertChannels = pgTable(
     config: text("config").notNull().default("{}"),
     appId: text("app_id"),
     projectId: text("project_id"),
-    createdAt: isoTimestamp("created_at").notNull().default(sql`now()`),
-    updatedAt: isoTimestamp("updated_at").notNull().default(sql`now()`),
+    createdAt: isoTimestamp("created_at")
+      .notNull()
+      .default(sql`now()`),
+    updatedAt: isoTimestamp("updated_at")
+      .notNull()
+      .default(sql`now()`),
   },
   (table) => ({
     appIdIdx: index("alert_channels_app_id_idx").on(table.appId),

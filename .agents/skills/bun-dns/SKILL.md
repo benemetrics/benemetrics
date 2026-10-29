@@ -9,7 +9,7 @@ description: Use Bun's DNS module to resolve DNS records
 
 Bun implements it's own `dns` module, and the `node:dns` module.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import * as dns from "node:dns";
 
 const addrs = await dns.promises.resolve4("bun.com", { ttl: true });
@@ -17,13 +17,13 @@ console.log(addrs);
 // => [{ address: "172.67.161.226", family: 4, ttl: 0 }, ...]
 ```
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { dns } from "bun";
 
 dns.prefetch("bun.com", 443);
 ```
 
-***
+---
 
 ## DNS caching in Bun
 
@@ -33,12 +33,12 @@ At the time of writing, we cache up to 255 entries for a maximum of 30 seconds (
 
 This cache is automatically used by:
 
-* `bun install`
-* `fetch()`
-* `node:http` (client)
-* `Bun.connect`
-* `node:net`
-* `node:tls`
+- `bun install`
+- `fetch()`
+- `node:http` (client)
+- `Bun.connect`
+- `node:net`
+- `node:tls`
 
 ### When should I prefetch a DNS entry?
 
@@ -46,7 +46,7 @@ Web browsers expose [`<link rel="dns-prefetch">`](https://developer.mozilla.org/
 
 In Bun, you can use the `dns.prefetch` API to achieve the same effect.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { dns } from "bun";
 
 dns.prefetch("my.database-host.com", 5432);
@@ -60,13 +60,13 @@ An example where you might want to use this is a database driver. When your appl
 
 To prefetch a DNS entry, you can use the `dns.prefetch` API. This API is useful when you know you'll need to connect to a host soon and want to avoid the initial DNS lookup.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 dns.prefetch(hostname: string, port: number): void;
 ```
 
 Here's an example:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { dns } from "bun";
 
 dns.prefetch("bun.com", 443);
@@ -81,7 +81,7 @@ await fetch("https://bun.com");
 
 To get the current cache stats, you can use the `dns.getCacheStats` API. This API returns an object with the following properties:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 {
   cacheHitsCompleted: number; // Cache hits completed
   cacheHitsInflight: number; // Cache hits in flight
@@ -94,7 +94,7 @@ To get the current cache stats, you can use the `dns.getCacheStats` API. This AP
 
 Example:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { dns } from "bun";
 
 const stats = dns.getCacheStats();
@@ -106,7 +106,7 @@ console.log(stats);
 
 Bun defaults to 30 seconds for the TTL of DNS cache entries. To change this, you can set the environment variable `$BUN_CONFIG_DNS_TIME_TO_LIVE_SECONDS`. For example, to set the TTL to 5 seconds:
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 BUN_CONFIG_DNS_TIME_TO_LIVE_SECONDS=5 bun run my-script.ts
 ```
 

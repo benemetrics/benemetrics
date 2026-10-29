@@ -9,7 +9,7 @@ description: Compile and run C from JavaScript with low overhead
 
 `bun:ffi` has experimental support for compiling and running C from JavaScript with low overhead.
 
-***
+---
 
 ## Usage (cc in `bun:ffi`)
 
@@ -140,7 +140,7 @@ napi_value hello(napi_env env) {
 
 The `library` array is used to specify the libraries that should be linked with the C code.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 type Library = string[];
 
 cc({
@@ -153,7 +153,7 @@ cc({
 
 The `symbols` object is used to specify the functions and variables that should be exposed to JavaScript.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 type Symbols = {
   [key: string]: {
     args: FFIType[];
@@ -166,7 +166,7 @@ type Symbols = {
 
 The `source` is a file path to the C code that should be compiled and linked with the JavaScript runtime.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 type Source = string | URL | BunFile;
 
 cc({
@@ -184,7 +184,7 @@ cc({
 
 The `flags` is an optional array of strings that should be passed to the TinyCC compiler.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 type Flags = string | string[];
 ```
 
@@ -194,7 +194,7 @@ These are flags like `-I` for include directories and `-D` for preprocessor defi
 
 The `define` is an optional object that should be passed to the TinyCC compiler.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 type Defines = Record<string, string>;
 
 cc({

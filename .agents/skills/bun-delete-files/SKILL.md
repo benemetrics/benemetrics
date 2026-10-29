@@ -17,6 +17,6 @@ const exists = await file.exists();
 // => false
 ```
 
-***
+---
 
 See [Docs > API > FileSystem](/runtime/file-io) for more filesystem operations.

@@ -32,7 +32,7 @@ const exists = await redis.exists("greeting");
 await redis.del("greeting");
 ```
 
-***
+---
 
 ## Getting Started
 
@@ -54,9 +54,9 @@ await client.incr("counter");
 
 By default, the client reads connection information from the following environment variables (in order of precedence):
 
-* `REDIS_URL`
-* `VALKEY_URL`
-* If not set, defaults to `"redis://localhost:6379"`
+- `REDIS_URL`
+- `VALKEY_URL`
+- If not set, defaults to `"redis://localhost:6379"`
 
 ### Connection Lifecycle
 
@@ -91,7 +91,7 @@ await client.set("key", "value");
 client.close();
 ```
 
-***
+---
 
 ## Basic Operations
 
@@ -138,7 +138,14 @@ await redis.decr("counter");
 
 ```ts redis.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Set multiple fields in a hash
-await redis.hmset("user:123", ["name", "Alice", "email", "alice@example.com", "active", "true"]);
+await redis.hmset("user:123", [
+  "name",
+  "Alice",
+  "email",
+  "alice@example.com",
+  "active",
+  "true",
+]);
 
 // Get multiple fields from a hash
 const userFields = await redis.hmget("user:123", ["name", "email"]);
@@ -177,7 +184,7 @@ const randomTag = await redis.srandmember("tags");
 const poppedTag = await redis.spop("tags");
 ```
 
-***
+---
 
 ## Pub/Sub
 
@@ -237,16 +244,17 @@ bun run publisher.ts
   other words, applications which need to message Redis need a separate
   connection, acquirable through `.duplicate()`:
 
-  ```ts redis.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
-  import { RedisClient } from "bun";
+```ts redis.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
+import { RedisClient } from "bun";
 
-  const redis = new RedisClient("redis://localhost:6379");
-  await redis.connect();
-  const subscriber = await redis.duplicate(); // [!code ++]
+const redis = new RedisClient("redis://localhost:6379");
+await redis.connect();
+const subscriber = await redis.duplicate(); // [!code ++]
 
-  await subscriber.subscribe("foo", () => {});
-  await redis.set("bar", "baz");
-  ```
+await subscriber.subscribe("foo", () => {});
+await redis.set("bar", "baz");
+```
+
 </Note>
 
 ### Publishing
@@ -282,7 +290,10 @@ The client automatically pipelines commands, improving performance by sending mu
 
 ```ts redis.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Commands are automatically pipelined by default
-const [infoResult, listResult] = await Promise.all([redis.get("user:1:name"), redis.get("user:2:email")]);
+const [infoResult, listResult] = await Promise.all([
+  redis.get("user:1:name"),
+  redis.get("user:2:email"),
+]);
 ```
 
 To disable automatic pipelining, you can set the `enableAutoPipelining` option to `false`:
@@ -323,7 +334,7 @@ client.onconnect = () => {
 };
 
 // Called when disconnected from Redis server
-client.onclose = error => {
+client.onclose = (error) => {
   console.error("Disconnected from Redis server:", error);
 };
 
@@ -346,40 +357,40 @@ console.log(client.bufferedAmount);
 
 The Redis client handles automatic type conversion for Redis responses:
 
-* Integer responses are returned as JavaScript numbers
-* Bulk strings are returned as JavaScript strings
-* Simple strings are returned as JavaScript strings
-* Null bulk strings are returned as `null`
-* Array responses are returned as JavaScript arrays
-* Error responses throw JavaScript errors with appropriate error codes
-* Boolean responses (RESP3) are returned as JavaScript booleans
-* Map responses (RESP3) are returned as JavaScript objects
-* Set responses (RESP3) are returned as JavaScript arrays
+- Integer responses are returned as JavaScript numbers
+- Bulk strings are returned as JavaScript strings
+- Simple strings are returned as JavaScript strings
+- Null bulk strings are returned as `null`
+- Array responses are returned as JavaScript arrays
+- Error responses throw JavaScript errors with appropriate error codes
+- Boolean responses (RESP3) are returned as JavaScript booleans
+- Map responses (RESP3) are returned as JavaScript objects
+- Set responses (RESP3) are returned as JavaScript arrays
 
 Special handling for specific commands:
 
-* `EXISTS` returns a boolean instead of a number (1 becomes true, 0 becomes false)
-* `SISMEMBER` returns a boolean (1 becomes true, 0 becomes false)
+- `EXISTS` returns a boolean instead of a number (1 becomes true, 0 becomes false)
+- `SISMEMBER` returns a boolean (1 becomes true, 0 becomes false)
 
 The following commands disable automatic pipelining:
 
-* `AUTH`
-* `INFO`
-* `QUIT`
-* `EXEC`
-* `MULTI`
-* `WATCH`
-* `SCRIPT`
-* `SELECT`
-* `CLUSTER`
-* `DISCARD`
-* `UNWATCH`
-* `PIPELINE`
-* `SUBSCRIBE`
-* `UNSUBSCRIBE`
-* `UNPSUBSCRIBE`
+- `AUTH`
+- `INFO`
+- `QUIT`
+- `EXEC`
+- `MULTI`
+- `WATCH`
+- `SCRIPT`
+- `SELECT`
+- `CLUSTER`
+- `DISCARD`
+- `UNWATCH`
+- `PIPELINE`
+- `SUBSCRIBE`
+- `UNSUBSCRIBE`
+- `UNPSUBSCRIBE`
 
-***
+---
 
 ## Connection Options
 
@@ -425,10 +436,10 @@ When a connection is lost, the client automatically attempts to reconnect with e
 2. Reconnection delay is capped at 2000ms (2 seconds)
 3. The client attempts to reconnect up to `maxRetries` times (default: 10)
 4. Commands executed during disconnection are:
-   * Queued if `enableOfflineQueue` is true (default)
-   * Rejected immediately if `enableOfflineQueue` is false
+   - Queued if `enableOfflineQueue` is true (default)
+   - Rejected immediately if `enableOfflineQueue` is false
 
-***
+---
 
 ## Supported URL Formats
 
@@ -460,7 +471,7 @@ new RedisClient("redis+tls+unix:///path/to/socket");
 new RedisClient("redis+tls+unix:///path/to/socket");
 ```
 
-***
+---
 
 ## Error Handling
 
@@ -482,11 +493,11 @@ try {
 
 Common error codes:
 
-* `ERR_REDIS_CONNECTION_CLOSED` - Connection to the server was closed
-* `ERR_REDIS_AUTHENTICATION_FAILED` - Failed to authenticate with the server
-* `ERR_REDIS_INVALID_RESPONSE` - Received an invalid response from the server
+- `ERR_REDIS_CONNECTION_CLOSED` - Connection to the server was closed
+- `ERR_REDIS_AUTHENTICATION_FAILED` - Failed to authenticate with the server
+- `ERR_REDIS_INVALID_RESPONSE` - Received an invalid response from the server
 
-***
+---
 
 ## Example Use Cases
 
@@ -543,7 +554,14 @@ async function createSession(userId, data) {
   const key = `session:${sessionId}`;
 
   // Store session with expiration
-  await redis.hmset(key, ["userId", userId.toString(), "created", Date.now().toString(), "data", JSON.stringify(data)]);
+  await redis.hmset(key, [
+    "userId",
+    userId.toString(),
+    "created",
+    Date.now().toString(),
+    "data",
+    JSON.stringify(data),
+  ]);
   await redis.expire(key, 86400); // 24 hours
 
   return sessionId;
@@ -556,7 +574,11 @@ async function getSession(sessionId) {
   const exists = await redis.exists(key);
   if (!exists) return null;
 
-  const [userId, created, data] = await redis.hmget(key, ["userId", "created", "data"]);
+  const [userId, created, data] = await redis.hmget(key, [
+    "userId",
+    "created",
+    "data",
+  ]);
 
   return {
     userId: Number(userId),
@@ -566,7 +588,7 @@ async function getSession(sessionId) {
 }
 ```
 
-***
+---
 
 ## Implementation Notes
 
@@ -578,9 +600,9 @@ The client supports pipelining commands, meaning multiple commands can be sent w
 
 Current limitations of the Redis client we are planning to address in future versions:
 
-* Transactions (MULTI/EXEC) must be done through raw commands for now
+- Transactions (MULTI/EXEC) must be done through raw commands for now
 
 Unsupported features:
 
-* Redis Sentinel
-* Redis Cluster
+- Redis Sentinel
+- Redis Cluster

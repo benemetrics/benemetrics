@@ -9,7 +9,7 @@ Set the `tls` key to configure TLS. Both `key` and `cert` are required. The `key
 
 ```ts server.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 const server = Bun.serve({
-  fetch: request => new Response("Welcome to Bun!"),
+  fetch: (request) => new Response("Welcome to Bun!"),
   tls: {
     cert: Bun.file("cert.pem"),
     key: Bun.file("key.pem"),
@@ -17,13 +17,13 @@ const server = Bun.serve({
 });
 ```
 
-***
+---
 
 By default Bun trusts the default Mozilla-curated list of well-known root CAs. To override this list, pass an array of certificates as `ca`.
 
 ```ts server.ts icon="https://mintcdn.com/bun-1dd33a4e/nIz6GtMH5K-dfXeV/icons/typescript.svg?fit=max&auto=format&n=nIz6GtMH5K-dfXeV&q=85&s=5d73d76daf7eb7b158469d8c30d349b0" theme={"theme":{"light":"github-light","dark":"dracula"}}
 const server = Bun.serve({
-  fetch: request => new Response("Welcome to Bun!"),
+  fetch: (request) => new Response("Welcome to Bun!"),
   tls: {
     cert: Bun.file("cert.pem"),
     key: Bun.file("key.pem"),

@@ -20,12 +20,12 @@ To precisely measure time, Bun offers two runtime APIs functions:
 
 When writing your own benchmarks, it's important to choose the right tool.
 
-* For microbenchmarks, a great general-purpose tool is [`mitata`](https://github.com/evanwashere/mitata).
-* For load testing, you *must use* an HTTP benchmarking tool that is at least as fast as `Bun.serve()`, or your results will be skewed. Some popular Node.js-based benchmarking tools like [`autocannon`](https://github.com/mcollina/autocannon) are not fast enough. We recommend one of the following:
-  * [`bombardier`](https://github.com/codesenberg/bombardier)
-  * [`oha`](https://github.com/hatoo/oha)
-  * [`http_load_test`](https://github.com/uNetworking/uSockets/blob/master/examples/http_load_test.c)
-* For benchmarking scripts or CLI commands, we recommend [`hyperfine`](https://github.com/sharkdp/hyperfine).
+- For microbenchmarks, a great general-purpose tool is [`mitata`](https://github.com/evanwashere/mitata).
+- For load testing, you _must use_ an HTTP benchmarking tool that is at least as fast as `Bun.serve()`, or your results will be skewed. Some popular Node.js-based benchmarking tools like [`autocannon`](https://github.com/mcollina/autocannon) are not fast enough. We recommend one of the following:
+  - [`bombardier`](https://github.com/codesenberg/bombardier)
+  - [`oha`](https://github.com/hatoo/oha)
+  - [`http_load_test`](https://github.com/uNetworking/uSockets/blob/master/examples/http_load_test.c)
+- For benchmarking scripts or CLI commands, we recommend [`hyperfine`](https://github.com/sharkdp/hyperfine).
 
 ## Measuring memory usage
 
@@ -35,7 +35,7 @@ Bun has two heaps. One heap is for the JavaScript runtime and the other heap is 
 
 The `bun:jsc` module exposes a few functions for measuring memory usage:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { heapStats } from "bun:jsc";
 console.log(heapStats());
 ```
@@ -149,14 +149,14 @@ JavaScript is a garbage-collected language, not reference counted. It's normal a
 
 To force garbage collection to run manually:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 Bun.gc(true); // synchronous
 Bun.gc(false); // asynchronous
 ```
 
 Heap snapshots let you inspect what objects are not being freed. You can use the `bun:jsc` module to take a heap snapshot and then view it with Safari or WebKit GTK developer tools. To generate a heap snapshot:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 import { generateHeapSnapshot } from "bun";
 
 const snapshot = generateHeapSnapshot();
@@ -190,7 +190,7 @@ Bun uses mimalloc for the other heap. To report a summary of non-JavaScript memo
 MIMALLOC_SHOW_STATS=1 bun script.js
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 heap stats:    peak      total      freed    current       unit      count
   reserved:   64.0 MiB   64.0 MiB      0       64.0 MiB                        not all freed!
  committed:   64.0 MiB   64.0 MiB      0       64.0 MiB                        not all freed!

@@ -20,6 +20,7 @@ description: Use Prisma with Bun
     cd prisma-app
     bun init
     ```
+
   </Step>
 
   <Step title="Install Prisma dependencies">
@@ -29,6 +30,7 @@ description: Use Prisma with Bun
     bun add -d prisma
     bun add @prisma/client @prisma/adapter-libsql
     ```
+
   </Step>
 
   <Step title="Initialize Prisma with SQLite">
@@ -59,6 +61,7 @@ description: Use Prisma with Bun
         name  String? // [!code ++]
       } // [!code ++]
     ```
+
   </Step>
 
   <Step title="Create and run database migration">
@@ -89,6 +92,7 @@ description: Use Prisma with Bun
 
     ✔ Generated Prisma Client (6.17.1) to ./generated in 18ms
     ```
+
   </Step>
 
   <Step title="Generate Prisma Client">
@@ -97,6 +101,7 @@ description: Use Prisma with Bun
     ```sh terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
     bunx --bun prisma generate
     ```
+
   </Step>
 
   <Step title="Initialize Prisma Client with LibSQL">
@@ -109,6 +114,7 @@ description: Use Prisma with Bun
     const adapter = new PrismaLibSQL({ url: process.env.DATABASE_URL || "" });
     export const prisma = new PrismaClient({ adapter });
     ```
+
   </Step>
 
   <Step title="Create a test script">
@@ -129,6 +135,7 @@ description: Use Prisma with Bun
     const count = await prisma.user.count();
     console.log(`There are ${count} users in the database.`);
     ```
+
   </Step>
 
   <Step title="Run and test the application">
@@ -160,9 +167,10 @@ description: Use Prisma with Bun
     Created john-0.4465968383115295@example.com
     There are 3 users in the database.
     ```
+
   </Step>
 </Steps>
 
-***
+---
 
 That's it! Now that you've set up Prisma using Bun, we recommend referring to the [official Prisma docs](https://www.prisma.io/docs/orm/prisma-client) as you continue to develop your application.

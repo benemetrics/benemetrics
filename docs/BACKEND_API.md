@@ -4,6 +4,7 @@
 > Goal: explain how the API is structured, how the database is organized, and the rules we follow so new code looks like it was written by the same person.
 
 **Architecture Reference Documents** (in `docs/`) — **GROUND TRUTH**
+
 - [`models.md`](docs/models.md) — Project → Environment → App hierarchy, invariants, scoped reads
 - [`metrics.md`](docs/metrics.md) — Metric taxonomy, NATS→ClickHouse pipeline, series/breakdown APIs, alerting integration
 - [`source-maps.md`](docs/source-maps.md) — Artifact storage, upload tokens, VLQ symbolication, CLI surface
@@ -19,20 +20,20 @@
 
 ## 1. Stack at a Glance
 
-| Concern | Choice |
-|---------|--------|
-| Runtime | **Bun** (`bun run backend/index.ts`) |
-| HTTP Framework | **Elysia v1.x** (`elysia`) |
-| Validation | **ArkType** (`arktype`) — via `import { type as arktype } from "arktype"` |
-| ORM | **Drizzle ORM** (`drizzle-orm/pg-core`, `drizzle-orm/bun-sql`) |
-| Default DB (dev) | **PGlite** (Postgres in WASM, file-backed `./.pglite`) |
-| Test DB | In-memory **PGlite** when `NODE_ENV=test` |
-| Production DB | **PostgreSQL** when `DATABASE_URL` is set (`drizzle-orm/bun-sql`) |
-| Migrations | `drizzle-kit` → `db/migrations/*`, applied at startup |
-| Messaging | **NATS JetStream** (required) — `sentry.events.<appNumber>` (stream filter `sentry.events.*`), `sentry.metrics` subjects on `SENTRIES` stream; auth callout (`docs/nats.md`) |
-| Analytics Store | **ClickHouse** (required) — `sentry_events`, `sentry_metrics` via NATS engine tables + MVs |
-| Object Store | **S3-compatible** (required) — `S3_BUCKET` for replay segments; RustFS in dev (`:9100`) |
-| Frontend Client | Eden Treaty (`@elysiajs/eden`) consumes exported `App` type |
+| Concern          | Choice                                                                                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime          | **Bun** (`bun run backend/index.ts`)                                                                                                                                         |
+| HTTP Framework   | **Elysia v1.x** (`elysia`)                                                                                                                                                   |
+| Validation       | **ArkType** (`arktype`) — via `import { type as arktype } from "arktype"`                                                                                                    |
+| ORM              | **Drizzle ORM** (`drizzle-orm/pg-core`, `drizzle-orm/bun-sql`)                                                                                                               |
+| Default DB (dev) | **PGlite** (Postgres in WASM, file-backed `./.pglite`)                                                                                                                       |
+| Test DB          | In-memory **PGlite** when `NODE_ENV=test`                                                                                                                                    |
+| Production DB    | **PostgreSQL** when `DATABASE_URL` is set (`drizzle-orm/bun-sql`)                                                                                                            |
+| Migrations       | `drizzle-kit` → `db/migrations/*`, applied at startup                                                                                                                        |
+| Messaging        | **NATS JetStream** (required) — `sentry.events.<appNumber>` (stream filter `sentry.events.*`), `sentry.metrics` subjects on `SENTRIES` stream; auth callout (`docs/nats.md`) |
+| Analytics Store  | **ClickHouse** (required) — `sentry_events`, `sentry_metrics` via NATS engine tables + MVs                                                                                   |
+| Object Store     | **S3-compatible** (required) — `S3_BUCKET` for replay segments; RustFS in dev (`:9100`)                                                                                      |
+| Frontend Client  | Eden Treaty (`@elysiajs/eden`) consumes exported `App` type                                                                                                                  |
 
 **Entry point:** `backend/index.ts` (exports Elysia `app` for tests, listens on start).
 
@@ -60,33 +61,33 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 
 ## 2. Runtime Configuration
 
-| Env Var | Default | Purpose |
-|---------|---------|---------|
-| `PORT` | `31337` | HTTP server port |
-| `NODE_ENV` | – | `test` ⇒ in-memory PGlite |
-| `DATABASE_URL` | – | If set ⇒ PostgreSQL (production) |
-| `NATS_SERVERS` | `nats://localhost:4222` | JetStream connection |
-| `NATS_STREAM_MAX_BYTES` | `1073741824` | JetStream stream disk bound |
-| `NATS_AUTH_USER`, `NATS_AUTH_PASSWORD` | – | The backend's own NATS config user (`AUTH` account, also the auth-callout service) |
-| `NATS_AUTH_KEY_SEED` | – | The auth-callout issuer account NKey seed (signs the admission verdicts) |
-| `NATS_INTERNAL_USER`, `NATS_INTERNAL_PASSWORD` | – | The ClickHouse NATS engine user (`INTERNAL` account) |
-| `CLICKHOUSE_HOST` | `localhost` | ClickHouse HTTP host |
-| `CLICKHOUSE_PORT` | `8123` | ClickHouse HTTP port |
-| `CLICKHOUSE_DATABASE` | `default` | ClickHouse database |
-| `CLICKHOUSE_USER` | `default` | ClickHouse HTTP user |
-| `CLICKHOUSE_PASSWORD` | – | ClickHouse HTTP password |
-| `S3_BUCKET` | – | **Required** — S3 bucket for replay segments |
-| `S3_ENDPOINT` | – | S3-compatible endpoint (RustFS, R2, …; `AWS_ENDPOINT` fallback) |
-| `S3_REGION` | `us-east-1` | S3 region (`AWS_REGION` fallback) |
-| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_SESSION_TOKEN` | – | S3 credentials (`AWS_*` fallbacks honored) |
-| `ALERT_EVALUATION_INTERVAL_MS` | `60000` | Alert rule sweeper interval |
-| `ADMIN_TOKEN` | – | Master admin bearer token — always accepted; fails closed when unset and no provider configured |
-| `OIDC_ISSUER`, `OAUTH_ISSUER` | – | Identity provider issuer (discovery base): enables JWT verification |
-| `OIDC_JWKS_URL` | – | Optional JWKS override (skips OIDC discovery) |
-| `OIDC_AUDIENCE`, `OIDC_CLIENT_ID`, `OAUTH_CLIENT_ID` | – | Expected `aud` claim (checked when set); `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID` also enable the browser login flow |
-| `OIDC_SCOPES` | `openid email profile` | Scopes requested by the browser login flow |
-| `OIDC_EMAIL_CLAIM`, `OIDC_GROUPS_CLAIM`, `OIDC_NAME_CLAIM` | `email`, `groups`, `name` | Claim mapping for verified identity |
-| `OIDC_ALLOW_INSECURE_HTTP` | – | `true` lets the discovery read a plain-HTTP issuer (a local provider). **HTTPS is the recommendation** — the tokens would travel in the clear otherwise |
+| Env Var                                                        | Default                   | Purpose                                                                                                                                                 |
+| -------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                                                         | `31337`                   | HTTP server port                                                                                                                                        |
+| `NODE_ENV`                                                     | –                         | `test` ⇒ in-memory PGlite                                                                                                                               |
+| `DATABASE_URL`                                                 | –                         | If set ⇒ PostgreSQL (production)                                                                                                                        |
+| `NATS_SERVERS`                                                 | `nats://localhost:4222`   | JetStream connection                                                                                                                                    |
+| `NATS_STREAM_MAX_BYTES`                                        | `1073741824`              | JetStream stream disk bound                                                                                                                             |
+| `NATS_AUTH_USER`, `NATS_AUTH_PASSWORD`                         | –                         | The backend's own NATS config user (`AUTH` account, also the auth-callout service)                                                                      |
+| `NATS_AUTH_KEY_SEED`                                           | –                         | The auth-callout issuer account NKey seed (signs the admission verdicts)                                                                                |
+| `NATS_INTERNAL_USER`, `NATS_INTERNAL_PASSWORD`                 | –                         | The ClickHouse NATS engine user (`INTERNAL` account)                                                                                                    |
+| `CLICKHOUSE_HOST`                                              | `localhost`               | ClickHouse HTTP host                                                                                                                                    |
+| `CLICKHOUSE_PORT`                                              | `8123`                    | ClickHouse HTTP port                                                                                                                                    |
+| `CLICKHOUSE_DATABASE`                                          | `default`                 | ClickHouse database                                                                                                                                     |
+| `CLICKHOUSE_USER`                                              | `default`                 | ClickHouse HTTP user                                                                                                                                    |
+| `CLICKHOUSE_PASSWORD`                                          | –                         | ClickHouse HTTP password                                                                                                                                |
+| `S3_BUCKET`                                                    | –                         | **Required** — S3 bucket for replay segments                                                                                                            |
+| `S3_ENDPOINT`                                                  | –                         | S3-compatible endpoint (RustFS, R2, …; `AWS_ENDPOINT` fallback)                                                                                         |
+| `S3_REGION`                                                    | `us-east-1`               | S3 region (`AWS_REGION` fallback)                                                                                                                       |
+| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_SESSION_TOKEN` | –                         | S3 credentials (`AWS_*` fallbacks honored)                                                                                                              |
+| `ALERT_EVALUATION_INTERVAL_MS`                                 | `60000`                   | Alert rule sweeper interval                                                                                                                             |
+| `ADMIN_TOKEN`                                                  | –                         | Master admin bearer token — always accepted; fails closed when unset and no provider configured                                                         |
+| `OIDC_ISSUER`, `OAUTH_ISSUER`                                  | –                         | Identity provider issuer (discovery base): enables JWT verification                                                                                     |
+| `OIDC_JWKS_URL`                                                | –                         | Optional JWKS override (skips OIDC discovery)                                                                                                           |
+| `OIDC_AUDIENCE`, `OIDC_CLIENT_ID`, `OAUTH_CLIENT_ID`           | –                         | Expected `aud` claim (checked when set); `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID` also enable the browser login flow                                          |
+| `OIDC_SCOPES`                                                  | `openid email profile`    | Scopes requested by the browser login flow                                                                                                              |
+| `OIDC_EMAIL_CLAIM`, `OIDC_GROUPS_CLAIM`, `OIDC_NAME_CLAIM`     | `email`, `groups`, `name` | Claim mapping for verified identity                                                                                                                     |
+| `OIDC_ALLOW_INSECURE_HTTP`                                     | –                         | `true` lets the discovery read a plain-HTTP issuer (a local provider). **HTTPS is the recommendation** — the tokens would travel in the clear otherwise |
 
 **DB Selection Logic** (`db/index.ts`): `NODE_ENV=test` → in-memory PGlite; else `DATABASE_URL` present → Postgres (Bun SQL); else file-backed PGlite in `./.pglite`. Committed migrations in `db/migrations` applied at startup (idempotent, tracked in `drizzle.__drizzle_migrations`).
 
@@ -97,6 +98,7 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 **Helm chart** (`helm/benemetrics`): the API and the consumer as Deployments, the bundled Postgres/ClickHouse/NATS/object store as StatefulSets, the Ingress, the Secret and the bucket-init hook. Every dependency can be turned off (`dependencies.*.enabled`) in favour of a managed service; `clickhouse.natsUrl` is resolved from ClickHouse's point of view.
 
 **Package Scripts:**
+
 ```bash
 bun run dev        # bun --hot backend/index.ts
 bun run start      # bun backend/index.ts
@@ -169,15 +171,16 @@ helm/benemetrics/            # The Helm chart: the API, the consumer and the bun
 7. Handler shapes HTTP response; errors bubble to global `onError` → maps `ApiError` to HTTP status + `{ error }`, falls back to 500.
 
 **Module Registration** (`backend/index.ts`):
+
 ```ts
 const app = new Elysia()
   .get("/", () => Response.redirect("/ui"))
-  .use(eventsRoutes)        // prefix "events"
-  .use(ingestionRoutes)     // prefix "api"
-  .use(featureFlagRoutes)   // prefix "/api/admin/feature-flags"
-  .use(evaluationRoutes)    // prefix "api/sentry/flags"
-  .use(flagsV1Routes)       // prefix "v1/flags"
-  .use(adminRoutes)         // prefix "/api/admin"
+  .use(eventsRoutes) // prefix "events"
+  .use(ingestionRoutes) // prefix "api"
+  .use(featureFlagRoutes) // prefix "/api/admin/feature-flags"
+  .use(evaluationRoutes) // prefix "api/sentry/flags"
+  .use(flagsV1Routes) // prefix "v1/flags"
+  .use(adminRoutes) // prefix "/api/admin"
   .onError(({ code, error, set }) => {
     if (error instanceof ApiError) {
       set.status = error.httpStatus;
@@ -212,10 +215,10 @@ There is no health endpoint: the UI's health signal is the live feed's NATS WebS
 
 Prefix: `/events` — `backend/events/index.ts` → `eventsRoutes`
 
-| Method | Path | Query | Description |
-|--------|------|-------|-------------|
-| `GET` | `/events/` | `cursor`, `limit`, `since`, `projectId`, `environmentId`, `appId` | List events from ClickHouse (`SELECT … FINAL`), envelope → UI shape; `since` bounds the window in time (ISO timestamp) |
-| `GET` | `/events/:eventId` | – | Fetch one event (parsed envelope item) |
+| Method | Path               | Query                                                             | Description                                                                                                            |
+| ------ | ------------------ | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/events/`         | `cursor`, `limit`, `since`, `projectId`, `environmentId`, `appId` | List events from ClickHouse (`SELECT … FINAL`), envelope → UI shape; `since` bounds the window in time (ISO timestamp) |
+| `GET`  | `/events/:eventId` | –                                                                 | Fetch one event (parsed envelope item)                                                                                 |
 
 **Auth:** Inline credential check on every request (no open mode): admin token or a JWKS-verified provider JWT. Scoped identities only read events of their visible apps.
 
@@ -223,12 +226,13 @@ Prefix: `/events` — `backend/events/index.ts` → `eventsRoutes`
 
 Prefix: `/api` — `backend/events/index.ts` → `ingestionRoutes`
 
-| Method | Path | Description |
-|--------|------|-------------|
+| Method | Path                        | Description                                                         |
+| ------ | --------------------------- | ------------------------------------------------------------------- |
 | `POST` | `/api/:projectId/envelope/` | Sentry **envelope** ingestion. Handles `gzip` (`Content-Encoding`). |
-| `POST` | `/api/:projectId/store/` | Legacy single-JSON event ingestion (`{ event_id, ... }`). |
+| `POST` | `/api/:projectId/store/`    | Legacy single-JSON event ingestion (`{ event_id, ... }`).           |
 
 **App Resolution Order** (`resolveApp`):
+
 1. App number (DSN path, `/api/123/envelope/`)
 2. Ingest key (path)
 3. Project ID (path) + matching public key
@@ -237,6 +241,7 @@ Prefix: `/api` — `backend/events/index.ts` → `ingestionRoutes`
 **Validation:** `sentry_key` query param or `X-Sentry-Auth` header must match resolved app's `publicKey`. Unknown apps or mismatched keys ⇒ `401`. Apps **never** auto-provisioned during ingestion. Duplicate `event_id` ignored via `onConflictDoNothing` (idempotent retries).
 
 **Pipeline:**
+
 1. Parse envelope → extract metric samples (`backend/metrics/samples.ts`)
 2. Publish `sentry.events.<appNumber>` (envelope) + `sentry.metrics` (JSONEachRow samples) to NATS
 3. NATS publish failure → `503` (`serviceUnavailable`) — **no in-process fallback**
@@ -252,12 +257,13 @@ Prefix: `/api` — `backend/events/index.ts` → `ingestionRoutes`
 
 Prefix: `/api/admin/metrics` — `backend/metrics/index.ts` → `metricsRoutes`
 
-| Method | Path | Query | Response |
-|--------|------|-------|----------|
-| `GET` | `/metrics/series` | `metric`, `projectId\|environmentId\|appId`, `from`, `to`, `stepSeconds?` | `{ metric, unit, points: [{ bucketStart, count, mean, p50, p95, p99 }] }` |
-| `GET` | `/metrics/breakdown` | `metric=duration`, `projectId\|environmentId\|appId`, `from`, `to`, `limit?` | `{ data: [{ dimension, count, mean, p50, p95 }] }` |
+| Method | Path                 | Query                                                                        | Response                                                                  |
+| ------ | -------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `GET`  | `/metrics/series`    | `metric`, `projectId\|environmentId\|appId`, `from`, `to`, `stepSeconds?`    | `{ metric, unit, points: [{ bucketStart, count, mean, p50, p95, p99 }] }` |
+| `GET`  | `/metrics/breakdown` | `metric=duration`, `projectId\|environmentId\|appId`, `from`, `to`, `limit?` | `{ data: [{ dimension, count, mean, p50, p95 }] }`                        |
 
 **Implementation:**
+
 - `series`: `toStartOfInterval` + `quantile()` in ClickHouse; auto step ≤6h→1m, ≤48h→5m, else 1h.
 - `breakdown`: Top-N dimensions by count for metric/window.
 - **Admin-token only** — scoped identities rejected (not in `SCOPED_READ_PATHS`).
@@ -266,27 +272,28 @@ Prefix: `/api/admin/metrics` — `backend/metrics/index.ts` → `metricsRoutes`
 
 Prefix: `/api/admin/feature-flags` — `backend/feature-flags/index.ts` → `featureFlagRoutes`
 
-| Method | Path | Body | Description |
-|--------|------|------|-------------|
-| `POST` | `/feature-flags/` | Flag definition (see schema) | Create flag (status `draft`) |
-| `GET` | `/feature-flags/` | `cursor,limit,status,type,search` | Cursor-paginated list |
-| `GET` | `/feature-flags/:id` | `id` (uuid) | Get one |
-| `PATCH` | `/feature-flags/:id` | Partial flag | Update fields |
-| `POST` | `/feature-flags/:id/status` | `{ status }` (`draft\|active\|paused\|archived`) | Change lifecycle status |
-| `DELETE` | `/feature-flags/:id` | `id` (uuid) | Delete — **draft only** |
+| Method   | Path                        | Body                                             | Description                  |
+| -------- | --------------------------- | ------------------------------------------------ | ---------------------------- |
+| `POST`   | `/feature-flags/`           | Flag definition (see schema)                     | Create flag (status `draft`) |
+| `GET`    | `/feature-flags/`           | `cursor,limit,status,type,search`                | Cursor-paginated list        |
+| `GET`    | `/feature-flags/:id`        | `id` (uuid)                                      | Get one                      |
+| `PATCH`  | `/feature-flags/:id`        | Partial flag                                     | Update fields                |
+| `POST`   | `/feature-flags/:id/status` | `{ status }` (`draft\|active\|paused\|archived`) | Change lifecycle status      |
+| `DELETE` | `/feature-flags/:id`        | `id` (uuid)                                      | Delete — **draft only**      |
 
 **Experiments:** Prefix `/api/admin/experiments` — `backend/feature-flags/experiments.ts` → `experimentRoutes`
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/:flagId/start` | Start the experiment (`status: "running"`) |
-| `POST` | `/:flagId/stop` | Stop the experiment (`status: "completed"`) |
-| `POST` | `/:flagId/promote` | Promote the recommended winner (weight 100) |
-| `GET` | `/:flagId/results` | Results dashboard (participants, conversions, Wilson CI, z-test, recommendation) |
-| `GET` | `/:flagId/users` | Assignments per variant (`cursor,limit,variantKey,search`) |
-| `GET` | `/:flagId/users/:userId` | One user's stored assignment |
+| Method | Path                     | Description                                                                      |
+| ------ | ------------------------ | -------------------------------------------------------------------------------- |
+| `POST` | `/:flagId/start`         | Start the experiment (`status: "running"`)                                       |
+| `POST` | `/:flagId/stop`          | Stop the experiment (`status: "completed"`)                                      |
+| `POST` | `/:flagId/promote`       | Promote the recommended winner (weight 100)                                      |
+| `GET`  | `/:flagId/results`       | Results dashboard (participants, conversions, Wilson CI, z-test, recommendation) |
+| `GET`  | `/:flagId/users`         | Assignments per variant (`cursor,limit,variantKey,search`)                       |
+| `GET`  | `/:flagId/users/:userId` | One user's stored assignment                                                     |
 
 **Create Body (ArkType):**
+
 ```ts
 {
   key: string,
@@ -301,20 +308,22 @@ Prefix: `/api/admin/feature-flags` — `backend/feature-flags/index.ts` → `fea
   rolloutPercentage?: number
 }
 ```
+
 **Defaults:** `boolean` type → `control`/`treatment` 50/50; else single `default` variant at 100%.
 
 ### 5.7 Feature Flags — Evaluation Surfaces
 
-| Surface | Prefix | Handler | Wire Format |
-|---------|--------|---------|-------------|
-| Batched (Sentry) | `/api/sentry/flags` | `evaluationRoutes` | `POST /evaluate { user, context?, flags[] }` → `{ evaluations[] }` |
-| Experiment Tracking | `/api/sentry/flags` | `evaluationRoutes` | `POST /experiment/track { flagKey, userId, metric, value? }` |
-| SSE Push Stream | `/api/sentry/flags` | `flagsStreamRoutes` | `GET /stream?flags=key1,key2` → `snapshot`, `configuration_changed` |
-| OpenFeature | `/v1/flags` | `flagsV1Routes` | `POST /:key { targetingKey, context? }` → `{ variant, value, reason, errorCode? }` |
+| Surface             | Prefix              | Handler             | Wire Format                                                                        |
+| ------------------- | ------------------- | ------------------- | ---------------------------------------------------------------------------------- |
+| Batched (Sentry)    | `/api/sentry/flags` | `evaluationRoutes`  | `POST /evaluate { user, context?, flags[] }` → `{ evaluations[] }`                 |
+| Experiment Tracking | `/api/sentry/flags` | `evaluationRoutes`  | `POST /experiment/track { flagKey, userId, metric, value? }`                       |
+| SSE Push Stream     | `/api/sentry/flags` | `flagsStreamRoutes` | `GET /stream?flags=key1,key2` → `snapshot`, `configuration_changed`                |
+| OpenFeature         | `/v1/flags`         | `flagsV1Routes`     | `POST /:key { targetingKey, context? }` → `{ variant, value, reason, errorCode? }` |
 
 **Auth:** every SDK surface takes the DSN public key (`sentry_key` query parameter or the `X-Sentry-Auth` header) — the flags are global, so the key only proves the caller is a known SDK client. A missing or unknown key ⇒ `401`.
 
 **Evaluation Priority (strict):**
+
 1. **Targeting Rules** — first match wins (`user.*` / `context.*` attributes).
 2. **Segments** — all rules must match (AND); weighted bucket by `user.id` hash.
 3. **Rollout Percentage** — outside rollout ⇒ `control` variant.
@@ -326,15 +335,15 @@ Prefix: `/api/admin/feature-flags` — `backend/feature-flags/index.ts` → `fea
 
 Prefix: `/api/admin/projects` — `backend/projects/index.ts` → `projectRoutes`
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/admin/projects/` | Create project (slug auto-derived from name) |
-| `GET` | `/api/admin/projects/` | List projects (with `appCount`) |
-| `GET` | `/api/admin/projects/:id` | Project detail + `apps` |
-| `DELETE` | `/api/admin/projects/:id` | Delete project (cascades to apps + environments) |
-| `POST` | `/api/admin/projects/:id/duplicate` | Duplicate project (envs + apps copied with fresh IDs/keys) |
-| `GET` | `/api/admin/projects/:id/apps` | List apps |
-| `POST` | `/api/admin/projects/:id/apps` | Create app (generates keys + DSN) |
+| Method   | Path                                | Description                                                |
+| -------- | ----------------------------------- | ---------------------------------------------------------- |
+| `POST`   | `/api/admin/projects/`              | Create project (slug auto-derived from name)               |
+| `GET`    | `/api/admin/projects/`              | List projects (with `appCount`)                            |
+| `GET`    | `/api/admin/projects/:id`           | Project detail + `apps`                                    |
+| `DELETE` | `/api/admin/projects/:id`           | Delete project (cascades to apps + environments)           |
+| `POST`   | `/api/admin/projects/:id/duplicate` | Duplicate project (envs + apps copied with fresh IDs/keys) |
+| `GET`    | `/api/admin/projects/:id/apps`      | List apps                                                  |
+| `POST`   | `/api/admin/projects/:id/apps`      | Create app (generates keys + DSN)                          |
 
 **App Creation:** `POST /api/admin/projects/:id/apps` accepts optional `environment` name (slug/name); reuses or creates; defaults to project's default environment. Project creation auto-creates "testing" environment, **no app**.
 
@@ -342,13 +351,13 @@ Prefix: `/api/admin/projects` — `backend/projects/index.ts` → `projectRoutes
 
 Prefix: `/api/admin/environments` — `backend/environments/index.ts` → `environmentRoutes`
 
-| Method | Path | Body/Query | Description |
-|--------|------|------------|-------------|
-| `POST` | `/api/admin/environments/` | `{ projectId, name, slug?, isDefault? }` | Create; 404 unknown project, 409 duplicate slug |
-| `GET` | `/api/admin/environments/` | `?projectId&cursor&limit` | Cursor-paginated list for project |
-| `GET` | `/api/admin/environments/:id` | `id` (uuid) | Get one |
-| `PATCH` | `/api/admin/environments/:id` | `{ name?, slug?, isDefault? }` | Update; 409 duplicate slug |
-| `DELETE` | `/api/admin/environments/:id` | `id` (uuid) | Delete; cascades to apps created in it, promotes new default if needed |
+| Method   | Path                          | Body/Query                               | Description                                                            |
+| -------- | ----------------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
+| `POST`   | `/api/admin/environments/`    | `{ projectId, name, slug?, isDefault? }` | Create; 404 unknown project, 409 duplicate slug                        |
+| `GET`    | `/api/admin/environments/`    | `?projectId&cursor&limit`                | Cursor-paginated list for project                                      |
+| `GET`    | `/api/admin/environments/:id` | `id` (uuid)                              | Get one                                                                |
+| `PATCH`  | `/api/admin/environments/:id` | `{ name?, slug?, isDefault? }`           | Update; 409 duplicate slug                                             |
+| `DELETE` | `/api/admin/environments/:id` | `id` (uuid)                              | Delete; cascades to apps created in it, promotes new default if needed |
 
 - `slug` defaults to kebab-case of `name`; unique per project.
 - First environment = default; `isDefault: true` promotes + demotes previous.
@@ -357,11 +366,11 @@ Prefix: `/api/admin/environments` — `backend/environments/index.ts` → `envir
 
 Prefix: `/api/admin/feature-flags/segments` — `backend/feature-flags/segments.ts` → `segmentRoutes`
 
-| Method | Path | Body | Description |
-|--------|------|------|-------------|
-| `POST` | `/api/admin/feature-flags/segments/` | `{ name, description?, rules }` | Create segment |
-| `GET` | `/api/admin/feature-flags/segments/` | `?cursor&limit` | Cursor-paginated list |
-| `GET` | `/api/admin/feature-flags/segments/:id` | – | Get segment |
+| Method | Path                                    | Body                            | Description           |
+| ------ | --------------------------------------- | ------------------------------- | --------------------- |
+| `POST` | `/api/admin/feature-flags/segments/`    | `{ name, description?, rules }` | Create segment        |
+| `GET`  | `/api/admin/feature-flags/segments/`    | `?cursor&limit`                 | Cursor-paginated list |
+| `GET`  | `/api/admin/feature-flags/segments/:id` | –                               | Get segment           |
 
 **Segment Rules:** Same targeting rule schema as flags (no `variantKey`); all rules must match (AND).
 
@@ -373,23 +382,24 @@ Prefix: `/api/admin/alerting` — `backend/alerting/index.ts` → `alertingRoute
 
 **Rules:** `trigger` ∈ `threshold | new_issue | regression` (default `threshold`). Threshold rules require `metric` ∈ `event_count | error_count | fatal_count | new_issue_count | latency_p95 | latency_p99`, `operator` ∈ `gt | lt`, `threshold`, `windowSeconds`, optional `measurement` (default `duration`). Issue triggers carry none of those fields.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/channels` | List channels (filter `appId`) |
-| `POST` | `/channels` | Create channel |
-| `GET` | `/channels/:id` | Get one |
-| `PATCH` | `/channels/:id` | Update |
-| `DELETE` | `/channels/:id` | Delete |
-| `GET` | `/rules` | List rules (filter `appId`) |
-| `POST` | `/rules` | Create rule |
-| `GET` | `/rules/:id` | Get one |
-| `PATCH` | `/rules/:id` | Update (switching triggers validates field set) |
-| `DELETE` | `/rules/:id` | Delete |
-| `POST` | `/rules/:id/test` | Test notification (reports per-channel results) |
-| `GET` | `/apps/:appId/effective` | Resolved config (global + app overrides merged) |
-| `GET` | `/incidents` | Incident history |
+| Method   | Path                     | Description                                     |
+| -------- | ------------------------ | ----------------------------------------------- |
+| `GET`    | `/channels`              | List channels (filter `appId`)                  |
+| `POST`   | `/channels`              | Create channel                                  |
+| `GET`    | `/channels/:id`          | Get one                                         |
+| `PATCH`  | `/channels/:id`          | Update                                          |
+| `DELETE` | `/channels/:id`          | Delete                                          |
+| `GET`    | `/rules`                 | List rules (filter `appId`)                     |
+| `POST`   | `/rules`                 | Create rule                                     |
+| `GET`    | `/rules/:id`             | Get one                                         |
+| `PATCH`  | `/rules/:id`             | Update (switching triggers validates field set) |
+| `DELETE` | `/rules/:id`             | Delete                                          |
+| `POST`   | `/rules/:id/test`        | Test notification (reports per-channel results) |
+| `GET`    | `/apps/:appId/effective` | Resolved config (global + app overrides merged) |
+| `GET`    | `/incidents`             | Incident history                                |
 
 **Evaluation:**
+
 - Threshold rules: evaluated by the periodic sweeper only (`ALERT_EVALUATION_INTERVAL_MS`); ingestion does not fire them.
 - Issue triggers (`new_issue`, `regression`): event-driven at ingestion (exactly once).
 - Breaching rules dispatch uniform `AlertNotification` via `Notifier` interface; record `alert_incidents`; respect cooldown.
@@ -399,15 +409,16 @@ Prefix: `/api/admin/alerting` — `backend/alerting/index.ts` → `alertingRoute
 
 Prefix: `/api/admin/issues` — `backend/issues/index.ts` → `issueRoutes`
 
-| Method | Path | Body/Query | Description |
-|--------|------|------------|-------------|
-| `GET` | `/` | `?query&sort&cursor&limit` | The search grammar (`is:unresolved app:checkout lastSeen:-24h`); `sort` = `new`\|`frequent`\|`first-seen`\|`users`; returns `{ data, meta: { terms, sort } }` |
-| `GET` | `/:id` | `id` (uuid) | Get one |
-| `GET` | `/:id/events` | `?cursor&limit` | The issue's occurrences (ClickHouse issue index), newest first |
-| `GET` | `/:id/stats` | `?from&to&stepSeconds` | Bucketed event/user counts (ClickHouse issue index) |
-| `PATCH` | `/:id` | `{ status: 'unresolved'\|'resolved' }` | Resolve/reopen |
+| Method  | Path          | Body/Query                             | Description                                                                                                                                                   |
+| ------- | ------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`   | `/`           | `?query&sort&cursor&limit`             | The search grammar (`is:unresolved app:checkout lastSeen:-24h`); `sort` = `new`\|`frequent`\|`first-seen`\|`users`; returns `{ data, meta: { terms, sort } }` |
+| `GET`   | `/:id`        | `id` (uuid)                            | Get one                                                                                                                                                       |
+| `GET`   | `/:id/events` | `?cursor&limit`                        | The issue's occurrences (ClickHouse issue index), newest first                                                                                                |
+| `GET`   | `/:id/stats`  | `?from&to&stepSeconds`                 | Bucketed event/user counts (ClickHouse issue index)                                                                                                           |
+| `PATCH` | `/:id`        | `{ status: 'unresolved'\|'resolved' }` | Resolve/reopen                                                                                                                                                |
 
 **Issue Model:** Keyed by `(appId, fingerprint)` (Sentry grouping: explicit fingerprint → newest in-app stack frame → message). Tracks `title`, `culprit`, `level`, `type`, `firstRelease`, `lastRelease`, `status`, `eventCount`, `firstSeen`, `lastSeen`, `latestEventId`. Transitions:
+
 - First-ever fingerprint → **new issue** (fires `new_issue` trigger)
 - Event for `resolved` issue → **regression** (flips to `unresolved`, fires `regression` trigger)
 - Repeats while unresolved → bump `eventCount`/`lastSeen` only
@@ -418,20 +429,20 @@ Prefix: `/api/admin/issues` — `backend/issues/index.ts` → `issueRoutes`
 
 Prefix: `/api/admin/permissions` — `backend/permissions/index.ts` → `permissionRoutes` (admin-token only)
 
-| Method | Path | Body | Description |
-|--------|------|------|-------------|
-| `GET` | `/rules` | – | The group rules (cursor-paginated `{ data }`) |
-| `POST` | `/rules` | `{ name, environments, appPrefixes, isEnabled? }` | Create group rule; 409 on a duplicate name |
-| `PATCH` | `/rules/:id` | Partial | Update rule |
-| `DELETE` | `/rules/:id` | `id` | Delete rule |
-| `GET` | `/grants` | – | The identity grants (cursor-paginated `{ data }`) |
-| `POST` | `/grants` | `{ identityId, label?, environments, appPrefixes, isEnabled?, canWrite? }` | Create an identity grant; 409 on a duplicate id. `canWrite` gives the identity the admin writes |
-| `PATCH` | `/grants/:id` | Partial | Update grant |
-| `DELETE` | `/grants/:id` | `id` | Delete grant |
-| `GET` | `/audit` | – | The change trail (`?target=rule\|grant`) |
-| `GET` | `/api/admin/session` | – | The caller's identity and read scope (`{ id, isAdmin, scope }`) |
-| `PATCH` | `/users/:id` | Partial | Update entry |
-| `DELETE` | `/users/:id` | `id` | Delete entry |
+| Method   | Path                 | Body                                                                       | Description                                                                                     |
+| -------- | -------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `GET`    | `/rules`             | –                                                                          | The group rules (cursor-paginated `{ data }`)                                                   |
+| `POST`   | `/rules`             | `{ name, environments, appPrefixes, isEnabled? }`                          | Create group rule; 409 on a duplicate name                                                      |
+| `PATCH`  | `/rules/:id`         | Partial                                                                    | Update rule                                                                                     |
+| `DELETE` | `/rules/:id`         | `id`                                                                       | Delete rule                                                                                     |
+| `GET`    | `/grants`            | –                                                                          | The identity grants (cursor-paginated `{ data }`)                                               |
+| `POST`   | `/grants`            | `{ identityId, label?, environments, appPrefixes, isEnabled?, canWrite? }` | Create an identity grant; 409 on a duplicate id. `canWrite` gives the identity the admin writes |
+| `PATCH`  | `/grants/:id`        | Partial                                                                    | Update grant                                                                                    |
+| `DELETE` | `/grants/:id`        | `id`                                                                       | Delete grant                                                                                    |
+| `GET`    | `/audit`             | –                                                                          | The change trail (`?target=rule\|grant`)                                                        |
+| `GET`    | `/api/admin/session` | –                                                                          | The caller's identity and read scope (`{ id, isAdmin, scope }`)                                 |
+| `PATCH`  | `/users/:id`         | Partial                                                                    | Update entry                                                                                    |
+| `DELETE` | `/users/:id`         | `id`                                                                       | Delete entry                                                                                    |
 
 **Scope Semantics:** Verified identity → enabled whitelist entry for email replaces group assignment; else union of enabled group rules matching `groups`. Scope = environment **names** + app **full-name prefixes** → expanded to visible apps/environments/projects. No matching grant ⇒ `401` (UI prompts for admin token). Scoped identities are **read-only** (allowlisted GETs only).
 
@@ -439,10 +450,10 @@ Prefix: `/api/admin/permissions` — `backend/permissions/index.ts` → `permiss
 
 Prefix: `/api/admin/settings` — `backend/settings/index.ts` → `settingsRoutes` (admin-token only)
 
-| Method | Path | Body | Description |
-|--------|------|------|-------------|
-| `GET` | `/events-ttl` | – | Read TTL from ClickHouse table definition: `{ table, expression, interval }` |
-| `PUT` | `/events-ttl` | `{ amount, unit }` | Replace TTL (`ALTER TABLE ... MODIFY TTL`), re-read value |
+| Method | Path          | Body               | Description                                                                  |
+| ------ | ------------- | ------------------ | ---------------------------------------------------------------------------- |
+| `GET`  | `/events-ttl` | –                  | Read TTL from ClickHouse table definition: `{ table, expression, interval }` |
+| `PUT`  | `/events-ttl` | `{ amount, unit }` | Replace TTL (`ALTER TABLE ... MODIFY TTL`), re-read value                    |
 
 - Default: `TTL toDateTime(receivedAt) + toIntervalMonth(1)` (1 month).
 - Boot seeds default only when table has no TTL; **never overwrites** admin change.
@@ -452,32 +463,32 @@ Prefix: `/api/admin/settings` — `backend/settings/index.ts` → `settingsRoute
 
 **Admin Surface:** `/api/admin/source-maps` (admin-token only)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/source-maps` | List artifacts (filter `projectId`, `environmentId`, `release`) |
-| `GET` | `/source-maps/:id` | Get artifact; `?include=content` returns raw `mapJson` |
-| `DELETE` | `/source-maps/:id` | Delete artifact |
+| Method   | Path               | Description                                                     |
+| -------- | ------------------ | --------------------------------------------------------------- |
+| `GET`    | `/source-maps`     | List artifacts (filter `projectId`, `environmentId`, `release`) |
+| `GET`    | `/source-maps/:id` | Get artifact; `?include=content` returns raw `mapJson`          |
+| `DELETE` | `/source-maps/:id` | Delete artifact                                                 |
 
 **Tokens:** `/api/admin/source-map-tokens` (admin-token only)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/source-map-tokens` | Create token (`{ name, projectId, appId, environmentId, expiresAt? }`); returns raw token **once** |
-| `GET` | `/source-map-tokens` | List tokens |
-| `GET` | `/source-map-tokens/:id` | Get token (never returns raw) |
-| `POST` | `/source-map-tokens/:id/rotate` | Rotate token (invalidates previous); returns new raw token once |
-| `DELETE` | `/source-map-tokens/:id` | Revoke token (soft delete) |
+| Method   | Path                            | Description                                                                                        |
+| -------- | ------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `POST`   | `/source-map-tokens`            | Create token (`{ name, projectId, appId, environmentId, expiresAt? }`); returns raw token **once** |
+| `GET`    | `/source-map-tokens`            | List tokens                                                                                        |
+| `GET`    | `/source-map-tokens/:id`        | Get token (never returns raw)                                                                      |
+| `POST`   | `/source-map-tokens/:id/rotate` | Rotate token (invalidates previous); returns new raw token once                                    |
+| `DELETE` | `/source-map-tokens/:id`        | Revoke token (soft delete)                                                                         |
 
 **CLI-Compatible Surface:** `/api/0/projects/:org/:project/` — `backend/source-maps/index.ts` → `sourceMapUploadRoutes` (upload token auth)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/releases/` | Create release (`{ version, ref?, url?, owner? }`) |
-| `POST` | `/releases/:version/files/` | Upload source map (multipart: `file` + `name` + `dist?`); validates v3 + `sources` + `mappings`; 10 MB limit |
-| `GET` | `/releases/:version/files/` | List artifacts for release |
-| `DELETE` | `/releases/:version/files/:fileId/` | Delete artifact |
-| `POST` | `/releases/:version/` | Finalize release (`status: "finalized"`) |
-| `GET` | `/releases/:id/summary` | Release health from the ClickHouse issue index: the issues it touched, the new and the regressed ones |
+| Method   | Path                                | Description                                                                                                  |
+| -------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `POST`   | `/releases/`                        | Create release (`{ version, ref?, url?, owner? }`)                                                           |
+| `POST`   | `/releases/:version/files/`         | Upload source map (multipart: `file` + `name` + `dist?`); validates v3 + `sources` + `mappings`; 10 MB limit |
+| `GET`    | `/releases/:version/files/`         | List artifacts for release                                                                                   |
+| `DELETE` | `/releases/:version/files/:fileId/` | Delete artifact                                                                                              |
+| `POST`   | `/releases/:version/`               | Finalize release (`status: "finalized"`)                                                                     |
+| `GET`    | `/releases/:id/summary`             | Release health from the ClickHouse issue index: the issues it touched, the new and the regressed ones        |
 
 **Symbolication:** At event read time, frames matched by filename (exact / basename / `.map` suffix stripped) → VLQ decode mappings → original position + source context. Cached parsed maps + decoded mappings (LRU, 100 entries), versioned by the artifact's `createdAt` so a re-uploaded artifact is never served from a stale cache. Re-uploading an artifact replaces it in place (last wins).
 
@@ -485,9 +496,9 @@ Prefix: `/api/admin/settings` — `backend/settings/index.ts` → `settingsRoute
 
 Prefix: `/api/admin/events/:eventId/replay` — `backend/events/index.ts` → `eventRoutes`
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/admin/events/:eventId/replay/:replayId?cursor=&limit=` | One page (default 10, max 50) of replay segment presigned URLs for the session, in playback order |
+| Method | Path                                                         | Description                                                                                       |
+| ------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/admin/events/:eventId/replay/:replayId?cursor=&limit=` | One page (default 10, max 50) of replay segment presigned URLs for the session, in playback order |
 
 **Response:** `{ replayId, available, expiresAt, segments: [{ key, url, bytes }], nextCursor, hasMore }`. `url` is a presigned S3 GET. Object keys embed the segment start time, so listing is already playback-ordered and `startAfter` pagination needs no object reads. Pass `nextCursor` back as `cursor` until `hasMore` is false; `available: false` when the object store cannot be listed.
 
@@ -500,20 +511,26 @@ Prefix: `/api/admin/events/:eventId/replay` — `backend/events/index.ts` → `e
 ## 6. Authentication
 
 ### 6.1 DSN / Sentry Auth (Ingestion)
+
 `validateAuth(request, target)` in `backend/auth.ts`:
+
 - Reads `sentry_key` query param or `X-Sentry-Auth` header (`sentry_key=XXX, sentry_project=YYY, ...`).
 - Valid only when extracted key matches resolved app's `publicKey`.
 - Returns `{ valid, publicKey }`; callers throw `unauthorized("Unauthorized - Invalid DSN")` on failure (no DB writes).
 
 ### 6.2 Admin Auth (ADMIN_TOKEN + OIDC/OAuth2)
+
 The credentials are checked in one place — `resolveIdentity` (`backend/auth.ts`). Every oidc route group of a domain file resolves the id in its own `.resolve` hook (`resolveAdminId` → `adminId`); the public and dsn groups carry no admin check:
+
 - Two credentials, never mixed: `Authorization: API-Key <ADMIN_TOKEN>` (the master credential, constant-time compare) or `Authorization: Bearer <provider JWT>` (verified with `jose` against the provider's JWKS). Either way the request resolves to an id.
 - - **The admin token is the master credential** — always accepted, provider configured or not (UI prompts for it when no grant applies). It is generated at boot and held **only as its `Bun.password` hash** (argon2id) in global Elysia state on the app (`backend/index.ts`) — the plaintext never persists, requests are checked with `Bun.password.verify` against the registered hash. It rotates daily at 00:00 UTC by the Elysia cron in the same file; there is no env var, no file, and no HTTP surface for it. Format: `bnm_` + 4 groups of 6 mixed-case alphanumerics (`bnm_NjQcwY-nHp8JU-7CRKG5-CVdSez`, no `0`/`1`/`I`/`L`/`O`). Tests pin it by writing the fixture hash to `app.store.adminTokenHash`. No built-in dev/test tokens.
 - OIDC/OAuth2: JWT verified with `jose` against the provider's JWKS (the issuer's discovery document; cached) + `jwtVerify` (audience `OIDC_CLIENT_ID`/`OAUTH_CLIENT_ID`). Failures ⇒ `401` (never token logging).
 - Verified identity: **an id** — `local-admin` for the admin token, `<issuer>-<subject>` for a provider JWT. An id is all the admin surface needs; every oidc route group carries it as `adminId`.
 
 ### 6.3 Read Permissions (Scoped Identities)
+
 `backend/permissions/engine.ts` resolves access once per request (the view is cached on the `Request`):
+
 - **Identity grant** (by id) replaces the group assignment entirely.
 - Else **union of enabled group rules** matching identity's `groups` (case-insensitive, split on `/[\s,;|]+/`).
 - No match ⇒ `401` with `NO_READ_PERMISSION_MESSAGE` (UI shows admin-token prompt).
@@ -521,6 +538,7 @@ The credentials are checked in one place — `resolveIdentity` (`backend/auth.ts
 - **Scoped = Read-Only:** Allowlisted GETs only (`/api/admin/projects*`, `/api/admin/environments*`, `/api/admin/issues*` + details). All writes ⇒ `403`. Allowlisted reads filtered by `scopedViewFor(...)`; out-of-scope details ⇒ `404` (never leak).
 
 **Guard Wiring:**
+
 - `/api/admin/*` → every oidc route group resolves the identity through `resolveAdminId` (`backend/auth.ts`, fail closed) before its handler runs. A scoped identity may only `GET` the allowlisted paths; everything else ⇒ `403`. Without a grant ⇒ `401` (`NO_READ_PERMISSION_MESSAGE`).
 - `/events/*` → the same resolve (no open mode): admin token or a verified provider identity.
 
@@ -528,12 +546,12 @@ The credentials are checked in one place — `resolveIdentity` (`backend/auth.ts
 
 The SPA's public OIDC settings are compiled into the frontend bundle at startup by `frontend/auth-env-plugin.ts`, which replaces `frontend/src/lib/auth-env.ts` — there is no auth config endpoint:
 
-| Name | Meaning |
-|------|---------|
-| `OIDC_ISSUER` / `OAUTH_ISSUER` | Issuer used for discovery |
-| `OIDC_CLIENT_ID` / `OAUTH_CLIENT_ID` | Public SPA client id (also enables the flow) |
-| `OIDC_SCOPES` | Scopes to request (`openid email profile` default) |
-| `OIDC_ALLOW_INSECURE_HTTP` | `true` lets the browser's discovery read a plain-HTTP issuer (local providers); the signature, audience, issuer and `azp` checks are unchanged |
+| Name                                 | Meaning                                                                                                                                        |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OIDC_ISSUER` / `OAUTH_ISSUER`       | Issuer used for discovery                                                                                                                      |
+| `OIDC_CLIENT_ID` / `OAUTH_CLIENT_ID` | Public SPA client id (also enables the flow)                                                                                                   |
+| `OIDC_SCOPES`                        | Scopes to request (`openid email profile` default)                                                                                             |
+| `OIDC_ALLOW_INSECURE_HTTP`           | `true` lets the browser's discovery read a plain-HTTP issuer (local providers); the signature, audience, issuer and `azp` checks are unchanged |
 
 Only these public names are exposed to the bundle; never reference secrets (`ADMIN_TOKEN`, client secrets, object-store keys) from frontend code. Restart the server after changing them so the bundle is rebuilt.
 
@@ -584,6 +602,7 @@ When an issuer and client id are present, the SPA starts an authorization-code +
 Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featureFlagDAO`).
 
 **Standard Methods:**
+
 - `create(data)` — race-safe: `onConflictDoNothing`/`onConflictDoUpdate` on unique index + `.returning()`
 - `findById(id)` / `findByX(value)` — `select ... where ... limit(1)` → `undefined` if absent
 - `findByIdOrThrow(id)` — throws `notFound("<Entity>", id)`
@@ -592,6 +611,7 @@ Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featu
 - `delete(id)` — boolean (`.returning()` + `.length`)
 
 **Rules:**
+
 - Handlers call DAOs; DAOs own Drizzle queries; throw `backend/errors.ts` `ApiError`s (never `elysia`).
 - NotFound = `404` via `notFound(...)` mapped by root `onError`.
 - Conflicts = DB-enforced: `create` uses `onConflictDoNothing`/`onConflictDoUpdate`, throws `conflict(...)` on race loss; updates map `uniqueViolationConstraint` to `conflict(...)`. **Never read-then-write.**
@@ -611,23 +631,27 @@ Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featu
 ## 8. Ingestion Pipeline & Protocol
 
 ### Envelope Format (`backend/events/utils.ts`)
+
 - Line 1 = JSON header, then repeating `{ item header JSON line, payload }`.
 - Payloads read as `length` bytes (JSON may contain newlines); fallback to newline-terminated line for hand-written envelopes.
 - Returns `{ header, items }` or `null`.
 
 ### Processing
+
 - `extractEventId`: header `event_id` → payload `event_id` → span `trace_id` → random UUID.
 - `convertSpanToTransaction`: Sentry **span** items (`version: 2`) → transaction-shaped payloads (segment span = transaction; child spans collected; `sentry.measurement.*` → `measurements`).
 - `normalizeTransactionPayload`: hoists trace metadata from `contexts.trace`.
 - **Metric Extraction** (`backend/metrics/samples.ts`): `parseEnvelope` + `normalizeTransactionPayload` → every numeric measurement + sentinels → publish `sentry.events.<appNumber>` + `sentry.metrics`. Level-gated sentinels: `error_count` when level = `error`, `fatal_count` when level = `fatal` (missing/unknown level ⇒ `error`). OTLP traces are extracted the same way (`backend/otlp/index.ts`).
 
 ### Replay Offload (`backend/events/offload.ts`)
+
 - `replay_recording` items → object store **before** NATS publish.
 - Key: `replays/<projectId>/<appId>/<replayId|messageId>/<startedAtMs>-<messageId>-<index>.json` (`startedAtMs` zero-padded so lexical order is playback order).
 - Stored item keeps `{ key }` pointer; readers resolve at read time (backend-agnostic).
 - **Best-effort:** 5s timeout; failure/timeout → payload stays inline, ingestion never affected.
 
 ### NATS / ClickHouse Bootstrap
+
 - **Driver:** all backend ClickHouse statements (queries, DDL, engine tables + MVs, TTL seeding) go through Waddler (`waddler/clickhouse` over `@clickhouse/client`).
 - **Order:** consumer binary (stream + durable pull consumers `clickhouse-events`, `clickhouse-metrics`) → API (`nats.ts` publish connection + ClickHouse engine tables/MVs) → fail fast.
 - **ClickHouse DDL** (engine tables pull via NATS engine):
@@ -642,6 +666,7 @@ Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featu
 - **Idempotency:** `ReplacingMergeTree` + `FINAL` reads; duplicates collapse.
 
 ### Side-Effects Consumer (`backend/consumer.ts`, `bun run consumer`)
+
 - Runs as its own binary; the API only publishes and ClickHouse ingests by configuration.
 - Provisions the `SENTRIES` stream and its durable pull consumers: `clickhouse-events` / `clickhouse-metrics` (ClickHouse's engine tables attach to them).
 - Subscribes to `sentry.events.*` over the `side-effects` durable pull consumer for the Postgres side effects.
@@ -653,6 +678,7 @@ Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featu
 ## 9. Error Handling Patterns
 
 ### ApiError Hierarchy (`backend/errors.ts`)
+
 ```ts
 class ApiError extends Error {
   constructor(public httpStatus: number, public message: string, public code: string) { ... }
@@ -668,6 +694,7 @@ export const serviceUnavailable = (msg: string) => new ApiError(503, msg, "SERVI
 ```
 
 ### Usage Rules
+
 - **Handlers/DAOs throw `ApiError`** — never `throw status(...)` or return `{ error }` with 200.
 - **Root `onError`** maps `ApiError` → HTTP status + `{ error }`; unknown → 500 + generic message.
 - **Log details server-side** (with context); return generic client errors; **never leak stack traces**.
@@ -679,25 +706,28 @@ export const serviceUnavailable = (msg: string) => new ApiError(503, msg, "SERVI
 ## 10. Testing Strategy
 
 ### Test Organization
-| Directory | Transport | Purpose |
-|-----------|-----------|---------|
+
+| Directory        | Transport                          | Purpose                                                                     |
+| ---------------- | ---------------------------------- | --------------------------------------------------------------------------- |
 | `backend/tests/` | In-process (`app.handle(Request)`) | Unit/API tests — no network listener; `Host` header set for DSN consistency |
-| `e2e/` | Real socket (docker-compose) | SDK-driven, WebView UI, WebSocket; boots real app vs PGlite |
+| `e2e/`           | Real socket (docker-compose)       | SDK-driven, WebView UI, WebSocket; boots real app vs PGlite                 |
 
 **Test Command:** `bun run test` = `bun test --parallel=1 backend/tests/ e2e/`
 **Helpers:** `backend/tests/test-helpers.ts` — `startTestApp()`, `handleFetch()`, `waitFor(fn)`.
 
 ### Hop Tests (One Stage Per Test)
-| # | Test | Assertion |
-|---|------|-----------|
-| 1 | Ingest → NATS | POST envelope → assert `sentry.events.<appNumber>` + `sentry.metrics` in stream |
-| 2 | NATS → ClickHouse | Publish to NATS → `waitFor` row in `sentry_events`/`sentry_metrics` (`FINAL`); dup event id = 1 row |
-| 3 | NATS → Postgres | Publish → assert issue/alert side effects; republished id ≠ 2nd issue/alert |
-| 4 | ClickHouse → API | Seed CH directly → assert events/metrics endpoints |
-| 5 | Live Feed | NATS WS client subscribes → publish → assert receipt |
-| 6 | SDK E2E | Full path via real SDK; CH visibility assertions use `waitFor` |
+
+| #   | Test              | Assertion                                                                                           |
+| --- | ----------------- | --------------------------------------------------------------------------------------------------- |
+| 1   | Ingest → NATS     | POST envelope → assert `sentry.events.<appNumber>` + `sentry.metrics` in stream                     |
+| 2   | NATS → ClickHouse | Publish to NATS → `waitFor` row in `sentry_events`/`sentry_metrics` (`FINAL`); dup event id = 1 row |
+| 3   | NATS → Postgres   | Publish → assert issue/alert side effects; republished id ≠ 2nd issue/alert                         |
+| 4   | ClickHouse → API  | Seed CH directly → assert events/metrics endpoints                                                  |
+| 5   | Live Feed         | NATS WS client subscribes → publish → assert receipt                                                |
+| 6   | SDK E2E           | Full path via real SDK; CH visibility assertions use `waitFor`                                      |
 
 ### Requirements
+
 - Every new endpoint gets a test.
 - `bun run typecheck` and `bun run test` MUST pass before push.
 - E2E uses `docker compose up -d` (Postgres, ClickHouse, NATS, RustFS).

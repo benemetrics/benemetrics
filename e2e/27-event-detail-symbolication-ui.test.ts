@@ -15,7 +15,12 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { app, ADMIN_TOKEN, ADMIN_HEADERS, ADMIN_TOKEN_RAW } from "./test-helpers";
+import {
+  app,
+  ADMIN_TOKEN,
+  ADMIN_HEADERS,
+  ADMIN_TOKEN_RAW,
+} from "./test-helpers";
 const ORG = "default";
 const RELEASE = "ui-1.0.0";
 
@@ -70,15 +75,23 @@ async function uploadMultipart(
 async function waitForIssue(timeoutMs = 15000): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const response = await adminRequest("GET", `/api/admin/issues?query=${encodeURIComponent(`app:${appRecord.id}`)}`);
-    const body = (await response.json()) as { data?: Array<{ status: string }> };
+    const response = await adminRequest(
+      "GET",
+      `/api/admin/issues?query=${encodeURIComponent(`app:${appRecord.id}`)}`,
+    );
+    const body = (await response.json()) as {
+      data?: Array<{ status: string }>;
+    };
     if (body.data?.some((issue) => issue.status === "unresolved")) return;
     await Bun.sleep(100);
   }
   throw new Error("issue never showed up as unresolved");
 }
 
-async function waitForTextInUI(text: string, timeoutMs = 15000): Promise<string> {
+async function waitForTextInUI(
+  text: string,
+  timeoutMs = 15000,
+): Promise<string> {
   const start = Date.now();
   let body = "";
   while (Date.now() - start < timeoutMs) {
@@ -210,8 +223,18 @@ describe("Event detail stack trace — symbolication in the real UI", () => {
                 value: "boom",
                 stacktrace: {
                   frames: [
-                    { filename: "app.js", lineno: 1, colno: 1, function: "outer" },
-                    { filename: "app.js", lineno: 2, colno: 1, function: "boom" },
+                    {
+                      filename: "app.js",
+                      lineno: 1,
+                      colno: 1,
+                      function: "outer",
+                    },
+                    {
+                      filename: "app.js",
+                      lineno: 2,
+                      colno: 1,
+                      function: "boom",
+                    },
                   ],
                 },
               },

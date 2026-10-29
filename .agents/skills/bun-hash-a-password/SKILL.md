@@ -7,18 +7,18 @@ description: Hash a password
 
 The `Bun.password.hash()` function provides a fast, built-in mechanism for securely hashing passwords in Bun. No third-party dependencies are required.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const password = "super-secure-pa$$word";
 
 const hash = await Bun.password.hash(password);
 // => $argon2id$v=19$m=65536,t=2,p=1$tFq+9AVr1bfPxQdh6E8DQRhEXg/M/...
 ```
 
-***
+---
 
 By default, this uses the [Argon2id](https://en.wikipedia.org/wiki/Argon2) algorithm. Pass a second argument to `Bun.password.hash()` to use a different algorithm or configure the hashing parameters.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const password = "super-secure-pa$$word";
 
 // use argon2 (default)
@@ -28,11 +28,11 @@ const argonHash = await Bun.password.hash(password, {
 });
 ```
 
-***
+---
 
 Bun also implements the [bcrypt](https://en.wikipedia.org/wiki/Bcrypt) algorithm. Specify `algorithm: "bcrypt"` to use it.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // use bcrypt
 const bcryptHash = await Bun.password.hash(password, {
   algorithm: "bcrypt",
@@ -40,11 +40,11 @@ const bcryptHash = await Bun.password.hash(password, {
 });
 ```
 
-***
+---
 
 Use `Bun.password.verify()` to verify a password. The algorithm and its parameters are stored in the hash itself, so re-specifying configuration is unnecessary.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 const password = "super-secure-pa$$word";
 const hash = await Bun.password.hash(password);
 
@@ -52,6 +52,6 @@ const isMatch = await Bun.password.verify(password, hash);
 // => true
 ```
 
-***
+---
 
 See [Docs > API > Hashing](/runtime/hashing#bun-password) for complete documentation.

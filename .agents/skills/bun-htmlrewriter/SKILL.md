@@ -9,23 +9,29 @@ description: Use Bun's HTMLRewriter to transform HTML documents with CSS selecto
 
 HTMLRewriter lets you use CSS selectors to transform HTML documents. It works with `Request`, `Response`, as well as `string`. Bun's implementation is based on Cloudflare's [lol-html](https://github.com/cloudflare/lol-html).
 
-***
+---
 
 ## Usage
 
 A common usecase is rewriting URLs in HTML content. Here's an example that rewrites image sources and link URLs to use a CDN domain:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Replace all images with a rickroll
 const rewriter = new HTMLRewriter().on("img", {
   element(img) {
     // Famous rickroll video thumbnail
-    img.setAttribute("src", "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg");
+    img.setAttribute(
+      "src",
+      "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+    );
 
     // Wrap the image in a link to the video
-    img.before('<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">', {
-      html: true,
-    });
+    img.before(
+      '<a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">',
+      {
+        html: true,
+      },
+    );
     img.after("</a>", { html: true });
 
     // Add some fun alt text
@@ -50,21 +56,42 @@ console.log(result);
 
 This replaces all images with a thumbnail of Rick Astley and wraps each `<img>` in a link, producing a diff like this:
 
-```html  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```html theme={"theme":{"light":"github-light","dark":"dracula"}}
 <html>
   <body>
-    <img src="/cat.jpg" /> <!-- [!code --] -->
-    <img src="dog.png" /> <!-- [!code --] -->
-    <img src="https://example.com/bird.webp" /> <!-- [!code --] -->
-    <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank"> <!-- [!code ++] -->
-      <img src="https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg" alt="Definitely not a rickroll" /> <!-- [!code ++] -->
-    </a> <!-- [!code ++] -->
-    <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank"> <!-- [!code ++] -->
-      <img src="https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg" alt="Definitely not a rickroll" /> <!-- [!code ++] -->
-    </a> <!-- [!code ++] -->
-    <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank"> <!-- [!code ++] -->
-      <img src="https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg" alt="Definitely not a rickroll" /> <!-- [!code ++] -->
-    </a> <!-- [!code ++] -->
+    <img src="/cat.jpg" />
+    <!-- [!code --] -->
+    <img src="dog.png" />
+    <!-- [!code --] -->
+    <img src="https://example.com/bird.webp" />
+    <!-- [!code --] -->
+    <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">
+      <!-- [!code ++] -->
+      <img
+        src="https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
+        alt="Definitely not a rickroll"
+      />
+      <!-- [!code ++] -->
+    </a>
+    <!-- [!code ++] -->
+    <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">
+      <!-- [!code ++] -->
+      <img
+        src="https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
+        alt="Definitely not a rickroll"
+      />
+      <!-- [!code ++] -->
+    </a>
+    <!-- [!code ++] -->
+    <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">
+      <!-- [!code ++] -->
+      <img
+        src="https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
+        alt="Definitely not a rickroll"
+      />
+      <!-- [!code ++] -->
+    </a>
+    <!-- [!code ++] -->
   </body>
 </html>
 ```
@@ -75,7 +102,7 @@ Now every image on the page will be replaced with a thumbnail of Rick Astley, an
 
 HTMLRewriter can transform HTML from various sources. The input is automatically handled based on its type:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // From Response
 rewriter.transform(new Response("<div>content</div>"));
 
@@ -98,7 +125,7 @@ Note that Cloudflare Workers implementation of HTMLRewriter only supports `Respo
 
 The `on(selector, handlers)` method allows you to register handlers for HTML elements that match a CSS selector. The handlers are called for each matching element during parsing:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 rewriter.on("div.content", {
   // Handle elements
   element(element) {
@@ -118,7 +145,7 @@ rewriter.on("div.content", {
 
 The handlers can be asynchronous and return a Promise. Note that async operations will block the transformation until they complete:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 rewriter.on("div", {
   async element(element) {
     await Bun.sleep(1000);
@@ -131,7 +158,7 @@ rewriter.on("div", {
 
 The `on()` method supports a wide range of CSS selectors:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 // Tag selectors
 rewriter.on("p", handler);
 
@@ -171,7 +198,7 @@ rewriter.on("*", handler);
 
 Elements provide various methods for manipulation. All modification methods return the element instance for chaining:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 rewriter.on("div", {
   element(el) {
     // Attributes
@@ -187,7 +214,10 @@ rewriter.on("div", {
     el.setInnerContent(""); // Clear content
 
     // Position manipulation
-    el.before("Content before").after("Content after").prepend("First child").append("Last child");
+    el.before("Content before")
+      .after("Content after")
+      .prepend("First child")
+      .append("Last child");
 
     // HTML content insertion
     el.before("<span>before</span>", { html: true })
@@ -212,7 +242,7 @@ rewriter.on("div", {
     }
 
     // End tag handling
-    el.onEndTag(endTag => {
+    el.onEndTag((endTag) => {
       endTag.before("Before end tag");
       endTag.after("After end tag");
       endTag.remove(); // Remove the end tag
@@ -226,7 +256,7 @@ rewriter.on("div", {
 
 Text handlers provide methods for text manipulation. Text chunks represent portions of text content and provide information about their position in the text node:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 rewriter.on("p", {
   text(text) {
     // Content
@@ -250,7 +280,7 @@ rewriter.on("p", {
 
 Comment handlers allow comment manipulation with similar methods to text nodes:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 rewriter.on("*", {
   comments(comment) {
     // Content
@@ -259,7 +289,11 @@ rewriter.on("*", {
     console.log(comment.removed); // Whether comment was removed
 
     // Manipulation
-    comment.before("Before comment").after("After comment").replace("New comment").remove();
+    comment
+      .before("Before comment")
+      .after("After comment")
+      .replace("New comment")
+      .remove();
 
     // HTML content insertion
     comment
@@ -274,7 +308,7 @@ rewriter.on("*", {
 
 The `onDocument(handlers)` method allows you to handle document-level events. These handlers are called for events that occur at the document level rather than within specific elements:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 rewriter.onDocument({
   // Handle doctype
   doctype(doctype) {
@@ -301,26 +335,26 @@ rewriter.onDocument({
 
 When transforming a Response:
 
-* The status code, headers, and other response properties are preserved
-* The body is transformed while maintaining streaming capabilities
-* Content-encoding (like gzip) is handled automatically
-* The original response body is marked as used after transformation
-* Headers are cloned to the new response
+- The status code, headers, and other response properties are preserved
+- The body is transformed while maintaining streaming capabilities
+- Content-encoding (like gzip) is handled automatically
+- The original response body is marked as used after transformation
+- Headers are cloned to the new response
 
 ## Error Handling
 
 HTMLRewriter operations can throw errors in several cases:
 
-* Invalid selector syntax in `on()` method
-* Invalid HTML content in transformation methods
-* Stream errors when processing Response bodies
-* Memory allocation failures
-* Invalid input types (e.g., passing Symbol)
-* Body already used errors
+- Invalid selector syntax in `on()` method
+- Invalid HTML content in transformation methods
+- Stream errors when processing Response bodies
+- Memory allocation failures
+- Invalid input types (e.g., passing Symbol)
+- Body already used errors
 
 Errors should be caught and handled appropriately:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 try {
   const result = rewriter.transform(input);
   // Process result
@@ -329,7 +363,7 @@ try {
 }
 ```
 
-***
+---
 
 ## See also
 

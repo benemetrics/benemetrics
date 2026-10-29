@@ -12,11 +12,11 @@ bun --define process.env.NODE_ENV="'production'" src/index.ts # Runtime
 bun build --define process.env.NODE_ENV="'production'" src/index.ts # Build
 ```
 
-***
+---
 
 These statically-known values are used by Bun for dead code elimination and other optimizations.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 if (process.env.NODE_ENV === "production") {
   console.log("Production mode");
 } else {
@@ -24,41 +24,43 @@ if (process.env.NODE_ENV === "production") {
 }
 ```
 
-***
+---
 
 Before the code reaches the JavaScript engine, Bun replaces `process.env.NODE_ENV` with `"production"`.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-if ("production" === "production") { // [!code ++]
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+if ("production" === "production") {
+  // [!code ++]
   console.log("Production mode");
 } else {
   console.log("Development mode");
 }
 ```
 
-***
+---
 
 It doesn't stop there. Bun's optimizing transpiler is smart enough to do some basic constant folding.
 
 Since `"production" === "production"` is always `true`, Bun replaces the entire expression with the `true` value.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
-if (true) { // [!code ++]
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
+if (true) {
+  // [!code ++]
   console.log("Production mode");
 } else {
   console.log("Development mode");
 }
 ```
 
-***
+---
 
 And finally, Bun detects the `else` branch is not reachable, and eliminates it.
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 console.log("Production mode");
 ```
 
-***
+---
 
 ## What types of values are supported?
 
@@ -68,13 +70,13 @@ Values can be strings, identifiers, properties, or JSON.
 
 To make all usages of `window` be `undefined`, you can use the following command.
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun --define window="undefined" src/index.ts
 ```
 
 This can be useful when Server-Side Rendering (SSR) or when you want to make sure that the code doesn't depend on the `window` object.
 
-```js  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```js theme={"theme":{"light":"github-light","dark":"dracula"}}
 if (typeof window !== "undefined") {
   console.log("Client-side code");
 } else {
@@ -84,7 +86,7 @@ if (typeof window !== "undefined") {
 
 You can also set the value to be another identifier. For example, to make all usages of `global` be `globalThis`, you can use the following command.
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun --define global="globalThis" src/index.ts
 ```
 
@@ -96,7 +98,7 @@ bun --define global="globalThis" src/index.ts
 
 To replace all usages of `AWS` with the JSON object `{"ACCESS_KEY":"abc","SECRET_KEY":"def"}`, you can use the following command.
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 # JSON
 bun --define AWS='{"ACCESS_KEY":"abc","SECRET_KEY":"def"}' src/index.ts
 ```
@@ -105,13 +107,13 @@ Those will be transformed into the equivalent JavaScript code.
 
 From:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 console.log(AWS.ACCESS_KEY); // => "abc"
 ```
 
 To:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 console.log("abc");
 ```
 
@@ -121,19 +123,19 @@ You can also pass properties to the `--define` flag.
 
 For example, to replace all usages of `console.write` with `console.log`, you can use the following command
 
-```sh  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```sh theme={"theme":{"light":"github-light","dark":"dracula"}}
 bun --define console.write=console.log src/index.ts
 ```
 
 That transforms the following input:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 console.write("Hello, world!");
 ```
 
 Into the following output:
 
-```ts  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```ts theme={"theme":{"light":"github-light","dark":"dracula"}}
 console.log("Hello, world!");
 ```
 

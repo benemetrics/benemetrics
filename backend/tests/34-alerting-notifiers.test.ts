@@ -84,7 +84,9 @@ describe("Alerting notifiers", () => {
 
   it("sends a Microsoft Teams card", async () => {
     const calls = captureFetch();
-    await msTeamsNotifier.send(notification, { webhookUrl: "https://teams.example/hook" });
+    await msTeamsNotifier.send(notification, {
+      webhookUrl: "https://teams.example/hook",
+    });
 
     expect(calls[0]!.url).toBe("https://teams.example/hook");
     const body = bodyOf(calls[0]!);

@@ -5,9 +5,9 @@ description: Generate code coverage reports with the Bun test runner
 
 # Generate code coverage reports with the Bun test runner
 
-Bun's test runner supports built-in *code coverage reporting*. This makes it easy to see how much of the codebase is covered by tests and find areas that are not currently well-tested.
+Bun's test runner supports built-in _code coverage reporting_. This makes it easy to see how much of the codebase is covered by tests and find areas that are not currently well-tested.
 
-***
+---
 
 Pass the `--coverage` flag to `bun test` to enable this feature. This will print a coverage report after the test run.
 
@@ -17,7 +17,7 @@ The coverage report lists the source files that were executed during the test ru
 bun test --coverage
 ```
 
-```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
+```txt theme={"theme":{"light":"github-light","dark":"dracula"}}
 
 test.test.ts:
 ✓ math > add [0.71ms]
@@ -36,7 +36,7 @@ All files    |   66.67 |   77.78 |
  3 expect() calls
 ```
 
-***
+---
 
 To always enable coverage reporting by default, add the following line to your `bunfig.toml`:
 
@@ -45,6 +45,6 @@ To always enable coverage reporting by default, add the following line to your `
 coverage = true # always enable coverage
 ```
 
-***
+---
 
 Refer to [Docs > Test runner > Coverage](/test/code-coverage) for complete documentation on code coverage reporting in Bun.

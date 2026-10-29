@@ -64,14 +64,13 @@ export const alertChannelDAO = {
     return created;
   },
 
-  findById: async (id: string): Promise<AlertChannel | undefined> =>
-    (
-      await db
-        .select(channelFields)
-        .from(alertChannels)
-        .where(eq(alertChannels.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string): Promise<AlertChannel | undefined> =>
+    db
+      .select(channelFields)
+      .from(alertChannels)
+      .where(eq(alertChannels.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string) => {
     const channel = await alertChannelDAO.findById(id);
@@ -83,13 +82,13 @@ export const alertChannelDAO = {
 
   // Every channel, whatever its scope — the import resolves the channel
   // names; `list` is the scoped read.
-  listAll: async (): Promise<AlertChannel[]> =>
+  listAll: (): Promise<AlertChannel[]> =>
     db
       .select(channelFields)
       .from(alertChannels)
       .orderBy(desc(alertChannels.createdAt)),
 
-  list: async (scope: AlertScope | null): Promise<AlertChannel[]> =>
+  list: (scope: AlertScope | null): Promise<AlertChannel[]> =>
     db
       .select(channelFields)
       .from(alertChannels)
@@ -162,6 +161,6 @@ export const alertChannelDAO = {
 
   // Removes the app-scoped overrides only; global (appId = null)
   // channels are shared and stay in place.
-  deleteByApp: async (appId: string) =>
-    await db.delete(alertChannels).where(eq(alertChannels.appId, appId)),
+  deleteByApp: (appId: string) =>
+    db.delete(alertChannels).where(eq(alertChannels.appId, appId)),
 };

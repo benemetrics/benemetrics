@@ -39,14 +39,13 @@ export const permissionGrantDAO = {
     return row;
   },
 
-  findById: async (id: string) =>
-    (
-      await db
-        .select(grantFields)
-        .from(permissionGrants)
-        .where(eq(permissionGrants.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string) =>
+    db
+      .select(grantFields)
+      .from(permissionGrants)
+      .where(eq(permissionGrants.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string) => {
     const grant = await permissionGrantDAO.findById(id);
@@ -54,7 +53,7 @@ export const permissionGrantDAO = {
     return grant;
   },
 
-  list: async (options?: { cursor?: string; limit?: number }) => {
+  list: (options?: { cursor?: string; limit?: number }) => {
     const limit = cursorLimit(options?.limit);
     const { condition, empty } = await cursorAfter(
       permissionGrants,
@@ -113,7 +112,7 @@ export const permissionGrantDAO = {
     return new Set(groups.map(({ group }) => group));
   },
 
-  delete: async (id: string) =>
+  delete: (id: string) =>
     db
       .delete(permissionGrants)
       .where(eq(permissionGrants.id, id))
@@ -121,17 +120,15 @@ export const permissionGrantDAO = {
 
   // The identities the system knows about (every identity that has a grant).
   // Feeds the user dropdown on the grant form so no one pastes a raw id.
-  listIdentities: async (): Promise<
+  listIdentities: (): Promise<
     Array<{ id: string; label: string | null }>
-  > => {
-    const rows = await db
+  > =>
+    db
       .select({
         id: permissionGrants.identityId,
         label: permissionGrants.label,
       })
       .from(permissionGrants)
       .groupBy(permissionGrants.identityId, permissionGrants.label)
-      .orderBy(permissionGrants.identityId);
-    return rows;
-  },
+      .orderBy(permissionGrants.identityId),
 };

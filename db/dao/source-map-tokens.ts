@@ -37,14 +37,13 @@ export const sourceMapTokenDAO = {
     return { token: raw, record };
   },
 
-  findById: async (id: (typeof sourceMapTokens)["id"]) =>
-    (
-      await db
-        .select(tokenPublicFields)
-        .from(sourceMapTokens)
-        .where(eq(sourceMapTokens.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: (typeof sourceMapTokens)["id"]) =>
+    db
+      .select(tokenPublicFields)
+      .from(sourceMapTokens)
+      .where(eq(sourceMapTokens.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string) => {
     const token = await sourceMapTokenDAO.findById(id);
@@ -54,20 +53,19 @@ export const sourceMapTokenDAO = {
 
   // Only the auth path looks a token up by hash; the hash itself never
   // needs to leave the database.
-  findByHash: async (hash: (typeof sourceMapTokens)["tokenHash"]) =>
-    (
-      await db
-        .select({
-          id: sourceMapTokens.id,
-          projectId: sourceMapTokens.projectId,
-          appId: sourceMapTokens.appId,
-          expiresAt: sourceMapTokens.expiresAt,
-          revokedAt: sourceMapTokens.revokedAt,
-        })
-        .from(sourceMapTokens)
-        .where(eq(sourceMapTokens.tokenHash, hash))
-        .limit(1)
-    )[0],
+  findByHash: (hash: (typeof sourceMapTokens)["tokenHash"]) =>
+    db
+      .select({
+        id: sourceMapTokens.id,
+        projectId: sourceMapTokens.projectId,
+        appId: sourceMapTokens.appId,
+        expiresAt: sourceMapTokens.expiresAt,
+        revokedAt: sourceMapTokens.revokedAt,
+      })
+      .from(sourceMapTokens)
+      .where(eq(sourceMapTokens.tokenHash, hash))
+      .limit(1)
+      .then(([row]) => row),
 
   // Rotation keeps a revoked token revoked.
   rotate: async (id: string) => {
@@ -116,8 +114,8 @@ export const sourceMapTokenDAO = {
 
   // Best-effort bookkeeping for the admin token list: the last time the
   // token authenticated a source map upload request.
-  touchLastUsed: async (id: string) =>
-    await db
+  touchLastUsed: (id: string) =>
+    db
       .update(sourceMapTokens)
       .set({ lastUsedAt: new Date().toISOString() })
       .where(eq(sourceMapTokens.id, id)),

@@ -104,7 +104,7 @@ export const permissionRuleDAO = {
   },
 
   // The enabled rules only — the scope engine merges them.
-  listEnabled: async (): Promise<PermissionRuleRecord[]> =>
+  listEnabled: (): Promise<PermissionRuleRecord[]> =>
     db
       .select(ruleFields)
       .from(permissionRules)

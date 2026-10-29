@@ -48,14 +48,13 @@ export const projectDAO = {
     return { project, apps: duplicatedApps };
   },
 
-  findById: async (id: string): Promise<Project | undefined> =>
-    (
-      await db
-        .select(projectPublicFields)
-        .from(projects)
-        .where(eq(projects.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string): Promise<Project | undefined> =>
+    db
+      .select(projectPublicFields)
+      .from(projects)
+      .where(eq(projects.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string) => {
     const project = await projectDAO.findById(id);

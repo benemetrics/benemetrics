@@ -61,14 +61,13 @@ export const featureFlagDAO = {
     return row;
   },
 
-  findById: async (id: string) =>
-    (
-      await db
-        .select(featureFlagFields)
-        .from(featureFlags)
-        .where(eq(featureFlags.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string) =>
+    db
+      .select(featureFlagFields)
+      .from(featureFlags)
+      .where(eq(featureFlags.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string) => {
     const flag = await featureFlagDAO.findById(id);
@@ -76,14 +75,13 @@ export const featureFlagDAO = {
     return flag;
   },
 
-  findByKey: async (key: string) =>
-    (
-      await db
-        .select(featureFlagFields)
-        .from(featureFlags)
-        .where(eq(featureFlags.key, key))
-        .limit(1)
-    )[0],
+  findByKey: (key: string) =>
+    db
+      .select(featureFlagFields)
+      .from(featureFlags)
+      .where(eq(featureFlags.key, key))
+      .limit(1)
+      .then(([row]) => row),
 
   /**
    * The flag that applies to a scope: the app's own, else the project's,

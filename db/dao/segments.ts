@@ -28,14 +28,13 @@ export const segmentDAO = {
     return row;
   },
 
-  findById: async (id: string) =>
-    (
-      await db
-        .select(segmentFields)
-        .from(segments)
-        .where(eq(segments.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string) =>
+    db
+      .select(segmentFields)
+      .from(segments)
+      .where(eq(segments.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string) => {
     const segment = await segmentDAO.findById(id);

@@ -22,14 +22,13 @@ export const appDAO = {
     return created;
   },
 
-  findById: async (id: string): Promise<AppRecord | undefined> =>
-    (
-      await db
-        .select(appPublicFields)
-        .from(apps)
-        .where(eq(apps.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string): Promise<AppRecord | undefined> =>
+    db
+      .select(appPublicFields)
+      .from(apps)
+      .where(eq(apps.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIngestKey: async (ingestKey: string) => {
     const cached = cachedApp(`ingest:${ingestKey}`);
@@ -133,14 +132,13 @@ export const appDAO = {
   },
 
   // The issue query resolves an app by its exact name (case-insensitive).
-  findByName: async (name: string): Promise<{ id: string } | undefined> =>
-    (
-      await db
-        .select({ id: apps.id })
-        .from(apps)
-        .where(sql`lower(${apps.name}) = lower(${name})`)
-        .limit(1)
-    )[0],
+  findByName: (name: string): Promise<{ id: string } | undefined> =>
+    db
+      .select({ id: apps.id })
+      .from(apps)
+      .where(sql`lower(${apps.name}) = lower(${name})`)
+      .limit(1)
+      .then(([row]) => row),
 
   delete: async (id: string) => {
     await Promise.all([

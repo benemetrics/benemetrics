@@ -141,59 +141,57 @@ export const issueDAO = {
   // Returns the row only when this call created it — the race-safe way to
   // detect a first-ever occurrence (concurrent events lose the unique
   // (app_id, fingerprint) insert and fall through to the other paths).
-  createIfNew: async (
+  createIfNew: (
     data: Omit<IssueInsert, "id"> & { id?: string },
   ): Promise<Pick<IssueRow, "id" | "fingerprint" | "title"> | undefined> =>
-    (
-      await db
-        .insert(issues)
-        .values({ ...data })
-        .onConflictDoNothing()
-        .returning(trackedIssueFields)
-    )[0],
+    db
+      .insert(issues)
+      .values({ ...data })
+      .onConflictDoNothing()
+      .returning(trackedIssueFields)
+      .then(([row]) => row),
 
   // Returns the row only when this call performed the resolved →
   // unresolved transition, so concurrent events produce exactly one
   // regression.
-  regressIfResolved: async (
+  regressIfResolved: (
     appId: string,
     fingerprint: string,
     occurrence: IssueOccurrence,
   ): Promise<Pick<IssueRow, "id" | "fingerprint" | "title"> | undefined> =>
-    (
-      await db
-        .update(issues)
-        .set({
-          status: "unresolved",
-          eventCount: sql`${issues.eventCount} + ${occurrence.occurrences}`,
-          lastSeen: occurrence.receivedAt,
-          latestEventId: occurrence.latestEventId,
-          title: occurrence.title,
-          culprit: occurrence.culprit,
-          level: occurrence.level,
-          type: occurrence.type,
-          lastRelease: sql`COALESCE(${occurrence.release}, ${issues.lastRelease})`,
-          firstRelease: sql`COALESCE(${issues.firstRelease}, ${occurrence.release})`,
-          tags: occurrence.tags ? JSON.stringify(occurrence.tags) : issues.tags,
-          updatedAt: new Date().toISOString(),
-        })
-        .where(
-          and(
-            eq(issues.appId, appId),
-            eq(issues.fingerprint, fingerprint),
-            eq(issues.status, "resolved"),
-          ),
-        )
-        .returning(trackedIssueFields)
-    )[0],
+    db
+      .update(issues)
+      .set({
+        status: "unresolved",
+        eventCount: sql`${issues.eventCount} + ${occurrence.occurrences}`,
+        lastSeen: occurrence.receivedAt,
+        latestEventId: occurrence.latestEventId,
+        title: occurrence.title,
+        culprit: occurrence.culprit,
+        level: occurrence.level,
+        type: occurrence.type,
+        lastRelease: sql`COALESCE(${occurrence.release}, ${issues.lastRelease})`,
+        firstRelease: sql`COALESCE(${issues.firstRelease}, ${occurrence.release})`,
+        tags: occurrence.tags ? JSON.stringify(occurrence.tags) : issues.tags,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(
+        and(
+          eq(issues.appId, appId),
+          eq(issues.fingerprint, fingerprint),
+          eq(issues.status, "resolved"),
+        ),
+      )
+      .returning(trackedIssueFields)
+      .then(([row]) => row),
 
   // A redelivered message is a no-op: no double `event_count`, no backwards `last_seen`.
-  markSeen: async (
+  markSeen: (
     appId: string,
     fingerprint: string,
     occurrence: IssueOccurrence,
   ): Promise<void> =>
-    await db
+    db
       .update(issues)
       .set({
         eventCount: sql`${issues.eventCount} + ${occurrence.occurrences}`,
@@ -216,14 +214,13 @@ export const issueDAO = {
         ),
       ),
 
-  findById: async (id: string): Promise<IssueRow | undefined> =>
-    (
-      await db
-        .select(issueFields)
-        .from(issues)
-        .where(eq(issues.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string): Promise<IssueRow | undefined> =>
+    db
+      .select(issueFields)
+      .from(issues)
+      .where(eq(issues.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string) => {
     const issue = await issueDAO.findById(id);
@@ -349,6 +346,6 @@ export const issueDAO = {
   },
 
   // Issues are derived from stored events, so they die with the app.
-  deleteByApp: async (appId: string): Promise<void> =>
-    await db.delete(issues).where(eq(issues.appId, appId)),
+  deleteByApp: (appId: string): Promise<void> =>
+    db.delete(issues).where(eq(issues.appId, appId)),
 };

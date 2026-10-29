@@ -27,14 +27,13 @@ export const sourceMapDAO = {
     return created;
   },
 
-  findById: async (id: string) =>
-    (
-      await db
-        .select(artifactPublicFields)
-        .from(sourceMaps)
-        .where(eq(sourceMaps.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string) =>
+    db
+      .select(artifactPublicFields)
+      .from(sourceMaps)
+      .where(eq(sourceMaps.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string) => {
     const map = await sourceMapDAO.findById(id);
@@ -43,7 +42,7 @@ export const sourceMapDAO = {
   },
 
   // Symbolication only needs the artifact identity and its body.
-  findByRelease: async (projectId: string, release: string) =>
+  findByRelease: (projectId: string, release: string) =>
     db
       .select({
         id: sourceMaps.id,
@@ -60,7 +59,7 @@ export const sourceMapDAO = {
       )
       .orderBy(desc(sourceMaps.createdAt)),
 
-  list: async (
+  list: (
     options: { appId?: (typeof apps)["id"] },
     page: { cursor?: string; limit?: number },
   ) =>
@@ -81,11 +80,11 @@ export const sourceMapDAO = {
 
   // Deletes the artifact only when it is inside the caller's scope; an
   // artifact that is missing or belongs to someone else is left alone.
-  deleteScoped: async (
+  deleteScoped: (
     id: string,
     scope: { projectId: string; release: string; appId: string },
   ) =>
-    await db
+    db
       .delete(sourceMaps)
       .where(
         and(

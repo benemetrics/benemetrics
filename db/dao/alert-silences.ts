@@ -42,14 +42,13 @@ export const alertSilenceDAO = {
     return created;
   },
 
-  findById: async (id: string): Promise<AlertSilence | undefined> =>
-    (
-      await db
-        .select(silenceFields)
-        .from(alertSilences)
-        .where(eq(alertSilences.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string): Promise<AlertSilence | undefined> =>
+    db
+      .select(silenceFields)
+      .from(alertSilences)
+      .where(eq(alertSilences.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string): Promise<AlertSilence> => {
     const silence = await alertSilenceDAO.findById(id);
@@ -80,7 +79,7 @@ export const alertSilenceDAO = {
 
   // The silences that are active now and cover the scope: the global
   // ones, the project's and the app's.
-  findActiveForScope: async (
+  findActiveForScope: (
     scope: { appId?: string | null; projectId?: string | null },
     now: string,
   ): Promise<AlertSilence[]> => {
@@ -98,7 +97,7 @@ export const alertSilenceDAO = {
           ]
         : []),
     ];
-    return await db
+    return db
       .select(silenceFields)
       .from(alertSilences)
       .where(

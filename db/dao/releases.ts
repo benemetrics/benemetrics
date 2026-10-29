@@ -23,12 +23,12 @@ const releaseFields = {
 };
 
 async function insertRelease(data: ReleaseCreateInput) {
-  const [created] = await db
+  return db
     .insert(releases)
     .values({ ...data })
     .onConflictDoNothing({ target: [releases.appId, releases.version] })
-    .returning(releaseFields);
-  return created;
+    .returning(releaseFields)
+    .then(([created]) => created);
 }
 
 export const releaseDAO = {
@@ -40,14 +40,13 @@ export const releaseDAO = {
     return created;
   },
 
-  findById: async (id: string): Promise<Release | undefined> =>
-    (
-      await db
-        .select(releaseFields)
-        .from(releases)
-        .where(eq(releases.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string): Promise<Release | undefined> =>
+    db
+      .select(releaseFields)
+      .from(releases)
+      .where(eq(releases.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string) => {
     const release = await releaseDAO.findById(id);
@@ -55,17 +54,16 @@ export const releaseDAO = {
     return release;
   },
 
-  findByAppAndVersion: async (
+  findByAppAndVersion: (
     appId: string,
     version: string,
   ): Promise<Release | undefined> =>
-    (
-      await db
-        .select(releaseFields)
-        .from(releases)
-        .where(and(eq(releases.appId, appId), eq(releases.version, version)))
-        .limit(1)
-    )[0],
+    db
+      .select(releaseFields)
+      .from(releases)
+      .where(and(eq(releases.appId, appId), eq(releases.version, version)))
+      .limit(1)
+      .then(([row]) => row),
 
   findByAppAndVersionOrThrow: async (appId: string, version: string) => {
     const release = await releaseDAO.findByAppAndVersion(appId, version);
@@ -168,6 +166,6 @@ export const releaseDAO = {
     return deleted.length > 0;
   },
 
-  deleteByApp: async (appId: string) =>
-    await db.delete(releases).where(eq(releases.appId, appId)),
+  deleteByApp: (appId: string) =>
+    db.delete(releases).where(eq(releases.appId, appId)),
 };

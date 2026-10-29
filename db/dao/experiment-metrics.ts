@@ -11,22 +11,21 @@ export interface VariantCount {
 
 export const experimentMetricDAO = {
   // Tracking is fire-and-forget: the route only needs the write to succeed.
-  record: async (
+  record: (
     data: Omit<PgInsertValue<typeof experimentMetrics>, "id" | "recordedAt"> & {
       id?: string;
       recordedAt?: string;
     },
     executor: Executor = db,
-  ): Promise<void> => {
-    await executor.insert(experimentMetrics).values({
+  ): Promise<void> =>
+    executor.insert(experimentMetrics).values({
       ...data,
       recordedAt: data.recordedAt ?? new Date().toISOString(),
-    });
-  },
+    }),
 
   // Conversions are metric rows, not distinct users: a user who records
   // the primary metric twice counts twice.
-  countByVariant: async (
+  countByVariant: (
     flagId: string,
     metricName: string,
   ): Promise<VariantCount[]> =>
@@ -43,5 +42,4 @@ export const experimentMetricDAO = {
         ),
       )
       .groupBy(experimentMetrics.variantKey),
-
 };

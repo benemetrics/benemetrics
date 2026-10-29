@@ -43,14 +43,13 @@ export const alertDeadLetterDAO = {
     return created;
   },
 
-  findById: async (id: string): Promise<AlertDeadLetter | undefined> =>
-    (
-      await db
-        .select(deadLetterFields)
-        .from(alertDeadLetters)
-        .where(eq(alertDeadLetters.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string): Promise<AlertDeadLetter | undefined> =>
+    db
+      .select(deadLetterFields)
+      .from(alertDeadLetters)
+      .where(eq(alertDeadLetters.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string): Promise<AlertDeadLetter> => {
     const letter = await alertDeadLetterDAO.findById(id);
@@ -80,8 +79,8 @@ export const alertDeadLetterDAO = {
   },
 
   // The rows whose retry is due — the worker drains them.
-  listDue: async (now: string, limit = 20): Promise<AlertDeadLetter[]> =>
-    await db
+  listDue: (now: string, limit = 20): Promise<AlertDeadLetter[]> =>
+    db
       .select(deadLetterFields)
       .from(alertDeadLetters)
       .where(lte(alertDeadLetters.nextAttemptAt, now))
@@ -89,12 +88,12 @@ export const alertDeadLetterDAO = {
       .limit(limit),
 
   // Records another failed attempt and pushes the next retry back.
-  recordAttempt: async (
+  recordAttempt: (
     id: string,
     error: string,
     nextAttemptAt: string,
   ): Promise<void> =>
-    await db
+    db
       .update(alertDeadLetters)
       .set({
         error,
@@ -105,8 +104,8 @@ export const alertDeadLetterDAO = {
       .where(eq(alertDeadLetters.id, id)),
 
   // The retry is due now (a manual retry).
-  scheduleNow: async (id: string): Promise<void> =>
-    await db
+  scheduleNow: (id: string): Promise<void> =>
+    db
       .update(alertDeadLetters)
       .set({
         nextAttemptAt: new Date().toISOString(),
@@ -122,11 +121,11 @@ export const alertDeadLetterDAO = {
     return deleted.length > 0;
   },
 
-  count: async (): Promise<number> =>
-    Number(
-      await db.$count(
+  count: (): Promise<number> =>
+    db
+      .$count(
         alertDeadLetters,
         and(eq(alertDeadLetters.id, alertDeadLetters.id)),
-      ),
-    ),
+      )
+      .then(Number),
 };

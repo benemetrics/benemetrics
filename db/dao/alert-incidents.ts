@@ -50,14 +50,13 @@ export const alertIncidentDAO = {
     return created;
   },
 
-  findById: async (id: string): Promise<AlertIncident | undefined> =>
-    (
-      await db
-        .select(incidentFields)
-        .from(alertIncidents)
-        .where(eq(alertIncidents.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string): Promise<AlertIncident | undefined> =>
+    db
+      .select(incidentFields)
+      .from(alertIncidents)
+      .where(eq(alertIncidents.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string) => {
     const incident = await alertIncidentDAO.findById(id);
@@ -96,12 +95,11 @@ export const alertIncidentDAO = {
     return { data };
   },
 
-  listPaged: async (options: {
+  listPaged: (options: {
     appId?: string;
     cursor?: string;
     limit?: number;
-  }): Promise<CursorPage<AlertIncident>> =>
-    await alertIncidentDAO.list(options),
+  }): Promise<CursorPage<AlertIncident>> => alertIncidentDAO.list(options),
 
   updateOrThrow: async (
     id: string,
@@ -124,27 +122,26 @@ export const alertIncidentDAO = {
     return deleted.length > 0;
   },
 
-  findOpen: async (
+  findOpen: (
     ruleId: string,
     executor: Executor = db,
   ): Promise<AlertIncident | undefined> =>
-    (
-      await executor
-        .select(incidentFields)
-        .from(alertIncidents)
-        .where(
-          and(
-            eq(alertIncidents.ruleId, ruleId),
-            eq(alertIncidents.status, "firing"),
-          ),
-        )
-        .orderBy(desc(alertIncidents.triggeredAt))
-        .limit(1)
-    )[0],
+    executor
+      .select(incidentFields)
+      .from(alertIncidents)
+      .where(
+        and(
+          eq(alertIncidents.ruleId, ruleId),
+          eq(alertIncidents.status, "firing"),
+        ),
+      )
+      .orderBy(desc(alertIncidents.triggeredAt))
+      .limit(1)
+      .then(([row]) => row),
 
   // Closes every open incident of a rule (the metric recovered).
-  resolveOpen: async (ruleId: string) =>
-    await db
+  resolveOpen: (ruleId: string) =>
+    db
       .update(alertIncidents)
       .set({ status: "resolved", resolvedAt: new Date().toISOString() })
       .where(
@@ -155,58 +152,55 @@ export const alertIncidentDAO = {
       ),
 
   // Incidents die with the rule they were fired for.
-  deleteByRule: async (ruleId: string) =>
-    await db.delete(alertIncidents).where(eq(alertIncidents.ruleId, ruleId)),
+  deleteByRule: (ruleId: string) =>
+    db.delete(alertIncidents).where(eq(alertIncidents.ruleId, ruleId)),
 
   // Latest firing of a rule for one issue — drives the per-issue
   // cooldown of issue triggers.
-  findLastForIssue: async (
+  findLastForIssue: (
     ruleId: string,
     fingerprint: string,
   ): Promise<{ triggeredAt: string } | undefined> =>
-    (
-      await db
-        .select({ triggeredAt: alertIncidents.triggeredAt })
-        .from(alertIncidents)
-        .where(
-          and(
-            eq(alertIncidents.ruleId, ruleId),
-            eq(alertIncidents.issueFingerprint, fingerprint),
-          ),
-        )
-        .orderBy(desc(alertIncidents.triggeredAt))
-        .limit(1)
-    )[0],
+    db
+      .select({ triggeredAt: alertIncidents.triggeredAt })
+      .from(alertIncidents)
+      .where(
+        and(
+          eq(alertIncidents.ruleId, ruleId),
+          eq(alertIncidents.issueFingerprint, fingerprint),
+        ),
+      )
+      .orderBy(desc(alertIncidents.triggeredAt))
+      .limit(1)
+      .then(([row]) => row),
 
   // The last incident of a correlation group — the deduplication looks at
   // it to decide whether the root cause was already reported.
-  findLastByCorrelationKey: async (
+  findLastByCorrelationKey: (
     correlationKey: string,
   ): Promise<AlertIncident | undefined> =>
-    (
-      await db
-        .select(incidentFields)
-        .from(alertIncidents)
-        .where(eq(alertIncidents.correlationKey, correlationKey))
-        .orderBy(desc(alertIncidents.triggeredAt))
-        .limit(1)
-    )[0],
+    db
+      .select(incidentFields)
+      .from(alertIncidents)
+      .where(eq(alertIncidents.correlationKey, correlationKey))
+      .orderBy(desc(alertIncidents.triggeredAt))
+      .limit(1)
+      .then(([row]) => row),
 
   // The first incident of a correlation group — the group parent.
-  findFirstByCorrelationKey: async (
+  findFirstByCorrelationKey: (
     correlationKey: string,
   ): Promise<AlertIncident | undefined> =>
-    (
-      await db
-        .select(incidentFields)
-        .from(alertIncidents)
-        .where(eq(alertIncidents.correlationKey, correlationKey))
-        .orderBy(asc(alertIncidents.triggeredAt))
-        .limit(1)
-    )[0],
+    db
+      .select(incidentFields)
+      .from(alertIncidents)
+      .where(eq(alertIncidents.correlationKey, correlationKey))
+      .orderBy(asc(alertIncidents.triggeredAt))
+      .limit(1)
+      .then(([row]) => row),
 
   // Removes incidents fired for the app's own rules; incidents of
   // global rules (appId = null) are shared and stay in place.
-  deleteByApp: async (appId: string) =>
-    await db.delete(alertIncidents).where(eq(alertIncidents.appId, appId)),
+  deleteByApp: (appId: string) =>
+    db.delete(alertIncidents).where(eq(alertIncidents.appId, appId)),
 };

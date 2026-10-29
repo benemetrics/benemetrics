@@ -78,14 +78,13 @@ export const alertRuleDAO = {
     return created;
   },
 
-  findById: async (id: string): Promise<AlertRule | undefined> =>
-    (
-      await db
-        .select(ruleFields)
-        .from(alertRules)
-        .where(eq(alertRules.id, id))
-        .limit(1)
-    )[0],
+  findById: (id: string): Promise<AlertRule | undefined> =>
+    db
+      .select(ruleFields)
+      .from(alertRules)
+      .where(eq(alertRules.id, id))
+      .limit(1)
+      .then(([row]) => row),
 
   findByIdOrThrow: async (id: string) => {
     const rule = await alertRuleDAO.findById(id);
@@ -96,7 +95,7 @@ export const alertRuleDAO = {
   },
 
   // The project-scoped rules — evaluated per project, not per app.
-  listProjectScoped: async (): Promise<AlertRule[]> =>
+  listProjectScoped: (): Promise<AlertRule[]> =>
     db
       .select(ruleFields)
       .from(alertRules)
@@ -105,10 +104,10 @@ export const alertRuleDAO = {
 
   // Every rule, whatever its scope — the export and the import need them
   // all; `list` is the scoped read.
-  listAll: async (): Promise<AlertRule[]> =>
+  listAll: (): Promise<AlertRule[]> =>
     db.select(ruleFields).from(alertRules).orderBy(desc(alertRules.createdAt)),
 
-  list: async (scope: AlertScope | null): Promise<AlertRule[]> =>
+  list: (scope: AlertScope | null): Promise<AlertRule[]> =>
     db
       .select(ruleFields)
       .from(alertRules)
@@ -179,15 +178,15 @@ export const alertRuleDAO = {
 
   // Removes the app-scoped overrides only; global (appId = null)
   // rules are shared and stay in place.
-  deleteByApp: async (appId: string) =>
-    await db.delete(alertRules).where(eq(alertRules.appId, appId)),
+  deleteByApp: (appId: string) =>
+    db.delete(alertRules).where(eq(alertRules.appId, appId)),
 
-  touchTriggered: async (
+  touchTriggered: (
     id: string,
     triggeredAt: string,
     executor: Executor = db,
   ) =>
-    await executor
+    executor
       .update(alertRules)
       .set({ lastTriggeredAt: triggeredAt })
       .where(eq(alertRules.id, id)),

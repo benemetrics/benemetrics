@@ -32,7 +32,8 @@ export const featureFlags = pgTable(
       .default(sql`now()`),
     updatedAt: isoTimestamp("updated_at")
       .notNull()
-      .default(sql`now()`),
+      .default(sql`now()`)
+      .$onUpdate(() => sql`now()`),
   },
   (table) => ({
     keyIdx: index("feature_flags_key_idx").on(table.key),

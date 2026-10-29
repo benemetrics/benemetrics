@@ -1,4 +1,5 @@
 import { pgTable, text, integer, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
 
 // A delivery that failed: the channel, the notification that was to be
@@ -19,7 +20,10 @@ export const alertDeadLetters = pgTable(
     attempts: integer("attempts").notNull().default(1),
     nextAttemptAt: isoTimestamp("next_attempt_at").notNull(),
     createdAt: isoTimestamp("created_at").notNull(),
-    updatedAt: isoTimestamp("updated_at").notNull(),
+    updatedAt: isoTimestamp("updated_at")
+      .notNull()
+      .default(sql`now()`)
+      .$onUpdate(() => sql`now()`),
   },
   (table) => ({
     dueIdx: index("alert_dead_letters_next_attempt_at_idx").on(

@@ -19,7 +19,8 @@ export const alertChannels = pgTable(
       .default(sql`now()`),
     updatedAt: isoTimestamp("updated_at")
       .notNull()
-      .default(sql`now()`),
+      .default(sql`now()`)
+      .$onUpdate(() => sql`now()`),
   },
   (table) => ({
     appIdIdx: index("alert_channels_app_id_idx").on(table.appId),

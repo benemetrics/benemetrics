@@ -1,7 +1,7 @@
 import { pgTable, text, index, uuid } from "drizzle-orm/pg-core";
 import { isoTimestamp } from "./timestamps";
 import { apps } from ".";
-import { sql } from "node_modules/drizzle-orm";
+import { sql } from "drizzle-orm/sql";
 
 // CI upload token for source maps (sentry-cli / SENTRY_AUTH_TOKEN).
 // Scoped to one project + environment; only the SHA-256 hash of the

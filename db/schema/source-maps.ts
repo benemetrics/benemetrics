@@ -1,6 +1,6 @@
 import { pgTable, text, index, uuid } from "drizzle-orm/pg-core";
 import { isoTimestamp } from "./timestamps";
-import { sql } from "drizzle-orm";
+import { sql } from "drizzle-orm/sql";
 import { apps } from "./app";
 
 export const sourceMaps = pgTable(
@@ -19,10 +19,10 @@ export const sourceMaps = pgTable(
     createdAt: isoTimestamp("created_at")
       .default(sql`now()`)
       .notNull(),
-    updatedAt: isoTimestamp("created_at")
+    updatedAt: isoTimestamp("updated_at")
+      .notNull()
       .default(sql`now()`)
-      .$onUpdate(() => sql`now()`)
-      .notNull(),
+      .$onUpdate(() => sql`now()`),
   },
   (table) => [index().on(table.appId)],
 );

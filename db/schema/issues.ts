@@ -43,7 +43,8 @@ export const issues = pgTable(
       .default(sql`now()`),
     updatedAt: isoTimestamp("updated_at")
       .notNull()
-      .default(sql`now()`),
+      .default(sql`now()`)
+      .$onUpdate(() => sql`now()`),
   },
   (table) => ({
     appIdIdx: index("issues_app_id_idx").on(table.appId),

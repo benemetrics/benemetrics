@@ -1,4 +1,5 @@
 import { pgTable, text, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
 
 // A silence: while it is active the rules in its scope do not fire.
@@ -18,7 +19,10 @@ export const alertSilences = pgTable(
     reason: text("reason"),
     createdBy: text("created_by"),
     createdAt: isoTimestamp("created_at").notNull(),
-    updatedAt: isoTimestamp("updated_at").notNull(),
+    updatedAt: isoTimestamp("updated_at")
+      .notNull()
+      .default(sql`now()`)
+      .$onUpdate(() => sql`now()`),
   },
   (table) => ({
     scopeIdx: index("alert_silences_scope_idx").on(

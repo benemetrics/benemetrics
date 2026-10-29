@@ -7,7 +7,7 @@ import {
 import { and, desc, eq, sql } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
 import { cursorLimit } from "./cursor";
-import { apps } from "db/schema/app";
+import { apps } from "db/schema/apps";
 import { whereNotNull } from "db/utils";
 
 // The artifact metadata never carries the (potentially large) map body;

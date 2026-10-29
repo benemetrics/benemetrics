@@ -6,6 +6,17 @@ import { resolveIdentity } from "../auth";
 // ── oidc surface: the app reads and deletes ────────────────────
 export const appsRoutes = new Elysia({ prefix: "/api/admin/apps" })
   .resolve(resolveIdentity)
+  .post(
+    "", 
+    ({ body }) => appDAO.create({ ...body, publicKey: crypto.randomUUID().replace(/-/g, "").slice(0, 32) }),
+    {
+      body: arktype({
+        name: "string",
+        platform: "string",
+        projectId: "string.uuid",
+      }),
+    }
+  )
   .group(
     "/:appId",
     {

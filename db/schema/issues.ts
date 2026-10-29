@@ -8,6 +8,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
+import { apps } from "./apps";
 
 // One row per error issue of an app, identified by (app_id, fingerprint).
 // `status` flips to "resolved" through the admin API and back to
@@ -18,7 +19,7 @@ export const issues = pgTable(
   "issues",
   {
     id: uuid("id").default(sql`uuidv7()`).primaryKey(),
-    appId: text("app_id").notNull(),
+    appId: uuid("app_id").notNull().references(() => apps.id, { onDelete: 'cascade' }),
     fingerprint: text("fingerprint").notNull(),
     title: text("title").notNull(),
     // The presentation fields of the latest occurrence (latest-writer-wins).
@@ -47,21 +48,21 @@ export const issues = pgTable(
       .default(sql`now()`)
       .$onUpdate(() => sql`now()`),
   },
-  (table) => ({
-    appIdIdx: index().on(table.appId),
-    statusIdx: index().on(table.status),
+  (table) => [
+    index().on(table.appId),
+    index().on(table.status),
     // Supports the default "new" sort: WHERE status = ? ORDER BY last_seen DESC, id DESC
     // (PostgreSQL can scan this index backward, so no sort and no full table scan.)
-    statusLastSeenIdIdx: index().on(
+    index().on(
       table.status,
       table.lastSeen,
       table.id,
     ),
-    appFingerprintUnique: uniqueIndex().on(
+    uniqueIndex().on(
       table.appId,
       table.fingerprint,
     ),
-  }),
+  ],
 );
 
 export type IssueRow = typeof issues.$inferSelect;

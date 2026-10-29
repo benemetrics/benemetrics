@@ -73,36 +73,18 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
           }),
         },
       )
-      .group("/apps", (apps) =>
-        apps
-          .get(
-            "",
-            async ({ params: { id }, perms: { appIds }, query }) =>
-              appDAO.listByProject(id, {
-                ...query,
-                ...(appIds.length && { appIds }),
-              }),
-            {
-              query: arktype({
-                cursor: "string?",
-                limit: "string.integer.parse?",
-              }),
-            },
-          )
-          .post(
-            "",
-            async ({ params: { id }, body }) =>
-              appDAO.create({
-                ...body,
-                projectId: id,
-                publicKey: crypto.randomUUID().replace(/-/g, "").slice(0, 32),
-              }),
-            {
-              body: arktype({
-                name: "string",
-                platform: "string",
-              }),
-            },
-          ),
-      ),
-  );
+      .get(
+        "/apps",
+        async ({ params: { id }, perms: { appIds }, query }) =>
+          appDAO.listByProject(id, {
+            ...query,
+            ...(appIds.length && { appIds }),
+          }),
+        {
+          query: arktype({
+            cursor: "string?",
+            limit: "string.integer.parse?",
+          }),
+        },
+    ),
+);

@@ -9,8 +9,6 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
-import { projects } from "./project";
-import { apps } from "./app";
 
 // A group rule: every identity whose token carries the group gets the scope.
 // The group name is the provider's claim value, stored lowercased.
@@ -62,18 +60,10 @@ export const permissionGrants = pgTable(
       .default(sql`now()`)
       .$onUpdate(() => sql`now()`),
   },
-  (table) => ({
-    identityUnique: uniqueIndex().on(
-      table.identityId,
-    ),
-  }),
+  (table) => [
+    uniqueIndex().on(table.identityId),
+  ],
 );
-
-export const permissionsProjectApp = pgTable("permissions", {
-  permissionGrant: permissionGrants.id,
-  projectId: projects.id,
-  appId: apps.id,
-});
 
 export type PermissionRuleRow = typeof permissionRules.$inferSelect;
 export type PermissionRuleInsert = typeof permissionRules.$inferInsert;

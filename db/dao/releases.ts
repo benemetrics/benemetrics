@@ -1,48 +1,27 @@
 import { db } from "db";
-import { releases, type Release, type ReleaseInsert } from "db/schema/releases";
+import { releasePublicFields, releases, type Release, type ReleaseInsert } from "db/schema/releases";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
-import { cursorAfter, cursorLimit } from "./cursor";
+import { cursorLimit } from "./cursor";
 
 // Every release field is part of the API response; the projection keeps
 // the response shape stable if the table grows more columns.
-const releaseFields = {
-  id: releases.id,
-  appId: releases.appId,
-  version: releases.version,
-  ref: releases.ref,
-  url: releases.url,
-  owner: releases.owner,
-  status: releases.status,
-  firstSeen: releases.firstSeen,
-  lastSeen: releases.lastSeen,
-  eventCount: releases.eventCount,
-  latestEventId: releases.latestEventId,
-  createdAt: releases.createdAt,
-  updatedAt: releases.updatedAt,
-};
 
-async function insertRelease(data: ReleaseCreateInput) {
-  return db
-    .insert(releases)
-    .values({ ...data })
-    .onConflictDoNothing({ target: [releases.appId, releases.version] })
-    .returning(releaseFields)
-    .then(([created]) => created);
-}
+
 
 export const releaseDAO = {
-  create: async (data: ReleaseCreateInput) => {
-    const created = await insertRelease(data);
-    if (!created) {
-      throw conflict(`Release already exists for app: ${data.version}`);
-    }
+  create: async (data: ReleaseInsert) => {
+    const [created] = await db
+      .insert(releases)
+      .values(data)
+      .onConflictDoNothing({ target: [releases.appId, releases.version] })
+      .returning(releasePublicFields)
+    if (!created) throw conflict(`Release already exists for app: ${data.version}`);
     return created;
   },
 
-  findById: (id: string): Promise<Release | undefined> =>
-    db
-      .select(releaseFields)
+  findById: (id: string) => db
+      .select(releasePublicFields)
       .from(releases)
       .where(eq(releases.id, id))
       .limit(1)
@@ -57,9 +36,8 @@ export const releaseDAO = {
   findByAppAndVersion: (
     appId: string,
     version: string,
-  ): Promise<Release | undefined> =>
-    db
-      .select(releaseFields)
+  ) => db
+      .select(releasePublicFields)
       .from(releases)
       .where(and(eq(releases.appId, appId), eq(releases.version, version)))
       .limit(1)
@@ -73,8 +51,8 @@ export const releaseDAO = {
 
   // Used where a release is provisioned implicitly (sentry-cli
   // "releases new", source map upload).
-  findOrCreate: async (data: ReleaseCreateInput) => {
-    const created = await insertRelease(data);
+  findOrCreate: async (data: ReleaseInsert) => {
+    const created = await releaseDAO.create(data);
     if (created) return created;
     return releaseDAO.findByAppAndVersionOrThrow(data.appId, data.version);
   },
@@ -111,7 +89,7 @@ export const releaseDAO = {
         // Redelivered events must not be counted twice.
         where: sql`${releases.latestEventId} is distinct from ${event.eventId}`,
       })
-      .returning(releaseFields);
+      .returning(releasePublicFields);
     if (row) return row;
     return releaseDAO.findByAppAndVersionOrThrow(appId, version);
   },
@@ -137,7 +115,7 @@ export const releaseDAO = {
       scope && condition ? and(scope, condition) : (scope ?? condition);
 
     const data = await db
-      .select(releaseFields)
+      .select(releasePublicFields)
       .from(releases)
       .where(where)
       .orderBy(desc(sort), desc(releases.id))
@@ -152,7 +130,7 @@ export const releaseDAO = {
         .update(releases)
         .set({ ...data, updatedAt: new Date().toISOString() })
         .where(eq(releases.id, id))
-        .returning(releaseFields)
+        .returning(releasePublicFields)
     )[0];
     if (!updated) throw notFound("Release", id);
     return updated;

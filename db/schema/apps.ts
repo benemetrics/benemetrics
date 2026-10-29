@@ -12,7 +12,7 @@ export const apps = pgTable(
     number: serial("number").notNull().unique(),
     projectId: uuid("project_id")
       .notNull()
-      .references(() => projects.id),
+      .references(() => projects.id, { onDelete: 'cascade' }),
     name: text("name").notNull(),
     platform: text("platform").notNull(),
     publicKey: text("public_key").notNull().unique(),

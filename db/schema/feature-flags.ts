@@ -5,9 +5,11 @@ import {
   index,
   uniqueIndex,
   uuid,
+  real,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
+import { projects } from "./project";
 
 export const featureFlags = pgTable(
   "feature_flags",
@@ -22,10 +24,7 @@ export const featureFlags = pgTable(
     targetingRules: text("targeting_rules").notNull().default("[]"),
     segments: text("segments").notNull().default("[]"),
     status: text("status").notNull().default("draft"),
-    // The scope: a project, optionally narrowed to one of its apps. The
-    // key is unique per scope, so the same key can exist in two projects.
-    projectId: text("project_id"),
-    appId: text("app_id"),
+    projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: 'cascade' }),
     rolloutPercentage: integer("rollout_percentage").notNull().default(100),
     experiment: text("experiment"),
     createdAt: isoTimestamp("created_at")
@@ -36,15 +35,69 @@ export const featureFlags = pgTable(
       .default(sql`now()`)
       .$onUpdate(() => sql`now()`),
   },
-  (table) => ({
-    keyIdx: index().on(table.key),
-    statusIdx: index().on(table.status),
-    scopeKeyUnique: uniqueIndex().on(
-      sql`coalesce(${table.projectId}, '')`,
-      sql`coalesce(${table.appId}, '')`,
-      table.key,
-    ),
-  }),
+  (table) => [
+    index().on(table.key),
+    index().on(table.status),
+    index().on(table.projectId), 
+  ],
 );
 
 export type FeatureFlag = typeof featureFlags.$inferSelect;
+
+export const userFeatureFlagAssigment = pgTable(
+  "user_feature_flags_assigment",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    flagId: uuid("flag_id").notNull().references(() => featureFlags.id, { onDelete: 'cascade' }),
+    userId: uuid("user_id").notNull(),
+    variantKey: text("variant_key").notNull(),
+    context: text("context").notNull().default("{}"),
+    assignedAt: isoTimestamp("assigned_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex().on(
+      table.flagId,
+      table.userId,
+    ),
+    index().on(table.flagId),
+    index().on(table.userId)
+  ],
+);
+
+export type ExperimentAssignment = typeof userFeatureFlagAssigment.$inferSelect;
+
+export const segments = pgTable("segments", {
+  id: uuid("id")
+    .default(sql`uuidv7()`)
+    .primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").default(""),
+  rules: text("rules").notNull().default("[]"),
+  createdAt: isoTimestamp("created_at")
+    .notNull()
+    .default(sql`now()`),
+});
+
+export type Segment = typeof segments.$inferSelect;
+
+export const featureFlagMetrics = pgTable(
+  "experiment_metrics",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    flagId: uuid("flag_id").notNull().references(() => featureFlags.id, { onDelete: 'cascade' }),
+    variantKey: text("variant_key").notNull(),
+    userId: text("user_id").notNull(),
+    metricName: text("metric_name").notNull(),
+    value: real("value").notNull().default(1),
+    recordedAt: isoTimestamp("recorded_at").notNull(),
+  },
+  (table) => [
+    index().on(
+      table.flagId,
+      table.metricName,
+    ),
+    index().on(table.flagId)
+  ],
+);
+
+export type ExperimentMetric = typeof featureFlagMetrics.$inferSelect;

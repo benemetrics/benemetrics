@@ -9,8 +9,8 @@ import { eq, and, desc, inArray, count, gt } from "drizzle-orm";
 import { conflict, notFound } from "backend/errors";
 import { cursorLimit } from "./cursor";
 import { whereNotNull } from "db/utils";
-import { apps } from "db/schema/app";
-import { appDAO } from "./app";
+import { apps } from "db/schema/apps";
+import { appDAO } from "./apps";
 
 export const projectDAO = {
   create: async (data: ProjectInsert) => {
@@ -48,8 +48,7 @@ export const projectDAO = {
     return { project, apps: duplicatedApps };
   },
 
-  findById: (id: string): Promise<Project | undefined> =>
-    db
+  findById: (id: string) => db
       .select(projectPublicFields)
       .from(projects)
       .where(eq(projects.id, id))

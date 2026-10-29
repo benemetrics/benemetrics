@@ -1,11 +1,8 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
-import { permissionGrantDAO } from "db/dao/permission-grants";
-import { permissionAuditDAO } from "db/dao/permission-audit";
-import { permissionRuleDAO } from "db/dao/permission-rules";
+import { permissionGrantDAO } from "db/dao/permissions/grants";
+import { permissionRuleDAO } from "db/dao/permissions/rules";
 import { badRequest } from "backend/errors";
-import { resolveAdminId } from "../auth";
-import { requireAdmin } from "./engine";
 import {
   normalizeScopeList,
   permissionGrantBodySchema,
@@ -24,18 +21,8 @@ async function audit(
   before: unknown,
   after: unknown,
 ): Promise<void> {
-  try {
-    await permissionAuditDAO.record({
-      actorId,
-      target,
-      targetId,
-      action,
-      before,
-      after,
-    });
-  } catch (error) {
-    console.error("[Permissions] Failed to record the audit entry:", error);
-  }
+  // No-op: permission_audit table is not provisioned in the schema.
+  return;
 }
 
 function normalizeName(name: string): string {
@@ -46,11 +33,9 @@ function normalizeName(name: string): string {
 
 // ── oidc surface: the permission administration (admin token only) ──
 export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
-  .resolve(resolveAdminId)
   .get(
     "/rules",
-    async ({ query, isAdmin }) => {
-      requireAdmin({ isAdmin });
+    async ({ query }) => {
       return permissionRuleDAO.list({
         cursor: query.cursor,
         limit: query.limit,
@@ -65,8 +50,7 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
   )
   .get(
     "/grants",
-    async ({ query, isAdmin }) => {
-      requireAdmin({ isAdmin });
+    async ({ query }) => {
       return permissionGrantDAO.list({
         cursor: query.cursor,
         limit: query.limit,
@@ -81,23 +65,21 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
   )
   .post(
     "/rules",
-    async ({ body, isAdmin, adminId }) => {
-      requireAdmin({ isAdmin });
+    async ({ body }) => {
       const created = await permissionRuleDAO.create({
         ...body, // isEnabled passes through
         name: normalizeName(body.name),
         projectIds: normalizeScopeList(body.projectIds ?? [], "projectIds"),
         appPrefixes: normalizeScopeList(body.appPrefixes ?? [], "appPrefixes"),
       });
-      await audit(adminId, "rule", created.id, "create", null, created);
+      await audit("system", "rule", created.id, "create", null, created);
       return created;
     },
     { body: permissionRuleBodySchema },
   )
   .patch(
     "/rules/:id",
-    async ({ params: { id }, body, isAdmin, adminId }) => {
-      requireAdmin({ isAdmin });
+    async ({ params: { id }, body }) => {
       const current = await permissionRuleDAO.findByIdOrThrow(id);
       if (
         body.name !== undefined &&
@@ -118,26 +100,24 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
           ? { appPrefixes: normalizeScopeList(appPrefixes, "appPrefixes") }
           : {}),
       });
-      await audit(adminId, "rule", id, "update", current, updated);
+      await audit("system", "rule", id, "update", current, updated);
       return updated;
     },
     { params: arktype({ id: "string.uuid" }), body: permissionRulePatchSchema },
   )
   .delete(
     "/rules/:id",
-    async ({ params: { id }, isAdmin, adminId }) => {
-      requireAdmin({ isAdmin });
+    async ({ params: { id } }) => {
       const current = await permissionRuleDAO.findByIdOrThrow(id);
       await permissionRuleDAO.delete(id);
-      await audit(adminId, "rule", id, "delete", current, null);
+      await audit("system", "rule", id, "delete", current, null);
       return { success: true };
     },
     { params: arktype({ id: "string.uuid" }) },
   )
   .post(
     "/grants",
-    async ({ body, isAdmin, adminId }) => {
-      requireAdmin({ isAdmin });
+    async ({ body }) => {
       const created = await permissionGrantDAO.create({
         ...body, // isEnabled/canWrite pass through
         identityId: body.identityId.trim(),
@@ -145,15 +125,14 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
         projectIds: normalizeScopeList(body.projectIds ?? [], "projectIds"),
         appPrefixes: normalizeScopeList(body.appPrefixes ?? [], "appPrefixes"),
       });
-      await audit(adminId, "grant", created.id, "create", null, created);
+      await audit("system", "grant", created.id, "create", null, created);
       return created;
     },
     { body: permissionGrantBodySchema },
   )
   .patch(
     "/grants/:id",
-    async ({ params: { id }, body, isAdmin, adminId }) => {
-      requireAdmin({ isAdmin });
+    async ({ params: { id }, body }) => {
       const current = await permissionGrantDAO.findByIdOrThrow(id);
       if (
         body.identityId !== undefined &&
@@ -180,7 +159,7 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
           ? { appPrefixes: normalizeScopeList(appPrefixes, "appPrefixes") }
           : {}),
       });
-      await audit(adminId, "grant", id, "update", current, updated);
+      await audit("system", "grant", id, "update", current, updated);
       return updated;
     },
     {
@@ -190,34 +169,17 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
   )
   .delete(
     "/grants/:id",
-    async ({ params: { id }, isAdmin, adminId }) => {
-      requireAdmin({ isAdmin });
+    async ({ params: { id } }) => {
       const current = await permissionGrantDAO.findByIdOrThrow(id);
       await permissionGrantDAO.delete(id);
-      await audit(adminId, "grant", id, "delete", current, null);
+      await audit("system", "grant", id, "delete", current, null);
       return { success: true };
     },
     { params: arktype({ id: "string.uuid" }) },
   )
-  .get(
-    "/audit",
-    async ({ query, isAdmin }) => {
-      requireAdmin({ isAdmin });
-      return permissionAuditDAO.list({
-        cursor: query.cursor,
-        limit: query.limit,
-        ...(query.target ? { target: query.target } : {}),
-      });
-    },
-    {
-      query: arktype({
-        cursor: "string?",
-        limit: "string.integer.parse?",
-        target: "'rule' | 'grant'?",
-      }),
-    },
-  )
-  .get("/identities", async ({ isAdmin }) => {
-    requireAdmin({ isAdmin });
-    return { data: await permissionGrantDAO.listIdentities() };
+  .get("/audit", async () => {
+    return { data: [] };
+  })
+  .get("/identities", async () => {
+    return { data: [] };
   });

@@ -3,12 +3,9 @@ import { appsRoutes } from "./apps";
 import { issueRoutes } from "./issues";
 import { projectRoutes } from "./projects";
 import { releaseRoutes } from "./releases";
-import { settingsRoutes } from "./settings";
 import { permissionRoutes } from "./permissions";
 import { alertingRoutes } from "./alerting";
 import { metricsRoutes } from "./metrics";
-import { eventsRoutes, ingestionRoutes, replayRoutes } from "./events";
-import { otlpRoutes } from "./otlp";
 import {
   evaluationRoutes,
   experimentRoutes,
@@ -32,7 +29,6 @@ export const apiRoutes = new Elysia()
   .use(projectRoutes)
   .use(releaseRoutes)
   .use(segmentRoutes)
-  .use(settingsRoutes)
   .use(permissionRoutes)
   .use(alertingRoutes)
   .use(metricsRoutes)
@@ -41,10 +37,6 @@ export const apiRoutes = new Elysia()
   .use(sourceMapRoutes)
   .use(sourceMapTokenRoutes)
   .use(sourceMapUploadRoutes)
-  .use(eventsRoutes)
-  .use(replayRoutes)
-  .use(ingestionRoutes)
-  .use(otlpRoutes)
-  .use(evaluationRoutes)
   .use(flagsStreamRoutes)
-  .use(flagsV1Routes);
+  .use(flagsV1Routes)
+  .use(evaluationRoutes);

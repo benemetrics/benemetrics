@@ -1,7 +1,6 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { issueDAO } from "db/dao/issues";
-import { appDAO } from "db/dao/project";
 import {
   clickHouseIssueStats,
   clickHouseIssueUserCounts,
@@ -11,7 +10,6 @@ import { autoStepSeconds } from "../metrics";
 import { badRequest, notFound } from "../errors";
 import { parseIssueQuery, parseIssueSort, summarizeTerm } from "./query";
 import { narrowToScope, resolveIssueFilters } from "./resolve";
-import { resolveAdminId } from "../auth";
 import { scopedViewFor } from "../permissions/engine";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -19,17 +17,14 @@ const MAX_PAGE_SIZE = 100;
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
-  .resolve(resolveAdminId)
   .get(
     "/",
     async ({
       query: { query, sort, cursor, limit },
       request,
-      isAdmin,
-      adminScope,
     }) => {
       const groups = parseIssueQuery(query ?? "");
-      const view = await scopedViewFor({ request, isAdmin, adminScope });
+      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
       // A scoped identity gets an empty list for a name that does not
       // exist — the same answer as a name that exists but is out of
       // scope, so the list cannot be used to probe what exists.
@@ -40,10 +35,8 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
       const sortValue = parseIssueSort(sort);
       // `sort=users` orders on the distinct-user count, which the issues
       // table only knows after it is synced from the ClickHouse issue index.
-      if (sortValue === "users") {
-        const appIds = view
-          ? [...view.appIds]
-          : (await appDAO.listAll()).map((app) => app.id);
+      if (sortValue === "users" && view) {
+        const appIds = [...view.appIds];
         const counts = await clickHouseIssueUserCounts({ appIds });
         await issueDAO.syncUserCounts(counts, appIds);
       }
@@ -54,7 +47,7 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
         limit,
       });
       return {
-        data: page.data,
+        data: page,
         meta: {
           terms: groups.flat().map(summarizeTerm),
           sort: sortValue,
@@ -72,8 +65,8 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
   )
   .get(
     "/:id",
-    async ({ params: { id }, request, isAdmin, adminScope }) => {
-      const view = await scopedViewFor({ request, isAdmin, adminScope });
+    async ({ params: { id }, request }) => {
+      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
       const issue = await issueDAO.findByIdOrThrow(id);
       if (view && !view.appIds.has(issue.appId)) throw notFound("Issue", id);
       return issue;
@@ -82,9 +75,9 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
   )
   .get(
     "/:id/events",
-    async ({ params: { id }, query, request, isAdmin, adminScope }) => {
+    async ({ params: { id }, query, request }) => {
       const issue = await issueDAO.findByIdOrThrow(id);
-      const view = await scopedViewFor({ request, isAdmin, adminScope });
+      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
       if (view && !view.appIds.has(issue.appId)) throw notFound("Issue", id);
       const page = await listClickHouseIssueOccurrences({
         appId: issue.appId,
@@ -107,9 +100,9 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
   )
   .get(
     "/:id/stats",
-    async ({ params: { id }, query, request, isAdmin, adminScope }) => {
+    async ({ params: { id }, query, request }) => {
       const issue = await issueDAO.findByIdOrThrow(id);
-      const view = await scopedViewFor({ request, isAdmin, adminScope });
+      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
       if (view && !view.appIds.has(issue.appId)) throw notFound("Issue", id);
       const to = query.to ? new Date(query.to) : new Date();
       const from = query.from

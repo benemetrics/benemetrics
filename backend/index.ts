@@ -4,7 +4,6 @@ import { ApiError } from "./errors";
 import ui from "../frontend/index.html";
 import { apiRoutes } from "./routes";
 import { startAlertSweeper } from "./alerting/evaluation";
-import { startDeadLetterWorker } from "./alerting/dead-letters";
 import { initClickHouse } from "./clickhouse";
 import { assertStorageConfigured } from "./storage";
 import { cron } from "@elysiajs/cron";
@@ -12,7 +11,7 @@ import { generateAdminToken } from "./auth";
 import { startAuthCallout } from "./nats-auth-callout";
 import { nats } from "./nats";
 import { join } from "node:path";
-import { permissionGrantDAO } from "db/dao/permission-grants";
+import { permissionGrantDAO } from "db/dao/permissions/grants";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 
@@ -83,7 +82,6 @@ if (import.meta.main) {
       process.exit(1);
     }
     startAlertSweeper();
-    startDeadLetterWorker();
   });
 }
 

@@ -1,5 +1,5 @@
 import { serviceUnavailable, unauthorized } from "backend/errors";
-import { appDAO, type AppResolveRecord } from "db/dao/project";
+import { appDAO } from "db/dao/apps";
 import { validateAuth } from "../auth";
 import { readBodyCapped } from "../ratelimit/hygiene";
 import { publishEvent, publishMetricSamples } from "../nats";
@@ -11,6 +11,15 @@ import type { MetricSample } from "../protocol/metrics";
 // credential; older DSNs use the ingest key or project id as the path
 // segment. Unknown projects or keys are rejected: apps are only created
 // through the admin API, never auto-provisioned by ingestion.
+interface AppResolveRecord {
+  id: string;
+  number: number;
+  appNumber: number;
+  projectId: string;
+  publicKey: string;
+  ingestKey: string;
+}
+
 async function resolveApp(
   request: Request,
   projectId: string,

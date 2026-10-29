@@ -27,11 +27,8 @@ async function fullSnapshot(scope: FlagScope): Promise<unknown[]> {
       projectId: scope.projectId ?? null,
       appId: scope.appId ?? null,
     });
-    flags.push(...page.data);
-    cursor =
-      page.data.length === 100
-        ? page.data[page.data.length - 1]!.id
-        : undefined;
+    flags.push(...page);
+    cursor = page.length === 100 ? page[page.length - 1]!.id : undefined;
   } while (cursor);
   return flags;
 }

@@ -3,7 +3,7 @@ import {
   sourceMapTokens,
   tokenPublicFields,
   type SourceMapTokenInsert,
-} from "db/schema/source-map-tokens";
+} from "db/schema/source-maps";
 import { and, desc, eq, isNull, lt } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
 import { cursorLimit } from "../cursor";
@@ -53,7 +53,7 @@ export const sourceMapTokenDAO = {
 
   // Only the auth path looks a token up by hash; the hash itself never
   // needs to leave the database.
-  findByHash: (hash: (typeof sourceMapTokens)["tokenHash"]) =>
+  findByHash: (hash: string) =>
     db
       .select({
         id: sourceMapTokens.id,

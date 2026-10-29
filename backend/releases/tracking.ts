@@ -1,4 +1,4 @@
-import { appDAO } from "db/dao/project";
+import { appDAO } from "db/dao/apps";
 import { releaseDAO } from "db/dao/releases";
 import { extractRelease } from "../events/utils";
 import type { SentryEventMessage } from "../protocol/events";

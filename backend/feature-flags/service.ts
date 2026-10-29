@@ -5,8 +5,8 @@ import type {
   TargetingRule,
 } from "backend/protocol/feature-flags";
 import type { FeatureFlag } from "db/schema/feature-flags";
-import { experimentAssignmentDAO } from "db/dao/experiment-assignments";
-import { experimentMetricDAO } from "db/dao/experiment-metrics";
+import { experimentAssignmentDAO } from "db/dao/feature-flags/experiment-assignments";
+import { experimentMetricDAO } from "db/dao/feature-flags/experiment-metrics";
 import {
   buildRecommendation,
   buildVariantStats,

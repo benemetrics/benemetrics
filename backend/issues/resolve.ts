@@ -1,5 +1,6 @@
 import { notFound } from "backend/errors";
-import { appDAO, projectDAO } from "db/dao/project";
+import { projectDAO } from "db/dao/projects";
+import { appDAO } from "db/dao/apps";
 import {
   clickHouseIssueFingerprintsByLevel,
   clickHouseIssueFingerprintsByTag,
@@ -164,12 +165,11 @@ async function resolveProjectAppIds(
   unknownIsEmpty: boolean,
 ): Promise<string[]> {
   const project = await projectDAO.findById(value).catch(() => undefined);
-  const resolved = project ?? (await projectDAO.findBySlug(value));
-  if (!resolved) {
+  if (!project) {
     if (unknownIsEmpty) return [];
     throw notFound("Project", value);
   }
-  return (await appDAO.listRawByProject(resolved.id)).map((app) => app.id);
+  return (await appDAO.listByProject(project.id, { limit: 1000 })).map((app) => app.id);
 }
 
 // Resolves the parsed terms into the filter the DAO queries with. The
@@ -189,7 +189,7 @@ export async function resolveIssueFilter(
   // The apps a term may look at: the visible ones for a scoped identity,
   // every app otherwise.
   const visibleAppIds = async (): Promise<string[]> =>
-    options.visibleAppIds ?? (await appDAO.listAll()).map((app) => app.id);
+    options.visibleAppIds ?? (await appDAO.listByProject("", { limit: 10000 })).map((app) => app.id);
   const filter: IssueFilter = {};
 
   const add = <T>(list: T[] | undefined, ...values: T[]): T[] => [

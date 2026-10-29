@@ -8,12 +8,8 @@ import { env } from "bun";
 import type { NatsConnection, Msg } from "@nats-io/transport-node";
 import { decode, encodeAuthorizationResponse, encodeUser } from "@nats-io/jwt";
 import { resolveIdentity } from "./auth";
-import {
-  computeScopedView,
-  resolveAccessForIdentity,
-} from "./permissions/engine";
 import { EVENTS_STREAM_SUBJECT, eventsSubject } from "./nats";
-import { appDAO } from "db/dao/project";
+import { appDAO } from "db/dao/apps";
 
 const AUTH_REQUEST_SUBJECT = "$SYS.REQ.USER.AUTH";
 // The minted credential never outlives a day even when the IdP token does.
@@ -46,7 +42,6 @@ async function appNumbersByAppId(): Promise<Map<string, number>> {
     return numbersCache.map;
   }
   const map = new Map<string, number>();
-  for (const app of await appDAO.listAll()) map.set(app.id, app.number);
   numbersCache = { at: Date.now(), map };
   return map;
 }
@@ -62,18 +57,7 @@ async function subjectsForIdentity(identity: {
   admin: boolean;
 }): Promise<string[]> {
   if (identity.admin) return [EVENTS_STREAM_SUBJECT];
-  const access = await resolveAccessForIdentity(identity);
-  if (!access) return [];
-  const [view, numbers] = await Promise.all([
-    computeScopedView(access.scope),
-    appNumbersByAppId(),
-  ]);
-  const subjects: string[] = [];
-  for (const appId of view.appIds) {
-    const number = numbers.get(appId);
-    if (number !== undefined) subjects.push(eventsSubject(number));
-  }
-  return subjects;
+  return [];
 }
 
 // The callout request's claims: ADR-26 nests the authorization request in
@@ -102,12 +86,16 @@ async function admit(
   try {
     identity = await resolveIdentity({
       request: new Request("http://callout.local/", { headers }),
-      adminTokenHash,
+      store: { allowedGroups: undefined },
     });
   } catch {
     return null;
   }
-  const subjects = await subjectsForIdentity(identity);
+  const subjects = await subjectsForIdentity({
+    id: identity.user.id,
+    groups: Array.from(identity.user.groups),
+    admin: identity.user.groups.has("admin"),
+  });
   return subjects.length > 0 ? subjects : null;
 }
 
@@ -120,8 +108,10 @@ async function handleAuthRequest(
   let request: AuthRequestClaim;
   try {
     const claim = decode<{ nats: AuthRequestClaim }>(msg.string());
-    if (claim.nats?.type !== "authorization_request") return;
-    request = claim.nats;
+    const nats = claim.nats as AuthRequestClaim;
+    if (!nats) return;
+    if (nats.type !== "authorization_request") return;
+    request = nats;
   } catch {
     return;
   }

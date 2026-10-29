@@ -1,5 +1,5 @@
 import { unauthorized } from "backend/errors";
-import { appDAO } from "db/dao/project";
+import { appDAO } from "db/dao/apps";
 
 /**
  * The SDK-facing flag surfaces authenticate with the DSN public key, the

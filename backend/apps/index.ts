@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
-import { appDAO } from "db/dao/app";
+import { appDAO } from "db/dao/apps";
 import { resolveIdentity } from "../auth";
 
 // ── oidc surface: the app reads and deletes ────────────────────

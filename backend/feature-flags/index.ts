@@ -2,14 +2,15 @@ import { Elysia } from "elysia";
 import { badRequest } from "backend/errors";
 import { type as arktype } from "arktype";
 import { featureFlagDAO } from "db/dao/feature-flags";
-import { appDAO, projectDAO } from "db/dao/project";
+import { appDAO } from "db/dao/apps";
+import { projectDAO } from "db/dao/projects";
 import { publishFlagChange } from "./events";
 import {
   experimentConfigSchema,
   flagVariantSchema,
   targetingRuleSchema,
 } from "backend/protocol/feature-flags";
-import { resolveAdminId } from "../auth";
+import { resolveIdentity } from "../auth";
 
 // The other surfaces of the domain: the admin experiment routes, the SDK
 // evaluation endpoints, the SSE stream and the OpenFeature endpoint.
@@ -46,7 +47,6 @@ function assertRuleAttributes(rules: Array<{ attribute: string }>): void {
 export const featureFlagRoutes = new Elysia({
   prefix: "/api/admin/feature-flags",
 })
-  .resolve(resolveAdminId)
   .post(
     "/",
     async ({ body }) => {

@@ -1,5 +1,5 @@
 import { db } from "db";
-import { apps, type AppRecord, type AppInsert } from "db/schema/app";
+import { apps, type AppRecord, type AppInsert } from "db/schema/apps";
 import { releases } from "db/schema/releases";
 import { sourceMaps } from "db/schema/source-maps";
 import { sourceMapTokens } from "db/schema/source-map-tokens";
@@ -31,8 +31,6 @@ export const appDAO = {
       .then(([row]) => row),
 
   findByIngestKey: async (ingestKey: string) => {
-    const cached = cachedApp(`ingest:${ingestKey}`);
-    if (cached) return cached;
     const app = (
       await db
         .select(appResolveFields)
@@ -40,12 +38,10 @@ export const appDAO = {
         .where(eq(apps.ingestKey, ingestKey))
         .limit(1)
     )[0];
-    return app ? cacheApp(`ingest:${ingestKey}`, app) : undefined;
+    return app;
   },
 
   findByNumber: async (number: number) => {
-    const cached = cachedApp(`number:${number}`);
-    if (cached) return cached;
     const app = (
       await db
         .select(appResolveFields)
@@ -53,14 +49,12 @@ export const appDAO = {
         .where(eq(apps.number, number))
         .limit(1)
     )[0];
-    return app ? cacheApp(`number:${number}`, app) : undefined;
+    return app;
   },
 
   findByPublicKey: async (
     publicKey: string,
   ): Promise<AppResolveRecord | undefined> => {
-    const cached = cachedApp(`public:${publicKey}`);
-    if (cached) return cached;
     const app = (
       await db
         .select(appResolveFields)
@@ -68,7 +62,7 @@ export const appDAO = {
         .where(eq(apps.publicKey, publicKey))
         .limit(1)
     )[0];
-    return app ? cacheApp(`public:${publicKey}`, app) : undefined;
+    return app;
   },
 
   // The legacy DSN path carries the project id; the key picks the app.
@@ -76,11 +70,9 @@ export const appDAO = {
     projectId: string,
     publicKey: string,
   ): Promise<AppResolveRecord | undefined> => {
-    const cached = cachedApp(`project:${projectId}:${publicKey}`);
-    if (cached) return cached;
-    const apps = await appDAO.listRawByProject(projectId);
+    const apps = await appDAO.listByProject(projectId, { limit: 1000 });
     const app = apps.find((candidate) => candidate.publicKey === publicKey);
-    return app ? cacheApp(`project:${projectId}:${publicKey}`, app) : undefined;
+    return app;
   },
 
   findByIdOrThrow: async (id: string) => {

@@ -1,14 +1,12 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
-import { appDAO } from "db/dao/project";
+import { appDAO } from "db/dao/apps";
 import { releaseDAO } from "db/dao/releases";
 import { clickHouseReleaseIssueMetrics } from "../clickhouse";
 import { buildReleaseIssueMetrics } from "./metrics";
-import { resolveAdminId } from "../auth";
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const releaseRoutes = new Elysia({ prefix: "/api/admin/releases" })
-  .resolve(resolveAdminId)
   .post(
     "/",
     async ({ body }) => {
@@ -16,10 +14,6 @@ export const releaseRoutes = new Elysia({ prefix: "/api/admin/releases" })
       return releaseDAO.create({
         appId: body.appId,
         version: body.version,
-        ref: body.ref ?? null,
-        url: body.url ?? null,
-        owner: body.owner ?? null,
-        status: body.status ?? "draft",
       });
     },
     {
@@ -59,12 +53,7 @@ export const releaseRoutes = new Elysia({ prefix: "/api/admin/releases" })
     "/:id",
     async ({ params: { id }, body }) => {
       const current = await releaseDAO.findByIdOrThrow(id);
-      return releaseDAO.updateOrThrow(id, {
-        ref: body.ref ?? current.ref,
-        url: body.url ?? current.url,
-        owner: body.owner ?? current.owner,
-        status: body.status ?? current.status,
-      });
+      return releaseDAO.updateOrThrow(id, {});
     },
     {
       params: arktype({ id: "string.uuid" }),
@@ -90,9 +79,7 @@ export const releaseRoutes = new Elysia({ prefix: "/api/admin/releases" })
     "/:id/finalize",
     async ({ params: { id } }) => {
       await releaseDAO.findByIdOrThrow(id);
-      const finalized = await releaseDAO.updateOrThrow(id, {
-        status: "finalized",
-      });
+      const finalized = await releaseDAO.updateOrThrow(id, {});
       return finalized;
     },
     {
@@ -107,7 +94,9 @@ export const releaseRoutes = new Elysia({ prefix: "/api/admin/releases" })
 
       // The summary reads the ClickHouse issue index; the release is a
       // project-level concept, so every app of the project counts.
-      const apps = await appDAO.listRawByProject(app.projectId);
+      const apps = await appDAO.listByProject(app.projectId, {
+        limit: 1000,
+      });
       const rows = await clickHouseReleaseIssueMetrics({
         release: release.version,
         appIds: apps.map((entry) => entry.id),

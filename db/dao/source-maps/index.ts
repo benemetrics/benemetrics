@@ -53,7 +53,7 @@ export const sourceMapDAO = {
       .orderBy(desc(sourceMaps.id)),
 
   list: (
-    options: { appId?: (typeof apps)["id"] },
+    options: { appId?: string | null },
     page: { cursor?: string; limit?: number },
   ) =>
     db

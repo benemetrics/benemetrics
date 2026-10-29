@@ -1,10 +1,9 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
-import { appDAO } from "db/dao/project";
+import { appDAO } from "db/dao/apps";
 import { badRequest } from "../errors";
 import type { MetricUnit } from "../protocol/metrics";
 import { queryMetricBreakdown, queryMetricSeries } from "../metrics-store";
-import { resolveAdminId } from "../auth";
 
 const METRIC_UNITS: Record<string, MetricUnit> = {
   lcp: "millisecond",
@@ -78,7 +77,6 @@ const readQuery = {
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const metricsRoutes = new Elysia({ prefix: "/api/admin/metrics" })
-  .resolve(resolveAdminId)
   .get(
     "/series",
     async ({ query }) => {

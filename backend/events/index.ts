@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { ApiError, ErrorCode, badRequest, notFound } from "backend/errors";
-import { appDAO } from "db/dao/project";
+import { appDAO } from "db/dao/apps";
 import type { SentryEventMessage } from "../protocol/events";
 import { listStoredEvents, findStoredEventByIdOrThrow } from "../events-store";
 import {
@@ -21,7 +21,6 @@ import {
   wasRecentlyIngested,
 } from "./ingestion";
 import { offloadReplayItems } from "./offload";
-import { resolveAdminId } from "../auth";
 import { assertDeclaredSize, assertItemCount } from "../ratelimit/hygiene";
 import { rateLimitConfig } from "../ratelimit/config";
 import { scopedViewFor } from "../permissions/engine";
@@ -56,15 +55,14 @@ const URL_TTL_SECONDS = 900;
 
 // ── oidc surface: the event reads ──────────────────────────────
 export const eventsRoutes = new Elysia({ prefix: "events" })
-  .resolve(resolveAdminId)
   .get(
     "/",
-    async ({ query, request, isAdmin, adminScope }) => {
+    async ({ query, request }) => {
       // The filter belongs in the query: an unknown app yields an empty
       // list, not a lookup and a 404.
       let appIds: string[] | undefined;
       if (query.appId) appIds = [query.appId];
-      const view = await scopedViewFor({ request, isAdmin, adminScope });
+      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
       if (view) {
         const visible = [...view.appIds];
         appIds = appIds ? appIds.filter((id) => visible.includes(id)) : visible;
@@ -122,8 +120,8 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
   )
   .get(
     "/:eventId",
-    async ({ params: { eventId }, request, isAdmin, adminScope }) => {
-      const view = await scopedViewFor({ request, isAdmin, adminScope });
+    async ({ params: { eventId }, request }) => {
+      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
       const stored = await findStoredEventByIdOrThrow(eventId);
       if (view && stored.appId && !view.appIds.has(stored.appId)) {
         throw notFound("Event", eventId);
@@ -150,7 +148,6 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
 
 // ── oidc surface: the replay segments ─────────────────────────
 export const replayRoutes = new Elysia({ prefix: "/api/admin/events" })
-  .resolve(resolveAdminId)
   .get(
     "/:eventId/replay/:replayId",
     async ({ params: { eventId, replayId }, query }) => {

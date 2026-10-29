@@ -12,6 +12,7 @@ import { sql } from "drizzle-orm/sql";
 import { isoTimestamp } from "./timestamps";
 import { apps } from "./apps";
 import { projects } from "./project";
+import type { AlertChannelType, AlertIncidentStatus, AlertMetric, AlertTrigger } from "backend/protocol/alerting";
 
 // The scope: app_id set = the app scope; project_id set (and app_id
 // null) = the project scope; both null = the global scope. A narrower
@@ -41,9 +42,11 @@ export type AlertChannelInsert = typeof alertChannels.$inferInsert;
 export const channelPublicFields = {
   id: alertChannels.id,
   name: alertChannels.name,
-  type: alertChannels.type,
-  config: sql<unknown>`${alertChannels.config}::jsonb`,
+  type: sql<AlertChannelType>`${alertChannels.type}`,
+  config: sql<Record<string, unknown>>`${alertChannels.config}::jsonb`,
+  appId: sql<string | null>`null`,
   projectId: alertChannels.projectId,
+  createdAt: sql<string>`to_char(to_timestamp((substring(${alertChannels.id}::text from 1 for 8))::bit(32)::bigint), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`,
   updatedAt: alertChannels.updatedAt,
 };
 
@@ -110,10 +113,12 @@ export const alertRulePublicFields = {
   measurement: alertRules.measurement,
   folder: alertRules.folder,
   appId: alertRules.appId,
+  channelIds: sql<string[]>``,
   filters: alertRules.filters,
   message: alertRules.message,
   isEnabled: alertRules.isEnabled,
   lastTriggeredAt: alertRules.lastTriggeredAt,
+  createdAt: sql<string>`to_char(to_timestamp((substring(${alertRules.id}::text from 1 for 8))::bit(32)::bigint), 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`,
   updatedAt: alertRules.updatedAt,
 };
 
@@ -180,17 +185,18 @@ export const alertIncidentPublicFields = {
   id: alertIncidents.id,
   ruleId: alertIncidents.ruleId,
   appId: alertIncidents.appId,
-  trigger: alertIncidents.trigger,
-  metric: alertIncidents.metric,
+  trigger: sql<AlertTrigger>`${alertIncidents.trigger}`,
+  metric: sql<AlertMetric | null>`${alertIncidents.metric}`,
   value: alertIncidents.value,
   threshold: alertIncidents.threshold,
   issueFingerprint: alertIncidents.issueFingerprint,
-  status: alertIncidents.status,
+  status: sql<AlertIncidentStatus>`${alertIncidents.status}`,
   triggeredAt: alertIncidents.triggeredAt,
   resolvedAt: alertIncidents.resolvedAt,
   correlationKey: alertIncidents.correlationKey,
   parentId: alertIncidents.parentId,
   acknowledgedAt: alertIncidents.acknowledgedAt,
   acknowledgedBy: alertIncidents.acknowledgedBy,
+  assignee: sql<string | null>`null`,
 };
 

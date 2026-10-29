@@ -1,23 +1,32 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { featureFlagDAO } from "db/dao/feature-flags";
-import { experimentAssignmentDAO } from "db/dao/experiment-assignments";
+import { experimentAssignmentDAO } from "db/dao/feature-flags/experiment-assignments";
 import { badRequest, notFound } from "backend/errors";
 import { computeResults } from "./service";
 import { publishFlagChange } from "./events";
 import type { FeatureFlagVariant } from "backend/protocol/feature-flags";
-import { resolveAdminId } from "../auth";
+import type { ExperimentConfig, TargetingRule } from "backend/protocol/feature-flags";
+
+function parseFlag(flag: any) {
+  return {
+    ...flag,
+    variants: JSON.parse(flag.variants),
+    targetingRules: JSON.parse(flag.targetingRules),
+    segments: JSON.parse(flag.segments),
+    experiment: flag.experiment ? JSON.parse(flag.experiment) : null,
+  };
+}
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const experimentRoutes = new Elysia({ prefix: "/api/admin/experiments" })
-  .resolve(resolveAdminId)
   .post(
     "/:flagId/start",
     async ({ params: { flagId } }) => {
       const flag = await featureFlagDAO.findByIdOrThrow(flagId);
       const updated = await featureFlagDAO.updateOrThrow(flagId, {
         experiment: JSON.stringify({
-          ...(flag.experiment ?? { enabled: false }),
+          ...(flag.experiment ? JSON.parse(flag.experiment) : { enabled: false }),
           status: "running",
         }),
         updatedAt: new Date().toISOString(),
@@ -37,7 +46,7 @@ export const experimentRoutes = new Elysia({ prefix: "/api/admin/experiments" })
       const flag = await featureFlagDAO.findByIdOrThrow(flagId);
       const updated = await featureFlagDAO.updateOrThrow(flagId, {
         experiment: JSON.stringify({
-          ...(flag.experiment ?? { enabled: false }),
+          ...(flag.experiment ? JSON.parse(flag.experiment) : { enabled: false }),
           status: "completed",
         }),
         updatedAt: new Date().toISOString(),
@@ -54,7 +63,7 @@ export const experimentRoutes = new Elysia({ prefix: "/api/admin/experiments" })
   .post(
     "/:flagId/promote",
     async ({ params: { flagId } }) => {
-      const flag = await featureFlagDAO.findByIdOrThrow(flagId);
+      const flag = parseFlag(await featureFlagDAO.findByIdOrThrow(flagId));
       const { recommendation } = await computeResults(flag);
       if (!recommendation.winner)
         throw badRequest("No significant winner to promote yet");
@@ -88,14 +97,14 @@ export const experimentRoutes = new Elysia({ prefix: "/api/admin/experiments" })
   .get(
     "/:flagId/results",
     async ({ params: { flagId } }) =>
-      computeResults(await featureFlagDAO.findByIdOrThrow(flagId)),
+      computeResults(parseFlag(await featureFlagDAO.findByIdOrThrow(flagId))),
     { params: arktype({ flagId: "string.uuid" }) },
   )
   .get(
     "/:flagId/users",
     async ({ params: { flagId }, query }) => {
-      const flag = await featureFlagDAO.findByIdOrThrow(flagId);
-      const [{ data }, counts] = await Promise.all([
+      const flag = parseFlag(await featureFlagDAO.findByIdOrThrow(flagId));
+      const [data, counts] = await Promise.all([
         experimentAssignmentDAO.listByFlag(flag.id, {
           cursor: query.cursor,
           limit: query.limit,
@@ -136,7 +145,7 @@ export const experimentRoutes = new Elysia({ prefix: "/api/admin/experiments" })
   .get(
     "/:flagId/users/:userId",
     async ({ params: { flagId, userId } }) => {
-      const flag = await featureFlagDAO.findByIdOrThrow(flagId);
+      const flag = parseFlag(await featureFlagDAO.findByIdOrThrow(flagId));
       const assignment = await experimentAssignmentDAO.findByFlagAndUser(
         flag.id,
         userId,

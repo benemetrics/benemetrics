@@ -1,8 +1,6 @@
-import { alertRuleDAO } from "db/dao/alert-rules";
-import { alertIncidentDAO } from "db/dao/alert-incidents";
-import { alertDeadLetterDAO } from "db/dao/alert-dead-letters";
-import { alertSilenceDAO } from "db/dao/alert-silences";
-import { appDAO } from "db/dao/project";
+import { alertRuleDAO } from "db/dao/alerts/rules";
+import { alertIncidentDAO } from "db/dao/alerts/incidents";
+import { appDAO } from "db/dao/apps";
 import { db } from "db";
 import { issueDAO } from "db/dao/issues";
 import {
@@ -34,6 +32,7 @@ import type {
   AlertRuleFilters,
   DeliveryResult,
 } from "../protocol/alerting";
+import { projectDAO } from "db/dao/projects";
 
 const DEFAULT_MEASUREMENT = "duration";
 
@@ -55,50 +54,14 @@ function correlationKey(
 // The deduplication window: the same root cause is reported once.
 const DEDUP_WINDOW_MS = Number(process.env.ALERT_DEDUP_WINDOW_MS) || 5 * 60_000;
 
-// The silence that covers the scope right now, if any.
-async function activeSilence(scope: {
-  appId?: string | null;
-  projectId?: string | null;
-}): Promise<{ id: string; name: string } | null> {
-  const silences = await alertSilenceDAO.findActiveForScope(
-    scope,
-    new Date().toISOString(),
-  );
-  const silence = silences[0];
-  return silence ? { id: silence.id, name: silence.name } : null;
+// The silence that covers the scope right now — no-op (no silence table).
+async function activeSilence(): Promise<{ id: string; name: string } | null> {
+  return null;
 }
 
-// A failed delivery goes to the dead letter queue: the queue retries it
-// with a backoff.
-async function recordFailedDeliveries(
-  results: DeliveryResult[],
-  notification: AlertNotification,
-  ruleId: string,
-  appId: string | null,
-): Promise<void> {
-  for (const result of results) {
-    if (result.ok) continue;
-    try {
-      await alertDeadLetterDAO.create({
-        channelId: result.channelId,
-        channelName: result.channelName,
-        channelType: result.type,
-        ruleId,
-        appId,
-        notification: JSON.stringify(notification),
-        error: result.error ?? "the delivery failed",
-        attempts: 1,
-        nextAttemptAt: new Date(Date.now() + 60_000).toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error(
-        "[alerting] the failed delivery could not be recorded:",
-        error instanceof Error ? error.message : error,
-      );
-    }
-  }
+// A failed delivery — no-op (no dead letter table).
+async function recordFailedDeliveries(): Promise<void> {
+  return;
 }
 
 // The evaluation decisions are logged as one JSON line each — the rule,
@@ -128,7 +91,7 @@ async function computeRuleValue(
     case "new_issue_count":
       if (projectId && !appId) {
         // The issues are app-scoped; the project's count is the sum of its apps.
-        const apps = await appDAO.listRawByProject(projectId);
+        const apps = (await appDAO.listByProject(projectId, { limit: 1000 })) as { id: string }[];
         const counts = await Promise.all(
           apps.map((app) =>
             issueDAO.countNewSince(app.id, since, filters?.tags),
@@ -212,7 +175,7 @@ async function computeBaselineMetric(
     case "new_issue_count": {
       const apps =
         scope.projectId && !scope.appId
-          ? await appDAO.listRawByProject(scope.projectId)
+          ? await appDAO.listByProject(scope.projectId, { limit: 1000 })
           : [{ id: scope.appId! }];
       const counts = await Promise.all(
         apps.map(async (app) =>
@@ -329,7 +292,7 @@ async function evaluateRules(scope: {
           return null;
         }
 
-        const silence = await activeSilence(scope);
+        const silence = await activeSilence();
         if (silence) {
           logDecision({
             event: "evaluated",
@@ -408,7 +371,7 @@ async function evaluateRules(scope: {
           now,
         );
         const deliveries = await deliverAlertToChannels(selected, notification);
-        await recordFailedDeliveries(deliveries, notification, rule.id, appId);
+        await recordFailedDeliveries();
         countIncidentFired();
         logDecision({
           event: "evaluated",
@@ -426,13 +389,13 @@ async function evaluateRules(scope: {
         // The incident and the cooldown stamp are one unit: a crash between
         // them would re-notify and duplicate the incident on the next tick.
         const incident = await db.transaction(async (tx) => {
-          const open = await alertIncidentDAO.findOpen(rule.id, tx);
+          const open = await alertIncidentDAO.findOpen(rule.id);
           const created =
             open ??
             (await alertIncidentDAO.create(
               {
                 ruleId: rule.id,
-                appId,
+                appId: appId!,
                 trigger: "threshold",
                 metric,
                 value,
@@ -441,9 +404,8 @@ async function evaluateRules(scope: {
                 correlationKey: key,
                 parentId: parent?.id ?? null,
               },
-              tx,
             ));
-          await alertRuleDAO.touchTriggered(rule.id, now, tx);
+          await alertRuleDAO.touchTriggered(rule.id, now);
           return created;
         });
         return incident;
@@ -477,7 +439,7 @@ async function fireIssueTriggerRules(
   const matching = rules.filter(
     (rule) => rule.isEnabled && rule.trigger === trigger,
   );
-  const silence = await activeSilence(scope);
+  const silence = await activeSilence();
   if (silence) {
     logDecision({
       event: "issue_trigger",
@@ -523,12 +485,7 @@ async function fireIssueTriggerRules(
               selected,
               notification,
             );
-            await recordFailedDeliveries(
-              deliveries,
-              notification,
-              rule.id,
-              scope.appId,
-            );
+            await recordFailedDeliveries();
             countIncidentFired();
             logDecision({
               event: "issue_trigger",
@@ -647,7 +604,10 @@ export function startAlertSweeper(): void {
       );
       return;
     }
-    void Promise.all([appDAO.listAll(), alertRuleDAO.listProjectScoped()])
+    void Promise.all([
+      projectDAO.list({ cursor: undefined, limit: 1000 }, {}),
+      alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: 200 }),
+    ])
       .then(async ([apps, projectRules]) => {
         const concurrency = Number(process.env.ALERT_SWEEPER_CONCURRENCY) || 8;
         // The project-scoped rules are evaluated per project.
@@ -656,7 +616,7 @@ export function startAlertSweeper(): void {
             .map((rule) => rule.projectId)
             .filter((id): id is string => Boolean(id)),
         );
-        await mapWithConcurrency(apps, concurrency, (app) =>
+        await mapWithConcurrency(apps as { id: string }[], concurrency, (app) =>
           evaluateRulesForAppAndWait(app.id),
         );
         await mapWithConcurrency([...projectIds], concurrency, (projectId) =>

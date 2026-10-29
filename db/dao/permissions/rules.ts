@@ -35,7 +35,7 @@ function toRecord(row: {
   name: string;
   projectFixes: string;
   appFixes: string;
-  isEnabled: number;
+  isEnabled: boolean;
   updatedAt: string;
 }): PermissionRuleRecord {
   return {
@@ -43,7 +43,7 @@ function toRecord(row: {
     name: row.name,
     projectIds: parseList(row.projectFixes),
     appPrefixes: parseList(row.appFixes),
-    isEnabled: row.isEnabled === 1,
+    isEnabled: row.isEnabled,
     updatedAt: row.updatedAt,
   };
 }

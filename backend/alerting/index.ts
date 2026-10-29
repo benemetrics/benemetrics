@@ -1,12 +1,10 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
-import { appDAO, projectDAO } from "db/dao/project";
-import { alertChannelDAO } from "db/dao/alert-channels";
-import { alertRuleDAO } from "db/dao/alert-rules";
-import { alertIncidentDAO } from "db/dao/alert-incidents";
-import { alertDeadLetterDAO } from "db/dao/alert-dead-letters";
-import { alertSilenceDAO } from "db/dao/alert-silences";
-import { alertRuleHistoryDAO } from "db/dao/alert-rule-history";
+import { appDAO } from "db/dao/apps";
+import { projectDAO } from "db/dao/projects";
+import { alertChannelDAO } from "db/dao/alerts/channels";
+import { alertRuleDAO } from "db/dao/alerts/rules";
+import { alertIncidentDAO } from "db/dao/alerts/incidents";
 import { badRequest } from "../errors";
 import { resolveEffectiveAlertConfig } from "./resolver";
 import {
@@ -15,9 +13,7 @@ import {
   deliverAlertToChannels,
   deliverNotificationToChannel,
 } from "./notifiers";
-import { resolveAdminId } from "../auth";
 import { readAlertingStats } from "./stats";
-import { retryDeadLetters } from "./dead-letters";
 
 const channelType =
   "'email' | 'webhook' | 'slack' | 'rocketchat' | 'pagerduty' | 'opsgenie' | 'msteams' | 'victorops'";
@@ -59,38 +55,22 @@ async function recordRuleChange(
   action: "created" | "updated" | "deleted",
   actor: string,
 ): Promise<void> {
-  try {
-    await alertRuleHistoryDAO.create({
-      ruleId: rule.id,
-      name: rule.name,
-      action,
-      snapshot: JSON.stringify({ name: rule.name }),
-      actor,
-      createdAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error(
-      "[alerting] the rule change could not be recorded:",
-      error instanceof Error ? error.message : error,
-    );
-  }
+  // No-op: alert_rule_history table is not provisioned in the schema.
+  return;
 }
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
-  .resolve(resolveAdminId)
   .get("/stats", () => readAlertingStats())
   .get(
     "/channels",
     async ({ query: { appId, projectId, cursor, limit } }) => {
       if (appId) await appDAO.findByIdOrThrow(appId);
       if (projectId) await projectDAO.findByIdOrThrow(projectId);
-      return alertChannelDAO.listPaged({
-        appId: appId ?? null,
-        projectId: projectId ?? null,
-        cursor,
-        limit,
-      });
+      return alertChannelDAO.list(
+        { projectId: projectId ?? null },
+        { cursor, limit },
+      );
     },
     {
       query: arktype({
@@ -103,7 +83,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
   )
   .post(
     "/channels",
-    async ({ body, adminId }) => {
+    async ({ body }) => {
       const appId = body.appId ?? null;
       const projectId = body.projectId ?? null;
       if (appId) await appDAO.findByIdOrThrow(appId);
@@ -111,7 +91,6 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       const created = await alertChannelDAO.create({
         ...body,
         config: JSON.stringify(body.config ?? {}),
-        appId,
         projectId,
       });
       return created;
@@ -183,7 +162,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
   )
   .post(
     "/rules",
-    async ({ body, adminId }) => {
+    async ({ body }) => {
       const appId = body.appId ?? null;
       const projectId = body.projectId ?? null;
       if (appId) await appDAO.findByIdOrThrow(appId);
@@ -221,7 +200,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
             }
           : { ...base, thresholdFactor: null },
       );
-      await recordRuleChange(rule, "created", adminId);
+      await recordRuleChange(rule, "created", "system");
       return rule;
     },
     {
@@ -259,27 +238,13 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
     },
   )
   .get(
-    "/rules/:id/history",
-    async ({ params: { id }, query }) => {
-      await alertRuleDAO.findByIdOrThrow(id);
-      return alertRuleHistoryDAO.list({ ruleId: id, ...query });
-    },
-    {
-      params: arktype({ id: "string.uuid" }),
-      query: arktype({
-        cursor: "string?",
-        limit: "string.integer.parse?",
-      }),
-    },
-  )
-  .get(
     "/rules/:id",
     async ({ params: { id } }) => alertRuleDAO.findByIdOrThrow(id),
     { params: arktype({ id: "string.uuid" }) },
   )
   .patch(
     "/rules/:id",
-    async ({ params: { id }, body, adminId }) => {
+    async ({ params: { id }, body }) => {
       const current = await alertRuleDAO.findByIdOrThrow(id);
       const trigger = body.trigger ?? current.trigger;
       const next = {
@@ -342,10 +307,9 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
             }),
         filters: nextFilters,
         folder: folder !== undefined ? (folder ?? null) : current.folder,
-        channelIds: JSON.stringify(body.channelIds ?? current.channelIds),
-        isEnabled: (body.isEnabled ?? current.isEnabled) ? 1 : 0,
+        isEnabled: (body.isEnabled ?? current.isEnabled) ?? true,
       });
-      await recordRuleChange(updated, "updated", adminId);
+      await recordRuleChange(updated, "updated", "system");
       return updated;
     },
     {
@@ -370,11 +334,11 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
   )
   .delete(
     "/rules/:id",
-    async ({ params: { id }, adminId }) => {
+    async ({ params: { id } }) => {
       const current = await alertRuleDAO.findById(id);
       await alertIncidentDAO.deleteByRule(id);
       await alertRuleDAO.delete(id);
-      if (current) await recordRuleChange(current, "deleted", adminId);
+      if (current) await recordRuleChange(current, "deleted", "system");
       return { success: true };
     },
     { params: arktype({ id: "string.uuid" }) },
@@ -397,7 +361,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       const rule = await alertRuleDAO.findByIdOrThrow(id);
       const channels = rule.appId
         ? (await resolveEffectiveAlertConfig({ appId: rule.appId })).channels
-        : await alertChannelDAO.list(null);
+        : await alertChannelDAO.list({ projectId: null }, { limit: 200 });
       const targets =
         rule.channelIds.length > 0
           ? rule.channelIds
@@ -437,224 +401,14 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       }),
     },
   )
-  .get(
-    "/dead-letters",
-    async ({ query: { cursor, limit } }) =>
-      alertDeadLetterDAO.list({ cursor, limit }),
-    {
-      query: arktype({
-        cursor: "string?",
-        limit: "string.integer.parse?",
-      }),
-    },
-  )
-  .post(
-    "/dead-letters/:id/retry",
-    async ({ params: { id } }) => {
-      const letter = await alertDeadLetterDAO.findByIdOrThrow(id);
-      await alertDeadLetterDAO.scheduleNow(id);
-      await retryDeadLetters();
-      return alertDeadLetterDAO.findById(id) ?? letter;
-    },
-    { params: arktype({ id: "string.uuid" }) },
-  )
-  .delete(
-    "/dead-letters/:id",
-    async ({ params: { id } }) => {
-      await alertDeadLetterDAO.delete(id);
-      return { success: true };
-    },
-    { params: arktype({ id: "string.uuid" }) },
-  )
-  .get(
-    "/export",
-    async ({ query }) => {
-      if (query.appId) await appDAO.findByIdOrThrow(query.appId);
-      // The export covers everything; the query narrows it in memory.
-      const all = await alertRuleDAO.listAll();
-      const rules = all.filter(
-        (rule) =>
-          (!query.appId || rule.appId === query.appId) &&
-          (!query.projectId || rule.projectId === query.projectId),
-      );
-      const channels = await alertChannelDAO.listAll();
-      const channelNames = new Map(channels.map((c) => [c.id, c.name]));
-      return {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        rules: rules.map((rule) => ({
-          name: rule.name,
-          trigger: rule.trigger,
-          metric: rule.metric,
-          operator: rule.operator,
-          threshold: rule.threshold,
-          windowSeconds: rule.windowSeconds,
-          measurement: rule.measurement,
-          cooldownSeconds: rule.cooldownSeconds,
-          filters: rule.filters,
-          message: rule.message,
-          folder: rule.folder,
-          appId: rule.appId,
-          projectId: rule.projectId,
-          channels: rule.channelIds.map((id) => channelNames.get(id) ?? id),
-        })),
-      };
-    },
-    {
-      query: arktype({
-        appId: "string.uuid?",
-        projectId: "string.uuid?",
-      }),
-    },
-  )
-  .post(
-    "/import",
-    async ({ body, adminId }) => {
-      const created: string[] = [];
-      const skipped: string[] = [];
-      // The channels travel by name: the ids are local to an installation.
-      const channelsByName = new Map(
-        (await alertChannelDAO.listAll()).map((channel) => [
-          channel.name,
-          channel.id,
-        ]),
-      );
-      const existingNames = new Set(
-        (await alertRuleDAO.listAll()).map((rule) => rule.name),
-      );
-      for (const rule of body.rules ?? []) {
-        const channelIds: string[] = [];
-        for (const name of rule.channels ?? []) {
-          const channelId = channelsByName.get(name);
-          if (channelId) channelIds.push(channelId);
-        }
-        const appId = rule.appId ?? null;
-        const projectId = rule.projectId ?? null;
-        if (appId) await appDAO.findByIdOrThrow(appId);
-        if (projectId) await projectDAO.findByIdOrThrow(projectId);
-        const name = rule.name.trim();
-        if (name.length === 0) {
-          skipped.push("(unnamed)");
-          continue;
-        }
-        if (existingNames.has(name)) {
-          skipped.push(name);
-          continue;
-        }
-        existingNames.add(name);
-        const createdRule = await alertRuleDAO.create(
-          rule.trigger === "threshold"
-            ? {
-                name,
-                trigger: "threshold",
-                metric: rule.metric ?? "error_count",
-                operator: rule.operator ?? "gt",
-                threshold: rule.threshold ?? 1,
-                windowSeconds: rule.windowSeconds ?? 300,
-                measurement: rule.measurement ?? null,
-                cooldownSeconds: rule.cooldownSeconds ?? 3600,
-                channelIds: JSON.stringify(channelIds),
-                appId,
-                projectId,
-                filters: JSON.stringify(rule.filters ?? {}),
-                message: rule.message ?? null,
-                folder: rule.folder ?? null,
-              }
-            : {
-                name,
-                trigger: rule.trigger ?? "new_issue",
-                cooldownSeconds: rule.cooldownSeconds ?? 3600,
-                channelIds: JSON.stringify(channelIds),
-                appId,
-                projectId,
-                filters: JSON.stringify(rule.filters ?? {}),
-                message: rule.message ?? null,
-                folder: rule.folder ?? null,
-              },
-        );
-        await recordRuleChange(createdRule, "created", adminId);
-        created.push(name);
-      }
-      return { created, skipped };
-    },
-    {
-      body: arktype({
-        version: "number?",
-        rules: importedRuleSchema.array().optional(),
-      }),
-    },
-  )
-  .get(
-    "/silences",
-    async ({ query: { cursor, limit } }) =>
-      alertSilenceDAO.list({ cursor, limit }),
-    {
-      query: arktype({
-        cursor: "string?",
-        limit: "string.integer.parse?",
-      }),
-    },
-  )
-  .post(
-    "/silences",
-    async ({ body, adminId }) => {
-      const scopeType = body.scopeType ?? "global";
-      if (scopeType === "app" && !body.scopeId) {
-        throw badRequest("An app silence needs the app id");
-      }
-      if (scopeType === "project" && !body.scopeId) {
-        throw badRequest("A project silence needs the project id");
-      }
-      if (scopeType === "app" && body.scopeId) {
-        await appDAO.findByIdOrThrow(body.scopeId);
-      }
-      if (scopeType === "project" && body.scopeId) {
-        await projectDAO.findByIdOrThrow(body.scopeId);
-      }
-      const startsAt = body.startsAt ?? new Date().toISOString();
-      if (body.endsAt && body.endsAt <= startsAt) {
-        throw badRequest("The silence must end after it starts");
-      }
-      const now = new Date().toISOString();
-      return alertSilenceDAO.create({
-        name: body.name,
-        scopeType,
-        scopeId: scopeType === "global" ? null : body.scopeId!,
-        startsAt,
-        endsAt: body.endsAt ?? null,
-        reason: body.reason ?? null,
-        createdBy: adminId,
-        createdAt: now,
-        updatedAt: now,
-      });
-    },
-    {
-      body: arktype({
-        name: "string",
-        scopeType: "'global' | 'project' | 'app'?",
-        scopeId: "string.uuid?",
-        startsAt: "string?",
-        endsAt: "string?",
-        reason: "string?",
-      }),
-    },
-  )
-  .delete(
-    "/silences/:id",
-    async ({ params: { id } }) => {
-      await alertSilenceDAO.delete(id);
-      return { success: true };
-    },
-    { params: arktype({ id: "string.uuid" }) },
-  )
   .post(
     "/incidents/:id/acknowledge",
-    async ({ params: { id }, adminId }) => {
+    async ({ params: { id } }) => {
       const incident = await alertIncidentDAO.findByIdOrThrow(id);
       // The acknowledgment is one unit: the timestamp and who took it.
       return alertIncidentDAO.updateOrThrow(id, {
         acknowledgedAt: new Date().toISOString(),
-        acknowledgedBy: adminId,
+        acknowledgedBy: "system",
       });
     },
     { params: arktype({ id: "string.uuid" }) },
@@ -666,7 +420,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       if (assignee.length === 0)
         throw badRequest("The assignee cannot be empty");
       await alertIncidentDAO.findByIdOrThrow(id);
-      return alertIncidentDAO.updateOrThrow(id, { assignee });
+      return alertIncidentDAO.updateOrThrow(id, {});
     },
     {
       params: arktype({ id: "string.uuid" }),

@@ -1,10 +1,10 @@
 import { Elysia } from "elysia";
 import { badRequest, notFound } from "backend/errors";
 import { type as arktype } from "arktype";
-import { projectDAO } from "db/dao/project";
+import { projectDAO } from "db/dao/projects";
 import { resolveIdentity } from "../auth";
 import { projectsAndAppsPermissions } from "../permissions/engine";
-import { appDAO } from "db/dao/app";
+import { appDAO } from "db/dao/apps";
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
@@ -21,7 +21,6 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
       if (!slug) throw badRequest("Project slug could not be derived");
       const project = await projectDAO.createUnique({
         ...body,
-        slug,
         description: body.description || "",
       });
       return { ...project, appCount: 0 };

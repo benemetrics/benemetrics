@@ -1,6 +1,5 @@
 import { env } from "bun";
-import { sourceMapTokenDAO, hashUploadToken } from "db/dao/source-map-tokens";
-import type { SourceMapTokenAuthRecord } from "db/dao/source-map-tokens";
+import { sourceMapTokenDAO, generateUploadToken } from "db/dao/source-maps/tokens";
 import { unauthorized } from "backend/errors";
 import * as jose from "jose";
 import * as client from "openid-client";
@@ -17,7 +16,13 @@ export interface SentryAuthResult {
 export interface UploadAuthResult {
   valid: boolean;
   error?: string;
-  token?: SourceMapTokenAuthRecord;
+  token?: {
+    id: string;
+    projectId: string;
+    appId: string;
+    expiresAt: string | null;
+    revokedAt: string | null;
+  };
 }
 
 const allowInsecure = env.OIDC_ALLOW_INSECURE_HTTP === "true";
@@ -130,7 +135,9 @@ export async function validateUploadAuth(
     request.headers.get("X-Upload-Token");
 
   if (!raw) return { valid: false, error: "Missing upload token" };
-  const token = await sourceMapTokenDAO.findByHash(hashUploadToken(raw));
+  const token = await sourceMapTokenDAO.findByHash(
+    new Bun.CryptoHasher("sha256").update(raw).digest("hex"),
+  );
   if (!token) return { valid: false, error: "Invalid upload token" };
   if (token.revokedAt) return { valid: false, error: "Revoked upload token" };
   if (token.expiresAt && token.expiresAt <= new Date().toISOString())

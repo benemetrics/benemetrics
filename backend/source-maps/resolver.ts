@@ -1,4 +1,11 @@
-import { sourceMapDAO, type SourceMapContent } from "db/dao/source-maps";
+import { sourceMapDAO } from "db/dao/source-maps";
+
+interface SourceMapContent {
+  id: string;
+  createdAt?: string;
+  mapJson: string;
+  filename: string;
+}
 
 interface Mapping {
   generatedLine: number;
@@ -158,7 +165,7 @@ function matchRank(mapFilename: string, filename: string): number {
 }
 
 interface Versioned<T> {
-  createdAt: string;
+  createdAt?: string;
   value: T;
 }
 

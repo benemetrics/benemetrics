@@ -9,9 +9,9 @@ import type {
 } from "backend/protocol/feature-flags";
 import { featureFlagDAO } from "db/dao/feature-flags";
 import { requireDsnKey, scopeOf } from "./dsn";
-import { segmentDAO } from "db/dao/segments";
-import { experimentAssignmentDAO } from "db/dao/experiment-assignments";
-import { experimentMetricDAO } from "db/dao/experiment-metrics";
+import { segmentDAO } from "db/dao/feature-flags/segments";
+import { experimentAssignmentDAO } from "db/dao/feature-flags/experiment-assignments";
+import { experimentMetricDAO } from "db/dao/feature-flags/experiment-metrics";
 import { db } from "db";
 import { type ParsedFeatureFlag } from "./service";
 import { publishFlagChange } from "./events";
@@ -331,22 +331,18 @@ export const evaluationRoutes = new Elysia({ prefix: "api/sentry/flags" })
       // The metric row and the auto-pause are one unit: a crash between
       // them would leave a breaching metric with the flag still active.
       const paused = await db.transaction(async (tx) => {
-        await experimentMetricDAO.record(
-          {
-            flagId: flag.id,
-            variantKey: assignment.variantKey,
-            userId: body.userId,
-            metricName: body.metric,
-            value,
-          },
-          tx,
-        );
+        await experimentMetricDAO.record({
+          flagId: flag.id,
+          variantKey: assignment.variantKey,
+          userId: body.userId,
+          metricName: body.metric,
+          value,
+        });
         if (!pause) return null;
-        return featureFlagDAO.updateOrThrow(
-          flag.id,
-          { status: "paused", updatedAt: new Date().toISOString() },
-          tx,
-        );
+        return featureFlagDAO.updateOrThrow(flag.id, {
+          status: "paused",
+          updatedAt: new Date().toISOString(),
+        });
       });
       if (paused) {
         await publishFlagChange({

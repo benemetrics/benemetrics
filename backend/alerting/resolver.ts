@@ -1,6 +1,6 @@
-import { appDAO } from "db/dao/project";
-import { alertChannelDAO } from "db/dao/alert-channels";
-import { alertRuleDAO } from "db/dao/alert-rules";
+import { appDAO } from "db/dao/apps";
+import { alertChannelDAO } from "db/dao/alerts/channels";
+import { alertRuleDAO } from "db/dao/alerts/rules";
 import type { AlertChannel, AlertRule } from "../protocol/alerting";
 
 export interface EffectiveAlertConfig {
@@ -30,12 +30,12 @@ export async function resolveEffectiveAlertConfig(scope: {
     projectRules,
     appRules,
   ] = await Promise.all([
-    alertChannelDAO.list(null),
-    projectId ? alertChannelDAO.list({ projectId }) : Promise.resolve([]),
-    appId ? alertChannelDAO.list({ appId }) : Promise.resolve([]),
-    alertRuleDAO.list(null),
-    projectId ? alertRuleDAO.list({ projectId }) : Promise.resolve([]),
-    appId ? alertRuleDAO.list({ appId }) : Promise.resolve([]),
+    alertChannelDAO.list({ projectId: null }, { limit: 200 }),
+    projectId ? alertChannelDAO.list({ projectId }, { limit: 200 }) : Promise.resolve([]),
+    appId ? alertChannelDAO.list({ projectId: null }, { limit: 200 }) : Promise.resolve([]),
+    alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: 200 }),
+    projectId ? alertRuleDAO.listPaged({ appId: null, projectId, cursor: undefined, limit: 200 }) : Promise.resolve([]),
+    appId ? alertRuleDAO.listPaged({ appId, projectId: null, cursor: undefined, limit: 200 }) : Promise.resolve([]),
   ]);
 
   return {
@@ -59,13 +59,13 @@ export async function resolveScopedRules(scope: {
   const { projectId = null, appId = null } = scope;
   if (appId) {
     const [global, app] = await Promise.all([
-      alertRuleDAO.list(null),
-      alertRuleDAO.list({ appId }),
+      alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: 200 }),
+      alertRuleDAO.listPaged({ appId, projectId: null, cursor: undefined, limit: 200 }),
     ]);
     return mergeByName(global, app);
   }
-  if (projectId) return alertRuleDAO.list({ projectId });
-  return alertRuleDAO.list(null);
+  if (projectId) return alertRuleDAO.listPaged({ appId: null, projectId, cursor: undefined, limit: 200 });
+  return alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: 200 });
 }
 
 function mergeByName<T extends { name: string }>(

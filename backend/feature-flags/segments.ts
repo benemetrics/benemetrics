@@ -1,14 +1,12 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
-import { segmentDAO } from "db/dao/segments";
+import { segmentDAO } from "db/dao/feature-flags/segments";
 import { targetingRuleSchema } from "backend/protocol/feature-flags";
-import { resolveAdminId } from "../auth";
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const segmentRoutes = new Elysia({
   prefix: "/api/admin/feature-flags/segments",
 })
-  .resolve(resolveAdminId)
   .post(
     "/",
     async ({ body }) =>

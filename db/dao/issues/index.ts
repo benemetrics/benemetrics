@@ -1,5 +1,5 @@
 import { db } from "db";
-import { issuePublicFields, issues, type IssueInsert } from "db/schema/issues";
+import { issuePublicFields, issues, type IssueRow, type IssueInsert } from "db/schema/issues";
 import { apps } from "db/schema/project";
 import {
   and,

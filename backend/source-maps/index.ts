@@ -7,12 +7,12 @@ import {
   payloadTooLarge,
   unauthorized,
 } from "backend/errors";
-import { resolveAdminId, resolveIdentity, validateUploadAuth } from "../auth";
-import { projectDAO } from "db/dao/project";
+import { resolveIdentity, validateUploadAuth } from "../auth";
+import { projectDAO } from "db/dao/projects";
 import { releaseDAO } from "db/dao/releases";
 import { sourceMapDAO } from "db/dao/source-maps";
-import { sourceMapTokenDAO } from "db/dao/source-map-tokens";
-import { appDAO } from "db/dao/project";
+import { sourceMapTokenDAO } from "db/dao/source-maps/tokens";
+import { appDAO } from "db/dao/apps";
 import {
   findSourceMapFor,
   invalidateSourceMapCache,
@@ -32,9 +32,7 @@ export const sourceMapUploadRoutes = new Elysia({
     if (!auth.valid || !auth.token) {
       throw unauthorized("Unauthorized - Invalid upload token");
     }
-    const projectSlug = String((params as { project?: string }).project ?? "");
-    const project = await projectDAO.findBySlug(projectSlug);
-    if (!project) throw notFound("Project", projectSlug);
+    const project = await projectDAO.findByIdOrThrow(auth.token.projectId);
     if (project.id !== auth.token.projectId) {
       throw forbidden("Upload token is not valid for this project");
     }
@@ -61,18 +59,10 @@ export const sourceMapUploadRoutes = new Elysia({
       const release = await releaseDAO.findOrCreate({
         appId: uploadToken.appId,
         version,
-        ref: body.ref ?? null,
-        url: body.url ?? null,
-        owner: body.owner ?? null,
-        status: "draft",
       });
       return {
         version: release.version,
-        ref: release.ref,
-        url: release.url,
-        owner: release.owner,
-        status: release.status,
-        dateCreated: release.createdAt,
+        dateCreated: release.updatedAt,
         projectId: uploadProject.id,
       };
     },
@@ -92,10 +82,8 @@ export const sourceMapUploadRoutes = new Elysia({
         releaseDAO.findOrCreate({
           appId: uploadToken.appId,
           version,
-          status: "draft",
         }),
         sourceMapDAO.create({
-          projectId: uploadProject.id,
           appId: uploadToken.appId,
           release: version,
           dist: upload.dist,
@@ -103,9 +91,9 @@ export const sourceMapUploadRoutes = new Elysia({
           mapJson: upload.mapJson,
         }),
       ]);
-      const { createdAt, ...artifact } = artifactRow;
+      const { updatedAt, ...artifact } = artifactRow;
       invalidateSourceMapCache(artifactRow.id);
-      return status(201, { ...artifact, dateCreated: createdAt });
+      return status(201, { ...artifact, dateCreated: updatedAt });
     },
     {
       params: arktype({
@@ -118,17 +106,14 @@ export const sourceMapUploadRoutes = new Elysia({
   .get(
     "/:org/:project/releases/:version/files/",
     async ({ params: { version }, query, uploadToken, uploadProject }) => {
-      const { data } = await sourceMapDAO.list({
-        projectId: uploadProject.id,
-        appId: uploadToken.appId,
-        release: version,
-        cursor: query.cursor,
-        limit: query.limit,
-      });
+      const data = await sourceMapDAO.list(
+        { appId: uploadToken.appId as string },
+        { cursor: query.cursor, limit: query.limit },
+      );
       return {
-        data: data.map(({ createdAt, ...artifact }) => ({
+        data: data.map(({ updatedAt, ...artifact }) => ({
           ...artifact,
-          dateCreated: createdAt,
+          dateCreated: updatedAt,
         })),
       };
     },
@@ -170,16 +155,9 @@ export const sourceMapUploadRoutes = new Elysia({
         uploadToken.appId,
         version,
       );
-      const finalized = await releaseDAO.updateOrThrow(release.id, {
-        status: "finalized",
-      });
+      const finalized = await releaseDAO.updateOrThrow(release.id, {});
       return {
         version: finalized.version,
-        ref: finalized.ref,
-        url: finalized.url,
-        owner: finalized.owner,
-        status: finalized.status,
-        dateCreated: finalized.createdAt,
       };
     },
     {
@@ -193,7 +171,6 @@ export const sourceMapUploadRoutes = new Elysia({
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const sourceMapRoutes = new Elysia({ prefix: "/source-maps" })
-  .resolve(resolveIdentity)
   .get("/", ({ query }) => sourceMapDAO.list({ appId: query.appId }, query), {
     query: arktype({
       appId: "string.uuid?",
@@ -209,7 +186,7 @@ export const sourceMapTokenRoutes = new Elysia({
   .resolve(resolveIdentity)
   .post(
     "/",
-    async ({ body, adminId }) => {
+    async ({ body }) => {
       const [, app] = await Promise.all([
         projectDAO.findByIdOrThrow(body.projectId),
         appDAO.findByIdOrThrow(body.appId),
@@ -218,7 +195,7 @@ export const sourceMapTokenRoutes = new Elysia({
         throw badRequest("App does not belong to this project");
       const { token, record } = await sourceMapTokenDAO.create({
         ...body,
-        createdBy: adminId,
+        createdBy: "system",
         expiresAt: body.expiresAt ?? null,
       });
       return { ...record, token };

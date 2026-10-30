@@ -6,8 +6,11 @@ import {
   jetstreamManager,
   type JetStreamManager,
   type ConsumerConfig,
+  type Batch,
+  RetentionPolicy,
 } from "@nats-io/jetstream";
 import { env } from "bun";
+import { internalError } from "./errors";
 
 // The backend authenticates with its config user (the `AUTH` account, also
 // the auth-callout service); the dev defaults match docker-compose and are
@@ -59,131 +62,143 @@ const PULL_CONSUMERS: Array<{
 const INIT_ATTEMPTS = Number(env.INIT_RETRY_ATTEMPTS) || 5;
 const INIT_RETRY_DELAY_MS = Number(env.INIT_RETRY_DELAY_MS) || 1000;
 
-function describe(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+// function describe(err: unknown): string {
+//   return err instanceof Error ? err.message : String(err);
+// }
+
+// // The stream's disk is bounded: a flood (or a long outage) fills it and the
+// // publish fails with a 503 instead of growing the disk without limit. The
+// // SDKs retry the 503, so the backpressure reaches the sender.
+// const STREAM_MAX_BYTES =
+//   Number(env.NATS_STREAM_MAX_BYTES) || 1024 * 1024 * 1024;
+
+// async function ensureStream(manager: JetStreamManager): Promise<void> {
+//   const subjects = [
+//     EVENTS_STREAM_SUBJECT,
+//     METRICS_SUBJECT,
+//     FLAG_CHANGE_SUBJECT,
+//   ];
+//   const info = await manager.streams.info(STREAM_NAME).catch(() => null);
+//   if (!info) {
+//     await manager.streams.add({
+//       name: STREAM_NAME,
+//       subjects,
+//       max_bytes: STREAM_MAX_BYTES,
+//     });
+//     console.log(`[NATS] Created ${STREAM_NAME} stream`);
+//     return;
+//   }
+//   const current = info.config.subjects ?? [];
+//   const missing = subjects.filter((subject) => !current.includes(subject));
+//   if (missing.length > 0 || (info.config.max_bytes ?? 0) < STREAM_MAX_BYTES) {
+//     await manager.streams.update(STREAM_NAME, {
+//       ...info.config,
+//       subjects: [...current, ...missing],
+//       max_bytes: STREAM_MAX_BYTES,
+//     });
+//   }
+// }
+
+// async function ensurePullConsumers(manager: JetStreamManager): Promise<void> {
+//   for (const { name, subject, deliverPolicy } of PULL_CONSUMERS) {
+//     const config: ConsumerConfig = {
+//       durable_name: name,
+//       ack_policy: AckPolicy.Explicit,
+//       filter_subject: subject,
+//       ...(deliverPolicy ? { deliver_policy: deliverPolicy } : {}),
+//     };
+//     const existing = await manager.consumers
+//       .info(STREAM_NAME, name)
+//       .catch(() => null);
+//     // An existing durable keeps its deliver policy; only the shard filter
+//     // is migrated in place.
+//     if (existing) {
+//       if (existing.config.filter_subject !== config.filter_subject) {
+//         await manager.consumers.update(STREAM_NAME, name, {
+//           ...existing.config,
+//           filter_subject: config.filter_subject,
+//         } as ConsumerConfig);
+//       }
+//       continue;
+//     }
+//     await manager.consumers.add(STREAM_NAME, config);
+//     console.log(`[NATS] Created durable pull consumer ${name}`);
+//   }
+// }
+
+// // Boot order: NATS first (stream + durable pull consumers), then
+// // ClickHouse. Retries, then fails fast — the backend never runs without
+// // its services.
+// async function initNats(): Promise<NatsConnection> {
+//   let connection: NatsConnection | undefined;
+//   for (let attempt = 1; ; attempt++) {
+//     try {
+//       const nc = await connect({
+//         servers: env.NATS_SERVERS,
+//         user: NATS_AUTH_USER,
+//         pass: NATS_AUTH_PASSWORD,
+//       });
+//       try {
+//         const manager = await jetstreamManager(nc);
+//         await ensureStream(manager);
+//         await ensurePullConsumers(manager);
+//       } catch (err) {
+//         await nc.close().catch(() => {});
+//         throw err;
+//       }
+//       connection = nc;
+//       return nc;
+//     } catch (err) {
+//       if (attempt >= INIT_ATTEMPTS) throw err;
+//       console.error(
+//         `[init] NATS attempt ${attempt}/${INIT_ATTEMPTS} failed: ${describe(err)}`,
+//       );
+//       await new Promise((resolve) => setTimeout(resolve, INIT_RETRY_DELAY_MS));
+//     }
+//   }
+// }
+
+const nats = await connect({
+  servers: env.NATS_SERVERS,
+  user: NATS_AUTH_USER,
+  pass: NATS_AUTH_PASSWORD,
+});
+
+const manager = await jetstreamManager(nats);
+
+await manager.streams.add({
+  name: STREAM_NAME,
+  subjects: [EVENTS_SUBJECT_PREFIX, METRICS_SUBJECT],
+  allow_batched: true,
+  allow_atomic: true,
+  retention: RetentionPolicy.Interest,
+})
+
+
+// TODO make a pool
+export class BatchPool {
+  private topic = "";
+  private currentBatch: Batch | Promise<Batch> = manager.jetstream().startBatch(this.topic);
+  private nextBatch = manager.jetstream().startBatch(this.topic);
+  constructor(topic: string) {
+    this.topic = topic;
+  }
+
+  async send(data: string) {
+    const batch = await this.currentBatch;
+    if (batch.count > 500) this.commit(batch);
+    return batch.add(this.topic, data);
+  }
+
+  private async commit(batch: Batch) {
+    await batch.commit(this.topic);
+    this.currentBatch = this.nextBatch;
+    this.nextBatch = manager.jetstream().startBatch(this.topic);
+  }
 }
 
-// The stream's disk is bounded: a flood (or a long outage) fills it and the
-// publish fails with a 503 instead of growing the disk without limit. The
-// SDKs retry the 503, so the backpressure reaches the sender.
-const STREAM_MAX_BYTES =
-  Number(env.NATS_STREAM_MAX_BYTES) || 1024 * 1024 * 1024;
-
-async function ensureStream(manager: JetStreamManager): Promise<void> {
-  const subjects = [
-    EVENTS_STREAM_SUBJECT,
-    METRICS_SUBJECT,
-    FLAG_CHANGE_SUBJECT,
-  ];
-  const info = await manager.streams.info(STREAM_NAME).catch(() => null);
-  if (!info) {
-    await manager.streams.add({
-      name: STREAM_NAME,
-      subjects,
-      max_bytes: STREAM_MAX_BYTES,
-    });
-    console.log(`[NATS] Created ${STREAM_NAME} stream`);
-    return;
-  }
-  const current = info.config.subjects ?? [];
-  const missing = subjects.filter((subject) => !current.includes(subject));
-  if (missing.length > 0 || (info.config.max_bytes ?? 0) < STREAM_MAX_BYTES) {
-    await manager.streams.update(STREAM_NAME, {
-      ...info.config,
-      subjects: [...current, ...missing],
-      max_bytes: STREAM_MAX_BYTES,
-    });
-  }
-}
-
-async function ensurePullConsumers(manager: JetStreamManager): Promise<void> {
-  for (const { name, subject, deliverPolicy } of PULL_CONSUMERS) {
-    const config: ConsumerConfig = {
-      durable_name: name,
-      ack_policy: AckPolicy.Explicit,
-      filter_subject: subject,
-      ...(deliverPolicy ? { deliver_policy: deliverPolicy } : {}),
-    };
-    const existing = await manager.consumers
-      .info(STREAM_NAME, name)
-      .catch(() => null);
-    // An existing durable keeps its deliver policy; only the shard filter
-    // is migrated in place.
-    if (existing) {
-      if (existing.config.filter_subject !== config.filter_subject) {
-        await manager.consumers.update(STREAM_NAME, name, {
-          ...existing.config,
-          filter_subject: config.filter_subject,
-        } as ConsumerConfig);
-      }
-      continue;
-    }
-    await manager.consumers.add(STREAM_NAME, config);
-    console.log(`[NATS] Created durable pull consumer ${name}`);
-  }
-}
-
-// Boot order: NATS first (stream + durable pull consumers), then
-// ClickHouse. Retries, then fails fast — the backend never runs without
-// its services.
-async function initNats(): Promise<NatsConnection> {
-  let connection: NatsConnection | undefined;
-  for (let attempt = 1; ; attempt++) {
-    try {
-      const nc = await connect({
-        servers: env.NATS_SERVERS,
-        user: NATS_AUTH_USER,
-        pass: NATS_AUTH_PASSWORD,
-      });
-      try {
-        const manager = await jetstreamManager(nc);
-        await ensureStream(manager);
-        await ensurePullConsumers(manager);
-      } catch (err) {
-        await nc.close().catch(() => {});
-        throw err;
-      }
-      connection = nc;
-      return nc;
-    } catch (err) {
-      if (attempt >= INIT_ATTEMPTS) throw err;
-      console.error(
-        `[init] NATS attempt ${attempt}/${INIT_ATTEMPTS} failed: ${describe(err)}`,
-      );
-      await new Promise((resolve) => setTimeout(resolve, INIT_RETRY_DELAY_MS));
-    }
-  }
-}
-
-export const nats = await initNats();
-export const jetstream2 = jetstream(nats);
-
-export const publishEvents = async (appNumber: number, events: Uint8Array[]) => {
-  if (events.length === 0) return;
-  const subject = eventsSubject(appNumber);
-  const totalLength = events.reduce((acc, curr) => acc + curr.length, 0);
-  const payload = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const chunk of events) {
-    payload.set(chunk, offset);
-    offset += chunk.length;
-  }
-  await jetstream2.publish(subject, payload, { timeout: 2000 });
-}
-
-export async function publishMetricSamples(
-  samples: Uint8Array[],
-): Promise<void> {
-  if (samples.length === 0) return;
-  const totalLength = samples.reduce((acc, curr) => acc + curr.length, 0);
-  const payload = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const chunk of samples) {
-    payload.set(chunk, offset);
-    offset += chunk.length;
-  }
-  await jetstream2.publish(METRICS_SUBJECT, payload, { timeout: 2000 });
-}
+export const eventsPool = new BatchPool(EVENTS_SUBJECT_PREFIX);
+export const metricsPool = new BatchPool(METRICS_SUBJECT);
 
 export async function publishFlagChangeEvent(event: {
   type: string;

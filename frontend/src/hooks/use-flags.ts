@@ -61,9 +61,12 @@ interface FlagChangeEventMessage {
   flag?: { appId?: string; id?: string } | null;
 }
 
+// appId omitted → project-level view: every flag of the project, including
+// the app-scoped ones (the backend key is unique per scope; the narrower
+// app flag wins by key).
 export function useFlags(
   projectId: string | undefined,
-  appId: string | undefined,
+  appId?: string | undefined,
 ) {
   const [flags, setFlags] = useState<FlagRecord[] | null>(null);
   const [results, setResults] = useState<
@@ -74,11 +77,11 @@ export function useFlags(
   const [reloadTick, setReloadTick] = useState(0);
 
   const load = useCallback(async () => {
-    if (!projectId || !appId) return;
+    if (!projectId) return;
     let alive = true;
     setLoading(true);
     const res = await api["api/admin/feature-flags"].get({
-      query: { appId, limit: PAGE_SIZE },
+      query: { projectId, ...(appId ? { appId } : {}), limit: PAGE_SIZE },
     });
     if (!alive) return;
     if (res.error) {
@@ -116,17 +119,18 @@ export function useFlags(
 
   // Another instance (or another browser) changed a flag; refresh the list.
   useEffect(() => {
-    if (!appId) return;
     const close = subscribeSubject("sentry.flags.changed", {
       onStatus: setLive,
       onMessage: (payload: string) => {
         try {
           const event = JSON.parse(payload) as FlagChangeEventMessage;
           const flag = event.flag ?? null;
-          // A delete carries only the key; a change to a flag we hold for
-          // this app (or a delete of one) is relevant.
+          // A delete carries only the key; a change is relevant for this
+          // app view, or for every flag in a project view.
           const relevant = flag
-            ? flag.appId === appId
+            ? appId
+              ? flag.appId === appId
+              : true
             : event.type === "delete" &&
               (flags?.some((f) => f.key === event.flagKey) ?? false);
           if (relevant) setReloadTick((t) => t + 1);
@@ -205,4 +209,32 @@ export function useFlags(
     setRollout,
     setTargetingRules,
   };
+}
+
+// The list endpoints never return totals (cursor pagination), so the count
+// shown on the project screen is the first full page — "100+" is the honest
+// ceiling, not a total.
+export function useProjectFlagCount(projectId: string | undefined) {
+  const [count, setCount] = useState<string | null>(null);
+  useEffect(() => {
+    if (!projectId) return;
+    let alive = true;
+    api["api/admin/feature-flags"]
+      .get({ query: { projectId, limit: PAGE_SIZE } })
+      .then((res: { error?: unknown; data?: unknown }) => {
+        if (!alive) return;
+        if (res.error) {
+          setCount(null);
+          return;
+        }
+        const list = (res.data as { data: FlagRecord[] }).data;
+        setCount(
+          list.length >= PAGE_SIZE ? `${PAGE_SIZE}+` : String(list.length),
+        );
+      });
+    return () => {
+      alive = false;
+    };
+  }, [projectId]);
+  return count;
 }

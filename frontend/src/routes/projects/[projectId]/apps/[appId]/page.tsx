@@ -8,8 +8,8 @@ import {
 import { useIssueStats } from "../../../../../hooks/use-issue-stats";
 import { LevelBadge, Sparkline } from "../../../../../components/ui-kit";
 import { IssueDetail } from "../../../../../components/issue-detail";
-import { compact, timeAgo } from "../../../../../lib/utils";
-import { cn } from "../../../../../lib/utils";
+import { compact, timeAgo, cn } from "../../../../../lib/utils";
+import { matchesIssueFilter } from "../../../../../lib/issue-filter";
 import { AppLayout } from "../../../../../components/app-layout";
 
 // Each row trend is its own ClickHouse query — bound them to the first page
@@ -54,13 +54,9 @@ function AppIssuesInner({
 
   const list = (issues ?? [])
     .filter((i: IssueSummary) => i.status === statusFilter)
-    .filter(
-      (i: IssueSummary) =>
-        !q ||
-        `${i.title} ${i.culprit} ${i.fingerprint} ${i.level}`
-          .toLowerCase()
-          .includes(q.toLowerCase()),
-    )
+    // Typed queries (`level:error browser:"Chrome 131"`) and free text share
+    // the same matching rules as the guided suggestions.
+    .filter((i: IssueSummary) => matchesIssueFilter(i, q, statusFilter))
     .sort((a: IssueSummary, b: IssueSummary) => b.eventCount - a.eventCount);
 
   const counts = {

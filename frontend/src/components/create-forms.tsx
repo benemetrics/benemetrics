@@ -392,3 +392,130 @@ export function ChannelForm({
     </Shell>
   );
 }
+
+// Flag keys are unique per scope and the backend stores them as-is; normalize
+// in the UI so the duplicate check means the same thing as on the server.
+const slugify = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+// A new flag is project-scoped: it applies to every app of the project
+// unless a narrower app flag with the same key overrides it. Boolean flags
+// ship as control/treatment; a custom treatment key is sent as an explicit
+// variant pair (weights must sum to 100 on the backend).
+export function FlagForm({
+  projectId,
+  existingKeys,
+  onDone,
+  onCancel,
+}: {
+  projectId: string;
+  existingKeys: string[];
+  onDone: (f: { id: string; key: string }) => void;
+  onCancel: () => void;
+}) {
+  const [f, setF] = useState({
+    key: "",
+    description: "",
+    rollout: 100,
+    treatment: "treatment",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const key = slugify(f.key);
+  const duplicate = existingKeys.includes(key);
+  const valid =
+    !!key &&
+    !!f.treatment.trim() &&
+    slugify(f.treatment) !== "control" &&
+    !duplicate;
+
+  const submit = async () => {
+    setSubmitting(true);
+    setError(null);
+    const treatment = slugify(f.treatment);
+    const res = await api["api/admin/feature-flags"].post({
+      key,
+      name: key,
+      description: f.description.trim() || undefined,
+      type: "boolean",
+      defaultValue: false,
+      variants: [
+        { key: "control", name: "Control", value: false, weight: 50 },
+        { key: treatment, name: "Treatment", value: true, weight: 50 },
+      ],
+      rolloutPercentage: Math.max(0, Math.min(100, Math.round(f.rollout))),
+      projectId,
+    });
+    setSubmitting(false);
+    if (res.error) {
+      setError(serverError(res) ?? "Failed to create the flag.");
+      return;
+    }
+    onDone(res.data as { id: string; key: string });
+  };
+
+  return (
+    <Shell
+      title="New feature flag"
+      error={error}
+      onCancel={onCancel}
+      onSubmit={submit}
+      canSubmit={valid}
+      submitting={submitting}
+      submitLabel="Create flag"
+    >
+      <Field label="Flag key">
+        <input
+          autoFocus
+          value={f.key}
+          onChange={(e) => setF({ ...f, key: e.target.value })}
+          placeholder="new-checkout"
+          className={inputCls}
+        />
+      </Field>
+      {key && duplicate && (
+        <p className="text-xs text-destructive" role="alert">
+          A flag with this key already exists.
+        </p>
+      )}
+      <Field label="Description">
+        <input
+          value={f.description}
+          onChange={(e) => setF({ ...f, description: e.target.value })}
+          className={inputCls}
+        />
+      </Field>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Rollout %">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={f.rollout}
+            onChange={(e) =>
+              setF({
+                ...f,
+                rollout: Math.max(0, Math.min(100, Number(e.target.value))),
+              })
+            }
+            className={inputCls}
+          />
+        </Field>
+        <Field label="Treatment variant key">
+          <input
+            value={f.treatment}
+            onChange={(e) => setF({ ...f, treatment: e.target.value })}
+            className={cn(inputCls, "font-mono text-xs")}
+          />
+        </Field>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Created project-wide and starts as a draft — enable it from the list.
+      </p>
+    </Shell>
+  );
+}

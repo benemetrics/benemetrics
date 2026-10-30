@@ -4,6 +4,7 @@ import { Bell, Code2, Copy, Plus } from "lucide-react";
 import { compact } from "../../../lib/data";
 import { Crumbs, Pill, Stat, Btn } from "../../../components/ui-kit";
 import { AppForm, ChannelForm } from "../../../components/create-forms";
+import { useProjectFlagCount } from "../../../hooks/use-flags";
 import { LoadingScreen } from "../../../components/loading-screen";
 import { NotFoundPage } from "../../../components/not-found";
 import { ChannelIcon } from "../../../components/channel-icon";
@@ -19,6 +20,7 @@ export default function ProjectPage() {
 function ProjectDetail({ projectId }: { projectId: string }) {
   const { detail, notFound } = useProject(projectId);
   const { channels, reload: reloadChannels } = useChannels(projectId);
+  const flagCount = useProjectFlagCount(projectId);
   const navigate = useNavigate();
   const [creatingApp, setCreatingApp] = useState(false);
   const [addingChannel, setAddingChannel] = useState(false);
@@ -44,6 +46,12 @@ function ProjectDetail({ projectId }: { projectId: string }) {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Apps" value={p.apps.length} />
+        <Link
+          to={`/projects/${projectId}/flags`}
+          className="panel panel-hover block"
+        >
+          <Stat label="Feature flags →" value={flagCount ?? "…"} />
+        </Link>
         <Stat
           label="Open issues"
           value={anyOpenExceeded ? `${open}+` : open}

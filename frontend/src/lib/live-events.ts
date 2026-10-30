@@ -132,7 +132,7 @@ export function subscribeSubject(
     onMessage: (payload: string) => void;
     onStatus?: (status: LiveFeedStatus) => void;
   },
-  options: { url?: string; authToken?: string } = {},
+  options: { url?: string; authToken?: string | undefined } = {},
 ): () => void {
   const url = options.url ?? defaultUrl();
   const sid = String(nextSubscriptionId++);
@@ -210,7 +210,7 @@ export function subscribeLiveFeed(
     onItem?: (item: LiveEventItem) => void;
     onStatus?: (status: LiveFeedStatus) => void;
   },
-  options: { url?: string; appNumber?: number; authToken?: string } = {},
+  options: { url?: string; appNumber?: number; authToken?: string | undefined } = {},
 ): () => void {
   return subscribeSubject(
     options.appNumber !== undefined

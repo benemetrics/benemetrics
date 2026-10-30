@@ -38,11 +38,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
       end: false,
     },
     {
-      to: `/projects/${project.id}/apps/${app.id}/flags`,
-      label: "Flags & A/B",
-      end: false,
-    },
-    {
       to: `/projects/${project.id}/apps/${app.id}/releases`,
       label: "Releases",
       end: false,
@@ -55,6 +50,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
     {
       to: `/projects/${project.id}/apps/${app.id}/alerts`,
       label: "Alerts",
+      end: false,
+    },
+    {
+      to: `/projects/${project.id}/apps/${app.id}/log-setup`,
+      label: "Log setup",
       end: false,
     },
   ];

@@ -4,7 +4,8 @@ import ProjectPage from "./routes/projects/[projectId]/page";
 import AppIssuesPage from "./routes/projects/[projectId]/apps/[appId]/page";
 import AlertsPage from "./routes/projects/[projectId]/apps/[appId]/alerts/page";
 import EventsPage from "./routes/projects/[projectId]/apps/[appId]/events/page";
-import FlagsPage from "./routes/projects/[projectId]/apps/[appId]/flags/page";
+import FlagPage from "./routes/projects/[projectId]/flags/page";
+import LogSetupPage from "./routes/projects/[projectId]/apps/[appId]/log-setup/page";
 import IssuePage from "./routes/projects/[projectId]/apps/[appId]/issues/[issueId]/page";
 import PerformancePage from "./routes/projects/[projectId]/apps/[appId]/performance/page";
 import ReleasesPage from "./routes/projects/[projectId]/apps/[appId]/releases/page";
@@ -44,6 +45,7 @@ const router = createBrowserRouter(
         // reloads before the router renders, so the element stays empty.
         { path: "/auth/callback", element: null },
         { path: "/projects/:projectId", element: <ProjectPage /> },
+        { path: "/projects/:projectId/flags", element: <FlagPage /> },
         {
           path: "/projects/:projectId/apps/:appId",
           element: <AppIssuesPage />,
@@ -57,8 +59,8 @@ const router = createBrowserRouter(
           element: <EventsPage />,
         },
         {
-          path: "/projects/:projectId/apps/:appId/flags",
-          element: <FlagsPage />,
+          path: "/projects/:projectId/apps/:appId/log-setup",
+          element: <LogSetupPage />,
         },
         {
           path: "/projects/:projectId/apps/:appId/issues/:issueId",

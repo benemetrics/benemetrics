@@ -2,9 +2,6 @@ import { serviceUnavailable, unauthorized } from "backend/errors";
 import { appDAO } from "db/dao/apps";
 import { validateAuth } from "../auth";
 import { readBodyCapped } from "../ratelimit/hygiene";
-import { publishEvent, publishMetricSamples } from "../nats";
-import type { SentryEventMessage } from "../protocol/events";
-import type { MetricSample } from "../protocol/metrics";
 
 // DSNs generated for apps route ingestion through the app's numeric
 // `number` (path segment) with the public key as the `sentry_key`
@@ -90,77 +87,3 @@ export function markIngested(eventId: string): void {
   recentIds.set(eventId, Date.now());
 }
 
-interface BufferedEvent {
-  appNumber: number;
-  event: Uint8Array;
-  samples: Uint8Array[];
-}
-
-const BATCH_FLUSH_MS = 100;
-const BATCH_MAX_SIZE = 2000;
-const eventBuffer: BufferedEvent[] = [];
-let isFlushing = false;
-const encoder = new TextEncoder();
-
-async function flushBuffer(): Promise<void> {
-  if (isFlushing || eventBuffer.length === 0) return;
-  isFlushing = true;
-  const batch = eventBuffer.splice(0, eventBuffer.length);
-
-  try {
-    const newline = encoder.encode("\n");
-    const byApp = new Map<
-      number,
-      { eventChunks: Uint8Array[]; sampleChunks: Uint8Array[] }
-    >();
-    for (const b of batch) {
-      const bucket = byApp.get(b.appNumber) ?? {
-        eventChunks: [],
-        sampleChunks: [],
-      };
-      bucket.eventChunks.push(b.event, newline);
-      for (const s of b.samples) bucket.sampleChunks.push(s, newline);
-      byApp.set(b.appNumber, bucket);
-    }
-
-    await Promise.all(
-      [...byApp].map(([appNumber, { eventChunks, sampleChunks }]) =>
-        Promise.all([
-          publishEvent(appNumber, eventChunks),
-          sampleChunks.length > 0
-            ? publishMetricSamples(sampleChunks)
-            : Promise.resolve(),
-        ]),
-      ),
-    );
-  } catch (err) {
-    console.error(
-      "[ingestion] Flush failed:",
-      err instanceof Error ? err.message : err,
-    );
-  } finally {
-    isFlushing = false;
-  }
-}
-
-setInterval(() => flushBuffer(), BATCH_FLUSH_MS);
-
-export async function dispatchIngestedEvent(
-  app: AppResolveRecord,
-  message: SentryEventMessage,
-  samples: MetricSample[] = [],
-): Promise<void> {
-  const event = encoder.encode(JSON.stringify(message));
-  const sampleChunks = samples.map((s) =>
-    encoder.encode(
-      JSON.stringify({ ...s, tags: JSON.stringify(s.tags ?? {}) }),
-    ),
-  );
-
-  if (
-    eventBuffer.push({ appNumber: app.number, event, samples: sampleChunks }) >=
-    BATCH_MAX_SIZE
-  ) {
-    await flushBuffer();
-  }
-}

@@ -8,9 +8,14 @@ import {
   type ConsumerConfig,
   type Batch,
   RetentionPolicy,
+  type StreamConfig,
 } from "@nats-io/jetstream";
 import { env } from "bun";
 import { internalError } from "./errors";
+import type {
+  NotificationDeadLetter,
+  NotificationDelivery,
+} from "./protocol/notifications";
 
 // The backend authenticates with its config user (the `AUTH` account, also
 // the auth-callout service); the dev defaults match docker-compose and are
@@ -37,6 +42,20 @@ export const SIDE_EFFECTS_CONSUMER =
   env.NATS_SIDE_EFFECTS_CONSUMER || "side-effects";
 export const FLAGS_CONSUMER = env.NATS_FLAGS_CONSUMER || "flags-consumer";
 
+// Notifications: the broker is their only delivery channel. Two streams —
+// each stream's sequence is per stream, so a DLQ entry is dismissable by
+// `seq` without consumer bookkeeping.
+export const NOTIFY_STREAM = env.NOTIFY_STREAM || "NOTIFICATIONS";
+export const NOTIFY_DLQ_STREAM = env.NOTIFY_DLQ_STREAM || "NOTIFY-DLQ";
+export const NOTIFY_DELIVER_SUBJECT = "snotify.deliver";
+export const NOTIFY_DLQ_SUBJECT = "snotify.dlq";
+export const NOTIFY_WORKER_CONSUMER =
+  env.NOTIFY_WORKER_CONSUMER || "notification-worker";
+export const NOTIFY_MAX_DELIVER = Number(env.NOTIFY_MAX_DELIVER) || 5;
+const NOTIFY_DELIVER_MAX_AGE_NS = 24 * 60 * 60 * 1_000_000_000;
+const NOTIFY_DLQ_MAX_AGE_NS =
+  (Number(env.NOTIFY_DLQ_MAX_AGE_DAYS) || 7) * 24 * 60 * 60 * 1_000_000_000;
+
 // The stream's durable pull consumers: ClickHouse attaches its engine
 // tables to them by name.
 const PULL_CONSUMERS: Array<{
@@ -58,7 +77,7 @@ const PULL_CONSUMERS: Array<{
   },
 ];
 
-const nats = await connect({
+export const nats = await connect({
   servers: env.NATS_SERVERS,
   user: NATS_AUTH_USER,
   pass: NATS_AUTH_PASSWORD,
@@ -72,6 +91,8 @@ await manager.streams.add({
   allow_batched: true,
   retention: RetentionPolicy.Interest,
 });
+
+await ensureNotificationTopology(manager);
 
 const natsStream = manager.jetstream();
 
@@ -142,4 +163,103 @@ export async function consumeFlagChanges(
     }
     message.ack();
   }
+}
+
+// Notification topology — see docs/nats.md §1b. The deliver stream is a work
+// queue (ack removes the message), the DLQ stream keeps entries until they
+// are dismissed or the retention expires.
+export async function ensureNotificationTopology(
+  jsm: JetStreamManager,
+): Promise<void> {
+  const createStream = async (
+    cfg: Partial<StreamConfig> & { name: string },
+  ): Promise<void> => {
+    const info = await jsm.streams.info(cfg.name).catch(() => null);
+    if (info) return;
+    await jsm.streams.add(cfg);
+    console.log(`[NATS] Created ${cfg.name} stream`);
+  };
+  await createStream({
+    name: NOTIFY_STREAM,
+    subjects: [NOTIFY_DELIVER_SUBJECT],
+    retention: RetentionPolicy.Workqueue,
+    max_age: NOTIFY_DELIVER_MAX_AGE_NS,
+  });
+  await createStream({
+    name: NOTIFY_DLQ_STREAM,
+    subjects: [NOTIFY_DLQ_SUBJECT],
+    retention: RetentionPolicy.Limits,
+    max_age: NOTIFY_DLQ_MAX_AGE_NS,
+  });
+  const consumer = await jsm.consumers
+    .info(NOTIFY_STREAM, NOTIFY_WORKER_CONSUMER)
+    .catch(() => null);
+  if (!consumer) {
+    await jsm.consumers.add(NOTIFY_STREAM, {
+      durable_name: NOTIFY_WORKER_CONSUMER,
+      ack_policy: AckPolicy.Explicit,
+      filter_subject: NOTIFY_DELIVER_SUBJECT,
+      max_deliver: NOTIFY_MAX_DELIVER,
+    });
+    console.log(`[NATS] Created durable pull consumer ${NOTIFY_WORKER_CONSUMER}`);
+  }
+}
+
+export const natsManager = manager;
+// `consumer.ts` imports `jetstream2`; it is the same JetStreamManager used to
+// create/pull the side-effects durable consumer.
+export const jetstream2 = natsManager;
+
+export async function publishNotificationDelivery(
+  entry: NotificationDelivery,
+): Promise<void> {
+  await natsStream.publish(
+    NOTIFY_DELIVER_SUBJECT,
+    new TextEncoder().encode(JSON.stringify(entry)),
+  );
+}
+
+/** Reads the DLQ newest-first; `seq` is the dismiss handle. */
+export async function listDeadLetters(
+  limit = 50,
+): Promise<NotificationDeadLetter[]> {
+  const info = await manager.streams.info(NOTIFY_DLQ_STREAM).catch(() => null);
+  if (!info) return [];
+  const entries: NotificationDeadLetter[] = [];
+  const lastSeq = info.state.last_seq;
+  const firstSeq = info.state.first_seq;
+  for (let seq = lastSeq; seq >= firstSeq && entries.length < limit; seq--) {
+    const msg = await manager.streams
+      .getMessage(NOTIFY_DLQ_STREAM, { seq })
+      .catch(() => null);
+    if (!msg || msg.data.length === 0) continue;
+    try {
+      const payload = JSON.parse(
+        new TextDecoder().decode(msg.data),
+      ) as Omit<NotificationDeadLetter, "seq">;
+      entries.push({ seq, ...payload });
+    } catch {
+      // An unparsable entry is skipped, never a reason to fail the list.
+    }
+  }
+  return entries;
+}
+
+/** Removes one DLQ message; `false` = the seq was already gone. */
+export async function dismissDeadLetter(seq: number): Promise<boolean> {
+  try {
+    return await manager.streams.deleteMessage(NOTIFY_DLQ_STREAM, seq);
+  } catch {
+    return false;
+  }
+}
+
+/** A terminal delivery failure republished into the DLQ stream. */
+export async function publishDeadLetter(
+  entry: Omit<NotificationDeadLetter, "seq">,
+): Promise<void> {
+  await natsStream.publish(
+    NOTIFY_DLQ_SUBJECT,
+    new TextEncoder().encode(JSON.stringify(entry)),
+  );
 }

@@ -12,6 +12,8 @@ topology and for how every connection is authenticated and authorized.
 sentry.events.<appNumber>   events (envelope payloads, newline-batched)
 sentry.metrics              metric samples (newline-batched, JSONEachRow)
 sentry.flags.changed        feature-flag change notifications
+snotify.deliver             notification deliveries (work queue, per channel)
+snotify.dlq                 dead-lettered deliveries (kept until dismissed)
 ```
 
 - `<appNumber>` is the app's DB-generated `apps.number` — the same integer the
@@ -32,6 +34,23 @@ sentry.flags.changed        feature-flag change notifications
 | `clickhouse-metrics` | ClickHouse NATS engine table + MV  | `sentry.metrics`       |
 | `side-effects`       | backend consumer binary (Postgres) | `sentry.events.*`      |
 | `flags-consumer`     | backend (feature-flag SSE fan-out) | `sentry.flags.changed` |
+| `notification-worker`| backend (notification DLQ worker)  | `snotify.deliver`      |
+
+## 1b. Notifications
+
+Notifications are the one thing JetStream delivers itself — there is no
+Postgres outbox. A rule breach publishes one `snotify.deliver` message per
+channel; the `notification-worker` durable pull consumer sends it through the
+channel's notifier. Transient failures are nacked and redelivered up to
+`NOTIFY_MAX_DELIVER` times (default 5); the attempt that spends the budget is
+republished to `snotify.dlq` and its source message is terminated, so it can
+never redeliver again. The DLQ stream keeps entries until they are dismissed
+or the retention (`NOTIFY_DLQ_MAX_AGE_DAYS`, default 7) expires.
+
+The admin surface (`/api/admin/notifications/dlq`) lists DLQ entries newest
+first (stream `seq` is the dismiss handle) and `DELETE /dlq/:seq` removes one
+— idempotent, an already-dismissed seq answers `dismissed: false`. The
+frontend polls this endpoint and renders a bell badge with the count.
 
 ## 2. Auth callout — every connection is authorized by the backend
 

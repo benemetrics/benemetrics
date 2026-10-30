@@ -7,7 +7,7 @@ const inputCls =
   "w-full rounded-md border bg-code px-2 py-1.5 text-sm outline-none focus:border-primary";
 
 // Eden wraps non-2xx responses as { status, value: { error } } — surface the
-// server's message (e.g. an unauthorized/stale admin token) instead of a guess.
+// server's message (e.g. an unauthorized/stale credential) instead of a guess.
 function serverError(res: { error?: unknown }): string | null {
   const err = res.error as { value?: { error?: string } } | undefined;
   return err?.value?.error ?? null;

@@ -37,7 +37,7 @@ export default function SettingsPage() {
         <Crumbs items={[{ label: "settings" }]} />
         <h1 className="mt-3 text-3xl font-bold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Instance-wide configuration. The admin-token surfaces are marked.
+          Instance-wide configuration. Admin-only surfaces are marked.
         </p>
       </div>
       <EventRetention />
@@ -165,7 +165,7 @@ function Permissions({ isAdmin }: { isAdmin: boolean }) {
           <ShieldCheck className="h-3.5 w-3.5" /> Permissions
         </h2>
         <div className="panel p-6 text-center font-mono text-sm text-muted-foreground">
-          Permission management is admin-token-only — sign in with the admin
+          Permission management is admin-only — sign in with an admin
           token to manage rules and grants.
         </div>
       </section>
@@ -180,7 +180,7 @@ function Permissions({ isAdmin }: { isAdmin: boolean }) {
           <ShieldCheck className="h-3.5 w-3.5" /> Permissions
         </h2>
         <div className="panel p-6 text-center font-mono text-sm text-muted-foreground">
-          The permission surface answered 403 — the admin token is required.
+          The permission surface answered 403 — an admin credential is required.
         </div>
       </section>
     );
@@ -198,7 +198,7 @@ function Permissions({ isAdmin }: { isAdmin: boolean }) {
   return (
     <section className="space-y-3">
       <h2 className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
-        <ShieldCheck className="h-3.5 w-3.5" /> Permissions · admin-token-only
+        <ShieldCheck className="h-3.5 w-3.5" /> Permissions · admin-only
       </h2>
       {error && <p className="font-mono text-xs text-destructive">{error}</p>}
       <div className="grid gap-6 lg:grid-cols-2">

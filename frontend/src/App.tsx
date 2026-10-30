@@ -11,20 +11,21 @@ import PerformancePage from "./routes/projects/[projectId]/apps/[appId]/performa
 import ReleasesPage from "./routes/projects/[projectId]/apps/[appId]/releases/page";
 import SourceMapsPage from "./routes/projects/[projectId]/apps/[appId]/source-maps/page";
 import SettingsPage from "./routes/settings/page";
+import NotificationsPage from "./routes/notifications/page";
 import { RootLayout } from "./components/root-layout";
 import { NotFoundPage } from "./components/not-found";
-import { TokenPrompt } from "./components/token-prompt";
 import { LoadingScreen } from "./components/loading-screen";
 import { useSession } from "./hooks/use-session";
 
 // Every /ui request resolves the identity — there is no open/dev mode.
-// Unauthenticated view → the admin-token prompt; scoped view renders the
-// same screens filtered server-side (the UI never guesses its scope).
+// bootstrapOidc() (main.tsx) redirects into the provider before the router
+// renders, so "unauthenticated" below is only a transient redirect state;
+// scoped view renders the same screens filtered server-side (the UI never
+// guesses its scope).
 function SessionGate() {
-  const { status, session, submitAdminToken } = useSession();
+  const { status, session } = useSession();
   if (status === "loading") return <LoadingScreen />;
-  if (status === "unauthenticated")
-    return <TokenPrompt onSubmit={submitAdminToken} />;
+  if (status === "unauthenticated") return <LoadingScreen />;
   return (
     <RootLayout session={session}>
       <Outlet />
@@ -79,6 +80,7 @@ const router = createBrowserRouter(
           element: <SourceMapsPage />,
         },
         { path: "/settings", element: <SettingsPage /> },
+        { path: "/notifications", element: <NotificationsPage /> },
         { path: "*", element: <NotFoundPage /> },
       ],
     },

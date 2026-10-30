@@ -9,7 +9,7 @@ import { alertIncidents } from "db/schema/alert-incidents";
 import { eq, and, asc, inArray, sql, gt } from "drizzle-orm";
 import { internalError, notFound } from "backend/errors";
 import { cursorLimit } from "../cursor";
-import { appPublicFields } from "db/schema/app";
+import { appPublicFields } from "db/schema/apps";
 import { whereNotNull } from "db/utils";
 
 export const appDAO = {

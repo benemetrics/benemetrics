@@ -1,6 +1,6 @@
 import * as client from "openid-client";
 import authEnv from "./auth-env";
-import { getToken, setToken } from "./api";
+import { setToken } from "./api";
 
 const STATE_KEY = "benemetrics.oidc.state";
 const VERIFIER_KEY = "benemetrics.oidc.verifier";
@@ -101,7 +101,6 @@ export async function bootstrapOidc(): Promise<void> {
   try {
     const completed = await completeOidcLogin();
     if (completed) return;
-    if (getToken()?.startsWith("bmn_")) return;
     await startOidcLogin();
   } catch {}
 }

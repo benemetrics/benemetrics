@@ -5,6 +5,7 @@ import { projectRoutes } from "./projects";
 import { releaseRoutes } from "./releases";
 import { permissionRoutes } from "./permissions";
 import { alertingRoutes } from "./alerting";
+import { notificationRoutes } from "./notifications";
 import { metricsRoutes } from "./metrics";
 import {
   evaluationRoutes,
@@ -31,6 +32,7 @@ export const apiRoutes = new Elysia()
   .use(segmentRoutes)
   .use(permissionRoutes)
   .use(alertingRoutes)
+  .use(notificationRoutes)
   .use(metricsRoutes)
   .use(featureFlagRoutes)
   .use(experimentRoutes)

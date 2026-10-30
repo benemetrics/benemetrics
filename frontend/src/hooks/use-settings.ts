@@ -62,7 +62,7 @@ export function useEventsTtl() {
         if (!alive) return;
         if (res.error)
           setError(
-            "Failed to read the event retention — the admin token is required.",
+            "Failed to read the event retention — an admin credential is required.",
           );
         else setTtl((res.data as EventsTtl) ?? null);
       });
@@ -108,7 +108,7 @@ export function usePermissions() {
       api["api/admin/permissions"].identities.get(),
     ]).then(([rulesRes, grantsRes, auditRes, identitiesRes]) => {
       if (!alive) return;
-      // The whole surface is admin-token-only: one 403 means all of them are.
+      // The whole surface is admin-only: one 403 means all of them are.
       const anyForbidden = [rulesRes, grantsRes, auditRes, identitiesRes].some(
         (r) => (r as { status?: number }).status === 403,
       );

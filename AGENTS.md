@@ -88,6 +88,7 @@ Ingest Handler → NATS (sentry.events.<appNumber>, sentry.metrics)
 - **Idempotent writes** — `ReplacingMergeTree` + `FINAL` reads; duplicates collapse.
 - **Side-effects consumer = Postgres only** — its own binary (`backend/consumer.ts`, `bun run consumer`); it reads the `sentry.events.*` subjects from the `SENTRIES` stream through the `side-effects` durable pull consumer, so an event published while it is down is not lost. Applies issue tracking, alert triggers, and release tracking; never inserts rows into ClickHouse. The shared `backend/nats.ts` provisions the stream and the durable pull consumers, so both processes may start in either order.
 - **Live feed = browser → NATS WebSocket** — no backend fanout, no `/events/live/feed`. The CONNECT carries the credential (`auth_token`); the callout's sub-only claim makes the feed honor the permission scope.
+- **Notifications = JetStream-native DLQ** — a rule breach publishes one `snotify.deliver` message per channel to the `NOTIFICATIONS` stream; the `notification-worker` durable pull consumer sends via the channel's notifier. Terminal failures republish to `snotify.dlq`; the admin polls `GET /api/admin/notifications/dlq` and dismisses with `DELETE /dlq/:seq` (idempotent). The old Postgres dead-letter stub is removed. See `docs/nats.md §1b`.
 - **Object store = S3-required** — replay segments offloaded at ingestion; local dev uses RustFS. Backend never recorded in pointer; reads resolve at read time.
 
 ## Validation

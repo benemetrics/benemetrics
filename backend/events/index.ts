@@ -59,11 +59,6 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
       // list, not a lookup and a 404.
       let appIds: string[] | undefined;
       if (query.appId) appIds = [query.appId];
-      // const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
-      if (view) {
-        const visible = [...view.appIds];
-        appIds = appIds ? appIds.filter((id) => visible.includes(id)) : visible;
-      }
       const { data } = await listStoredEvents({ ...query, appIds });
       return {
         data: await Promise.all(

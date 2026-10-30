@@ -1,8 +1,9 @@
-import { Bug } from "lucide-react";
-import { Link, Outlet } from "react-router-dom";
+import { Bug, BellDot } from "lucide-react";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import { useEffect, type ReactNode } from "react";
 import { readIdTokenClaims } from "../lib/api";
+import { useNotifications } from "../hooks/use-notifications";
 
 // The session the gate resolved (GET /api/admin/session); declared here
 // because the composed route tree does not flow through treaty's typing.
@@ -28,6 +29,8 @@ export function RootLayout({
   }, [pathname]);
 
   const claims = readIdTokenClaims();
+  const { letters: dlqLetters } = useNotifications();
+  const navigate = useNavigate();
   const label = claims.name ?? claims.email ?? session?.id;
   const initials = (label ?? "?")
     .split(/[\s@.]+/)
@@ -53,6 +56,19 @@ export function RootLayout({
                 settings
               </Link>
             )}
+            <Link
+              to="/notifications"
+              className="flex items-center gap-2 hover:text-foreground"
+              onClick={() => navigate("/notifications")}
+            >
+              <BellDot className="h-4 w-4" />
+              <span className="font-mono">notifications</span>
+              {dlqLetters.length > 0 && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px]">
+                  {dlqLetters.length}
+                </span>
+              )}
+            </Link>
             {claims.name && (
               <span className="hidden md:inline">{claims.name}</span>
             )}

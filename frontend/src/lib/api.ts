@@ -3,12 +3,9 @@ import { treaty } from "@elysiajs/eden";
 // Backend access from the SPA.
 //
 // Credential model (backend/auth.ts): one `authorization` header carrying
-// `API-Key <admin-token>` (the master credential, rotated daily at 00:00 UTC —
-// a stale token just fails and is re-prompted) or `Bearer <id>` (an OIDC
-// provider JWT from the login flow in lib/oidc.ts). Only the raw token is
-// stored — a single sessionStorage key, per-tab and cleared on close; the
-// scheme is derived from the token shape (an ID token is a three-segment JWT),
-// never persisted as a separate flag.
+// `Bearer <id>` — an OIDC provider JWT from the login flow in lib/oidc.ts.
+// Only the raw ID token is stored — a single sessionStorage key, per-tab and
+// cleared on close.
 
 const TOKEN_KEY = "benemetrics.credential";
 
@@ -59,7 +56,7 @@ function authHeaders(): Record<string, string> {
   const token = getToken();
   if (!token) return {};
   return {
-    authorization: `${isIdToken(token) ? "Bearer" : "API-Key"} ${token}`,
+    authorization: `Bearer ${token}`,
   };
 }
 
@@ -87,7 +84,5 @@ export function appDsn(app: { publicKey: string; number: number }): string {
 
 /** The credential as the NATS auth callout expects it in CONNECT `auth_token`. */
 export function feedCredential(): string | null {
-  const token = getToken();
-  if (!token) return null;
-  return isIdToken(token) ? token : `API-Key ${token}`;
+  return getToken();
 }

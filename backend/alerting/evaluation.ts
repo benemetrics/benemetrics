@@ -23,7 +23,6 @@ import {
 import {
   buildAlertNotification,
   buildIssueAlertNotification,
-  deliverAlertToChannels,
 } from "./notifiers";
 import type {
   AlertIncident,
@@ -33,6 +32,8 @@ import type {
   DeliveryResult,
 } from "../protocol/alerting";
 import { projectDAO } from "db/dao/projects";
+import { publishNotificationDelivery } from "../nats";
+import type { DeliveryChannel } from "../protocol/notifications";
 
 const DEFAULT_MEASUREMENT = "duration";
 
@@ -59,9 +60,28 @@ async function activeSilence(): Promise<{ id: string; name: string } | null> {
   return null;
 }
 
-// A failed delivery — no-op (no dead letter table).
+// A failed delivery — no-op (no dead letter table; terminal failures now
+// land in the JetStream DLQ via the notification worker).
 async function recordFailedDeliveries(): Promise<void> {
   return;
+}
+
+// Publish one delivery per channel to the JetStream work queue. The worker
+// retries on failure; a message whose redeliver budget is spent lands in
+// the DLQ for the admin to dismiss.
+async function dispatchAlertDeliveries(
+  channels: { id: string; name: string; type: string; config: Record<string, unknown> }[],
+  notification: AlertNotification,
+): Promise<void> {
+  await Promise.all(
+    channels.map((channel) =>
+      publishNotificationDelivery({
+        notification,
+        channel: channel as DeliveryChannel,
+        queuedAt: new Date().toISOString(),
+      }),
+    ),
+  );
 }
 
 // The evaluation decisions are logged as one JSON line each — the rule,
@@ -370,8 +390,7 @@ async function evaluateRules(scope: {
           appId,
           now,
         );
-        const deliveries = await deliverAlertToChannels(selected, notification);
-        await recordFailedDeliveries();
+        await dispatchAlertDeliveries(selected, notification);
         countIncidentFired();
         logDecision({
           event: "evaluated",
@@ -481,11 +500,7 @@ async function fireIssueTriggerRules(
               scope.appId,
               now,
             );
-            const deliveries = await deliverAlertToChannels(
-              selected,
-              notification,
-            );
-            await recordFailedDeliveries();
+            await dispatchAlertDeliveries(selected, notification);
             countIncidentFired();
             logDecision({
               event: "issue_trigger",

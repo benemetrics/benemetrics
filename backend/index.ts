@@ -4,6 +4,7 @@ import { ApiError } from "./errors";
 import ui from "../frontend/index.html";
 import { apiRoutes } from "./routes";
 import { startAlertSweeper } from "./alerting/evaluation";
+import { startNotificationWorker } from "./notifications/delivery";
 import { initClickHouse } from "./clickhouse";
 import { assertStorageConfigured } from "./storage";
 import { cron } from "@elysiajs/cron";
@@ -24,6 +25,7 @@ const app = new Elysia({
     },
   },
 })
+  .state({ adminTokenHash: "" })
   .onError(({ code, error, set }) => {
     if (error instanceof ApiError) {
       set.status = error.httpStatus;
@@ -81,6 +83,7 @@ if (import.meta.main) {
       process.exit(1);
     }
     startAlertSweeper();
+    startNotificationWorker();
   });
 }
 

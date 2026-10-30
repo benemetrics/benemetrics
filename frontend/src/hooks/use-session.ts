@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, getToken, setToken } from "../lib/api";
+import { getToken, setToken } from "../lib/api";
+import { bootstrapOidc } from "../lib/oidc";
 
 export interface SessionInfo {
   id: string;
@@ -26,18 +27,12 @@ export function useSession() {
     return true;
   }, []);
 
-  const submitAdminToken = useCallback(
-    async (token: string): Promise<boolean> => {
-      setToken(token.trim());
-      return refresh();
-    },
-    [refresh],
-  );
-
   const signOut = useCallback(() => {
     setToken(null);
     setSession(null);
     setStatus("unauthenticated");
+    // Unauthenticated means the provider: re-enter the login flow.
+    void bootstrapOidc();
   }, []);
 
   // A stored credential starts the status at "loading"; resolve it once.
@@ -46,5 +41,5 @@ export function useSession() {
     void refresh();
   }, [status, refresh]);
 
-  return { status, session, refresh, submitAdminToken, signOut };
+  return { status, session, refresh, signOut };
 }

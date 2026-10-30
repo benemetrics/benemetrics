@@ -213,13 +213,25 @@ Each notifier implements `Notifier { type, send(notification, config) }`:
 
 ### Delivery Isolation
 
-`deliverAlertToChannels` runs all channels in parallel via `Promise.all`. Each channel's result is captured independently:
+A rule breach publishes one `snotify.deliver` message per channel to the
+JetStream `NOTIFICATIONS` stream (docs/nats.md §1b). The
+`notification-worker` durable pull consumer sends each message through the
+channel's notifier; the eight notifier types are unchanged
+(`backend/alerting/notifiers.ts`).
 
-```typescript
-{ channelId, channelName, type, ok: boolean, error?: string }
-```
+A failing channel never blocks the others — each delivery is its own
+JetStream message. Transient failures are nacked and redelivered by the
+broker up to `NOTIFY_MAX_DELIVER` times (default 5); the attempt that spends
+the budget is republished to `snotify.dlq` (the DLQ stream) and its source
+message is terminated, so it can never redeliver again. The admin polls
+`GET /api/admin/notifications/dlq` (newest first; stream `seq` is the dismiss
+handle) and dismisses entries with `DELETE /dlq/:seq` (idempotent). The
+frontend renders a bell badge with the DLQ count and a page to list and
+dismiss dead letters.
 
-A failing channel **never blocks or fails** the others. Errors are logged server-side; the evaluation continues.
+Channel tests (`POST /rules/:id/test`, `/channels/:id/test`) still send
+synchronously through `deliverNotificationToChannel` and answer the result
+immediately.
 
 ### Test Send
 

@@ -439,6 +439,12 @@ const notifiers: Partial<Record<AlertChannelType, Notifier>> = {
   victorops: victorOpsNotifier,
 };
 
+export function notifierFor(
+  type: AlertChannelType,
+): Notifier | undefined {
+  return notifiers[type];
+}
+
 function formatChatText(notification: AlertNotification): string {
   const lines = [
     `${severityEmoji(notification.severity)} *${notification.title}*`,

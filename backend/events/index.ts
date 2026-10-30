@@ -27,6 +27,7 @@ import { scopedViewFor } from "../permissions/engine";
 import { s3 } from "../storage";
 import { replayObjectPrefix } from "./offload";
 import { symbolicateEventPayload } from "../source-maps/resolver";
+import { batch, eventsPool } from "backend/nats";
 
 async function symbolicateBestEffort(
   projectId: string,
@@ -308,6 +309,7 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
         receivedAt: new Date().toISOString(),
         type: "store",
       };
+      await eventsPool.send(JSON.stringify(message));
       await dispatchIngestedEvent(
         app,
         message,

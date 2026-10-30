@@ -14,20 +14,16 @@ import {
 import { extractMetricSamples } from "../metrics/samples";
 import { extractIssueDigests } from "../issues/grouping";
 import {
-  dispatchIngestedEvent,
-  markIngested,
   readBody,
   resolveAuthorizedApp,
-  wasRecentlyIngested,
 } from "./ingestion";
 import { offloadReplayItems } from "./offload";
 import { assertDeclaredSize, assertItemCount } from "../ratelimit/hygiene";
 import { rateLimitConfig } from "../ratelimit/config";
-import { scopedViewFor } from "../permissions/engine";
 import { s3 } from "../storage";
 import { replayObjectPrefix } from "./offload";
 import { symbolicateEventPayload } from "../source-maps/resolver";
-import { batch, eventsPool } from "backend/nats";
+import { events, metrics } from "backend/nats";
 
 async function symbolicateBestEffort(
   projectId: string,
@@ -63,7 +59,7 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
       // list, not a lookup and a 404.
       let appIds: string[] | undefined;
       if (query.appId) appIds = [query.appId];
-      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
+      // const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
       if (view) {
         const visible = [...view.appIds];
         appIds = appIds ? appIds.filter((id) => visible.includes(id)) : visible;
@@ -122,7 +118,7 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
   .get(
     "/:eventId",
     async ({ params: { eventId }, request }) => {
-      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
+      // const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
       const stored = await findStoredEventByIdOrThrow(eventId);
       if (view && stored.appId && !view.appIds.has(stored.appId)) {
         throw notFound("Event", eventId);
@@ -233,9 +229,6 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
           : item,
       );
       const eventId = extractEventId({ header: parsed.header, items });
-      // A retried event id is answered without the object-store write and
-      // the publish: the id is the idempotency key.
-      if (wasRecentlyIngested(eventId)) return { id: eventId };
       const message: SentryEventMessage = {
         id: eventId,
         projectId: app.projectId,
@@ -252,18 +245,18 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
         receivedAt: new Date().toISOString(),
         type: "envelope",
       };
-      await dispatchIngestedEvent(
-        app,
-        message,
-        extractMetricSamples({
-          projectId: app.projectId,
-          appId: app.id,
-          eventId,
-          items,
-          receivedAt: message.receivedAt,
-        }),
-      );
-      markIngested(eventId);
+      await Promise.all([
+        events.push(message),
+        metrics.push(
+            extractMetricSamples({
+            projectId: app.projectId,
+            appId: app.id,
+            eventId,
+            items,
+            receivedAt: message.receivedAt,
+          })
+        )
+      ]);
       return { id: eventId };
     },
     { params: arktype({ projectId: "string" }) },
@@ -295,7 +288,6 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
           payload: event,
         },
       ];
-      if (wasRecentlyIngested(eventId)) return { id: eventId };
       const message: SentryEventMessage = {
         id: eventId,
         projectId: app.projectId,
@@ -309,19 +301,18 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
         receivedAt: new Date().toISOString(),
         type: "store",
       };
-      await eventsPool.send(JSON.stringify(message));
-      await dispatchIngestedEvent(
-        app,
-        message,
-        extractMetricSamples({
-          projectId: app.projectId,
-          appId: app.id,
-          eventId,
-          items,
-          receivedAt: message.receivedAt,
-        }),
-      );
-      markIngested(eventId);
+      await Promise.all([
+        events.push(message),
+        metrics.push(
+            extractMetricSamples({
+            projectId: app.projectId,
+            appId: app.id,
+            eventId,
+            items,
+            receivedAt: message.receivedAt,
+          })
+        )
+      ]);
       return { id: eventId };
     },
     { params: arktype({ projectId: "string" }) },

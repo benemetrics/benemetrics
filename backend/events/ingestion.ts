@@ -1,4 +1,4 @@
-import { serviceUnavailable, unauthorized } from "backend/errors";
+import { internalError, serviceUnavailable, unauthorized } from "backend/errors";
 import { appDAO } from "db/dao/apps";
 import { validateAuth } from "../auth";
 import { readBodyCapped } from "../ratelimit/hygiene";
@@ -64,26 +64,3 @@ export async function resolveAuthorizedApp(
 export async function readBody(request: Request): Promise<string> {
   return await readBodyCapped(request);
 }
-
-const RECENT_ID_TTL_MS = 60_000;
-const RECENT_ID_MAX = 50_000;
-const recentIds = new Map<string, number>();
-
-export function wasRecentlyIngested(eventId: string): boolean {
-  const seenAt = recentIds.get(eventId);
-  if (seenAt === undefined) return false;
-  if (Date.now() - seenAt > RECENT_ID_TTL_MS) {
-    recentIds.delete(eventId);
-    return false;
-  }
-  return true;
-}
-
-export function markIngested(eventId: string): void {
-  if (recentIds.size >= RECENT_ID_MAX) {
-    const oldest = recentIds.keys().next().value;
-    if (oldest !== undefined) recentIds.delete(oldest);
-  }
-  recentIds.set(eventId, Date.now());
-}
-

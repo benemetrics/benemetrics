@@ -27,7 +27,7 @@ const uniq = () =>
 
 let baseUrl = "";
 let view: Bun.WebView;
-let appRecord: { id: string; ingestKey: string; publicKey: string };
+let appRecord: { id: string; publicKey: string };
 const message = `ui problem ${uniq()}`;
 
 async function adminRequest(
@@ -169,10 +169,10 @@ describe("Issues page — resolve/reopen in the real UI", () => {
         name: "Issues UI App",
         platform: "web",
       })
-    ).json()) as { id: string; ingestKey: string; publicKey: string };
+    ).json()) as { id: string; publicKey: string };
 
     const ingested = await fetch(
-      `${baseUrl}/api/${appRecord.ingestKey}/store/?sentry_key=${encodeURIComponent(appRecord.publicKey)}`,
+      `${baseUrl}/api/${appRecord.appNumber}/store/?sentry_key=${encodeURIComponent(appRecord.publicKey)}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

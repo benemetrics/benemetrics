@@ -89,7 +89,6 @@ beforeAll(async () => {
     projectId,
     name: "Query App",
     platform: "javascript",
-    ingestKey: `ingest-${uniq()}`,
     publicKey: `public-${uniq()}`,
   });
   appId = app.id;
@@ -99,7 +98,6 @@ beforeAll(async () => {
     projectId,
     name: "Other Query App",
     platform: "javascript",
-    ingestKey: `ingest-${uniq()}`,
     publicKey: `public-${uniq()}`,
   });
   otherAppId = other.id;

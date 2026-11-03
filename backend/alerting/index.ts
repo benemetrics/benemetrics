@@ -366,11 +366,12 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
         rule.channelIds.length > 0
           ? rule.channelIds
           : channels.map((channel) => channel.id);
-      const results = await deliverAlertToChannels(
-        channels.filter((channel) => targets.includes(channel.id)),
-        buildTestNotification(rule, rule.appId),
-      );
-      return { results };
+      
+      return {
+        results: await Promise.all(
+          channels.filter((channel) => targets.includes(channel.id)).map((channel) => enqueueDelivery(channel, buildTestNotification(rule, rule.appId))),
+        )
+      };
     },
     { params: arktype({ id: "string.uuid" }) },
   )

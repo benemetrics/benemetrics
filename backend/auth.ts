@@ -4,6 +4,7 @@ import { unauthorized } from "backend/errors";
 import * as jose from "jose";
 import * as client from "openid-client";
 import { cache } from 'backend/cache';
+import { permissionGrantDAO } from "db/dao/permissions/grants";
 
 export interface SentryAuthTarget {
   publicKey: string;
@@ -63,7 +64,7 @@ function readGroups(payload: jose.JWTPayload) {
   );
 }
 
-const verifyWithIdP = async (token: string) => {
+export const verifyWithIdP = async (token: string) => {
   if (!jwks) return null;
   const clientId = env.OIDC_CLIENT_ID ?? env.OAUTH_CLIENT_ID;
   const issuer = env.OIDC_ISSUER;
@@ -84,7 +85,13 @@ const verifyWithIdP = async (token: string) => {
   }
 };
 
-export const resolveIdentity = async ({ request }: { request: Request }) => {
+export const resolveIdentity = async ({
+  request,
+  store,
+}: {
+  request: Request;
+  store?: { adminTokenHash?: string };
+}) => {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) throw unauthorized();
   const [type, token] = authHeader.split(" ");
@@ -93,6 +100,13 @@ export const resolveIdentity = async ({ request }: { request: Request }) => {
   const allowedGroups = cacheAllowedGroups ?? await write(permissionGrantDAO.getAllowedGroups())
 
   switch (type) {
+    case "API-Key": {
+      const hash = store?.adminTokenHash;
+      if (!hash) throw unauthorized();
+      const ok = await Bun.password.verify(token, hash);
+      if (!ok) throw unauthorized();
+      return { user: { id: "local-admin", groups: new Set(["admin"]) } };
+    }
     case "Bearer": {
       const identity = await verifyWithIdP(token);
       if (identity && allowedGroups.intersection(identity.groups).size > 0)

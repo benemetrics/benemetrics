@@ -1,5 +1,9 @@
 import { useParams, Link } from "react-router-dom";
+import { useState } from "react";
 import { useEventPayload } from "../../../../../../../hooks/use-event-payload";
+import { replayIdFromPayload } from "../../../../../../../hooks/use-replay";
+import { ReplaySheet } from "../../../../../../../components/session-replay";
+import { Btn } from "../../../../../../../components/ui-kit";
 import {
   Stacktrace,
   exceptionsFromPayload,
@@ -34,6 +38,7 @@ function EventDetail({
   projectId: string;
 }) {
   const { payload, loading, notFound } = useEventPayload(eventId);
+  const [replayOpen, setReplayOpen] = useState(false);
 
   if (loading) return <LoadingScreen />;
   if (notFound || !payload) return <NotFoundPage />;
@@ -47,6 +52,8 @@ function EventDetail({
   const user = payload["user"] as
     { email?: string; username?: string; id?: string } | undefined;
   const receivedAt = payload["timestamp"] as string | undefined;
+  // A replay link means the SDK recorded the session the error happened in.
+  const replayId = replayIdFromPayload(payload);
 
   return (
     <div className="space-y-4">
@@ -91,6 +98,20 @@ function EventDetail({
               {user.email ?? user.username ?? user.id ?? "unknown"}
             </div>
           </section>
+        )}
+
+        {replayId && (
+          <div>
+            <Btn onClick={() => setReplayOpen(true)}>Session replay</Btn>
+            <ReplaySheet
+              open={replayOpen}
+              onClose={() => setReplayOpen(false)}
+              eventId={eventId}
+              replayId={replayId}
+              title={message}
+              meta={receivedAt ? timeAgo(receivedAt) : undefined}
+            />
+          </div>
         )}
 
         <Stacktrace exceptions={exceptionsFromPayload(payload)} />

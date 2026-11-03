@@ -1,12 +1,13 @@
-import { Copy } from "lucide-react";
+import { Copy, RotateCcw } from "lucide-react";
 import { NavLink, useParams } from "react-router-dom";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useApp } from "../hooks/use-app";
 import { AppRecordProvider } from "../hooks/app-record-context";
 import { Btn, Crumbs, Pill } from "./ui-kit";
 import { LoadingScreen } from "./loading-screen";
 import { NotFoundPage } from "./not-found";
-import { appDsn } from "../lib/api";
+import { api, appDsn } from "../lib/api";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { projectId, appId } = useParams<{
@@ -14,12 +15,29 @@ export function AppLayout({ children }: { children: ReactNode }) {
     appId: string;
   }>();
   if (!projectId || !appId) return null;
-  const { app, project, notFound, loading } = useApp(projectId, appId);
+  const { app, project, notFound, loading, reload } = useApp(projectId, appId);
+  const [rotating, setRotating] = useState(false);
+  const [rotatedAt, setRotatedAt] = useState<number | null>(null);
 
   if (loading) return <LoadingScreen />;
   if (notFound || !app || !project) return <NotFoundPage />;
 
   const dsn = appDsn({ publicKey: app.publicKey, number: app.number });
+
+  async function rotateKey() {
+    setRotating(true);
+    try {
+      const res = await api["api/admin/apps"][appId!]["rotate-key"].post();
+      if (res.error) throw new Error(String(res.error));
+      await reload();
+      setRotatedAt(Date.now());
+      setTimeout(() => setRotatedAt(null), 2000);
+    } catch (error) {
+      console.error("[DSN] rotate failed:", error);
+    } finally {
+      setRotating(false);
+    }
+  }
 
   const tabs = [
     {
@@ -83,6 +101,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <span className="truncate">{dsn}</span>
             <Copy className="h-3 w-3 shrink-0" />
           </Btn>
+          <Btn
+            onClick={rotateKey}
+            disabled={rotating}
+            className="mt-2 flex items-center gap-2 rounded-md border px-2 py-1 font-mono text-[11px] text-muted-foreground hover:text-foreground"
+            title="Rotate DSN key — old DSNs stop working immediately"
+          >
+            <RotateCcw className="h-3 w-3 shrink-0" />
+            {rotating ? "Rotating…" : "Rotate DSN key"}
+          </Btn>
+          {rotatedAt && Date.now() - rotatedAt < 2000 && (
+            <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+              Key rotated — old DSNs are invalid.
+            </p>
+          )}
         </div>
         <nav className="-mx-4 flex gap-1 overflow-x-auto border-b px-4">
           {tabs.map((t) => (

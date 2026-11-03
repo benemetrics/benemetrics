@@ -59,7 +59,6 @@ async function json<T>(response: Response): Promise<T> {
 interface OtlpApp {
   projectId: string;
   id: string;
-  ingestKey: string;
   publicKey: string;
 }
 
@@ -71,7 +70,6 @@ async function makeApp(): Promise<OtlpApp> {
   );
   const appRecord = await json<{
     id: string;
-    ingestKey: string;
     publicKey: string;
   }>(
     await adminRequest("POST", `/api/admin/projects/${project.id}/apps`, {
@@ -87,7 +85,7 @@ async function postOtlp(
   headers: Record<string, string> = {},
 ): Promise<Response> {
   return fetch(
-    `${baseUrl}/api/${appRecord.ingestKey}/otlp/v1/traces?sentry_key=${encodeURIComponent(appRecord.publicKey)}`,
+    `${baseUrl}/api/${appRecord.appNumber}/otlp/v1/traces?sentry_key=${encodeURIComponent(appRecord.publicKey)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
@@ -212,7 +210,7 @@ describe("OTLP/JSON ingestion", () => {
   it("rejects a request without a DSN key (401)", async () => {
     const appRecord = await makeApp();
     const response = await fetch(
-      `${baseUrl}/api/${appRecord.ingestKey}/otlp/v1/traces`,
+      `${baseUrl}/api/${appRecord.appNumber}/otlp/v1/traces`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

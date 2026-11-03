@@ -27,7 +27,7 @@ const appResp = await fetch(
 if (!appResp.ok) throw new Error(`App failed: ${appResp.status}`);
 const app = (await appResp.json()) as any;
 
-const url = `${BASE_URL}/api/${app.ingestKey}/envelope/?sentry_key=${app.publicKey}`;
+const url = `${BASE_URL}/api/${app.appNumber}/envelope/?sentry_key=${app.publicKey}`;
 console.log(
   `🚀 Stressing ${url} at ${RPS} RPS for ${DURATION} (unique event_id + unique issue per request)...`,
 );

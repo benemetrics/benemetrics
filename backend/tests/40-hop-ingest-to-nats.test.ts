@@ -34,7 +34,7 @@ describe("Hop 1: ingest -> NATS", () => {
   it("publishes an ingested envelope to sentry.events and answers the event id", async () => {
     const app = await startTestApp();
     const eventId = crypto.randomUUID();
-    const url = new URL(`${TEST_ORIGIN}/api/${app.ingestKey}/envelope/`);
+    const url = new URL(`${TEST_ORIGIN}/api/${app.appNumber}/envelope/`);
     url.searchParams.set("sentry_key", app.publicKey);
 
     const envelope = [
@@ -137,7 +137,7 @@ describe("Hop 1: ingest -> NATS", () => {
     })();
     await nats.flush();
 
-    const url = new URL(`${TEST_ORIGIN}/api/${app.ingestKey}/envelope/`);
+    const url = new URL(`${TEST_ORIGIN}/api/${app.appNumber}/envelope/`);
     url.searchParams.set("sentry_key", app.publicKey);
     const envelope = [
       JSON.stringify({ event_id: eventId, sent_at: new Date().toISOString() }),
@@ -218,7 +218,7 @@ describe("Hop 1: ingest -> NATS", () => {
     await nats.flush();
 
     const ingest = async (eventId: string, level: string) => {
-      const url = new URL(`${TEST_ORIGIN}/api/${app.ingestKey}/envelope/`);
+      const url = new URL(`${TEST_ORIGIN}/api/${app.appNumber}/envelope/`);
       url.searchParams.set("sentry_key", app.publicKey);
       const envelope = [
         JSON.stringify({

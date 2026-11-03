@@ -70,7 +70,6 @@ export interface TestApp {
   projectId: string;
   appId: string;
   appNumber: number;
-  ingestKey: string;
   publicKey: string;
 }
 
@@ -105,7 +104,6 @@ export async function startTestApp(): Promise<TestApp> {
   const created = (await appResponse.json()) as {
     id: string;
     number: number;
-    ingestKey: string;
     publicKey: string;
   };
 
@@ -115,7 +113,6 @@ export async function startTestApp(): Promise<TestApp> {
     projectId: project.id,
     appId: created.id,
     appNumber: created.number,
-    ingestKey: created.ingestKey,
     publicKey: created.publicKey,
   };
 }

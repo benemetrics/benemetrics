@@ -32,7 +32,7 @@ import type {
   DeliveryResult,
 } from "../protocol/alerting";
 import { projectDAO } from "db/dao/projects";
-import { publishNotificationDelivery } from "../nats";
+import { natsStream } from "../nats";
 import type { DeliveryChannel } from "../protocol/notifications";
 
 const DEFAULT_MEASUREMENT = "duration";
@@ -54,35 +54,6 @@ function correlationKey(
 
 // The deduplication window: the same root cause is reported once.
 const DEDUP_WINDOW_MS = Number(process.env.ALERT_DEDUP_WINDOW_MS) || 5 * 60_000;
-
-// The silence that covers the scope right now — no-op (no silence table).
-async function activeSilence(): Promise<{ id: string; name: string } | null> {
-  return null;
-}
-
-// A failed delivery — no-op (no dead letter table; terminal failures now
-// land in the JetStream DLQ via the notification worker).
-async function recordFailedDeliveries(): Promise<void> {
-  return;
-}
-
-// Publish one delivery per channel to the JetStream work queue. The worker
-// retries on failure; a message whose redeliver budget is spent lands in
-// the DLQ for the admin to dismiss.
-async function dispatchAlertDeliveries(
-  channels: { id: string; name: string; type: string; config: Record<string, unknown> }[],
-  notification: AlertNotification,
-): Promise<void> {
-  await Promise.all(
-    channels.map((channel) =>
-      publishNotificationDelivery({
-        notification,
-        channel: channel as DeliveryChannel,
-        queuedAt: new Date().toISOString(),
-      }),
-    ),
-  );
-}
 
 // The evaluation decisions are logged as one JSON line each — the rule,
 // the scope, the value and the outcome.
@@ -390,7 +361,12 @@ async function evaluateRules(scope: {
           appId,
           now,
         );
-        await dispatchAlertDeliveries(selected, notification);
+
+        await natsStream.publish(
+          "snotify.deliver",
+          selected.map((channel) => ({ channel, notification })).map((obj) => JSON.stringify(obj)).join('\n'),
+        )
+
         countIncidentFired();
         logDecision({
           event: "evaluated",
@@ -500,7 +476,10 @@ async function fireIssueTriggerRules(
               scope.appId,
               now,
             );
-            await dispatchAlertDeliveries(selected, notification);
+            await natsStream.publish(
+              "snotify.deliver",
+              selected.map((channel) => ({ channel, notification, queuedAt: new Date().toISOString() })).map((obj) => JSON.stringify(obj)).join('\n'),
+            )
             countIncidentFired();
             logDecision({
               event: "issue_trigger",

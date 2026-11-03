@@ -85,5 +85,26 @@ export const projectRoutes = new Elysia({ prefix: "/api/admin/projects" })
             limit: "string.integer.parse?",
           }),
         },
-    ),
+      )
+      // Apps are created inside their project, never auto-provisioned
+      // by ingestion; the caller composes the DSN from publicKey + number.
+      .post(
+        "/apps",
+        async ({ params: { id }, body }) => {
+          // findByIdOrThrow throws 404 when the project is missing.
+          await projectDAO.findByIdOrThrow(id);
+          return appDAO.create({
+            projectId: id,
+            name: body.name,
+            platform: body.platform ?? "javascript",
+            publicKey: appDAO.generatePublicKey(),
+          });
+        },
+        {
+          body: arktype({
+            name: "string",
+            platform: "string?",
+          }),
+        },
+      ),
 );

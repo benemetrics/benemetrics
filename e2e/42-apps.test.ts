@@ -53,13 +53,11 @@ describe("New app", () => {
       number: number;
       projectId: string;
       publicKey: string;
-      ingestKey: string;
     };
     expect(appData.id).toBeDefined();
     expect(appData.projectId).toBe(projectData.id);
     expect(appData.number).toBeGreaterThan(0);
     expect(appData.publicKey).toBeDefined();
-    expect(appData.ingestKey).toBeDefined();
 
     const dsn = `http://${appData.publicKey}@${new URL(SERVER_URL).host}/${appData.number}`;
     expect(dsn).toStartWith("http://");

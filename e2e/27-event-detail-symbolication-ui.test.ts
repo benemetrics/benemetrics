@@ -38,7 +38,7 @@ const SOURCE_MAP = {
 
 let baseUrl = "";
 let view: Bun.WebView;
-let appRecord: { id: string; ingestKey: string; publicKey: string };
+let appRecord: { id: string; publicKey: string };
 
 async function adminRequest(
   method: string,
@@ -175,8 +175,7 @@ describe("Event detail stack trace — symbolication in the real UI", () => {
       await adminRequest("POST", `/api/admin/projects/${project.id}/apps`, {
         name: "web",
       })
-    ).json()) as { id: string; ingestKey: string; publicKey: string };
-
+    ).json()) as { id: string; publicKey: string };
     const token = (await (
       await adminRequest("POST", "/api/admin/source-map-tokens", {
         name: "ui-ci",
@@ -208,7 +207,7 @@ describe("Event detail stack trace — symbolication in the real UI", () => {
 
     // Minified event: frames arrive oldest-first, crash site last.
     const ingested = await fetch(
-      `${baseUrl}/api/${appRecord.ingestKey}/store/?sentry_key=${encodeURIComponent(appRecord.publicKey)}`,
+      `${baseUrl}/api/${appRecord.appNumber}/store/?sentry_key=${encodeURIComponent(appRecord.publicKey)}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

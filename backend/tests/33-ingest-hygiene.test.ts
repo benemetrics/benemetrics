@@ -38,7 +38,7 @@ async function ingestEnvelope(
   body: string,
   options: { gzip?: boolean; contentType?: string } = {},
 ): Promise<Response> {
-  const url = new URL(`${TEST_ORIGIN}/api/${app.ingestKey}/envelope/`);
+  const url = new URL(`${TEST_ORIGIN}/api/${app.appNumber}/envelope/`);
   url.searchParams.set("sentry_key", app.publicKey);
   const payload = options.gzip ? gzipSync(Buffer.from(body, "utf8")) : body;
   return fetch(url, {
@@ -143,7 +143,7 @@ describe("Ingest hygiene caps", () => {
 
   it("rejects an OTLP request with too many spans", async () => {
     setEnv("INGEST_MAX_OTLP_SPANS", "1");
-    const url = new URL(`${TEST_ORIGIN}/api/${app.ingestKey}/otlp/v1/traces`);
+    const url = new URL(`${TEST_ORIGIN}/api/${app.appNumber}/otlp/v1/traces`);
     url.searchParams.set("sentry_key", app.publicKey);
     const response = await fetch(url, {
       method: "POST",

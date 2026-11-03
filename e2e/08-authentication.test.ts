@@ -39,11 +39,10 @@ async function bootstrapProjectAndApp(): Promise<void> {
     ),
   );
   const created = (await appResponse.json()) as {
-    ingestKey: string;
     publicKey: string;
     number: number;
   };
-  TEST_PROJECT_ID = created.ingestKey;
+  TEST_PROJECT_ID = created.number;
   TEST_PUBLIC_KEY = created.publicKey;
   TEST_DSN = `http://${created.publicKey}@localhost:31337/${created.number}`;
 }

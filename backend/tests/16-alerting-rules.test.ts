@@ -58,7 +58,6 @@ async function json<T>(response: Response): Promise<T> {
 interface AlertApp {
   projectId: string;
   id: string;
-  ingestKey: string;
   publicKey: string;
 }
 
@@ -70,7 +69,6 @@ async function makeApp(): Promise<AlertApp> {
   );
   const appRecord = await json<{
     id: string;
-    ingestKey: string;
     publicKey: string;
   }>(
     await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
@@ -94,7 +92,7 @@ async function ingestEvent(
   event: Record<string, unknown>,
 ): Promise<Response> {
   const response = await fetch(
-    `${baseUrl}/api/${app.ingestKey}/store/?sentry_key=${encodeURIComponent(app.publicKey)}`,
+    `${baseUrl}/api/${app.appNumber}/store/?sentry_key=${encodeURIComponent(app.publicKey)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

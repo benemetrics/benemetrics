@@ -35,7 +35,6 @@ interface AppResponse {
   projectId: string;
   name: string;
   platform: string;
-  ingestKey: string;
   publicKey: string;
   createdAt: string;
 }
@@ -138,7 +137,7 @@ describe("Projects & Apps Management", () => {
     expect(appData.id).toBeDefined();
     expect(appData.projectId).toBe(projectData.id);
     expect(appData.name).toBe("Checkout App");
-    expect(appData.ingestKey).toBeDefined();
+    expect(appData.number).toBeDefined();
     expect(appData.publicKey).toBeDefined();
     expect(appData.number).toBeDefined();
   });
@@ -263,7 +262,7 @@ describe("Projects & Apps Management", () => {
     const dsn = `http://${appData.publicKey}@test.local/${appData.number}`;
     const eventId = crypto.randomUUID();
     const ingested = await fetch(
-      `${baseUrl}/api/${appData.ingestKey}/store/?sentry_key=${appData.publicKey}`,
+      `${baseUrl}/api/${appData.number}/store/?sentry_key=${appData.publicKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -279,5 +278,82 @@ describe("Projects & Apps Management", () => {
 
     const stored = await waitForStoredEvent(eventId);
     expect(stored).toBeDefined();
+  });
+
+  it("rotates the DSN public key and invalidates the old key", async () => {
+    const project = await apiRequest("POST", "/api/admin/projects", {
+      name: "Rotate Project",
+    });
+    expect(project.status).toBe(200);
+    const projectData = (await project.json()) as { id: string };
+
+    const app = await apiRequest(
+      "POST",
+      `/api/admin/projects/${projectData.id}/apps`,
+      { name: "Rotate App" },
+    );
+    expect(app.status).toBe(200);
+    const appData = (await app.json()) as AppResponse;
+    const oldKey = appData.publicKey;
+
+    // Old key ingests fine.
+    const before = await fetch(`${baseUrl}/api/${appData.number}/store/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Sentry-Auth": `Sentry sentry_key=${oldKey}`,
+      },
+      body: JSON.stringify({
+        event_id: crypto.randomUUID(),
+        level: "error",
+        message: "before rotate",
+      }),
+    });
+    expect(before.ok).toBe(true);
+
+    const rotated = await apiRequest(
+      "POST",
+      `/api/admin/apps/${appData.id}/rotate-key`,
+    );
+    expect(rotated.status).toBe(200);
+    const rotatedData = (await rotated.json()) as AppResponse;
+    expect(rotatedData.publicKey).not.toBe(oldKey);
+
+    // The app detail reflects the new key.
+    const detail = await apiRequest(
+      "GET",
+      `/api/admin/apps/${appData.id}`,
+    );
+    expect(detail.status).toBe(200);
+    expect((await detail.json()).publicKey).toBe(rotatedData.publicKey);
+
+    // Old key is rejected; new key works.
+    const withOld = await fetch(`${baseUrl}/api/${appData.number}/store/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Sentry-Auth": `Sentry sentry_key=${oldKey}`,
+      },
+      body: JSON.stringify({
+        event_id: crypto.randomUUID(),
+        level: "error",
+        message: "after rotate old key",
+      }),
+    });
+    expect(withOld.status).toBe(401);
+
+    const withNew = await fetch(`${baseUrl}/api/${appData.number}/store/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Sentry-Auth": `Sentry sentry_key=${rotatedData.publicKey}`,
+      },
+      body: JSON.stringify({
+        event_id: crypto.randomUUID(),
+        level: "error",
+        message: "after rotate new key",
+      }),
+    });
+    expect(withNew.ok).toBe(true);
   });
 });

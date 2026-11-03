@@ -1,18 +1,16 @@
 import { Elysia } from "elysia";
 import "./arktype-config";
 import { ApiError } from "./errors";
+import { uniqueViolationConstraint } from "db/pg-errors";
 import ui from "../frontend/index.html";
 import { apiRoutes } from "./routes";
 import { startAlertSweeper } from "./alerting/evaluation";
 import { startNotificationWorker } from "./notifications/delivery";
 import { initClickHouse } from "./clickhouse";
 import { assertStorageConfigured } from "./storage";
-import { cron } from "@elysiajs/cron";
-import { generateAdminToken } from "./auth";
 import { startAuthCallout } from "./nats-auth-callout";
 import { nats } from "./nats";
 import { join } from "node:path";
-import { permissionGrantDAO } from "db/dao/permissions/grants";
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 
@@ -43,6 +41,15 @@ const app = new Elysia({
     if (code === "NOT_FOUND") {
       set.status = 404;
       return { error: "Not found" };
+    }
+    // Unmapped unique-violation races surface as 409 instead of a 500
+    const constraint = uniqueViolationConstraint(error);
+    if (constraint) {
+      console.error(`[CONFLICT] unique constraint violated: ${constraint}`);
+      set.status = 409;
+      return {
+        error: `A resource with the same unique key already exists (${constraint})`,
+      };
     }
     console.error(
       `[${code}] ${error instanceof Error ? error.message : String(error)}`,

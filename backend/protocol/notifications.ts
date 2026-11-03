@@ -16,8 +16,6 @@ export interface DeliveryChannel {
 export interface NotificationDelivery {
   notification: AlertNotification;
   channel: DeliveryChannel;
-  /** The ISO time the delivery was queued by the dispatcher. */
-  queuedAt: string;
 }
 
 /** One dead letter: a read-only view of the DLQ stream message. */

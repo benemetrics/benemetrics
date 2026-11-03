@@ -182,12 +182,9 @@ The evaluation surface implements the **OpenFeature Remote Evaluation Protocol
 (OFREP)**, the vendor-agnostic API between OpenFeature providers and flag
 management systems (spec: `open-feature/protocol`, service OpenAPI 0.4.0).
 
-**Authentication** — the DSN public key, under either spec form plus the
-legacy forms: `X-API-Key: <key>`, `Authorization: Bearer <key>`,
-`X-Sentry-Auth: sentry_key=<key>`, or the `api_key`/`sentry_key` query
-parameters (used by `EventSource`, which cannot set headers). The key names
-the app, which carries the flag scope (the project and the app); a missing
-or unknown key is rejected with `401` before any evaluation runs.
+**Authentication** — none. The DSN credential surface was removed from feature
+flags, so the OFREP evaluation surface is unauthenticated (OFREP marks auth as
+optional). No key is required to evaluate or track.
 
 **Evaluation priority** — unchanged from the native engine: targeting rules
 first-match → segments (all rules must match) → rollout percentage →
@@ -224,12 +221,12 @@ POST /ofrep/v1/evaluate/flags
 - `ETag` echoes the scope's configuration hash; a matching `If-None-Match` →
   `304 Not Modified`.
 - `eventStreams[0]` advertises `type: "sse"`, the stream URL
-  (`/ofrep/v1/events?api_key=…`) and `inactivityDelaySec: 120`.
+  (`/ofrep/v1/events`) and `inactivityDelaySec: 120`.
 
 ### Change-Notification Stream (SSE, via Elysia)
 
 ```
-GET /ofrep/v1/events?api_key=<key>
+GET /ofrep/v1/events
 ```
 
 - Implemented with Elysia's native SSE (async generator + the `sse()` helper),

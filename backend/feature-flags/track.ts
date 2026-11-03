@@ -5,19 +5,15 @@ import { featureFlagDAO } from "db/dao/feature-flags";
 import { db } from "db";
 import { experimentAssignmentDAO } from "db/dao/feature-flags/experiment-assignments";
 import { experimentMetricDAO } from "db/dao/feature-flags/experiment-metrics";
-import { requireDsnKey, scopeOf } from "./dsn";
 import { publishFlagChange } from "./events";
 
-// The experiment surface: DSN-guarded metric tracking with guardrail
-// auto-pause. OFREP has no metric concept, so this endpoint stays.
+// The experiment surface: metric tracking with guardrail auto-pause.
+// OFREP has no metric concept, so this endpoint stays. The DSN credential
+// surface was removed, so it is unauthenticated.
 export const trackRoutes = new Elysia({ prefix: "api/sentry/flags" }).post(
   "/experiment/track",
-  async ({ body, request }) => {
-    const app = await requireDsnKey(request);
-    const flag = await featureFlagDAO.findByKeyForScope(
-      body.flagKey,
-      scopeOf(app),
-    );
+  async ({ body }) => {
+    const flag = await featureFlagDAO.findByKeyForScope(body.flagKey, null);
     if (!flag) throw notFound("Feature flag", body.flagKey);
     const experiment = flag.experiment
       ? (JSON.parse(flag.experiment) as {

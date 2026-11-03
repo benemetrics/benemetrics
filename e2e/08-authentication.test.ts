@@ -385,7 +385,7 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
     expect(response.status).toBe(200);
   });
 
-  it("rejects sentry endpoints with admin token (invalid body)", async () => {
+  it("OFREP endpoints are unauthenticated (no DSN gate)", async () => {
     const response = await app.handle(
       new Request("http://localhost:31337/ofrep/v1/evaluate/flags", {
         method: "POST",
@@ -397,9 +397,9 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
       }),
     );
 
-    // OFREP endpoints accept the DSN key (X-API-Key/Bearer), not admin tokens;
-    // credentials are checked before evaluation.
-    expect(response.status).toBe(401);
+    // With the DSN credential surface removed, OFREP endpoints are
+    // unauthenticated; any bearer token is ignored and evaluation runs.
+    expect(response.status).toBe(200);
   });
 
   it("rejects admin endpoints with sentry_key", async () => {

@@ -61,8 +61,6 @@ async function json<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-// The SDK surfaces authenticate with the DSN public key of a real app.
-let dsnKey: Promise<string> | null = null;
 // The flags belong to a project; the SDK surface resolves them in the
 // app's project, so the tests share one app.
 let testApp: Promise<TestApp> | null = null;
@@ -74,16 +72,10 @@ async function flagProjectId(): Promise<string> {
   return (await sentryApp()).projectId;
 }
 
-async function sentryDsnKey(): Promise<string> {
-  dsnKey ??= sentryApp().then((app) => app.publicKey);
-  return dsnKey;
-}
-
 async function evaluateFlags(
   context: Record<string, unknown>,
 ): Promise<Response> {
   const url = new URL(`${baseUrl}/ofrep/v1/evaluate/flags`);
-  url.searchParams.set("api_key", await sentryDsnKey());
   return await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -106,7 +98,6 @@ async function evaluateUser(
 
 async function trackRequest(body: unknown): Promise<Response> {
   const url = new URL(`${baseUrl}/api/sentry/flags/experiment/track`);
-  url.searchParams.set("sentry_key", await sentryDsnKey());
   return await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -574,9 +565,7 @@ describe("Experiments / A/B Testing", () => {
   it("streams refetchEvaluation change events over SSE", async () => {
     const flag = await createExperimentFlag(`sse-${Date.now()}`);
 
-    const streamRes = await fetch(
-      `${baseUrl}/ofrep/v1/events?api_key=${await sentryDsnKey()}`,
-    );
+    const streamRes = await fetch(`${baseUrl}/ofrep/v1/events`);
     expect(streamRes.status).toBe(200);
     expect(streamRes.headers.get("content-type")).toContain(
       "text/event-stream",
@@ -610,7 +599,6 @@ describe("Experiments / A/B Testing", () => {
       context?: Record<string, unknown>,
     ): Promise<Response> {
       const url = new URL(`${baseUrl}/ofrep/v1/evaluate/flags/${key}`);
-      url.searchParams.set("api_key", await sentryDsnKey());
       return await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -664,7 +652,6 @@ describe("Experiments / A/B Testing", () => {
     it("rejects a missing targeting key", async () => {
       const flag = await createExperimentFlag(`ofrep-req-${Date.now()}`);
       const url = new URL(`${baseUrl}/ofrep/v1/evaluate/flags/${flag.key}`);
-      url.searchParams.set("api_key", await sentryDsnKey());
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

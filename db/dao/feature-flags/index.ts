@@ -67,22 +67,22 @@ export const featureFlagDAO = {
 
   /**
    * The flag that applies to a scope: the project's, else the unscoped one
-   * (the narrower wins).
+   * (the narrower wins). A null scope matches every flag regardless of
+   * project (used once the DSN credential surface is removed).
    */
-  findByKeyForScope: async (key: string, scope: FlagScope) => {
-    const { projectId = null } = scope;
-    const scopes = [
-      projectId ? eq(featureFlags.projectId, projectId) : null,
-      and(isNull(featureFlags.projectId)),
-    ].filter(
-      (condition): condition is NonNullable<typeof condition> =>
-        condition !== null,
-    );
-
+  findByKeyForScope: async (key: string, scope: FlagScope | null = null) => {
+    const projectId = scope?.projectId ?? null;
+    const conditions = projectId
+      ? [eq(featureFlags.projectId, projectId)]
+      : [];
     const [row] = await db
       .select(featureFlagPublicFields)
       .from(featureFlags)
-      .where(and(eq(featureFlags.key, key), or(...scopes)))
+      .where(
+        conditions.length > 0
+          ? and(eq(featureFlags.key, key), ...conditions)
+          : eq(featureFlags.key, key),
+      )
       .orderBy(
         // The project scope first, the unscoped last.
         sql`case when ${featureFlags.projectId} is not null then 0 else 1 end`,
@@ -95,15 +95,17 @@ export const featureFlagDAO = {
    * Every flag visible to a scope: the project's plus the unscoped ones.
    * Used by the OFREP bulk evaluation and the configuration ETag.
    */
-  listForScope: async (scope: FlagScope) => {
-    const { projectId = null } = scope;
+  listForScope: async (scope: FlagScope | null = null) => {
+    const projectId = scope?.projectId ?? null;
     const conditions = projectId
-      ? or(eq(featureFlags.projectId, projectId), isNull(featureFlags.projectId))
-      : isNull(featureFlags.projectId);
+      ? [or(eq(featureFlags.projectId, projectId), isNull(featureFlags.projectId))]
+      : [];
+    // A null scope matches every flag regardless of project.
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     return await db
       .select(featureFlagPublicFields)
       .from(featureFlags)
-      .where(conditions);
+      .where(whereClause);
   },
 
   updateOrThrow: async (

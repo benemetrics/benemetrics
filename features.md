@@ -89,9 +89,9 @@ This document lists the features implemented on the backend, grouped by area.
 | Change stream      | `GET /ofrep/v1/events` — SSE (`refetchEvaluation` payloads with the latest etag / lastModified).      |
 | Experiment track   | `POST /api/sentry/flags/experiment/track` — record a metric value for a flag/user (DSN auth).         |
 
-Authentication: the DSN public key under the OFREP headers — `X-API-Key` or
-`Authorization: Bearer` — plus the legacy `X-Sentry-Auth`/`sentry_key` surfaces
-and the `api_key` query parameter for EventSource.
+Authentication: none — the DSN credential surface was removed from feature
+flags, so the OFREP evaluation surface is unauthenticated (OFREP marks auth as
+optional).
 
 ## Source Maps
 

@@ -55,8 +55,6 @@ async function apiRequest(
   return await fetch(url, options);
 }
 
-// The SDK surfaces authenticate with the DSN public key of a real app.
-let dsnKey: Promise<string> | null = null;
 // The flags belong to a project; the SDK surface resolves them in the
 // app's project, so the tests share one app.
 let testApp: Promise<TestApp> | null = null;
@@ -68,18 +66,12 @@ async function flagProjectId(): Promise<string> {
   return (await sentryApp()).projectId;
 }
 
-async function sentryDsnKey(): Promise<string> {
-  dsnKey ??= sentryApp().then((app) => app.publicKey);
-  return dsnKey;
-}
-
 async function sentryRequest(
   method: string,
   path: string,
   body?: unknown,
 ): Promise<Response> {
   const url = new URL(`${baseUrl}${path}`);
-  url.searchParams.set("sentry_key", await sentryDsnKey());
 
   const options: RequestInit = {
     method,
@@ -617,7 +609,7 @@ describe("Feature Flags Management API", () => {
     });
   });
 
-  describe("Evaluation API (OFREP - DSN auth)", () => {
+  describe("Evaluation API (OFREP)", () => {
     it("should evaluate flags for a user context", async () => {
       const key = "eval-test-" + Date.now();
       await apiRequest("POST", "/api/admin/feature-flags", {
@@ -647,24 +639,6 @@ describe("Feature Flags Management API", () => {
       expect(response.status).toBe(200);
       const body = (await response.json()) as { flags: Array<{ key: string }> };
       expect(body.flags.some((flag) => flag.key === key)).toBe(true);
-    });
-
-    it("rejects the SDK surface without an API key", async () => {
-      const response = await apiRequest("POST", "/ofrep/v1/evaluate/flags", {
-        context: { targetingKey: "user_123" },
-      });
-      expect(response.status).toBe(401);
-    });
-
-    it("rejects the SDK surface with an unknown API key", async () => {
-      const url = new URL(`${baseUrl}/ofrep/v1/evaluate/flags`);
-      url.searchParams.set("api_key", "not-a-real-key");
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context: { targetingKey: "user_123" } }),
-      });
-      expect(response.status).toBe(401);
     });
   });
 

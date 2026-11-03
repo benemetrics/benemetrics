@@ -6,8 +6,6 @@ import type {
   OfrepEvaluationSuccess,
 } from "backend/protocol/feature-flags";
 import { featureFlagDAO } from "db/dao/feature-flags";
-import type { FeatureFlag } from "db/schema/feature-flags";
-import { requireOfrepKey, scopeOf } from "./dsn";
 import { disabledResult, evaluateWithAssignment } from "./evaluate";
 import { parseFlag, type ParsedFeatureFlag } from "./service";
 import {
@@ -15,6 +13,8 @@ import {
   subscribeRemoteFlagChanges,
   type FlagChangeEvent,
 } from "./events";
+
+export type { ParsedFeatureFlag } from "./service";
 
 const HEARTBEAT_SECONDS_MS = 20_000;
 
@@ -45,11 +45,11 @@ function evaluationFailure(
 }
 
 async function evaluateOne(
-  row: FeatureFlag,
+  row: Record<string, unknown>,
   targetingKey: string,
   context?: Record<string, unknown>,
 ): Promise<OfrepEvaluationSuccess> {
-  const flag = parseFlag(row);
+  const flag = parseFlag(row as never);
   if (flag.status !== "active") return toEntry(flag, disabledResult(flag));
   return toEntry(
     flag,
@@ -58,10 +58,8 @@ async function evaluateOne(
 }
 
 /** The scope's configuration ETag plus the latest change timestamp (unix seconds). */
-async function scopeState(scope: {
-  projectId: string | null;
-}): Promise<{ etag: string; lastModified: number }> {
-  const flags = await featureFlagDAO.listForScope(scope);
+async function scopeState(): Promise<{ etag: string; lastModified: number }> {
+  const flags = await featureFlagDAO.listForScope(null);
   const payload = flags
     .map((flag) => `${flag.id}:${flag.status}:${flag.updatedAt}`)
     .sort()
@@ -88,15 +86,13 @@ function ifNoneMatched(request: Request, etag: string): boolean {
 }
 
 /**
- * One connection's change queue: flag-change events for its scope. `next`
- * resolves null after the timeout — that is the heartbeat tick.
+ * One connection's change queue: flag-change events. With the DSN credential
+ * surface removed, the stream is unauthenticated and notifies on every change.
  */
-function newDeltaQueue(scope: { projectId: string | null }) {
+function newDeltaQueue() {
   const queued: FlagChangeEvent[] = [];
   const waiters = new Set<() => void>();
   const unsubscribe = subscribeFlagChanges((event) => {
-    const flag = event.flag as { projectId?: string | null } | undefined;
-    if (flag?.projectId != null && flag.projectId !== scope.projectId) return;
     queued.push(event);
     for (const waiter of waiters) waiter();
     waiters.clear();
@@ -127,12 +123,11 @@ function newDeltaQueue(scope: { projectId: string | null }) {
 subscribeRemoteFlagChanges();
 
 export const ofrepRoutes = new Elysia({ prefix: "/ofrep/v1" })
-  // Server-side providers: one flag, per-request context.
+  // Server-side providers: one flag, per-request context. Unauthenticated.
   .post(
     "/evaluate/flags/:key",
-    async ({ params: { key }, body, request }) => {
-      const app = await requireOfrepKey(request);
-      const row = await featureFlagDAO.findByKeyForScope(key, scopeOf(app));
+    async ({ params: { key }, body }) => {
+      const row = await featureFlagDAO.findByKeyForScope(key, null);
       if (!row) {
         return evaluationFailure(
           key,
@@ -153,7 +148,7 @@ export const ofrepRoutes = new Elysia({ prefix: "/ofrep/v1" })
         );
       }
       return Response.json(
-        await evaluateOne(row, targetingKey, context),
+        await evaluateOne(row as Record<string, unknown>, targetingKey, context),
       );
     },
     {
@@ -161,25 +156,23 @@ export const ofrepRoutes = new Elysia({ prefix: "/ofrep/v1" })
       body: arktype({ context: "Record<string, unknown>?" }),
     },
   )
-  // Client-side providers: all flags, static context, ETag-cached.
+  // Client-side providers: all flags, static context, ETag-cached. Unauthenticated.
   .post(
     "/evaluate/flags",
     async ({ body, request, set }) => {
-      const app = await requireOfrepKey(request);
-      const scope = scopeOf(app);
       const context = body.context;
       const targetingKey =
         typeof context?.targetingKey === "string" ? context.targetingKey : "";
-      const state = await scopeState(scope);
+      const state = await scopeState();
       if (ifNoneMatched(request, state.etag)) {
         set.status = 304;
         set.headers["ETag"] = state.etag;
         return;
       }
-      const rows = await featureFlagDAO.listForScope(scope);
+      const rows = await featureFlagDAO.listForScope(null);
       const flags = await Promise.all(
         rows.map((row) =>
-          evaluateOne(row, targetingKey, context),
+          evaluateOne(row as Record<string, unknown>, targetingKey, context),
         ),
       );
       set.headers["ETag"] = state.etag;
@@ -190,7 +183,7 @@ export const ofrepRoutes = new Elysia({ prefix: "/ofrep/v1" })
         eventStreams: [
           {
             type: "sse",
-            url: `/ofrep/v1/events?api_key=${encodeURIComponent(app.publicKey)}`,
+            url: `/ofrep/v1/events`,
             inactivityDelaySec: 120,
           },
         ],
@@ -202,10 +195,8 @@ export const ofrepRoutes = new Elysia({ prefix: "/ofrep/v1" })
   // Change notifications: the payload tells providers to re-fetch.
   .get(
     "/events",
-    async function* ({ query, request }) {
-      const app = await requireOfrepKey(request, query);
-      const scope = scopeOf(app);
-      const queue = newDeltaQueue(scope);
+    async function* () {
+      const queue = newDeltaQueue();
       let seq = 0;
       try {
         yield sse({ retry: 15_000 });
@@ -216,7 +207,7 @@ export const ofrepRoutes = new Elysia({ prefix: "/ofrep/v1" })
             yield sse({ event: "ping", data: { type: "ping" } });
             continue;
           }
-          const state = await scopeState(scope);
+          const state = await scopeState();
           yield sse({
             event: "message",
             id: String(++seq),
@@ -231,5 +222,5 @@ export const ofrepRoutes = new Elysia({ prefix: "/ofrep/v1" })
         queue.close();
       }
     },
-    { query: arktype({ api_key: "string?", sentry_key: "string?" }) },
+    {},
   );

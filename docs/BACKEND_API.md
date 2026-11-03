@@ -131,7 +131,7 @@ backend/
     experiments.ts         # experimentRoutes (/api/admin/experiments/*) — lifecycle, results, participants
     ofrep.ts               # ofrepRoutes (/ofrep/v1/*) — OpenFeature OFREP evaluation + SSE change stream
     evaluate.ts            # The evaluation engine: rules, segments, rollout, FNV-1a buckets
-    track.ts               # trackRoutes (/api/sentry/flags/experiment/track) — DSN-guarded metric tracking
+    track.ts               # trackRoutes (/api/sentry/flags/experiment/track) — metric tracking (unauthenticated)
     events.ts              # The flag-change bus: local fan-out + the stream subject
     service.ts             # Experiment results: participants, conversions, recommendation
     stats.ts               # Wilson interval + two-proportion z-test
@@ -317,14 +317,12 @@ Prefix: `/api/admin/feature-flags` — `backend/feature-flags/index.ts` → `fea
 | ------------------- | ------------------- | ------------- | ------------------------------------------------------------------------------------------------- |
 | Single evaluation   | `/ofrep/v1`         | `ofrepRoutes` | `POST /evaluate/flags/:key { context: { targetingKey, … } }` → `{ key, value, reason, variant }`  |
 | Bulk evaluation     | `/ofrep/v1`         | `ofrepRoutes` | `POST /evaluate/flags { context }` → `{ flags[], metadata, eventStreams[] }` + `ETag` / `If-None-Match → 304` |
-| Change stream (SSE) | `/ofrep/v1`         | `ofrepRoutes` | `GET /events?api_key=` → `data: {"type":"refetchEvaluation", etag, lastModified}` + 20s heartbeat |
-| Experiment Tracking | `/api/sentry/flags` | `trackRoutes` | `POST /experiment/track { flagKey, userId, metric, value? }` (legacy DSN auth)                     |
+| Change stream (SSE) | `/ofrep/v1`         | `ofrepRoutes` | `GET /events` → `data: {"type":"refetchEvaluation", etag, lastModified}` + 20s heartbeat |
+| Experiment Tracking | `/api/sentry/flags` | `trackRoutes` | `POST /experiment/track { flagKey, userId, metric, value? }`                                |
 
-**Auth:** the OFREP surfaces take the DSN public key under the spec headers —
-`X-API-Key` or `Authorization: Bearer` — plus the legacy `X-Sentry-Auth`/`sentry_key`
-forms and the `api_key`/`sentry_key` query parameters (EventSource). The flags are
-scoped, so the key names the app whose project is the flag scope. A missing or
-unknown key ⇒ `401`.
+**Auth:** the OFREP evaluation surface and the experiment tracking endpoint are
+unauthenticated — the DSN credential surface was removed from feature flags.
+(OFREP marks auth as optional; no key is required to evaluate or track.)
 
 **Evaluation Priority (strict):**
 

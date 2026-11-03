@@ -414,13 +414,13 @@ Get feature flag evaluation for a specific user.
 
 ---
 
-## Evaluation API — OFREP (Client-Side, DSN Key)
+## Evaluation API — OFREP (Unauthenticated)
 
 The evaluation surface implements the **OpenFeature Remote Evaluation
 Protocol (OFREP)** so any community OpenFeature provider can consume the
-flags. The credential is the DSN public key, presented as `X-API-Key: <key>`
-or `Authorization: Bearer <key>` (the legacy `sentry_key` surfaces still
-work).
+flags. The DSN credential surface was removed from feature flags, so the
+evaluation surface is unauthenticated (OFREP marks auth as optional). No key
+is required to evaluate or track.
 
 ### `POST /ofrep/v1/evaluate/flags`
 
@@ -462,7 +462,7 @@ Evaluate all flags visible to the app's scope with a static context
   ],
   "metadata": { "version": "\"1f2a…\"" },
   "eventStreams": [
-    { "type": "sse", "url": "/ofrep/v1/events?api_key=…", "inactivityDelaySec": 120 }
+    { "type": "sse", "url": "/ofrep/v1/events", "inactivityDelaySec": 120 }
   ]
 }
 ```
@@ -501,8 +501,8 @@ A request without `context.targetingKey` answers
 
 ### `GET /ofrep/v1/events`
 
-SSE change-notification stream (EventSource-friendly: the key travels in the
-`api_key` query parameter). On every flag change the stream emits:
+SSE change-notification stream (unauthenticated — no query parameter required).
+On every flag change the stream emits:
 
 ```
 event: message

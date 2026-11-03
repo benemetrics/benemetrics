@@ -352,10 +352,9 @@ describe("Backend parity — admin UI surfaces", () => {
     });
 
     // Persist a few assignments so the dashboard has participants. The
-    // evaluation surface authenticates with the DSN public key.
+    // evaluation surface is unauthenticated.
     for (let i = 0; i < 12; i++) {
       const evaluateUrl = new URL(`${baseUrl}/ofrep/v1/evaluate/flags`);
-      evaluateUrl.searchParams.set("api_key", appPublicKey);
       await fetch(evaluateUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

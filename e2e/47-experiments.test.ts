@@ -35,7 +35,6 @@ async function sentryRequest(
   body?: unknown,
 ): Promise<Response> {
   const url = new URL(`${SERVER_URL}${path}`);
-  url.searchParams.set("sentry_key", publicKey);
   const options: RequestInit = {
     method,
     headers: { "Content-Type": "application/json" },

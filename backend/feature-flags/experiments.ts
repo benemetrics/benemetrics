@@ -4,7 +4,7 @@ import { featureFlagDAO } from "db/dao/feature-flags";
 import { experimentAssignmentDAO } from "db/dao/feature-flags/experiment-assignments";
 import { badRequest, notFound } from "backend/errors";
 import { computeResults, parseFlag } from "./service";
-import { publishFlagChange } from "./events";
+import { publishFlagChange } from "./open-feature";
 import type { FeatureFlagVariant } from "backend/protocol/feature-flags";
 import type { ExperimentConfig, TargetingRule } from "backend/protocol/feature-flags";
 

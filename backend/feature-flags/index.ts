@@ -4,7 +4,7 @@ import { type as arktype } from "arktype";
 import { featureFlagDAO } from "db/dao/feature-flags";
 import { appDAO } from "db/dao/apps";
 import { projectDAO } from "db/dao/projects";
-import { publishFlagChange } from "./events";
+import { publishFlagChange } from "./open-feature";
 import {
   experimentConfigSchema,
   flagVariantSchema,
@@ -13,11 +13,11 @@ import {
 import { resolveIdentity } from "../auth";
 
 // The other surfaces of the domain: the admin experiment routes, the
-// DSN-guarded experiment tracking and the OFREP evaluation surface.
+// OpenFeature evaluation surface (engine + SSE stream + track), segments.
 export { experimentRoutes } from "./experiments";
 export { openFeatureRoutes, trackRoutes } from "./open-feature";
 export { segmentRoutes } from "./segments";
-export { publishFlagChange, subscribeFlagChanges } from "./events";
+export { publishFlagChange, subscribeFlagChanges } from "./open-feature";
 
 const variantsSchema = flagVariantSchema.array().atLeastLength(1).optional();
 const targetingRulesSchema = targetingRuleSchema.array().optional();

@@ -414,32 +414,29 @@ Get feature flag evaluation for a specific user.
 
 ---
 
-## Evaluation API (Client-Side - DSN Authentication)
+## Evaluation API — OFREP (Client-Side, DSN Key)
 
-### `POST /api/sentry/flags/evaluate`
+The evaluation surface implements the **OpenFeature Remote Evaluation
+Protocol (OFREP)** so any community OpenFeature provider can consume the
+flags. The credential is the DSN public key, presented as `X-API-Key: <key>`
+or `Authorization: Bearer <key>` (the legacy `sentry_key` surfaces still
+work).
 
-Evaluate feature flags for a user context (used by SDKs). Requires **Sentry DSN authentication** (sentry_key query param or Bearer token with DSN public key).
+### `POST /ofrep/v1/evaluate/flags`
+
+Evaluate all flags visible to the app's scope with a static context
+(used by client-side providers, ETag-cached).
 
 **Request:**
 
 ```json
 {
-  "user": {
-    "id": "user_123",
-    "email": "john@company.com",
-    "name": "John Doe",
-    "custom": {
-      "subscription_tier": "premium",
-      "role": "admin"
-    }
-  },
   "context": {
-    "ip": "192.168.1.1",
+    "targetingKey": "user_123",
+    "email": "john@company.com",
     "country": "US",
-    "device": "desktop",
-    "browser": "chrome"
-  },
-  "flags": ["new-checkout-flow", "dark-mode", "beta-features"]
+    "subscription_tier": "premium"
+  }
 }
 ```
 
@@ -447,64 +444,73 @@ Evaluate feature flags for a user context (used by SDKs). Requires **Sentry DSN 
 
 ```json
 {
-  "evaluations": [
+  "flags": [
     {
-      "flagKey": "new-checkout-flow",
-      "variantKey": "treatment",
+      "key": "new-checkout-flow",
+      "variant": "treatment",
       "value": true,
-      "reason": "Matched segment: Beta Users"
+      "reason": "TARGETING_MATCH",
+      "metadata": { "flagType": "boolean" }
     },
     {
-      "flagKey": "dark-mode",
-      "variantKey": "control",
+      "key": "dark-mode",
+      "variant": "control",
       "value": false,
-      "reason": "Default value (no matching rules)"
+      "reason": "DISABLED",
+      "metadata": { "flagType": "boolean" }
     }
   ],
-  "evaluatedAt": "2024-01-15T15:45:00Z"
+  "metadata": { "version": "\"1f2a…\"" },
+  "eventStreams": [
+    { "type": "sse", "url": "/ofrep/v1/events?api_key=…", "inactivityDelaySec": 120 }
+  ]
 }
 ```
 
----
+A matching `If-None-Match` header (the previously returned `ETag`) answers
+`304 Not Modified`.
 
-## OpenFlag Evaluation API (OpenFeature-compatible)
+### `POST /ofrep/v1/evaluate/flags/:key`
 
-### `POST /v1/flags/:key`
-
-Evaluate a single flag for a user, using the [OpenFeature Web Flag Evaluation API](https://openfeature.dev) ("OpenFlag") wire format — one flag per request, targeted by `targetingKey`.
-
-**Request:**
-
-```json
-{
-  "targetingKey": "user_123",
-  "context": {
-    "email": "john@company.com",
-    "subscription_tier": "premium"
-  }
-}
-```
+Evaluate one flag with a per-request context (server-side providers).
 
 **Response (success):**
 
 ```json
 {
+  "key": "new-checkout-flow",
   "variant": "treatment",
   "value": true,
-  "reason": "Matched segment: Beta Users"
+  "reason": "TARGETING_MATCH",
+  "metadata": { "flagType": "boolean" }
 }
 ```
 
-**Response (unknown flag):**
+**Response (unknown flag, 404):**
 
 ```json
 {
-  "variant": "default",
-  "value": null,
-  "reason": "Feature flag not found",
-  "errorCode": "FLAG_NOT_FOUND"
+  "key": "missing-flag",
+  "errorCode": "FLAG_NOT_FOUND",
+  "errorDetails": "Flag 'missing-flag' was not found"
 }
 ```
+
+A request without `context.targetingKey` answers
+`400 { "errorCode": "TARGETING_KEY_MISSING" }`.
+
+### `GET /ofrep/v1/events`
+
+SSE change-notification stream (EventSource-friendly: the key travels in the
+`api_key` query parameter). On every flag change the stream emits:
+
+```
+event: message
+data: {"type":"refetchEvaluation","etag":"\"1f2a…\"","lastModified":1731639400}
+```
+
+Providers re-run the bulk evaluation on `refetchEvaluation` and ignore
+unknown payload types; the stream heartbeats with `{"type":"ping"}`.
 
 ---
 

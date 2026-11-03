@@ -23,6 +23,16 @@ export type ParsedFeatureFlag = Omit<
   experiment: ExperimentConfig | null;
 };
 
+export function parseFlag(row: FeatureFlag): ParsedFeatureFlag {
+  return {
+    ...row,
+    variants: JSON.parse(row.variants),
+    targetingRules: JSON.parse(row.targetingRules),
+    segments: JSON.parse(row.segments),
+    experiment: row.experiment ? JSON.parse(row.experiment) : null,
+  };
+}
+
 function controlKeyOf(variants: FeatureFlagVariant[]): string {
   const control = variants.find((v) => v.key === "control") ?? variants[0];
   return control?.key ?? "control";

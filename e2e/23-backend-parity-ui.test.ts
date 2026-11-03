@@ -352,16 +352,15 @@ describe("Backend parity — admin UI surfaces", () => {
     });
 
     // Persist a few assignments so the dashboard has participants. The
-    // SDK surface authenticates with the DSN public key.
+    // evaluation surface authenticates with the DSN public key.
     for (let i = 0; i < 12; i++) {
-      const evaluateUrl = new URL(`${baseUrl}/api/sentry/flags/evaluate`);
-      evaluateUrl.searchParams.set("sentry_key", appPublicKey);
+      const evaluateUrl = new URL(`${baseUrl}/ofrep/v1/evaluate/flags`);
+      evaluateUrl.searchParams.set("api_key", appPublicKey);
       await fetch(evaluateUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user: { id: `results-user-${stamp}-${i}` },
-          flags: [flag.key],
+          context: { targetingKey: `results-user-${stamp}-${i}` },
         }),
       });
     }

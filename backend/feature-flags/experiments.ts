@@ -3,20 +3,10 @@ import { type as arktype } from "arktype";
 import { featureFlagDAO } from "db/dao/feature-flags";
 import { experimentAssignmentDAO } from "db/dao/feature-flags/experiment-assignments";
 import { badRequest, notFound } from "backend/errors";
-import { computeResults } from "./service";
+import { computeResults, parseFlag } from "./service";
 import { publishFlagChange } from "./events";
 import type { FeatureFlagVariant } from "backend/protocol/feature-flags";
 import type { ExperimentConfig, TargetingRule } from "backend/protocol/feature-flags";
-
-function parseFlag(flag: any) {
-  return {
-    ...flag,
-    variants: JSON.parse(flag.variants),
-    targetingRules: JSON.parse(flag.targetingRules),
-    segments: JSON.parse(flag.segments),
-    experiment: flag.experiment ? JSON.parse(flag.experiment) : null,
-  };
-}
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const experimentRoutes = new Elysia({ prefix: "/api/admin/experiments" })

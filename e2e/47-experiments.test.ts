@@ -2,7 +2,8 @@
  * E2E Test: A/B experiments
  *
  * Experiments start / results / stop on /api/admin/experiments/:flagId,
- * plus SDK evaluate / track via /api/sentry/flags/{evaluate,experiment/track}.
+ * plus experiment tracking via /api/sentry/flags/experiment/track and
+ * evaluation via /ofrep/v1/evaluate/flags.
  * Runs against a real HTTP listener via startTestServer().
  */
 
@@ -144,20 +145,18 @@ describe("A/B experiments", () => {
     expect(flag.status).toBe(200);
     const flagData = (await flag.json()) as { key: string };
 
-    const evaluation = await sentryRequest("POST", "/api/sentry/flags/evaluate", {
-      user: { id: "e2e-user-1" },
-      flags: [flagData.key],
+    const evaluation = await sentryRequest("POST", "/ofrep/v1/evaluate/flags", {
+      context: { targetingKey: "e2e-user-1" },
     });
     expect(evaluation.status).toBe(200);
     const evalBody = (await evaluation.json()) as {
-      evaluations: Array<{ variantKey: string; value: unknown }>;
+      flags: Array<{ key: string; variant: string; value: unknown }>;
     };
-    expect(evalBody.evaluations).toHaveLength(1);
+    expect(evalBody.flags).toHaveLength(1);
 
     const tracked = await sentryRequest("POST", "/api/sentry/flags/experiment/track", {
       flagKey: flagData.key,
-      variantKey: "control",
-      user: { id: "e2e-user-1" },
+      userId: "e2e-user-1",
       metric: "conversion",
       value: 1,
     });

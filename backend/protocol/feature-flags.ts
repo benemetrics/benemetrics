@@ -133,34 +133,65 @@ interface FeatureFlagListResponse {
   data: FeatureFlag[];
 }
 
-interface EvaluationRequest {
-  user: {
-    id: string;
-    email?: string;
-    name?: string;
-    custom?: Record<string, any>;
-  };
-  context?: {
-    ip?: string;
-    country?: string;
-    device?: string;
-    browser?: string;
-  };
-  flags: string[];
+// ── OpenFeature Remote Evaluation Protocol (OFREP) ───────
+
+/** The evaluation context: `targetingKey` plus arbitrary attributes. */
+type OfrepContext = { targetingKey?: string } & Record<string, unknown>;
+
+interface OfrepEvaluationRequest {
+  context: OfrepContext;
 }
 
-interface EvaluationItem {
-  flagKey: string;
-  variantKey: string;
-  value: any;
-  reason: string;
-  errorCode?: string | null;
-  assignmentId?: string;
+interface OfrepSingleEvaluationRequest {
+  context: {
+    targetingKey: string;
+  } & Record<string, unknown>;
 }
 
-interface EvaluationResponse {
-  evaluations: EvaluationItem[];
-  evaluatedAt: string;
+/** A successful evaluation; `value` is absent for `codeDefaultFlag` in the spec. */
+interface OfrepEvaluationSuccess {
+  key: string;
+  value: unknown;
+  reason:
+    | "STATIC"
+    | "TARGETING_MATCH"
+    | "SPLIT"
+    | "DISABLED"
+    | "UNKNOWN";
+  variant?: string;
+  errorCode?: never;
+  errorDetails?: never;
+  metadata?: Record<string, boolean | string | number>;
+}
+
+/** An evaluation failure entry inside a successful bulk response. */
+interface OfrepEvaluationFailure {
+  key: string;
+  errorCode: "GENERAL" | "INVALID_CONTEXT" | "PARSE_ERROR" | "TARGETING_KEY_MISSING";
+  errorDetails?: string;
+  value?: never;
+  reason?: never;
+  variant?: never;
+  metadata?: Record<string, boolean | string | number>;
+}
+
+/** The single-flag endpoint's dedicated 404 body. */
+interface OfrepFlagNotFound {
+  key: string;
+  errorCode: "FLAG_NOT_FOUND";
+  errorDetails?: string;
+}
+
+interface OfrepBulkEvaluationSuccess {
+  flags: Array<OfrepEvaluationSuccess | OfrepEvaluationFailure>;
+  metadata?: {
+    version: string;
+  };
+  eventStreams?: Array<{
+    type: "sse";
+    url: string;
+    inactivityDelaySec?: number;
+  }>;
 }
 
 interface ExperimentAssignment {
@@ -233,15 +264,6 @@ interface ExperimentUsersResponse {
   >;
 }
 
-interface ExperimentUserEvaluation {
-  featureFlagId: string;
-  userId: string;
-  variantKey: string;
-  variantValue: any;
-  reason: string;
-  evaluatedAt: string;
-}
-
 export type {
   FeatureFlagType,
   FeatureFlagStatus,
@@ -254,14 +276,17 @@ export type {
   FeatureFlagCreateRequest,
   FeatureFlagUpdateRequest,
   FeatureFlagListResponse,
-  EvaluationRequest,
-  EvaluationResponse,
-  EvaluationItem,
+  OfrepContext,
+  OfrepEvaluationRequest,
+  OfrepSingleEvaluationRequest,
+  OfrepEvaluationSuccess,
+  OfrepEvaluationFailure,
+  OfrepFlagNotFound,
+  OfrepBulkEvaluationSuccess,
   ExperimentAssignment,
   ExperimentMetric,
   ExperimentTrackRequest,
   VariantResult,
   ExperimentResults,
   ExperimentUsersResponse,
-  ExperimentUserEvaluation,
 };

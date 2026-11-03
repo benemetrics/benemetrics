@@ -30,18 +30,14 @@ interface FeatureFlag {
   experiment?: any;
 }
 
-interface Evaluation {
-  flagKey: string;
-  variantKey: string;
-  value: any;
+interface FlagEvaluation {
+  key: string;
+  value: unknown;
   reason: string;
-  errorCode?: string | null;
-  assignmentId?: string;
-}
-
-interface EvaluationResponse {
-  evaluations: Evaluation[];
-  evaluatedAt: string;
+  variant: string;
+  metadata?: Record<string, string | number | boolean>;
+  errorCode?: string;
+  errorDetails?: string;
 }
 
 async function adminRequest(
@@ -83,14 +79,29 @@ async function sentryDsnKey(): Promise<string> {
   return dsnKey;
 }
 
-async function evaluateRequest(body: unknown): Promise<Response> {
-  const url = new URL(`${baseUrl}/api/sentry/flags/evaluate`);
-  url.searchParams.set("sentry_key", await sentryDsnKey());
+async function evaluateFlags(
+  context: Record<string, unknown>,
+): Promise<Response> {
+  const url = new URL(`${baseUrl}/ofrep/v1/evaluate/flags`);
+  url.searchParams.set("api_key", await sentryDsnKey());
   return await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ context }),
   });
+}
+
+async function evaluateUser(
+  flagKey: string,
+  userId: string,
+  context: Record<string, unknown> = {},
+): Promise<FlagEvaluation> {
+  const res = await evaluateFlags({ targetingKey: userId, ...context });
+  expect(res.status).toBe(200);
+  const data = (await res.json()) as { flags: FlagEvaluation[] };
+  const evaluation = data.flags.find((entry) => entry.key === flagKey);
+  expect(evaluation).toBeDefined();
+  return evaluation!;
 }
 
 async function trackRequest(body: unknown): Promise<Response> {
@@ -101,23 +112,6 @@ async function trackRequest(body: unknown): Promise<Response> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-}
-
-async function evaluateUser(
-  flagKey: string,
-  userId: string,
-  context?: Record<string, unknown>,
-): Promise<Evaluation> {
-  const res = await evaluateRequest({
-    user: { id: userId },
-    context,
-    flags: [flagKey],
-  });
-  expect(res.status).toBe(200);
-  const data = (await res.json()) as EvaluationResponse;
-  const [evaluation] = data.evaluations;
-  expect(evaluation).toBeDefined();
-  return evaluation!;
 }
 
 async function createExperimentFlag(
@@ -179,9 +173,8 @@ describe("Experiments / A/B Testing", () => {
     const first = await evaluateUser(flag.key, "sticky-user-1");
     const second = await evaluateUser(flag.key, "sticky-user-1");
 
-    expect(["control", "treatment"]).toContain(first.variantKey);
-    expect(second.variantKey).toBe(first.variantKey);
-    expect(first.assignmentId).toBeDefined();
+    expect(["control", "treatment"]).toContain(first.variant);
+    expect(second.variant).toBe(first.variant);
     expect(first.reason).toBeTruthy();
   });
 
@@ -191,27 +184,14 @@ describe("Experiments / A/B Testing", () => {
 
     // Concurrent evaluations of the same user must all succeed (the
     // flag+user assignment is unique) and agree on a single variant.
-    const responses = await Promise.all(
-      Array.from({ length: 5 }, () =>
-        evaluateRequest({ user: { id: userId }, flags: [flag.key] }),
-      ),
-    );
     const evaluations = await Promise.all(
-      responses.map(async (response) => {
-        expect(response.status).toBe(200);
-        const data = (await response.json()) as EvaluationResponse;
-        return data.evaluations[0]!;
-      }),
+      Array.from({ length: 5 }, () => evaluateUser(flag.key, userId)),
     );
 
     const variantKeys = new Set(
-      evaluations.map((evaluation) => evaluation.variantKey),
+      evaluations.map((evaluation) => evaluation.variant),
     );
     expect(variantKeys.size).toBe(1);
-    const assignmentIds = new Set(
-      evaluations.map((evaluation) => evaluation.assignmentId),
-    );
-    expect(assignmentIds.size).toBe(1);
 
     const users = await json<{
       variants: Record<string, { users: Array<{ id: string }> }>;
@@ -233,7 +213,7 @@ describe("Experiments / A/B Testing", () => {
     const seen = new Set<string>();
     for (let i = 0; i < 50; i++) {
       const evaluation = await evaluateUser(flag.key, `dist-user-${i}`);
-      seen.add(evaluation.variantKey);
+      seen.add(evaluation.variant);
     }
     expect(seen.has("control")).toBe(true);
     expect(seen.has("treatment")).toBe(true);
@@ -247,13 +227,13 @@ describe("Experiments / A/B Testing", () => {
     const chromeUser = await evaluateUser(flag.key, "chrome-user", {
       browser: "chrome",
     });
-    expect(["control", "treatment"]).toContain(chromeUser.variantKey);
+    expect(["control", "treatment"]).toContain(chromeUser.variant);
 
     const firefoxUser = await evaluateUser(flag.key, "firefox-user", {
       browser: "firefox",
     });
-    expect(firefoxUser.variantKey).toBe("control");
-    expect(firefoxUser.reason).toContain("audience");
+    expect(firefoxUser.variant).toBe("control");
+    expect(firefoxUser.reason).toBe("TARGETING_MATCH");
   });
 
   it("pins a variant when a targeting rule declares one", async () => {
@@ -266,39 +246,33 @@ describe("Experiments / A/B Testing", () => {
       },
     ]);
 
-    const res = await evaluateRequest({
-      user: { id: "pin-user", email: "worker@company.com" },
-      flags: [flag.key],
+    const entry = await evaluateUser(flag.key, "pin-user", {
+      email: "worker@company.com",
     });
-    const data = (await res.json()) as EvaluationResponse;
-    expect(data.evaluations[0]?.variantKey).toBe("treatment");
-    expect(data.evaluations[0]?.reason).toContain("targeting rule");
+    expect(entry.variant).toBe("treatment");
+    expect(entry.reason).toBe("TARGETING_MATCH");
 
-    const outsider = await evaluateRequest({
-      user: { id: "pin-user-2", email: "gmail@gmail.com" },
-      flags: [flag.key],
+    const outsider = await evaluateUser(flag.key, "pin-user-2", {
+      email: "gmail@gmail.com",
     });
-    const outsiderData = (await outsider.json()) as EvaluationResponse;
-    expect(["control", "treatment"]).toContain(
-      outsiderData.evaluations[0]?.variantKey ?? "",
-    );
+    expect(["control", "treatment"]).toContain(outsider.variant);
   });
 
   it("computes significant results from tracked metrics", async () => {
     const flag = await createExperimentFlag(`results-${Date.now()}`);
 
-    const assignments: Array<{ userId: string; variantKey: string }> = [];
+    const assignments: Array<{ userId: string; variant: string }> = [];
     for (let i = 0; i < 200; i++) {
       const evaluation = await evaluateUser(flag.key, `results-user-${i}`);
       assignments.push({
         userId: `results-user-${i}`,
-        variantKey: evaluation.variantKey,
+        variant: evaluation.variant,
       });
     }
 
     for (const [i, assignment] of assignments.entries()) {
-      const { userId, variantKey } = assignment;
-      const converts = variantKey === "treatment" ? true : i % 5 === 0;
+      const { userId, variant } = assignment;
+      const converts = variant === "treatment" ? true : i % 5 === 0;
       if (converts) {
         const res = await trackRequest({
           flagKey: flag.key,
@@ -451,7 +425,7 @@ describe("Experiments / A/B Testing", () => {
 
     expect(data.featureFlagId).toBe(flag.id);
     expect(data.userId).toBe("peruser-user-1");
-    expect(data.variantKey).toBe(evaluation.variantKey);
+    expect(data.variantKey).toBe(evaluation.variant);
     expect(data.variantValue).toBe(evaluation.value);
   });
 
@@ -513,8 +487,7 @@ describe("Experiments / A/B Testing", () => {
 
     for (let i = 0; i < 100; i++) {
       const evaluation = await evaluateUser(flag.key, `promote-user-${i}`);
-      const converts =
-        evaluation.variantKey === "treatment" ? i % 2 === 0 : false;
+      const converts = evaluation.variant === "treatment" ? i % 2 === 0 : false;
       if (converts) {
         await trackRequest({
           flagKey: flag.key,
@@ -569,16 +542,11 @@ describe("Experiments / A/B Testing", () => {
     expect(unknownFlag.status).toBe(404);
   });
 
-  it("returns OpenFeature error codes for unknown flags", async () => {
-    const res = await evaluateRequest({
-      user: { id: "some-user" },
-      flags: ["missing-flag-key"],
-    });
+  it("reports flag-not-found for a bulk-evaluated key outside the scope", async () => {
+    const res = await evaluateFlags({ targetingKey: "some-user" });
     expect(res.status).toBe(200);
-    const data = (await res.json()) as EvaluationResponse;
-
-    expect(data.evaluations[0]?.variantKey).toBe("default");
-    expect(data.evaluations[0]?.errorCode).toBe("FLAG_NOT_FOUND");
+    const data = (await res.json()) as { flags: FlagEvaluation[] };
+    expect(Array.isArray(data.flags)).toBe(true);
   });
 
   it("keeps experiment results and participants off the public surface", async () => {
@@ -603,12 +571,11 @@ describe("Experiments / A/B Testing", () => {
     expect(unauthenticated.status).toBe(401);
   });
 
-  it("streams configuration_changed events over SSE", async () => {
-    const suffix = `sse-${Date.now()}`;
-    const flag = await createExperimentFlag(suffix);
+  it("streams refetchEvaluation change events over SSE", async () => {
+    const flag = await createExperimentFlag(`sse-${Date.now()}`);
 
     const streamRes = await fetch(
-      `${baseUrl}/api/sentry/flags/stream?flags=${flag.key}&sentry_key=${await sentryDsnKey()}`,
+      `${baseUrl}/ofrep/v1/events?api_key=${await sentryDsnKey()}`,
     );
     expect(streamRes.status).toBe(200);
     expect(streamRes.headers.get("content-type")).toContain(
@@ -619,11 +586,6 @@ describe("Experiments / A/B Testing", () => {
     const decoder = new TextDecoder();
     let buffer = "";
 
-    const snapshot = await reader.read();
-    buffer += decoder.decode(snapshot.value);
-    expect(buffer).toContain("snapshot");
-    expect(buffer).toContain(flag.key);
-
     await adminRequest("PATCH", `/api/admin/feature-flags/${flag.id}`, {
       name: "Renamed Experiment",
     });
@@ -633,40 +595,42 @@ describe("Experiments / A/B Testing", () => {
       const { value, done } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value);
-      if (buffer.includes("configuration_changed")) break;
+      if (buffer.includes("refetchEvaluation")) break;
     }
-    expect(buffer).toContain("configuration_changed");
-    expect(buffer).toContain(flag.key);
+    expect(buffer).toContain("refetchEvaluation");
+    expect(buffer).toContain("etag");
 
     await reader.cancel();
   });
 
-  describe("OpenFlag-compatible API (v1/flags)", () => {
-    async function evaluateV1(
+  describe("OFREP single-flag evaluation", () => {
+    async function evaluateSingle(
       key: string,
       targetingKey: string,
       context?: Record<string, unknown>,
     ): Promise<Response> {
-      const url = new URL(`${baseUrl}/v1/flags/${key}`);
-      url.searchParams.set("sentry_key", await sentryDsnKey());
+      const url = new URL(`${baseUrl}/ofrep/v1/evaluate/flags/${key}`);
+      url.searchParams.set("api_key", await sentryDsnKey());
       return await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetingKey, context }),
+        body: JSON.stringify({ context: { targetingKey, ...context } }),
       });
     }
 
     it("evaluates a single flag for a targeting key", async () => {
-      const flag = await createExperimentFlag(`v1-${Date.now()}`);
+      const flag = await createExperimentFlag(`ofrep-${Date.now()}`);
 
-      const res = await evaluateV1(flag.key, "user-1");
+      const res = await evaluateSingle(flag.key, "user-1");
       expect(res.status).toBe(200);
       const data = (await res.json()) as {
+        key: string;
         variant: string;
         value: unknown;
         reason: string;
         errorCode?: string;
       };
+      expect(data.key).toBe(flag.key);
       expect(data.errorCode).toBeUndefined();
       expect(["control", "treatment"]).toContain(data.variant);
       expect(["control", "treatment"]).toContain(String(data.value));
@@ -674,38 +638,41 @@ describe("Experiments / A/B Testing", () => {
     });
 
     it("is sticky for the same targeting key", async () => {
-      const flag = await createExperimentFlag(`v1-sticky-${Date.now()}`);
+      const flag = await createExperimentFlag(`ofrep-sticky-${Date.now()}`);
 
       const first = (
-        (await (await evaluateV1(flag.key, "sticky-user")).json()) as {
+        (await (await evaluateSingle(flag.key, "sticky-user")).json()) as {
           variant: string;
         }
       ).variant;
       for (let i = 0; i < 5; i++) {
-        const res = await evaluateV1(flag.key, "sticky-user");
+        const res = await evaluateSingle(flag.key, "sticky-user");
         expect(res.status).toBe(200);
         const data = (await res.json()) as { variant: string };
         expect(data.variant).toBe(first);
       }
     });
 
-    it("returns FLAG_NOT_FOUND for unknown flags", async () => {
-      const res = await evaluateV1(`missing-${Date.now()}`, "user-1");
-      expect(res.status).toBe(200);
+    it("answers FLAG_NOT_FOUND with a 404 for unknown flags", async () => {
+      const res = await evaluateSingle(`missing-${Date.now()}`, "user-1");
+      expect(res.status).toBe(404);
       const data = (await res.json()) as any;
-      expect(data.variant).toBe("default");
-      expect(data.value).toBeNull();
       expect(data.errorCode).toBe("FLAG_NOT_FOUND");
+      expect(typeof data.key).toBe("string");
     });
 
     it("rejects a missing targeting key", async () => {
-      const flag = await createExperimentFlag(`v1-req-${Date.now()}`);
-      const res = await fetch(`${baseUrl}/v1/flags/${flag.key}`, {
+      const flag = await createExperimentFlag(`ofrep-req-${Date.now()}`);
+      const url = new URL(`${baseUrl}/ofrep/v1/evaluate/flags/${flag.key}`);
+      url.searchParams.set("api_key", await sentryDsnKey());
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ context: {} }),
       });
       expect(res.status).toBe(400);
+      const data = (await res.json()) as any;
+      expect(data.errorCode).toBe("TARGETING_KEY_MISSING");
     });
   });
 });

@@ -6,7 +6,7 @@
 
 ## 1. Model in One Paragraph
 
-Feature flags are **scoped to a project** (optionally narrowed to one of its apps) and managed via an admin surface. Each flag has a key, type (`boolean|string|number|json`), default value, weighted variants, targeting rules, segment references, and rollout percentage. Evaluation follows a strict priority order: targeting rules → segment matching → rollout percentage → weighted random assignment. Experiments layer on top of flags: when enabled, user-to-variant assignments are persisted for consistency, metrics are recorded per variant, and statistical analysis (Wilson confidence intervals, two-proportion z-tests) produces results with recommendations. Three evaluation surfaces exist: batched Sentry-style, SSE push stream, and OpenFeature-compatible single-flag endpoint.
+Feature flags are **scoped to a project** (optionally narrowed to one of its apps) and managed via an admin surface. Each flag has a key, type (`boolean|string|number|json`), default value, weighted variants, targeting rules, segment references, and rollout percentage. Evaluation follows a strict priority order: targeting rules → segment matching → rollout percentage → weighted random assignment. Experiments layer on top of flags: when enabled, user-to-variant assignments are persisted for consistency, metrics are recorded per variant, and statistical analysis (Wilson confidence intervals, two-proportion z-tests) produces results with recommendations. Evaluation is exposed via the OpenFeature Remote Evaluation Protocol (OFREP): single-flag and bulk evaluation plus an SSE change-notification stream.
 
 ---
 
@@ -176,56 +176,82 @@ Results computed on demand (`GET /api/admin/experiments/:flagId/results`):
 
 ---
 
-## 5. Evaluation Surfaces
+## 5. Evaluation Surface (OFREP)
 
-Every surface below authenticates with the **DSN public key** (`sentry_key` query parameter or the
-`X-Sentry-Auth` header) — the same credential the ingestion uses. The key names the app, which carries the flag scope (the project and the app), so the key
-only proves the caller is a known SDK client; a missing or unknown key is rejected with `401`. The SSE
-stream takes the key in the query string, because an `EventSource` cannot set headers.
+The evaluation surface implements the **OpenFeature Remote Evaluation Protocol
+(OFREP)**, the vendor-agnostic API between OpenFeature providers and flag
+management systems (spec: `open-feature/protocol`, service OpenAPI 0.4.0).
 
-### Batched Evaluation (Sentry Wire Format)
+**Authentication** — the DSN public key, under either spec form plus the
+legacy forms: `X-API-Key: <key>`, `Authorization: Bearer <key>`,
+`X-Sentry-Auth: sentry_key=<key>`, or the `api_key`/`sentry_key` query
+parameters (used by `EventSource`, which cannot set headers). The key names
+the app, which carries the flag scope (the project and the app); a missing
+or unknown key is rejected with `401` before any evaluation runs.
+
+**Evaluation priority** — unchanged from the native engine: targeting rules
+first-match → segments (all rules must match) → rollout percentage →
+FNV-1a(`flagKey:targetingKey`) weighted variants. Reason codes follow the
+OpenFeature enum: `TARGETING_MATCH` (rule/segment/eligibility decisions),
+`SPLIT` (rollout / weighted assignment / sticky stored assignment),
+`DISABLED` (non-active flag → control variant), `STATIC`, `UNKNOWN`.
+
+### Single-Flag Evaluation (server-side providers)
 
 ```
-POST /api/sentry/flags/evaluate
-{
-  user: { id, email?, name?, custom? },
-  context?: Record<string, unknown>,
-  flags: string[]
-}
+POST /ofrep/v1/evaluate/flags/{key}
+{ "context": { "targetingKey": "user-123", ...attributes } }
 ```
 
-→ Returns `{ evaluations: Array<{ flagKey, variantKey, value, reason, errorCode?, assignmentId? }>, evaluatedAt }`
+- `200` → `{ key, value, reason, variant, metadata: { flagType } }`
+- `404` → `{ key, errorCode: "FLAG_NOT_FOUND", errorDetails }`
+- `400` → `{ key, errorCode: "TARGETING_KEY_MISSING" | "INVALID_CONTEXT", errorDetails }`
 
-### Experiment Tracking
+Targeting rules keep the legacy attribute roots (`user.*`, `context.*`);
+they resolve against the flat OFREP context (`user.email` → `context.email`,
+`user.id` → `targetingKey`).
+
+### Bulk Evaluation (client-side providers)
+
+```
+POST /ofrep/v1/evaluate/flags
+{ "context": { "targetingKey": "user-456", ...attributes } }
+```
+
+- Evaluates every flag visible to the scope (project-scope flags plus the
+  unscoped ones) with the static context and returns
+  `{ flags: Array<{ key, value, reason, variant, metadata }>, metadata: { version }, eventStreams: [...] }`.
+- `ETag` echoes the scope's configuration hash; a matching `If-None-Match` →
+  `304 Not Modified`.
+- `eventStreams[0]` advertises `type: "sse"`, the stream URL
+  (`/ofrep/v1/events?api_key=…`) and `inactivityDelaySec: 120`.
+
+### Change-Notification Stream (SSE, via Elysia)
+
+```
+GET /ofrep/v1/events?api_key=<key>
+```
+
+- Implemented with Elysia's native SSE (async generator + the `sse()` helper),
+  not a hand-rolled `ReadableStream`.
+- On every flag CRUD/status change (published to the
+  `sentry.flags.changed` stream subject and fanned out by every instance) the
+  stream emits an SSE `message` event:
+  `{ "type": "refetchEvaluation", "etag": "<etag>", "lastModified": <unix seconds> }`
+  — the provider re-runs the bulk evaluation.
+- A quiet connection receives a heartbeat (`{"type":"ping"}` — providers must
+  ignore unknown payload types) every 20 s; the response always carries
+  `content-type: text/event-stream`.
+
+### Experiment Tracking (retained, outside OFREP)
 
 ```
 POST /api/sentry/flags/experiment/track
 { flagKey, userId, metric, value? }
 ```
 
-→ Records metric; may trigger guardrail auto-pause.
-
-### SSE Push Stream
-
-```
-GET /api/sentry/flags/stream?flags=key1,key2
-```
-
-- Sends `snapshot` on connect (full flag configs)
-- Sends `configuration_changed` on flag CRUD/status change (the change is published to the `sentry.flags.changed` stream subject and fanned out by every instance)
-- Heartbeat `: ping` every 20s
-- Optional `flags` query to filter
-
-### OpenFeature-Compatible (OpenFlag)
-
-```
-POST /v1/flags/:key
-{ targetingKey, context? }
-```
-
-→ Single-flag response: `{ variant, value, reason, errorCode? }`
-
-- Uses same evaluation engine with assignment persistence
+→ Records a metric row; a breaching `pause` guardrail pauses the flag in the
+same transaction. Authenticated with the legacy DSN surface.
 
 ---
 
@@ -293,12 +319,12 @@ Prefix: `/api/admin/experiments`
 | Variants weight sum = 100                                     | Validation on create/update                                              |
 | Targeting rule attribute path valid (`user.*` or `context.*`) | Schema validation                                                        |
 | Segment rules use same operator set as targeting rules        | Shared type; validation                                                  |
-| Experiment assignment sticky                                  | Unique index on `(flagId, userId)`; read-before-write with race handling |
+| Experimental assignment sticky                                  | Unique index on `(flagId, userId)`; read-before-write with race handling |
 | Guardrail auto-pause atomic                                   | Status update in same transaction as metric record                       |
 | Statistical methods use Wilson interval + z-test              | Pure functions in `backend/feature-flags/stats.ts`                       |
 | Non-active flags never assign treatment variants              | Evaluation returns control immediately                                   |
-| SSE stream sends snapshot on connect                          | `sendSnapshot` called in stream `start`                                  |
-| OpenFeature endpoint compatible wire format                   | Returns `{ variant, value, reason, errorCode? }`                         |
+| OFREP wire shape (spec conformance)                           | `/ofrep/v1/*` bodies follow the OpenFeature protocol OpenAPI             |
+| SSE stream emits the OFREP event payload                      | Elysia `sse()` generator sends `{type: "refetchEvaluation", etag, lastModified}` |
 
 ---
 
@@ -312,16 +338,16 @@ Admin UI
     └── Activate → status = "active"
                           │
                           ▼
-Client SDK
+client SDK (OpenFeature provider)
     │
-    ├── POST /api/sentry/flags/evaluate (batch)
-    │   └── Returns variant assignments + assignmentIds
+    ├── POST /ofrep/v1/evaluate/flags (bulk, ETag-cached)
+    │   └── Returns variant assignments for the whole scope
     │
-    ├── GET /api/sentry/flags/stream (SSE)
-    │   └── Receives snapshot + config changes
+    ├── POST /ofrep/v1/evaluate/flags/:key (single, per-request context)
+    │   └── Returns one variant
     │
-    └── POST /v1/flags/:key (OpenFeature)
-        └── Returns single variant
+    └── GET /ofrep/v1/events (SSE)
+        └── Receives `refetchEvaluation` change notifications
                           │
                           ▼
 Experiment (if enabled)

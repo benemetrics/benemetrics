@@ -417,8 +417,8 @@ The full reference lives in [`docs/BACKEND_API.md`](docs/BACKEND_API.md). The sh
 | OTLP traces       | `POST /api/:projectId/otlp/v1/traces` | The DSN public key          |
 | Events            | `GET /events`                         | Admin token or provider JWT |
 | Admin             | `/api/admin/*`                        | Admin token or provider JWT |
-| Flag evaluation   | `POST /api/sentry/flags/evaluate`     | The DSN public key          |
-| OpenFeature       | `POST /v1/flags/:key`                 | The DSN public key          |
+| Flag evaluation (OFREP) | `POST /ofrep/v1/evaluate/*`      | The DSN public key (`X-API-Key`/`Bearer`) |
+| Flag change stream (SSE) | `GET /ofrep/v1/events`           | The DSN public key                        |
 | Source maps (CLI) | `/api/0/projects/:org/:project/*`     | An upload token             |
 | UI                | `/ui`                                 | —                           |
 

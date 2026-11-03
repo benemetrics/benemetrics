@@ -387,19 +387,19 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
 
   it("rejects sentry endpoints with admin token (invalid body)", async () => {
     const response = await app.handle(
-      new Request("http://localhost:31337/api/sentry/flags/evaluate", {
+      new Request("http://localhost:31337/ofrep/v1/evaluate/flags", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: ADMIN_TOKEN,
         },
-        body: JSON.stringify({ user: { id: "1" }, flags: [] }),
+        body: JSON.stringify({ context: { targetingKey: "1" } }),
       }),
     );
 
-    // Sentry endpoints accept DSN auth (sentry_key), not admin Bearer tokens
-    // They will reject if no sentry_key is provided, but body validation happens first
-    expect([400, 401]).toContain(response.status);
+    // OFREP endpoints accept the DSN key (X-API-Key/Bearer), not admin tokens;
+    // credentials are checked before evaluation.
+    expect(response.status).toBe(401);
   });
 
   it("rejects admin endpoints with sentry_key", async () => {

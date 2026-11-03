@@ -80,14 +80,18 @@ This document lists the features implemented on the backend, grouped by area.
 | List segments  | `GET /api/admin/feature-flags/segments`.                                                    |
 | Get segment    | `GET /api/admin/feature-flags/segments/:id`.                                                |
 
-## Flag Evaluation (SDK-facing, DSN-authenticated)
+## Flag Evaluation (OFREP, OpenFeature Remote Evaluation Protocol)
 
-| Feature          | Description                                                                                 |
-| ---------------- | ------------------------------------------------------------------------------------------- |
-| Batched evaluate | `POST /api/sentry/flags/evaluate` — evaluate multiple flags for one user/context at once.   |
-| Experiment track | `POST /api/sentry/flags/experiment/track` — record a metric value for a flag/user.          |
-| SSE stream       | `GET /api/sentry/flags/stream?flags=...` — snapshot + `configuration_changed` push updates. |
-| OpenFeature      | `POST /v1/flags/:key` — OpenFeature-compatible single-flag evaluation.                      |
+| Feature            | Description                                                                                          |
+| ------------------ | ---------------------------------------------------------------------------------------------------- |
+| Single evaluation  | `POST /ofrep/v1/evaluate/flags/:key` — evaluate one flag for a targeting key + context.               |
+| Bulk evaluation    | `POST /ofrep/v1/evaluate/flags` — evaluate all flags with a static context; ETag / 304 caching.       |
+| Change stream      | `GET /ofrep/v1/events` — SSE (`refetchEvaluation` payloads with the latest etag / lastModified).      |
+| Experiment track   | `POST /api/sentry/flags/experiment/track` — record a metric value for a flag/user (DSN auth).         |
+
+Authentication: the DSN public key under the OFREP headers — `X-API-Key` or
+`Authorization: Bearer` — plus the legacy `X-Sentry-Auth`/`sentry_key` surfaces
+and the `api_key` query parameter for EventSource.
 
 ## Source Maps
 

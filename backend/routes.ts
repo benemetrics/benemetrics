@@ -8,12 +8,11 @@ import { alertingRoutes } from "./alerting";
 import { notificationRoutes } from "./notifications";
 import { metricsRoutes } from "./metrics";
 import {
-  evaluationRoutes,
   experimentRoutes,
   featureFlagRoutes,
-  flagsStreamRoutes,
-  flagsV1Routes,
+  ofrepRoutes,
   segmentRoutes,
+  trackRoutes,
 } from "./feature-flags";
 import {
   sourceMapRoutes,
@@ -39,6 +38,5 @@ export const apiRoutes = new Elysia()
   .use(sourceMapRoutes)
   .use(sourceMapTokenRoutes)
   .use(sourceMapUploadRoutes)
-  .use(flagsStreamRoutes)
-  .use(flagsV1Routes)
-  .use(evaluationRoutes);
+  .use(trackRoutes)
+  .use(ofrepRoutes);

@@ -91,6 +91,21 @@ export const featureFlagDAO = {
     return row;
   },
 
+  /**
+   * Every flag visible to a scope: the project's plus the unscoped ones.
+   * Used by the OFREP bulk evaluation and the configuration ETag.
+   */
+  listForScope: async (scope: FlagScope) => {
+    const { projectId = null } = scope;
+    const conditions = projectId
+      ? or(eq(featureFlags.projectId, projectId), isNull(featureFlags.projectId))
+      : isNull(featureFlags.projectId);
+    return await db
+      .select(featureFlagPublicFields)
+      .from(featureFlags)
+      .where(conditions);
+  },
+
   updateOrThrow: async (
     id: string,
     obj: Partial<typeof featureFlags.$inferInsert>,

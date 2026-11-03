@@ -572,17 +572,12 @@ describe("Feature Flags Management API", () => {
 
       const response = await sentryRequest(
         "POST",
-        "/api/sentry/flags/evaluate",
-        {
-          user: { id: "scoped-user" },
-          flags: [key],
-        },
+        "/ofrep/v1/evaluate/flags",
+        { context: { targetingKey: "scoped-user" } },
       );
       expect(response.status).toBe(200);
-      const body = (await response.json()) as {
-        evaluations: Array<{ variantKey: string; value: string }>;
-      };
-      expect(body.evaluations[0]?.value).toBe("app");
+      const body = (await response.json()) as { flags: Array<{ key: string; value: string }> };
+      expect(body.flags.find((flag) => flag.key === key)?.value).toBe("app");
     });
 
     it("keeps the same key in two projects", async () => {
@@ -622,20 +617,8 @@ describe("Feature Flags Management API", () => {
     });
   });
 
-  describe("Evaluation API (Sentry - DSN auth)", () => {
+  describe("Evaluation API (OFREP - DSN auth)", () => {
     it("should evaluate flags for a user context", async () => {
-      await apiRequest("POST", "/api/admin/feature-flags", {
-        projectId: await flagProjectId(),
-        key: "eval-test-orphan-" + Date.now(),
-        name: "Eval Test",
-        type: "boolean",
-        defaultValue: false,
-        variants: [
-          { key: "control", name: "Control", value: false, weight: 50 },
-          { key: "treatment", name: "Treatment", value: true, weight: 50 },
-        ],
-      });
-
       const key = "eval-test-" + Date.now();
       await apiRequest("POST", "/api/admin/feature-flags", {
         projectId: await flagProjectId(),
@@ -651,42 +634,35 @@ describe("Feature Flags Management API", () => {
 
       const response = await sentryRequest(
         "POST",
-        "/api/sentry/flags/evaluate",
+        "/ofrep/v1/evaluate/flags",
         {
-          user: {
-            id: "user_123",
-            email: "test@company.com",
-            custom: { tier: "premium" },
-          },
           context: {
-            ip: "192.168.1.1",
+            targetingKey: "user_123",
+            email: "test@company.com",
             country: "US",
           },
-          flags: [key],
         },
       );
 
       expect(response.status).toBe(200);
+      const body = (await response.json()) as { flags: Array<{ key: string }> };
+      expect(body.flags.some((flag) => flag.key === key)).toBe(true);
     });
 
-    it("rejects the SDK surface without a DSN key", async () => {
-      const response = await apiRequest("POST", "/api/sentry/flags/evaluate", {
-        user: { id: "user_123" },
-        flags: ["eval-test"],
+    it("rejects the SDK surface without an API key", async () => {
+      const response = await apiRequest("POST", "/ofrep/v1/evaluate/flags", {
+        context: { targetingKey: "user_123" },
       });
       expect(response.status).toBe(401);
     });
 
-    it("rejects the SDK surface with an unknown DSN key", async () => {
-      const url = new URL(`${baseUrl}/api/sentry/flags/evaluate`);
-      url.searchParams.set("sentry_key", "not-a-real-key");
+    it("rejects the SDK surface with an unknown API key", async () => {
+      const url = new URL(`${baseUrl}/ofrep/v1/evaluate/flags`);
+      url.searchParams.set("api_key", "not-a-real-key");
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user: { id: "user_123" },
-          flags: ["eval-test"],
-        }),
+        body: JSON.stringify({ context: { targetingKey: "user_123" } }),
       });
       expect(response.status).toBe(401);
     });

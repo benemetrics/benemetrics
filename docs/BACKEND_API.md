@@ -8,7 +8,7 @@
 - [`models.md`](docs/models.md) — Project → Environment → App hierarchy, invariants, scoped reads
 - [`metrics.md`](docs/metrics.md) — Metric taxonomy, NATS→ClickHouse pipeline, series/breakdown APIs, alerting integration
 - [`source-maps.md`](docs/source-maps.md) — Artifact storage, upload tokens, VLQ symbolication, CLI surface
-- [`feature-flags.md`](docs/feature-flags.md) — Global flags, evaluation priority, experiments (Wilson CI + z-test), 3 surfaces
+- [`feature-flags.md`](docs/feature-flags.md) — Project-scoped flags, evaluation priority, OFREP evaluation surface, experiments (Wilson CI + z-test)
 - [`session-replays.md`](docs/session-replays.md) — rrweb offload, object-store backends, playback assembly
 - [`alerting.md`](docs/alerting.md) — Alerting system (channels, rules, sweeper, incident model)
 - [`issues.md`](docs/issues.md) — Issue tracking, fingerprinting, query protocol, scoped reads
@@ -129,9 +129,9 @@ backend/
   feature-flags/
     index.ts               # featureFlagRoutes (/api/admin/feature-flags/*) — CRUD + lifecycle
     experiments.ts         # experimentRoutes (/api/admin/experiments/*) — lifecycle, results, participants
-    evaluation.ts          # evaluationRoutes (/api/sentry/flags/evaluate, /experiment/track)
-    stream.ts              # flagsStreamRoutes (/api/sentry/flags/stream) — SSE snapshot + changes
-    openfeature.ts         # flagsV1Routes (/v1/flags/:key) — OpenFeature-compatible
+    ofrep.ts               # ofrepRoutes (/ofrep/v1/*) — OpenFeature OFREP evaluation + SSE change stream
+    evaluate.ts            # The evaluation engine: rules, segments, rollout, FNV-1a buckets
+    track.ts               # trackRoutes (/api/sentry/flags/experiment/track) — DSN-guarded metric tracking
     events.ts              # The flag-change bus: local fan-out + the stream subject
     service.ts             # Experiment results: participants, conversions, recommendation
     stats.ts               # Wilson interval + two-proportion z-test
@@ -178,8 +178,8 @@ const app = new Elysia()
   .use(eventsRoutes) // prefix "events"
   .use(ingestionRoutes) // prefix "api"
   .use(featureFlagRoutes) // prefix "/api/admin/feature-flags"
-  .use(evaluationRoutes) // prefix "api/sentry/flags"
-  .use(flagsV1Routes) // prefix "v1/flags"
+  .use(trackRoutes) // prefix "api/sentry/flags" (experiment/track)
+  .use(ofrepRoutes) // prefix "/ofrep/v1"
   .use(adminRoutes) // prefix "/api/admin"
   .onError(({ code, error, set }) => {
     if (error instanceof ApiError) {
@@ -311,25 +311,31 @@ Prefix: `/api/admin/feature-flags` — `backend/feature-flags/index.ts` → `fea
 
 **Defaults:** `boolean` type → `control`/`treatment` 50/50; else single `default` variant at 100%.
 
-### 5.7 Feature Flags — Evaluation Surfaces
+### 5.7 Feature Flags — Evaluation Surface (OFREP)
 
-| Surface             | Prefix              | Handler             | Wire Format                                                                        |
-| ------------------- | ------------------- | ------------------- | ---------------------------------------------------------------------------------- |
-| Batched (Sentry)    | `/api/sentry/flags` | `evaluationRoutes`  | `POST /evaluate { user, context?, flags[] }` → `{ evaluations[] }`                 |
-| Experiment Tracking | `/api/sentry/flags` | `evaluationRoutes`  | `POST /experiment/track { flagKey, userId, metric, value? }`                       |
-| SSE Push Stream     | `/api/sentry/flags` | `flagsStreamRoutes` | `GET /stream?flags=key1,key2` → `snapshot`, `configuration_changed`                |
-| OpenFeature         | `/v1/flags`         | `flagsV1Routes`     | `POST /:key { targetingKey, context? }` → `{ variant, value, reason, errorCode? }` |
+| Surface             | Prefix              | Handler       | Wire Format                                                                                      |
+| ------------------- | ------------------- | ------------- | ------------------------------------------------------------------------------------------------- |
+| Single evaluation   | `/ofrep/v1`         | `ofrepRoutes` | `POST /evaluate/flags/:key { context: { targetingKey, … } }` → `{ key, value, reason, variant }`  |
+| Bulk evaluation     | `/ofrep/v1`         | `ofrepRoutes` | `POST /evaluate/flags { context }` → `{ flags[], metadata, eventStreams[] }` + `ETag` / `If-None-Match → 304` |
+| Change stream (SSE) | `/ofrep/v1`         | `ofrepRoutes` | `GET /events?api_key=` → `data: {"type":"refetchEvaluation", etag, lastModified}` + 20s heartbeat |
+| Experiment Tracking | `/api/sentry/flags` | `trackRoutes` | `POST /experiment/track { flagKey, userId, metric, value? }` (legacy DSN auth)                     |
 
-**Auth:** every SDK surface takes the DSN public key (`sentry_key` query parameter or the `X-Sentry-Auth` header) — the flags are global, so the key only proves the caller is a known SDK client. A missing or unknown key ⇒ `401`.
+**Auth:** the OFREP surfaces take the DSN public key under the spec headers —
+`X-API-Key` or `Authorization: Bearer` — plus the legacy `X-Sentry-Auth`/`sentry_key`
+forms and the `api_key`/`sentry_key` query parameters (EventSource). The flags are
+scoped, so the key names the app whose project is the flag scope. A missing or
+unknown key ⇒ `401`.
 
 **Evaluation Priority (strict):**
 
-1. **Targeting Rules** — first match wins (`user.*` / `context.*` attributes).
-2. **Segments** — all rules must match (AND); weighted bucket by `user.id` hash.
-3. **Rollout Percentage** — outside rollout ⇒ `control` variant.
-4. **Weighted Random** — deterministic FNV-1a(`flagKey:userId`) % 100.
+1. **Targeting Rules** — first match wins (`user.*` / `context.*` attributes,
+   resolved against the flat OFREP context).
+2. **Segments** — all rules must match (AND); weighted bucket by `targetingKey` hash.
+3. **Rollout Percentage** — outside rollout ⇒ `control` variant (`DISABLED`).
+4. **Weighted Random** — deterministic FNV-1a(`flagKey:targetingKey`) % 100 (`SPLIT`).
 
-**Non-Active Flags:** `draft`/`paused`/`archived` ⇒ control/first variant. Unknown flag ⇒ `default`/`null`.
+**Non-Active Flags:** `draft`/`paused`/`archived` ⇒ control variant, reason `DISABLED`.
+Unknown flag (single evaluation) ⇒ `404` `{ key, errorCode: "FLAG_NOT_FOUND" }`.
 
 ### 5.8 Admin — Projects & Apps
 

@@ -12,12 +12,11 @@ import {
 } from "backend/protocol/feature-flags";
 import { resolveIdentity } from "../auth";
 
-// The other surfaces of the domain: the admin experiment routes, the SDK
-// evaluation endpoints, the SSE stream and the OpenFeature endpoint.
+// The other surfaces of the domain: the admin experiment routes, the
+// DSN-guarded experiment tracking and the OFREP evaluation surface.
 export { experimentRoutes } from "./experiments";
-export { evaluationRoutes } from "./evaluation";
-export { flagsStreamRoutes } from "./stream";
-export { flagsV1Routes } from "./openfeature";
+export { trackRoutes } from "./track";
+export { ofrepRoutes } from "./ofrep";
 export { segmentRoutes } from "./segments";
 export { publishFlagChange, subscribeFlagChanges } from "./events";
 

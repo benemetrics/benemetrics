@@ -55,7 +55,8 @@ const NATS_AUTH_PASSWORD = env.NATS_AUTH_PASSWORD || "sentries-dev-auth-pass";
 
 export const EVENTS_SUBJECT = "sentry.events";
 export const METRICS_SUBJECT = "sentry.metrics";
-export const FLAG_CHANGE_SUBJECT = "sentry.flags.changed";
+export const FLAG_CHANGE_SUBJECT = "flags.changed";
+export const FLAG_PING = "flags.ping";
 
 
 // The side-effects and the flags consumers have their own durable, so a
@@ -105,27 +106,3 @@ export const natsStream = manager.jetstream();
 export const events = new Bucket("sentry.events");
 
 export const metrics = new Bucket("sentry.metrics");
-
-export async function consumeFlagChanges(
-  handler: (event: {
-    type: string;
-    flagKey: string;
-    flag?: unknown;
-    origin?: string;
-  }) => void,
-): Promise<void> {
-  const consumer = await natsStream.consumers.get(STREAM_NAME, FLAGS_CONSUMER);
-  for await (const message of await consumer.consume()) {
-    try {
-      handler(
-        JSON.parse(message.string()) as { type: string; flagKey: string },
-      );
-    } catch (err) {
-      console.error(
-        "[flags] Failed to handle the change event:",
-        err instanceof Error ? err.message : err,
-      );
-    }
-    message.ack();
-  }
-}

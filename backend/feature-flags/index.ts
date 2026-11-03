@@ -4,20 +4,18 @@ import { type as arktype } from "arktype";
 import { featureFlagDAO } from "db/dao/feature-flags";
 import { appDAO } from "db/dao/apps";
 import { projectDAO } from "db/dao/projects";
-import { publishFlagChange } from "./open-feature";
 import {
   experimentConfigSchema,
   flagVariantSchema,
   targetingRuleSchema,
 } from "backend/protocol/feature-flags";
-import { resolveIdentity } from "../auth";
+import { FLAG_CHANGE_SUBJECT, nats } from "backend/nats";
 
 // The other surfaces of the domain: the admin experiment routes, the
 // OpenFeature evaluation surface (engine + SSE stream + track), segments.
 export { experimentRoutes } from "./experiments";
 export { openFeatureRoutes, trackRoutes } from "./open-feature";
 export { segmentRoutes } from "./segments";
-export { publishFlagChange, subscribeFlagChanges } from "./open-feature";
 
 const variantsSchema = flagVariantSchema.array().atLeastLength(1).optional();
 const targetingRulesSchema = targetingRuleSchema.array().optional();
@@ -89,11 +87,7 @@ export const featureFlagRoutes = new Elysia({
         projectId: body.projectId,
         appId: body.appId ?? null,
       });
-      await publishFlagChange({
-        type: "create",
-        flagKey: created.key,
-        flag: created,
-      });
+      await nats.publish(FLAG_CHANGE_SUBJECT)
       return created;
     },
     {
@@ -186,11 +180,7 @@ export const featureFlagRoutes = new Elysia({
           : {}),
         updatedAt: new Date().toISOString(),
       });
-      await publishFlagChange({
-        type: "update",
-        flagKey: updated.key,
-        flag: updated,
-      });
+      await nats.publish(FLAG_CHANGE_SUBJECT)
       return updated;
     },
     {
@@ -220,11 +210,7 @@ export const featureFlagRoutes = new Elysia({
         status: body.status,
         updatedAt: new Date().toISOString(),
       });
-      await publishFlagChange({
-        type: "status",
-        flagKey: updated.key,
-        flag: updated,
-      });
+      await nats.publish(FLAG_CHANGE_SUBJECT)
       return updated;
     },
     {
@@ -240,7 +226,7 @@ export const featureFlagRoutes = new Elysia({
       if (flag.status !== "draft")
         throw badRequest("Only draft flags can be deleted");
       await featureFlagDAO.delete(id);
-      await publishFlagChange({ type: "delete", flagKey: flag.key });
+      await nats.publish(FLAG_CHANGE_SUBJECT)
       return { success: true };
     },
     {

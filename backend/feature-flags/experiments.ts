@@ -4,9 +4,8 @@ import { featureFlagDAO } from "db/dao/feature-flags";
 import { experimentAssignmentDAO } from "db/dao/feature-flags/experiment-assignments";
 import { badRequest, notFound } from "backend/errors";
 import { computeResults, parseFlag } from "./service";
-import { publishFlagChange } from "./open-feature";
 import type { FeatureFlagVariant } from "backend/protocol/feature-flags";
-import type { ExperimentConfig, TargetingRule } from "backend/protocol/feature-flags";
+import { FLAG_CHANGE_SUBJECT, nats } from "backend/nats";
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const experimentRoutes = new Elysia({ prefix: "/api/admin/experiments" })
@@ -21,11 +20,7 @@ export const experimentRoutes = new Elysia({ prefix: "/api/admin/experiments" })
         }),
         updatedAt: new Date().toISOString(),
       });
-      await publishFlagChange({
-        type: "status",
-        flagKey: updated.key,
-        flag: updated,
-      });
+      await nats.publish(FLAG_CHANGE_SUBJECT);
       return updated;
     },
     { params: arktype({ flagId: "string.uuid" }) },
@@ -41,11 +36,7 @@ export const experimentRoutes = new Elysia({ prefix: "/api/admin/experiments" })
         }),
         updatedAt: new Date().toISOString(),
       });
-      await publishFlagChange({
-        type: "status",
-        flagKey: updated.key,
-        flag: updated,
-      });
+      await nats.publish(FLAG_CHANGE_SUBJECT);
       return updated;
     },
     { params: arktype({ flagId: "string.uuid" }) },
@@ -72,11 +63,7 @@ export const experimentRoutes = new Elysia({ prefix: "/api/admin/experiments" })
         rolloutPercentage: 100,
         updatedAt: new Date().toISOString(),
       });
-      await publishFlagChange({
-        type: "update",
-        flagKey: updated.key,
-        flag: updated,
-      });
+      await nats.publish(FLAG_CHANGE_SUBJECT);
       return updated;
     },
     { params: arktype({ flagId: "string.uuid" }) },

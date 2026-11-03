@@ -1,7 +1,7 @@
 import { Elysia, sse } from "elysia";
 import { type as arktype } from "arktype";
 import { badRequest, notFound } from "backend/errors";
-import { consumeFlagChanges, FLAG_CHANGE_SUBJECT, nats } from "../nats";
+import { FLAG_CHANGE_SUBJECT, FLAG_PING, nats } from "../nats";
 import { db } from "db";
 import { featureFlagDAO } from "db/dao/feature-flags";
 import { experimentAssignmentDAO } from "db/dao/feature-flags/experiment-assignments";
@@ -15,6 +15,7 @@ import type {
   TargetingRule,
 } from "backend/protocol/feature-flags";
 import { parseFlag, type ParsedFeatureFlag } from "./service";
+import { cron } from '@elysia/cron'
 
 export type { ParsedFeatureFlag } from "./service";
 
@@ -26,61 +27,6 @@ export interface FlagChangeEvent {
   flag?: unknown;
 }
 
-type FlagChangeListener = (event: FlagChangeEvent) => void;
-
-const listeners = new Set<FlagChangeListener>();
-
-// The stream echoes a change back to its publisher; the origin skips it.
-const ORIGIN = crypto.randomUUID();
-
-export function subscribeFlagChanges(listener: FlagChangeListener): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-function emit(event: FlagChangeEvent): void {
-  for (const listener of listeners) {
-    try {
-      listener(event);
-    } catch {
-      // A broken listener must not block the other listeners.
-    }
-  }
-}
-
-export async function publishFlagChange(event: FlagChangeEvent): Promise<void> {
-  emit(event);
-  try {
-    await nats.publish(FLAG_CHANGE_SUBJECT, JSON.stringify({ ...event, origin: ORIGIN }));
-  } catch (err) {
-    // The change is already committed; a failed publish only means other
-    // instances did not hear about it.
-    console.error(
-      "[flags] Failed to publish the change to NATS:",
-      err instanceof Error ? err.message : err,
-    );
-  }
-}
-
-export function subscribeRemoteFlagChanges(): void {
-  void consumeFlagChanges((event) => {
-    if (event.origin === ORIGIN) return;
-    emit({
-      type: event.type as FlagChangeEvent["type"],
-      flagKey: event.flagKey,
-      flag: event.flag,
-    });
-  }).catch((err: unknown) => {
-    console.error(
-      "[flags] The flag change consumer stopped:",
-      err instanceof Error ? err.message : err,
-    );
-  });
-}
-
-// ── OpenFeature evaluation engine ─────────────────────────────────────
 
 /** The OpenFeature resolution-reason codes. */
 export type EvaluationReason =
@@ -404,44 +350,18 @@ function ifNoneMatched(request: Request, etag: string): boolean {
     .some((value) => value.trim().replace(/^W\//, "") === etag);
 }
 
-function newDeltaQueue() {
-  const queued: FlagChangeEvent[] = [];
-  const waiters = new Set<() => void>();
-  const unsubscribe = subscribeFlagChanges((event) => {
-    queued.push(event);
-    for (const waiter of waiters) waiter();
-    waiters.clear();
-  });
-  return {
-    next: (timeoutMs: number) =>
-      new Promise((resolve) => {
-        const pop = () => {
-          waiters.delete(pop);
-          clearTimeout(timer);
-          resolve(queued.shift() ?? null);
-        };
-        const timer = setTimeout(() => {
-          waiters.delete(pop);
-          resolve(null);
-        }, timeoutMs);
-        waiters.add(pop);
-        if (queued.length > 0) pop();
-      }),
-    close: () => {
-      unsubscribe();
-      for (const waiter of waiters) waiter();
-      waiters.clear();
-    },
-  };
-}
-
-const HEARTBEAT_SECONDS_MS = 20_000;
-
-subscribeRemoteFlagChanges();
-
 // ── OpenFeature / OFREP evaluation surface (unauthenticated) ──────────
 
 export const openFeatureRoutes = new Elysia({ prefix: "/ofrep/v1" })
+  .use(
+    cron({
+			name: 'heartbeat',
+			pattern: '*/20 * * * * *',
+			run() {
+				nats.publish(FLAG_PING)
+			}
+		})
+  )
   .post(
     "/evaluate/flags/:key",
     async ({ params: { key }, body }) => {
@@ -520,30 +440,15 @@ export const openFeatureRoutes = new Elysia({ prefix: "/ofrep/v1" })
   .get(
     "/events",
     async function* () {
-      const queue = newDeltaQueue();
-      let seq = 0;
-      try {
-        yield sse({ retry: 15_000 });
-        while (true) {
-          const event = await queue.next(HEARTBEAT_SECONDS_MS);
-          if (!event) {
-            yield sse({ event: "ping", data: { type: "ping" } });
-            continue;
-          }
-          const state = await scopeState();
-          yield sse({
-            event: "message",
-            id: String(++seq),
-            data: {
-              type: "refetchEvaluation",
-              etag: state.etag,
-              lastModified: state.lastModified,
-            },
-          });
-        }
-      } finally {
-        queue.close();
+      nats.subscribe(FLAG_PING) {
+        yield sse({ event: 'PING' });
       }
+
+      nats.subscribe(FLAG_CHANGE_SUBJECT)
+      yield sse({
+        event: 'refetchEvaluation',
+        data: { flagConfigLastModified: new Date().toISOString() },
+      });
     },
     {},
   );
@@ -591,13 +496,7 @@ export const trackRoutes = new Elysia({ prefix: "api/sentry/flags" }).post(
         updatedAt: new Date().toISOString(),
       });
     });
-    if (paused) {
-      await publishFlagChange({
-        type: "status",
-        flagKey: paused.key,
-        flag: paused,
-      });
-    }
+    if (paused) await nats.publish(FLAG_CHANGE_SUBJECT)
     return {
       success: true,
       flagKey: body.flagKey,

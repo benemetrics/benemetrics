@@ -10,7 +10,7 @@ import { metricsRoutes } from "./metrics";
 import {
   experimentRoutes,
   featureFlagRoutes,
-  ofrepRoutes,
+  openFeatureRoutes,
   segmentRoutes,
   trackRoutes,
 } from "./feature-flags";
@@ -38,5 +38,5 @@ export const apiRoutes = new Elysia()
   .use(sourceMapRoutes)
   .use(sourceMapTokenRoutes)
   .use(sourceMapUploadRoutes)
-  .use(trackRoutes)
-  .use(ofrepRoutes);
+  .use(openFeatureRoutes)
+  .use(trackRoutes);

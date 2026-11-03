@@ -15,8 +15,7 @@ import { resolveIdentity } from "../auth";
 // The other surfaces of the domain: the admin experiment routes, the
 // DSN-guarded experiment tracking and the OFREP evaluation surface.
 export { experimentRoutes } from "./experiments";
-export { trackRoutes } from "./track";
-export { ofrepRoutes } from "./ofrep";
+export { openFeatureRoutes, trackRoutes } from "./open-feature";
 export { segmentRoutes } from "./segments";
 export { publishFlagChange, subscribeFlagChanges } from "./events";
 

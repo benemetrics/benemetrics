@@ -66,7 +66,6 @@ export const permissionsProjectApp = pgTable(
     id: uuid("id").default(sql`uuidv7()`).primaryKey(),
     permissionGrantId: uuid("permission_grant_id").notNull().references(() => permissionGrants.id),
     projectId: uuid("project_id").notNull().references(() => projects.id),
-    appId: uuid("app_id").notNull().references(() => apps.id),
   }
 )
 

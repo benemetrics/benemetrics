@@ -46,10 +46,6 @@ class Bucket {
   }
 }
 
-
-// The backend authenticates with its config user (the `AUTH` account, also
-// the auth-callout service); the dev defaults match docker-compose and are
-// expected to be overridden in production.
 const NATS_AUTH_USER = env.NATS_AUTH_USER || "sentries-auth";
 const NATS_AUTH_PASSWORD = env.NATS_AUTH_PASSWORD || "sentries-dev-auth-pass";
 
@@ -59,8 +55,6 @@ export const FLAG_CHANGE_SUBJECT = "flags.changed";
 export const FLAG_PING = "flags.ping";
 
 
-// The side-effects and the flags consumers have their own durable, so a
-// test run does not compete with a running deployment for the messages.
 export const SIDE_EFFECTS_CONSUMER =
   env.NATS_SIDE_EFFECTS_CONSUMER || "side-effects";
 export const FLAGS_CONSUMER = env.NATS_FLAGS_CONSUMER || "flags-consumer";

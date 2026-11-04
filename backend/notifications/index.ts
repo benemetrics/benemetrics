@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { manager, natsStream } from "../nats";
+import { notFound } from "backend/errors";
 
 export const notificationRoutes = new Elysia({
   prefix: "/api/admin/notifications",
@@ -23,8 +24,17 @@ export const notificationRoutes = new Elysia({
       limit: "string.integer.parse?"
     }) },
   )
-  .delete(
-    "/dlq/:seq",
-    async ({ params: { seq } }) => (await manager.streams.get('DLQ')).deleteMessage(seq, true),
-    { params: arktype({ seq: "string.numeric.parse" }) },
-  );
+  .group("/dlq/:seq",
+     { params: arktype({ seq: "string.numeric.parse" }) },
+     (dlq) => dlq
+      .delete(
+       "/dlq/:seq",
+       async ({ params: { seq } }) => (await manager.streams.get('DLQ')).deleteMessage(seq, true),
+      )
+      .patch("/resend", async ({ params: { seq } }) => {
+        const message = await (await manager.streams.get('DLQ')).getMessage(seq);
+        (await manager.streams.get('DLQ')).deleteMessage(seq, true)
+        if (!message) throw notFound("failed notification");
+        await natsStream.publish("snotify.deliver", message.data)
+      })
+  )

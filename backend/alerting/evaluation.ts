@@ -33,7 +33,7 @@ import type {
 } from "../protocol/alerting";
 import { projectDAO } from "db/dao/projects";
 import { natsStream } from "../nats";
-import type { DeliveryChannel } from "../protocol/notifications";
+import type { DeliveryChannel, NotificationDelivery } from "../protocol/notifications";
 
 const DEFAULT_MEASUREMENT = "duration";
 
@@ -364,7 +364,7 @@ async function evaluateRules(scope: {
 
         await natsStream.publish(
           "snotify.deliver",
-          selected.map((channel) => ({ channel, notification })).map((obj) => JSON.stringify(obj)).join('\n'),
+          selected.map<NotificationDelivery>((channel) => ({ channel, notification })).map((obj) => JSON.stringify(obj)).join('\n'),
         )
 
         countIncidentFired();

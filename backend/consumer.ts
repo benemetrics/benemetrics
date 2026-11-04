@@ -12,6 +12,7 @@ import type { SentryEventMessage } from "./protocol/events";
 import { recordReleaseFromEvent } from "./releases/tracking";
 import { env } from "bun";
 import { notifierFor } from "./alert-channels";
+import { projectsAndAppsPermissions } from "./permissions/engine";
 
 // Issues/alerts are one-shot and race-safe; release writes are idempotent,
 // so retries never duplicate them.
@@ -90,7 +91,9 @@ async function applyEventMessage(event: SentryEventMessage): Promise<void> {
   
         const user = await verifyWithIdP(json.nats.auth_token);
         if (!user) return;
-  
+
+        const { perms } = await projectsAndAppsPermissions({ user });
+        
         const userJwt = await encodeUser(
           "live-feed",
           json.nats.user_nkey,
@@ -108,7 +111,7 @@ async function applyEventMessage(event: SentryEventMessage): Promise<void> {
         msg.respond(
           await encodeAuthorizationResponse(
           json.nats.user_nkey,
-          "",
+          "", // misssing server id
           env.NATS_AUTH_KEY_SEED!,
           { jwt: userJwt },
           {},

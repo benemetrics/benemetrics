@@ -1,4 +1,4 @@
-import { apps, apps, db } from "db";
+import { apps, db, projects } from "db";
 import {
   permissionGrantPublicFields,
   permissionGrants,
@@ -11,6 +11,7 @@ import { desc, eq, inArray, lt } from "drizzle-orm";
 import { notFound } from "backend/errors";
 import { cursorLimit } from "../cursor";
 import { whereNotNull } from "db/utils";
+import { env } from "bun";
 
 export const permissionGrantDAO = {
   create: async (input: PermissionGrantInsert) => db
@@ -69,6 +70,17 @@ export const permissionGrantDAO = {
     return row;
   },
 
+  getAdminGrantWithPermissions: async (identityId: string, userGroups: string[]) => {
+    const projectsIds = await db.select({ projectId: projects.id }).from(projects);
+    const uniqueProjectIds = projectsIds.map(({ projectId }) => projectId)
+    const appIds = await db.select({ appId: apps.id }).from(apps).where(inArray(apps.projectId, uniqueProjectIds))
+    
+    return {
+      appIds: appIds.map(({ appId }) => appId),
+      projectIds: uniqueProjectIds
+    };
+  },
+
   getUserGrantWithPermissions: async (identityId: string, userGroups: string[]) => {
     const [grants, groups] = await Promise.all([
       db
@@ -105,7 +117,7 @@ export const permissionGrantDAO = {
     const groups = await db
       .select({ group: permissionRules.group })
       .from(permissionRules);
-    return new Set(groups.map(({ group }) => group));
+    return [...groups.map(({ group }) => group), env.OIDC_ADMIN_GROUP ?? "admin"];
   },
 
   delete: (id: string) => db.delete(permissionGrants).where(eq(permissionGrants.id, id)),

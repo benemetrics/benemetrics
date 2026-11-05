@@ -9,9 +9,9 @@ topology and for how every connection is authenticated and authorized.
 ## 1. Subjects
 
 ```
-sentry.events.<appNumber>   events (envelope payloads, newline-batched)
-sentry.metrics              metric samples (newline-batched, JSONEachRow)
-sentry.flags.changed        feature-flag change notifications
+benemetrics.events.<appNumber>   events (envelope payloads, newline-batched)
+benemetrics.metrics              metric samples (newline-batched, JSONEachRow)
+benemetrics.flags.changed        feature-flag change notifications
 snotify.deliver             notification deliveries (work queue, per channel)
 snotify.dlq                 dead-lettered deliveries (kept until dismissed)
 ```
@@ -19,10 +19,10 @@ snotify.dlq                 dead-lettered deliveries (kept until dismissed)
 - `<appNumber>` is the app's DB-generated `apps.number` — the same integer the
   DSN path uses. It is globally unique and stable, which keeps NATS subject
   tokens small (regex/UUID tokens are allowed but wasteful).
-- **Every** `sentry.events` publish carries the app number: the API edge
+- **Every** `benemetrics.events` publish carries the app number: the API edge
   resolves the app (DSN → app → number) _before_ the publish, so the subject
   routes on the event's own contents, not on a per-deployment guess.
-- The stream `SENTRIES` declares `sentry.events.*` (not the bare subject), so
+- The stream `BENEMETRICS` declares `benemetrics.events.*` (not the bare subject), so
   a malformed publish without the app token fails at the server instead of
   hiding in the wildcard.
 
@@ -30,10 +30,10 @@ snotify.dlq                 dead-lettered deliveries (kept until dismissed)
 
 | Consumer             | Mode                               | Filter subject         |
 | -------------------- | ---------------------------------- | ---------------------- |
-| `clickhouse-events`  | ClickHouse NATS engine table + MV  | `sentry.events.*`      |
-| `clickhouse-metrics` | ClickHouse NATS engine table + MV  | `sentry.metrics`       |
-| `side-effects`       | backend consumer binary (Postgres) | `sentry.events.*`      |
-| `flags-consumer`     | backend (feature-flag SSE fan-out) | `sentry.flags.changed` |
+| `clickhouse-events`  | ClickHouse NATS engine table + MV  | `benemetrics.events.*`      |
+| `clickhouse-metrics` | ClickHouse NATS engine table + MV  | `benemetrics.metrics`       |
+| `side-effects`       | backend consumer binary (Postgres) | `benemetrics.events.*`      |
+| `flags-consumer`     | backend (feature-flag SSE fan-out) | `benemetrics.flags.changed` |
 | `notification-worker`| backend (notification DLQ worker)  | `snotify.deliver`      |
 
 ## 1b. Notifications
@@ -101,7 +101,7 @@ which lands in the callout request as `connect_opts.auth_token`:
    grant/rule ⇒ no reply (denied).
 2. **The master admin token** (`bnm_…`, presented under `API-Key` over HTTP):
    verified by constant-time hash comparison against the boot token hash —
-   unrestricted, sub on `sentry.events.*`.
+   unrestricted, sub on `benemetrics.events.*`.
 
 ### The verdict: sub-only, scoped subjects
 
@@ -109,8 +109,8 @@ All admitted connections are **subscribe-only** (`pub: { allow: [] }` in the
 user claim; an allowlisted direction with an empty list denies everything).
 The granted `sub` subjects are the scoped view of the identity:
 
-- admin token → `sentry.events.*`
-- scoped identity → `sentry.events.<appNumber>` for **each app its scope
+- admin token → `benemetrics.events.*`
+- scoped identity → `benemetrics.events.<appNumber>` for **each app its scope
   resolves to** (app name prefixes + project grants, via `computeScopedView`)
 - an identity whose scope resolves to no app is denied.
 
@@ -162,7 +162,7 @@ authorization {
   the CONNECT options carry `auth_token` = its current credential. Invalid /
   expired credentials are rejected by the callout before the subscription
   can enter.
-- Subscriptions are per app: `sentry.events.<appNumber>` for the apps the
+- Subscriptions are per app: `benemetrics.events.<appNumber>` for the apps the
   UI displays. The UI derives the numbers from the admin app responses it
   already renders. A subscription the broker did not grant is rejected by
   NATS itself.
@@ -176,4 +176,4 @@ authorization {
   there is no anonymous/dev mode and no config switch that opens the
   listener).
 - Subject sharding keeps every publish visible to the JetStream consumers
-  (filter `sentry.events.*` covers all app shards).
+  (filter `benemetrics.events.*` covers all app shards).

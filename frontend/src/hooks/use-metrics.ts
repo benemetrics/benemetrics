@@ -58,7 +58,7 @@ export function useMetrics(
   useEffect(() => {
     if (!appId) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const close = subscribeSubject("sentry.metrics", {
+    const close = subscribeSubject("benemetrics.metrics", {
       onStatus: setLive,
       onMessage: (payload: string) => {
         const matches = payload

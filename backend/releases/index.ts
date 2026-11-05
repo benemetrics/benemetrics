@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { appDAO } from "db/dao/apps";
 import { releaseDAO } from "db/dao/releases";
+import { FULL_SCAN_LIMIT } from "../limits";
 import { clickHouseReleaseIssueMetrics } from "../clickhouse";
 import { buildReleaseIssueMetrics } from "./metrics";
 
@@ -51,10 +52,8 @@ export const releaseRoutes = new Elysia({ prefix: "/api/admin/releases" })
   })
   .patch(
     "/:id",
-    async ({ params: { id }, body }) => {
-      const current = await releaseDAO.findByIdOrThrow(id);
-      return releaseDAO.updateOrThrow(id, {});
-    },
+    async ({ params: { id }, body }) =>
+      releaseDAO.updateOrThrow(id, body),
     {
       params: arktype({ id: "string.uuid" }),
       body: arktype({
@@ -95,7 +94,7 @@ export const releaseRoutes = new Elysia({ prefix: "/api/admin/releases" })
       // The summary reads the ClickHouse issue index; the release is a
       // project-level concept, so every app of the project counts.
       const apps = await appDAO.listByProject(app.projectId, {
-        limit: 1000,
+        limit: FULL_SCAN_LIMIT,
       });
       const rows = await clickHouseReleaseIssueMetrics({
         release: release.version,

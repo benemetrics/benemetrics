@@ -3,6 +3,7 @@ import { type as arktype } from "arktype";
 import { appDAO } from "db/dao/apps";
 import { projectDAO } from "db/dao/projects";
 import { alertChannelDAO } from "db/dao/alerts/channels";
+import { ALERT_LIST_LIMIT } from "../limits";
 import { alertRuleDAO } from "db/dao/alerts/rules";
 import { alertIncidentDAO } from "db/dao/alerts/incidents";
 import { badRequest } from "../errors";
@@ -10,7 +11,6 @@ import { resolveEffectiveAlertConfig } from "./resolver";
 import {
   buildChannelTestNotification,
   buildTestNotification,
-  deliverAlertToChannels,
   deliverNotificationToChannel,
 } from "./notifiers";
 import { readAlertingStats } from "./stats";
@@ -361,7 +361,7 @@ export const alertingRoutes = new Elysia({ prefix: "/api/admin/alerting" })
       const rule = await alertRuleDAO.findByIdOrThrow(id);
       const channels = rule.appId
         ? (await resolveEffectiveAlertConfig({ appId: rule.appId })).channels
-        : await alertChannelDAO.list({ projectId: null }, { limit: 200 });
+        : await alertChannelDAO.list({ projectId: null }, { limit: ALERT_LIST_LIMIT });
       const targets =
         rule.channelIds.length > 0
           ? rule.channelIds

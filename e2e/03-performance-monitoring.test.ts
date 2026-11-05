@@ -305,7 +305,7 @@ describe("Performance Monitoring (03-performance-monitoring.md)", () => {
 
     // startInactiveSpan creates non-recording spans that are not sent to the server
     const events = await fetchAllEvents();
-    // No events expected for non-transaction spans
+    expect(events).toHaveLength(0);
   });
 
   it("continues trace from incoming headers - SDK level test", async () => {

@@ -8,7 +8,7 @@ import type {
   DeliveryResult,
 } from "../protocol/alerting";
 import type { IssueSummary } from "../protocol/issues";
-import { notifiers, notifierFor } from "../alert-channels";
+import { notifiers } from "../alert-channels";
 import { renderTemplate } from "./template";
 import { countDelivery } from "./stats";
 

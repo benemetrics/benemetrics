@@ -14,7 +14,7 @@
  * stays inline and ingestion is unaffected.
  *
  * The suite requires the compose services, including
- * `docker compose up -d rustfs rustfs-init` (bucket `sentry-replays`).
+ * `docker compose up -d rustfs rustfs-init` (bucket `benemetrics-replays`).
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";

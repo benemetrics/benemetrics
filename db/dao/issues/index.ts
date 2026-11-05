@@ -121,11 +121,10 @@ export const issueDAO = {
   // (app_id, fingerprint) insert and fall through to the other paths).
   createIfNew: (
     data: Omit<IssueInsert, "id"> & { id?: string },
-  ): Promise<Pick<IssueRow, "id" | "fingerprint" | "title"> | undefined> =>
+  ) =>
     db
       .insert(issues)
       .values({ ...data })
-      .onConflictDoNothing()
       .returning(trackedIssueFields)
       .then(([row]) => row),
 
@@ -136,7 +135,7 @@ export const issueDAO = {
     appId: string,
     fingerprint: string,
     occurrence: IssueOccurrence,
-  ): Promise<Pick<IssueRow, "id" | "fingerprint" | "title"> | undefined> =>
+  ) =>
     db
       .update(issues)
       .set({
@@ -168,7 +167,7 @@ export const issueDAO = {
     appId: string,
     fingerprint: string,
     occurrence: IssueOccurrence,
-  ): Promise<void> =>
+  ) =>
     db
       .update(issues)
       .set({
@@ -192,7 +191,7 @@ export const issueDAO = {
         ),
       ),
 
-  findById: (id: string): Promise<IssueRow | undefined> =>
+  findById: (id: string) =>
     db
       .select(issuePublicFields)
       .from(issues)
@@ -212,7 +211,7 @@ export const issueDAO = {
     sort?: IssueSort;
     cursor?: string;
     limit?: number;
-  }): Promise<IssueRow[]> => {
+  }) => {
     const limit = cursorLimit(options.limit);
     const filters = options.filters ?? [{}];
 
@@ -270,7 +269,7 @@ export const issueDAO = {
   syncUserCounts: async (
     counts: Array<{ appId: string; fingerprint: string; userCount: number }>,
     appIds: string[],
-  ): Promise<void> => {
+  ) => {
     if (counts.length === 0 || appIds.length === 0) return;
     const fragments = counts.map(
       (row) => sql`(${row.appId}, ${row.fingerprint}, ${row.userCount}::int)`,
@@ -303,7 +302,7 @@ export const issueDAO = {
     appId: string,
     since: string,
     tags?: Record<string, string>,
-  ): Promise<number> => {
+  ) => {
     const conditions = [eq(issues.appId, appId), gte(issues.firstSeen, since)];
     // A filtered tag must be on the issue's latest occurrence.
     for (const [key, value] of Object.entries(tags ?? {})) {
@@ -316,6 +315,6 @@ export const issueDAO = {
   },
 
   // Issues are derived from stored events, so they die with the app.
-  deleteByApp: (appId: string): Promise<void> =>
+  deleteByApp: (appId: string) =>
     db.delete(issues).where(eq(issues.appId, appId)),
 };

@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
-import { manager, natsStream } from "../nats";
+import { manager, natsStream, STREAMS, TOPICS } from "../nats";
 import { notFound } from "backend/errors";
 
 export const notificationRoutes = new Elysia({
@@ -10,8 +10,8 @@ export const notificationRoutes = new Elysia({
     "/dlq",
     async ({ query: { limit, cursor } }) => {
       try {
-        const info = await (await natsStream.streams.get('DLQ')).info();
-        const z = await manager.direct.getBatch('DLQ', { seq: cursor ?? (info.state.last_seq - (limit ?? 20)), batch: limit ?? 20 })
+        const info = await (await natsStream.streams.get(STREAMS.DLQ)).info();
+        const z = await manager.direct.getBatch(STREAMS.DLQ, { seq: cursor ?? (info.state.last_seq - (limit ?? 20)), batch: limit ?? 20 })
         const v = await Array.fromAsync(z);
         v[0]?.json()
       } catch (e) {
@@ -29,12 +29,12 @@ export const notificationRoutes = new Elysia({
      (dlq) => dlq
       .delete(
        "/dlq/:seq",
-       async ({ params: { seq } }) => (await manager.streams.get('DLQ')).deleteMessage(seq, true),
+       async ({ params: { seq } }) => (await manager.streams.get(STREAMS.DLQ)).deleteMessage(seq, true),
       )
       .patch("/resend", async ({ params: { seq } }) => {
-        const message = await (await manager.streams.get('DLQ')).getMessage(seq);
-        (await manager.streams.get('DLQ')).deleteMessage(seq, true)
+        const message = await (await manager.streams.get(STREAMS.DLQ)).getMessage({ seq });
+        (await manager.streams.get(STREAMS.DLQ)).deleteMessage(seq, true)
         if (!message) throw notFound("failed notification");
-        await natsStream.publish("snotify.deliver", message.data)
+        await natsStream.publish(TOPICS.NOTIFY, message.data)
       })
   )

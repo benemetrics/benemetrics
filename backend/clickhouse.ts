@@ -1,6 +1,29 @@
 import { createClient, type ClickHouseClient } from "@clickhouse/client";
 import type { ClickHouseDialect, SQLQuery } from "waddler";
 import { sql, waddler, type ClickHouseSQL } from "waddler/clickhouse";
+import {
+  CLICKHOUSE_DATABASE,
+  DEFAULT_EVENTS_TTL,
+  EVENTS_COLUMNS,
+  EVENTS_TABLE,
+  ISSUE_EVENTS_TABLE,
+  METRICS_COLUMNS,
+  METRICS_TABLE,
+  atOrAfter,
+  atOrBefore,
+  columnList,
+  columnTypes,
+  chTable,
+  type ChColumn,
+  type ChQuery,
+  type TtlUnit,
+  ttlExpression,
+  EVENTS_TABLE_NAME,
+} from "./clickhouse-migrations/_ddl";
+import {
+  CLICKHOUSE_MIGRATIONS,
+  type MigrationDb,
+} from "./clickhouse-migrations";
 import type { StoredEvent } from "./protocol/events";
 import type {
   MetricBreakdownRow,
@@ -10,363 +33,47 @@ import type {
 
 const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "localhost";
 const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT || "8123";
-const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || "default";
 const CLICKHOUSE_USER = process.env.CLICKHOUSE_USER || "default";
 const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || "";
-const CLICKHOUSE_NATS_URL = process.env.CLICKHOUSE_NATS_URL || "nats:4222";
-// The engine connection is the `INTERNAL` config user of the broker.
-const CLICKHOUSE_NATS_USER =
-  process.env.CLICKHOUSE_NATS_USER || "sentries-internal";
-const CLICKHOUSE_NATS_PASSWORD =
-  process.env.CLICKHOUSE_NATS_PASSWORD || "sentries-dev-internal-pass";
 
-const NATS_STREAM = "SENTRIES";
-const EVENTS_SUBJECT = "sentry.events.*";
-const EVENTS_CONSUMER = "clickhouse-events";
-const METRICS_SUBJECT = "sentry.metrics";
-const METRICS_CONSUMER = "clickhouse-metrics";
-
-// A statement or fragment built with the standalone `sql` builder and
-// executed through `runCommand` / `queryRows` below.
-type ChQuery = SQLQuery<ClickHouseDialect>;
-
-// Waddler's ClickHouse driver exposes the `sql` template only — it has no
-// table DSL — so the schema is declared once here and drives the DDL, the
-// SELECT lists and the INSERT bindings. Column order is significant: it is
-// the order of the rows passed to `sql.values`.
-//
-// The optional third element is the type the value binds as when the
-// declared type cannot parse the value as sent: `receivedAt` is an ISO
-// string (with `T`/`Z`) that ClickHouse rejects as a DateTime64 parameter,
-// so it is bound as a String and cast by the target column.
-type ChColumn = readonly [name: string, type: string, bind?: string];
-
-const EVENTS_COLUMNS: readonly ChColumn[] = [
-  ["id", "String"],
-  ["projectId", "String"],
-  ["appId", "String"],
-  ["envelopeHeader", "String"],
-  ["envelopeItems", "String"],
-  ["receivedAt", "DateTime64(3)", "String"],
-];
-
-// The engine table receives JSONEachRow, so the timestamp arrives as a
-// string; `type` distinguishes envelope from store messages.
-const EVENTS_ENGINE_COLUMNS: readonly ChColumn[] = [
-  ["id", "String"],
-  ["projectId", "String"],
-  ["appId", "String"],
-  ["envelopeHeader", "String"],
-  ["envelopeItems", "String"],
-  ["issueEvents", "String"],
-  ["receivedAt", "String"],
-  ["type", "String"],
-];
-
-// The derived issue index: one row per event item, so the drill-down and
-// the stats read from ClickHouse instead of re-fingerprinting the events.
-const ISSUE_EVENTS_COLUMNS: readonly ChColumn[] = [
-  ["messageId", "String"],
-  ["eventId", "String"],
-  ["projectId", "String"],
-  ["appId", "String"],
-  ["fingerprint", "String"],
-  ["title", "String"],
-  ["level", "String"],
-  ["type", "String"],
-  ["release", "String"],
-  ["environment", "String"],
-  ["user", "String"],
-  // The occurrence's tags; a JSON object as a string.
-  ["tags", "String"],
-  ["receivedAt", "DateTime64(3)"],
-];
-
-const METRICS_COLUMNS: readonly ChColumn[] = [
-  ["projectId", "String"],
-  ["appId", "String"],
-  ["eventId", "String"],
-  ["metric", "String"],
-  ["value", "Float64"],
-  ["dimension", "String"],
-  // The event's tags as a JSON string; the rule filters match on them.
-  ["tags", "String"],
-  ["receivedAt", "DateTime64(3)", "String"],
-];
-
-const METRICS_ENGINE_COLUMNS: readonly ChColumn[] = [
-  ["projectId", "String"],
-  ["appId", "String"],
-  ["eventId", "String"],
-  ["metric", "String"],
-  ["value", "Float64"],
-  ["dimension", "String"],
-  ["tags", "String"],
-  ["receivedAt", "String"],
-];
-
-// Every table and view lives inside `CLICKHOUSE_DATABASE`; the identifier
-// keeps the database qualification in one place.
-const chTable = (name: string) =>
-  sql.identifier({ schema: CLICKHOUSE_DATABASE, table: name });
-
-const EVENTS_TABLE = chTable("sentry_events");
-const EVENTS_OLD_TABLE = chTable("sentry_events_old");
-const EVENTS_ENGINE_TABLE = chTable("nats_events");
-const EVENTS_VIEW = chTable("sentry_events_mv");
-const ISSUE_EVENTS_TABLE = chTable("sentry_issue_events");
-const ISSUE_EVENTS_VIEW = chTable("sentry_issue_events_mv");
-const METRICS_TABLE = chTable("sentry_metrics");
-const METRICS_ENGINE_TABLE = chTable("nats_metrics");
-const METRICS_VIEW = chTable("sentry_metrics_mv");
+// Share the retention type with the Settings surface without re-exporting
+// the whole DDL module.
+export type { TtlUnit } from "./clickhouse-migrations/_ddl";
 
 // Waddler handle: created on first use and dropped on close so test files
 // can open and close the store repeatedly.
 let client: ClickHouseClient | null = null;
-let chSql: ClickHouseSQL | null = null;
+let ch: ClickHouseSQL | null = null;
 
-function getChSql(): ClickHouseSQL {
-  if (!chSql) {
+function getCh(): ClickHouseSQL {
+  if (!ch) {
     client = createClient({
       url: `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
       username: CLICKHOUSE_USER,
       password: CLICKHOUSE_PASSWORD,
       request_timeout: 5000,
     });
-    chSql = waddler({ client });
+    ch = waddler({ client });
   }
-  return chSql;
+  return ch;
 }
 
 export async function closeClickHouse(): Promise<void> {
   const current = client;
   client = null;
-  chSql = null;
+  ch = null;
   if (current) await current.close();
 }
 
 // Executes a statement without a result set (DDL, INSERT, TRUNCATE).
 async function runCommand(statement: ChQuery): Promise<void> {
-  await withChRetry(async () => {
-    await getChSql()`${statement}`.command();
-  });
+  await withChRetry(async () => await getCh()`${statement}`.command());
 }
 
-// Executes a SELECT and returns its rows in the object row mode.
+// Executes a SELECT and returns its rows in the object row mode, typed
+// like a Drizzle result through the template's row parameter.
 async function queryRows<T>(statement: ChQuery): Promise<T[]> {
-  return await withChRetry(
-    async () => (await getChSql()<T>`${statement}`.query()) as T[],
-  );
-}
-
-// Waddler has no `sql.join`, so fragments are appended by hand.
-function joinChunks(chunks: readonly ChQuery[], separator: ChQuery): ChQuery {
-  const [first, ...rest] = chunks;
-  if (!first) return sql``;
-  for (const chunk of rest) {
-    first.append(separator);
-    first.append(chunk);
-  }
-  return first;
-}
-
-// `` `id`, `projectId`, … `` — the SELECT list and the INSERT target.
-function columnList(columns: readonly ChColumn[]): ChQuery {
-  return joinChunks(
-    columns.map(([name]) => sql`${sql.identifier(name)}`),
-    sql`, `,
-  );
-}
-
-// `` `id` String, `projectId` String, … `` — the CREATE TABLE body.
-function columnDefinitions(columns: readonly ChColumn[]): ChQuery {
-  return joinChunks(
-    columns.map(
-      ([name, type]) => sql`${sql.identifier(name)} ${sql.raw(type)}`,
-    ),
-    sql`, `,
-  );
-}
-
-// Bound explicitly in `sql.values`; the binding type is the declared type
-// unless the schema overrides it.
-function columnTypes(columns: readonly ChColumn[]): string[] {
-  return columns.map(([, type, bind]) => bind ?? type);
-}
-
-// The views select every payload column; the timestamp is recomputed from
-// the parsed engine value instead.
-function payloadList(columns: readonly ChColumn[]): ChQuery {
-  return columnList(columns.filter(([name]) => name !== "receivedAt"));
-}
-
-// A malformed `receivedAt` (junk published to the subject) must be
-// skipped — acked and dropped — instead of wedging the engine's insert
-// loop with a parse exception that would be redelivered forever. The
-// OrNull parse plus the null guard is therefore both the insert
-// expression and the views' definition marker.
-const RECEIVED_AT_PARSE = "parseDateTime64BestEffortOrNull(receivedAt, 3)";
-
-// ISO window bounds are parsed at millisecond precision by ClickHouse.
-const atOrAfter = (iso: string) =>
-  sql`receivedAt >= parseDateTime64BestEffort(${iso}, 3)`;
-const atOrBefore = (iso: string) =>
-  sql`receivedAt <= parseDateTime64BestEffort(${iso}, 3)`;
-
-export type TtlUnit = "day" | "week" | "month" | "year";
-
-export const DEFAULT_EVENTS_TTL: { amount: number; unit: TtlUnit } = {
-  amount: 1,
-  unit: "month",
-};
-
-const INTERVAL_FUNCTIONS: Record<TtlUnit, string> = {
-  day: "toIntervalDay",
-  week: "toIntervalWeek",
-  month: "toIntervalMonth",
-  year: "toIntervalYear",
-};
-
-export interface EventsTtl {
-  table: string;
-  expression: string;
-  interval: { amount: number; unit: TtlUnit } | null;
-}
-
-function ttlExpression(amount: number, unit: TtlUnit): string {
-  return `toDateTime(receivedAt) + ${INTERVAL_FUNCTIONS[unit]}(${amount})`;
-}
-
-function createEventsTable(
-  ttl: { amount: number; unit: TtlUnit } = DEFAULT_EVENTS_TTL,
-): ChQuery {
-  return sql`
-    CREATE TABLE IF NOT EXISTS ${EVENTS_TABLE}
-    (${columnDefinitions(EVENTS_COLUMNS)})
-    ENGINE = ReplacingMergeTree()
-    ORDER BY (projectId, receivedAt, id)
-    ${ttl.amount > 0 ? sql.raw(`TTL ${ttlExpression(ttl.amount, ttl.unit)}`) : sql``}
-    SETTINGS index_granularity = 8192, fsync_after_insert = 1, fsync_part_directory = 1
-  `;
-}
-
-// Both engine tables attach to the stream by configuration; only the
-// consumer and the subject differ.
-function natsEngine(consumer: string, subject: string): ChQuery {
-  return sql`
-    ENGINE = NATS
-    SETTINGS nats_url = ${CLICKHOUSE_NATS_URL},
-             nats_username = ${CLICKHOUSE_NATS_USER},
-             nats_password = ${CLICKHOUSE_NATS_PASSWORD},
-             nats_stream = ${NATS_STREAM},
-             nats_consumer_name = ${consumer},
-             nats_subjects = ${subject},
-             nats_format = 'JSONEachRow',
-             input_format_skip_unknown_fields = 1,
-             nats_skip_broken_messages = 10
-  `;
-}
-
-function createEventsEngineTable(): ChQuery {
-  return sql`
-    CREATE TABLE IF NOT EXISTS ${EVENTS_ENGINE_TABLE}
-    (${columnDefinitions(EVENTS_ENGINE_COLUMNS)})
-    ${natsEngine(EVENTS_CONSUMER, EVENTS_SUBJECT)}
-  `;
-}
-
-function createEventsView(): ChQuery {
-  return sql`
-    CREATE MATERIALIZED VIEW IF NOT EXISTS ${EVENTS_VIEW} TO ${EVENTS_TABLE} AS
-    SELECT ${payloadList(EVENTS_COLUMNS)},
-           assumeNotNull(parsed_receivedAt) AS receivedAt
-    FROM (
-      SELECT ${payloadList(EVENTS_COLUMNS)},
-             ${sql.raw(RECEIVED_AT_PARSE)} AS parsed_receivedAt
-      FROM ${EVENTS_ENGINE_TABLE}
-    )
-    WHERE parsed_receivedAt IS NOT NULL
-  `;
-}
-
-function createIssueEventsTable(
-  ttl: { amount: number; unit: TtlUnit } = DEFAULT_EVENTS_TTL,
-): ChQuery {
-  return sql`
-    CREATE TABLE IF NOT EXISTS ${ISSUE_EVENTS_TABLE}
-    (${columnDefinitions(ISSUE_EVENTS_COLUMNS)})
-    ENGINE = ReplacingMergeTree()
-    ORDER BY (appId, fingerprint, receivedAt, eventId)
-    ${ttl.amount > 0 ? sql.raw(`TTL ${ttlExpression(ttl.amount, ttl.unit)}`) : sql``}
-    SETTINGS index_granularity = 8192
-  `;
-}
-
-// The digests ride the event message as JSON text; the view expands them
-// into one row per event item. A message without digests (or with a
-// non-array one) contributes no rows.
-function createIssueEventsView(): ChQuery {
-  return sql`
-    CREATE MATERIALIZED VIEW IF NOT EXISTS ${ISSUE_EVENTS_VIEW} TO ${ISSUE_EVENTS_TABLE} AS
-    SELECT
-      id AS messageId,
-      JSONExtractString(digest, 'eventId') AS eventId,
-      projectId,
-      appId,
-      JSONExtractString(digest, 'fingerprint') AS fingerprint,
-      JSONExtractString(digest, 'title') AS title,
-      JSONExtractString(digest, 'level') AS level,
-      JSONExtractString(digest, 'type') AS type,
-      JSONExtractString(digest, 'release') AS release,
-      JSONExtractString(digest, 'environment') AS environment,
-      JSONExtractString(digest, 'user') AS user,
-      JSONExtractRaw(digest, 'tags') AS tags,
-      assumeNotNull(parsed_receivedAt) AS receivedAt
-    FROM (
-      SELECT id, projectId, appId,
-             ${sql.raw(RECEIVED_AT_PARSE)} AS parsed_receivedAt,
-             arrayJoin(
-               if(startsWith(issueEvents, '['), JSONExtractArrayRaw(issueEvents), [])
-             ) AS digest
-      FROM ${EVENTS_ENGINE_TABLE}
-    )
-    WHERE parsed_receivedAt IS NOT NULL
-  `;
-}
-
-function createMetricsTable(
-  ttl: { amount: number; unit: TtlUnit } = DEFAULT_EVENTS_TTL,
-): ChQuery {
-  return sql`
-    CREATE TABLE IF NOT EXISTS ${METRICS_TABLE}
-    (${columnDefinitions(METRICS_COLUMNS)})
-    ENGINE = ReplacingMergeTree()
-    ORDER BY (projectId, metric, receivedAt, eventId, dimension)
-    ${ttl.amount > 0 ? sql.raw(`TTL ${ttlExpression(ttl.amount, ttl.unit)}`) : sql``}
-    SETTINGS index_granularity = 8192, fsync_after_insert = 1, fsync_part_directory = 1
-  `;
-}
-
-function createMetricsEngineTable(): ChQuery {
-  return sql`
-    CREATE TABLE IF NOT EXISTS ${METRICS_ENGINE_TABLE}
-    (${columnDefinitions(METRICS_ENGINE_COLUMNS)})
-    ${natsEngine(METRICS_CONSUMER, METRICS_SUBJECT)}
-  `;
-}
-
-function createMetricsView(): ChQuery {
-  return sql`
-    CREATE MATERIALIZED VIEW IF NOT EXISTS ${METRICS_VIEW} TO ${METRICS_TABLE} AS
-    SELECT ${payloadList(METRICS_COLUMNS)},
-           assumeNotNull(parsed_receivedAt) AS receivedAt
-    FROM (
-      SELECT ${payloadList(METRICS_COLUMNS)},
-             ${sql.raw(RECEIVED_AT_PARSE)} AS parsed_receivedAt
-      FROM ${METRICS_ENGINE_TABLE}
-    )
-    WHERE parsed_receivedAt IS NOT NULL
-  `;
+  return await withChRetry(async () => await getCh()<T>`${statement}`);
 }
 
 const TRANSIENT_CH_CODES = new Set([
@@ -491,188 +198,95 @@ async function retryInit(run: () => Promise<void>): Promise<void> {
   }
 }
 
-// Data-preserving engine migration: the original `sentry_events` was a
-// plain MergeTree keyed in seconds precision; the current shape is a
-// ReplacingMergeTree keyed by (projectId, receivedAt, id) with
-// millisecond timestamps so redelivered messages collapse and events
-// inside the same second keep a stable order. Existing rows are copied
-// over (deduplicated by id).
-// The digest column joined the engine table after it was created. A NATS
-// table cannot be altered, so it is recreated — the rows live in the
-// stream, so the durable's position is what carries over.
-async function ensureEventsEngineColumns(): Promise<void> {
-  const [column] = await queryRows<{ name: string }>(
-    sql`
-      SELECT name FROM system.columns
-      WHERE database = ${CLICKHOUSE_DATABASE} AND table = 'nats_events' AND name = 'issueEvents'
-    `,
+// --- Migrations -----------------------------------------------------------
+
+// The recorded history: ReplacingMergeTree so a retried record insert
+// collapses on FINAL reads.
+const MIGRATIONS_TABLE = chTable("clickhouse_migrations");
+
+async function recordMigration(name: string): Promise<void> {
+  await runCommand(
+    sql`INSERT INTO ${MIGRATIONS_TABLE} (name) VALUES ${sql.values([[name]], ["String"])}`,
   );
-  if (column) return;
-  console.log(
-    "[ClickHouse] Recreating nats_events with the issueEvents column",
-  );
-  await runCommand(sql`DROP TABLE IF EXISTS ${EVENTS_ENGINE_TABLE}`);
-  await runCommand(createEventsEngineTable());
 }
 
-// The metrics' store table gains the tags column; the engine table is
-// rebuilt when it predates the column (the stream keeps the data).
-// The issue index carries the occurrence's tags; the column and the view
-// are added to an existing installation.
-async function ensureIssueEventsColumns(): Promise<void> {
-  const [column] = await queryRows<{ name: string }>(
-    sql`
-      SELECT name FROM system.columns
-      WHERE database = ${CLICKHOUSE_DATABASE} AND table = 'sentry_issue_events' AND name = 'tags'
-    `,
-  );
-  if (!column) {
-    console.log("[ClickHouse] Adding the tags column to sentry_issue_events");
-    await runCommand(
-      sql`ALTER TABLE ${ISSUE_EVENTS_TABLE} ADD COLUMN tags String`,
-    );
-  }
-  const [view] = await queryRows<{ create_table_query: string }>(
-    sql`
-      SELECT create_table_query FROM system.tables
-      WHERE database = ${CLICKHOUSE_DATABASE} AND name = 'sentry_issue_events_mv'
-    `,
-  );
-  if (
-    view &&
-    !view.create_table_query.includes("JSONExtractRaw(digest, 'tags')")
-  ) {
-    console.log(
-      "[ClickHouse] Recreating the issue events view with the tags column",
-    );
-    await runCommand(sql`DROP TABLE IF EXISTS ${ISSUE_EVENTS_VIEW}`);
-  }
-  await runCommand(createIssueEventsView());
-}
-
-async function ensureMetricsColumns(): Promise<void> {
-  const [column] = await queryRows<{ name: string }>(
-    sql`
-      SELECT name FROM system.columns
-      WHERE database = ${CLICKHOUSE_DATABASE} AND table = 'sentry_metrics' AND name = 'tags'
-    `,
-  );
-  if (column) return;
-  console.log("[ClickHouse] Adding the tags column to sentry_metrics");
-  await runCommand(sql`ALTER TABLE ${METRICS_TABLE} ADD COLUMN tags String`);
-}
-
-async function ensureMetricsEngineColumns(): Promise<void> {
-  const [column] = await queryRows<{ name: string }>(
-    sql`
-      SELECT name FROM system.columns
-      WHERE database = ${CLICKHOUSE_DATABASE} AND table = 'nats_metrics' AND name = 'tags'
-    `,
-  );
-  if (column) return;
-  console.log("[ClickHouse] Recreating nats_metrics with the tags column");
-  await runCommand(sql`DROP TABLE IF EXISTS ${METRICS_ENGINE_TABLE}`);
-  await runCommand(createMetricsEngineTable());
-}
-
-// The metrics' view selects the payload's columns; it is recreated when it
-// predates the tags column.
-async function ensureMetricsView(): Promise<void> {
-  const [existing] = await queryRows<{ create_table_query: string }>(
-    sql`
-      SELECT create_table_query FROM system.tables
-      WHERE database = ${CLICKHOUSE_DATABASE} AND name = 'sentry_metrics_mv'
-    `,
-  );
-  if (existing && !existing.create_table_query.includes("tags")) {
-    await runCommand(sql`DROP TABLE IF EXISTS ${chTable("sentry_metrics_mv")}`);
-  }
-  await runCommand(createMetricsView());
-}
-
-async function migrateEventsTable(): Promise<void> {
-  const [table] = await queryRows<{ engine: string }>(
-    sql`
-      SELECT engine FROM system.tables
-      WHERE database = ${CLICKHOUSE_DATABASE} AND name = 'sentry_events'
-    `,
-  );
-  if (!table) return;
-
-  const [receivedAt] = await queryRows<{ type: string }>(
-    sql`
-      SELECT type FROM system.columns
-      WHERE database = ${CLICKHOUSE_DATABASE} AND table = 'sentry_events' AND name = 'receivedAt'
-    `,
-  );
-  const current = `${table.engine}/${receivedAt?.type ?? "unknown"}`;
-  if (
-    table.engine === "ReplacingMergeTree" &&
-    receivedAt?.type === "DateTime64(3)"
-  )
-    return;
-
-  // The rebuilt table must keep the retention an admin configured.
-  const previousTtl = await readEventsTtl();
-  const previousInterval = previousTtl.interval ?? DEFAULT_EVENTS_TTL;
-
-  console.log(
-    `[ClickHouse] Migrating sentry_events (${current} -> ReplacingMergeTree/DateTime64(3))`,
-  );
-  await runCommand(sql`DROP TABLE IF EXISTS ${EVENTS_VIEW}`);
-  await runCommand(sql`RENAME TABLE ${EVENTS_TABLE} TO ${EVENTS_OLD_TABLE}`);
-  await runCommand(createEventsTable(previousInterval));
+// Applies the pending migrations in order. A recorded name is skipped; a
+// migration whose `needed` probe reports the DB already in the target
+// shape is only recorded. Each statement runs through the same retry path
+// as the reads, so a slow ClickHouse start retries instead of failing.
+async function runMigrations(): Promise<void> {
   await runCommand(sql`
-    INSERT INTO ${EVENTS_TABLE} (${columnList(EVENTS_COLUMNS)})
-    SELECT id,
-           argMax(projectId, receivedAt),
-           argMax(appId, receivedAt),
-           argMax(envelopeHeader, receivedAt),
-           argMax(envelopeItems, receivedAt),
-           toDateTime64(max(receivedAt), 3)
-    FROM ${EVENTS_OLD_TABLE}
-    GROUP BY id
+    CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE}
+    (name String, appliedAt DateTime64(3) DEFAULT now64(3))
+    ENGINE = ReplacingMergeTree()
+    ORDER BY name
   `);
-  await runCommand(sql`DROP TABLE ${EVENTS_OLD_TABLE}`);
-  if (previousTtl.interval) {
-    await setEventsTtl(previousTtl.interval.amount, previousTtl.interval.unit);
-  }
-}
 
-// The materialized views are the only writers of the store tables. A view
-// is dropped and recreated when its stored definition predates the current
-// one — detected by the `RECEIVED_AT_PARSE` marker: views created before
-// the null-parse guard (which skips junk messages instead of wedging the
-// engine's insert loop) are stale.
-async function ensureView(name: string, createView: ChQuery): Promise<void> {
-  const [existing] = await queryRows<{ create_table_query: string }>(
-    sql`
-      SELECT create_table_query FROM system.tables
-      WHERE database = ${CLICKHOUSE_DATABASE} AND name = ${name}
-    `,
+  const db: MigrationDb = { command: runCommand, rows: queryRows };
+  const applied = new Set(
+    (
+      await queryRows<{ name: string }>(
+        sql`SELECT name FROM ${MIGRATIONS_TABLE} FINAL`,
+      )
+    ).map((row) => row.name),
   );
-  if (existing && !existing.create_table_query.includes(RECEIVED_AT_PARSE)) {
-    await runCommand(sql`DROP TABLE IF EXISTS ${chTable(name)}`);
+
+  for (const migration of CLICKHOUSE_MIGRATIONS) {
+    if (applied.has(migration.name)) continue;
+    // Already in the target shape (an install predating the migrations):
+    // record the history instead of rerunning the statements.
+    if (migration.needed && !(await migration.needed(db))) {
+      await recordMigration(migration.name);
+      continue;
+    }
+    console.log(`[ClickHouse] Applying migration ${migration.name}`);
+    for (const statement of await migration.statements(db)) {
+      await runCommand(statement);
+    }
+    await recordMigration(migration.name);
   }
-  await runCommand(createView);
 }
 
+// Boot order: NATS (stream + durable pull consumers) first — the engine
+// tables attach to their consumers by name. Retries, then fails fast.
+export async function initClickHouse(): Promise<void> {
+  await retryInit(async () => {
+    await runCommand(
+      sql`CREATE DATABASE IF NOT EXISTS ${sql.identifier(CLICKHOUSE_DATABASE)}`,
+    );
+    await runMigrations();
+    console.log(
+      "[ClickHouse] Connected; events and metrics engine tables, views and stores ensured",
+    );
+  });
+}
+
+// --- Retention (Settings API) ---------------------------------------------
+
+export interface EventsTtl {
+  table: string;
+  expression: string;
+  interval: { amount: number; unit: TtlUnit } | null;
+}
+
+// The lifetime of the events table, parsed back from the stored CREATE
+// TABLE query ClickHouse keeps in `system.tables`.
 export async function readEventsTtl(): Promise<EventsTtl> {
-  const [table] = await queryRows<{ create_table_query: string }>(
-    sql`
-      SELECT create_table_query FROM system.tables
-      WHERE database = ${CLICKHOUSE_DATABASE} AND name = 'sentry_events'
-    `,
-  );
-  if (!table) return { table: "sentry_events", expression: "", interval: null };
+  const [table] = await queryRows<{ create_table_query: string }>(sql`
+    SELECT create_table_query FROM system.tables
+    WHERE database = ${CLICKHOUSE_DATABASE} AND name = ${EVENTS_TABLE_NAME}
+  `);
+  if (!table)
+    return { table: EVENTS_TABLE_NAME, expression: "", interval: null };
   const match = /\bTTL\s+(.+?)(?=\s+SETTINGS\b|\s*$)/is.exec(
     table.create_table_query,
   );
-  if (!match) return { table: "sentry_events", expression: "", interval: null };
+  if (!match)
+    return { table: EVENTS_TABLE_NAME, expression: "", interval: null };
   const expression = match[1]!.trim();
   const interval = /toInterval(Month|Week|Day|Year)\((\d+)\)/i.exec(expression);
   return {
-    table: "sentry_events",
+    table: EVENTS_TABLE_NAME,
     expression,
     interval: interval
       ? {
@@ -697,71 +311,32 @@ export async function setEventsTtl(
     return readEventsTtl();
   }
   const expression = ttlExpression(amount, unit);
-  await runCommand(
-    sql`ALTER TABLE ${EVENTS_TABLE} MODIFY TTL ${sql.raw(expression)}`,
-  );
-  await runCommand(
-    sql`ALTER TABLE ${METRICS_TABLE} MODIFY TTL ${sql.raw(expression)}`,
-  );
-  await runCommand(
-    sql`ALTER TABLE ${ISSUE_EVENTS_TABLE} MODIFY TTL ${sql.raw(expression)}`,
-  );
+  for (const table of [EVENTS_TABLE, METRICS_TABLE, ISSUE_EVENTS_TABLE]) {
+    await runCommand(
+      sql`ALTER TABLE ${table} MODIFY TTL ${sql.raw(expression)}`,
+    );
+  }
   return readEventsTtl();
 }
 
-// Boot seeds the default only when the table carries no TTL.
-async function ensureEventsTtl(): Promise<void> {
-  const existing = await readEventsTtl();
-  if (existing.interval) return;
-  await setEventsTtl(DEFAULT_EVENTS_TTL.amount, DEFAULT_EVENTS_TTL.unit);
-}
+// --- Reads ----------------------------------------------------------------
 
-// A NATS table cannot be altered: when an existing engine table predates
-// the engine credentials, it is recreated (the rows live in the stream).
-async function ensureEngineAuthSettings(): Promise<void> {
-  for (const table of ["nats_events", "nats_metrics"]) {
-    const [row] = await queryRows<{ create_table_query: string }>(
-      sql`
-        SELECT create_table_query FROM system.tables
-        WHERE database = ${CLICKHOUSE_DATABASE} AND name = ${table}
-      `,
-    );
-    if (row && !row.create_table_query.includes("nats_username")) {
-      console.log(
-        `[ClickHouse] Recreating ${table} with the engine auth settings`,
-      );
-      await runCommand(
-        sql`DROP TABLE IF EXISTS ${sql.identifier(CLICKHOUSE_DATABASE)}.${sql.identifier(table)}`,
-      );
-    }
+// Waddler has no `sql.join`, so a fragments list is joined by hand.
+function joinChunks(chunks: readonly ChQuery[], separator: ChQuery): ChQuery {
+  const [first, ...rest] = chunks;
+  if (!first) return sql``;
+  for (const chunk of rest) {
+    first.append(separator);
+    first.append(chunk);
   }
+  return first;
 }
 
-// Boot order: NATS (stream + durable pull consumers) first — the engine
-// table attaches to `clickhouse-events` by name. Retries, then fails fast.
-export async function initClickHouse(): Promise<void> {
-  await retryInit(async () => {
-    await runCommand(
-      sql`CREATE DATABASE IF NOT EXISTS ${sql.identifier(CLICKHOUSE_DATABASE)}`,
-    );
-    await migrateEventsTable();
-    await runCommand(createEventsTable());
-    await ensureEngineAuthSettings();
-    await runCommand(createEventsEngineTable());
-    await ensureEventsEngineColumns();
-    await ensureView("sentry_events_mv", createEventsView());
-    await runCommand(createIssueEventsTable());
-    await ensureIssueEventsColumns();
-    await runCommand(createMetricsTable());
-    await ensureMetricsColumns();
-    await runCommand(createMetricsEngineTable());
-    await ensureMetricsEngineColumns();
-    await ensureMetricsView();
-    await ensureEventsTtl();
-    console.log(
-      "[ClickHouse] Connected; events and metrics engine tables, views and stores ensured",
-    );
-  });
+// Combines required and scope conditions into a `WHERE` fragment; no
+// conditions at all (unscoped reads) yields an empty fragment.
+function conditionsToWhere(conditions: readonly ChQuery[]): ChQuery {
+  if (conditions.length === 0) return sql``;
+  return sql`WHERE ${joinChunks(conditions, sql` AND `)}`;
 }
 
 // A rule's tag filters: the sample's tags must carry the key with that
@@ -771,13 +346,6 @@ function tagConditions(tags: Record<string, string> | undefined): ChQuery[] {
   return Object.entries(tags).map(
     ([key, value]) => sql`JSONExtractString(tags, ${key}) = ${value}`,
   );
-}
-
-function withTags(
-  conditions: ChQuery[],
-  tags: Record<string, string> | undefined,
-): ChQuery[] {
-  return [...conditions, ...tagConditions(tags)];
 }
 
 // The tags travel as a JSON string in the column.
@@ -826,13 +394,6 @@ function toStoredEvent(row: ClickHouseEventRow): StoredEvent {
     envelopeItems: row.envelopeItems,
     receivedAt: toIsoTimestamp(row.receivedAt),
   };
-}
-
-// Combines required and scope conditions into a `WHERE` fragment; no
-// conditions at all (unscoped reads) yields an empty fragment.
-function conditionsToWhere(conditions: readonly ChQuery[]): ChQuery {
-  if (conditions.length === 0) return sql``;
-  return sql`WHERE ${joinChunks(conditions, sql` AND `)}`;
 }
 
 export async function listClickHouseEvents(options?: {
@@ -884,6 +445,18 @@ export async function listClickHouseEvents(options?: {
   return { data: rows.map(toStoredEvent) };
 }
 
+export async function findClickHouseEvent(
+  id: string,
+): Promise<StoredEvent | undefined> {
+  const rows = await queryRows<ClickHouseEventRow>(sql`
+    SELECT ${columnList(EVENTS_COLUMNS)}
+    FROM ${EVENTS_TABLE} FINAL
+    WHERE id = ${id}
+    LIMIT 1
+  `);
+  return rows[0] ? toStoredEvent(rows[0]) : undefined;
+}
+
 // --- The derived issue index ---------------------------------------------
 
 export interface IssueOccurrence {
@@ -910,16 +483,18 @@ export interface IssueStatsTotals {
   lastSeen: string | null;
 }
 
-const ISSUE_OCCURRENCE_COLUMNS = [
-  "messageId",
-  "eventId",
-  "receivedAt",
-  "title",
-  "level",
-  "release",
-  "environment",
-  "user",
-] as const;
+// The SELECT list of the occurrence queries; the filter and scope columns
+// (`fingerprint`, `projectId`, `tags`) stay out of the row type.
+const ISSUE_OCCURRENCE_COLUMNS: readonly ChColumn[] = [
+  ["messageId", "String"],
+  ["eventId", "String"],
+  ["receivedAt", "DateTime64(3)"],
+  ["title", "String"],
+  ["level", "String"],
+  ["release", "String"],
+  ["environment", "String"],
+  ["user", "String"],
+];
 
 interface ClickHouseIssueRow {
   messageId: string;
@@ -975,7 +550,7 @@ export async function listClickHouseIssueOccurrences(options: {
   if (after) conditions.push(after);
 
   const rows = await queryRows<ClickHouseIssueRow>(sql`
-    SELECT ${columnList(ISSUE_OCCURRENCE_COLUMNS.map((name) => [name, "String"] as const))}
+    SELECT ${columnList(ISSUE_OCCURRENCE_COLUMNS)}
     FROM ${ISSUE_EVENTS_TABLE} FINAL
     ${conditionsToWhere(conditions)}
     ORDER BY receivedAt DESC, eventId DESC
@@ -992,8 +567,9 @@ export async function clickHouseIssueStats(options: {
   to: string;
   stepSeconds: number;
 }): Promise<{ points: IssueStatsPoint[]; totals: IssueStatsTotals }> {
-  const from = sql`parseDateTime64BestEffort(${options.from}, 3)`;
-  const to = sql`parseDateTime64BestEffort(${options.to}, 3)`;
+  const from = atOrAfter(options.from);
+  const to = atOrBefore(options.to);
+  const scope = sql`appId = ${options.appId} AND fingerprint = ${options.fingerprint}`;
 
   const rows = await queryRows<{
     bucketStart: string;
@@ -1005,10 +581,7 @@ export async function clickHouseIssueStats(options: {
       count() AS eventCount,
       uniqIf(user, user != '') AS userCount
     FROM ${ISSUE_EVENTS_TABLE} FINAL
-    WHERE appId = ${options.appId}
-      AND fingerprint = ${options.fingerprint}
-      AND receivedAt >= ${from}
-      AND receivedAt <= ${to}
+    WHERE ${scope} AND ${from} AND ${to}
     GROUP BY bucketStart
     ORDER BY bucketStart ASC
   `);
@@ -1025,10 +598,7 @@ export async function clickHouseIssueStats(options: {
       min(receivedAt) AS firstSeen,
       max(receivedAt) AS lastSeen
     FROM ${ISSUE_EVENTS_TABLE} FINAL
-    WHERE appId = ${options.appId}
-      AND fingerprint = ${options.fingerprint}
-      AND receivedAt >= ${from}
-      AND receivedAt <= ${to}
+    WHERE ${scope} AND ${from} AND ${to}
   `);
 
   const total = totals[0];
@@ -1047,32 +617,38 @@ export async function clickHouseIssueStats(options: {
   };
 }
 
+// The fingerprints whose occurrences carry a value across the given apps.
+// The semantics are "any occurrence" — the level of the latest occurrence
+// is not the level of the issue.
+async function issueFingerprintsWhere(
+  condition: ChQuery,
+  appIds: string[],
+): Promise<string[]> {
+  if (appIds.length === 0) return [];
+  const rows = await queryRows<{ fingerprint: string }>(sql`
+    SELECT DISTINCT fingerprint FROM ${ISSUE_EVENTS_TABLE} FINAL
+    WHERE ${condition} AND appId IN ${appIds}
+  `);
+  return rows.map((row) => row.fingerprint);
+}
+
 // The fingerprints that carry a release, across the given apps.
 export async function clickHouseReleaseFingerprints(options: {
   release: string;
   appIds: string[];
 }): Promise<string[]> {
-  if (options.appIds.length === 0) return [];
-  const rows = await queryRows<{ fingerprint: string }>(sql`
-    SELECT DISTINCT fingerprint FROM ${ISSUE_EVENTS_TABLE} FINAL
-    WHERE release = ${options.release} AND appId IN ${options.appIds}
-  `);
-  return rows.map((row) => row.fingerprint);
+  return issueFingerprintsWhere(
+    sql`release = ${options.release}`,
+    options.appIds,
+  );
 }
 
 // The fingerprints whose occurrences carry a level, across the given apps.
-// The semantics are "any occurrence" — the level of the latest occurrence
-// is not the level of the issue.
 export async function clickHouseIssueFingerprintsByLevel(options: {
   level: string;
   appIds: string[];
 }): Promise<string[]> {
-  if (options.appIds.length === 0) return [];
-  const rows = await queryRows<{ fingerprint: string }>(sql`
-    SELECT DISTINCT fingerprint FROM ${ISSUE_EVENTS_TABLE} FINAL
-    WHERE level = ${options.level} AND appId IN ${options.appIds}
-  `);
-  return rows.map((row) => row.fingerprint);
+  return issueFingerprintsWhere(sql`level = ${options.level}`, options.appIds);
 }
 
 // The fingerprints whose occurrences carry a user, across the given apps.
@@ -1080,12 +656,7 @@ export async function clickHouseIssueFingerprintsByUser(options: {
   user: string;
   appIds: string[];
 }): Promise<string[]> {
-  if (options.appIds.length === 0) return [];
-  const rows = await queryRows<{ fingerprint: string }>(sql`
-    SELECT DISTINCT fingerprint FROM ${ISSUE_EVENTS_TABLE} FINAL
-    WHERE user = ${options.user} AND appId IN ${options.appIds}
-  `);
-  return rows.map((row) => row.fingerprint);
+  return issueFingerprintsWhere(sql`user = ${options.user}`, options.appIds);
 }
 
 // The fingerprints whose occurrences carry a tag — the tags travel as a
@@ -1095,13 +666,10 @@ export async function clickHouseIssueFingerprintsByTag(options: {
   value: string;
   appIds: string[];
 }): Promise<string[]> {
-  if (options.appIds.length === 0) return [];
-  const rows = await queryRows<{ fingerprint: string }>(sql`
-    SELECT DISTINCT fingerprint FROM ${ISSUE_EVENTS_TABLE} FINAL
-    WHERE JSONExtractString(tags, ${options.key}) = ${options.value}
-      AND appId IN ${options.appIds}
-  `);
-  return rows.map((row) => row.fingerprint);
+  return issueFingerprintsWhere(
+    sql`JSONExtractString(tags, ${options.key}) = ${options.value}`,
+    options.appIds,
+  );
 }
 
 // The distinct-user count per (app, fingerprint) over the issue index —
@@ -1170,18 +738,6 @@ export async function clickHouseReleaseIssueMetrics(options: {
       isNew: row.firstRelease === options.release,
     }))
     .sort((a, b) => (a.lastSeen < b.lastSeen ? 1 : -1));
-}
-
-export async function findClickHouseEvent(
-  id: string,
-): Promise<StoredEvent | undefined> {
-  const rows = await queryRows<ClickHouseEventRow>(sql`
-    SELECT ${columnList(EVENTS_COLUMNS)}
-    FROM ${EVENTS_TABLE} FINAL
-    WHERE id = ${id}
-    LIMIT 1
-  `);
-  return rows[0] ? toStoredEvent(rows[0]) : undefined;
 }
 
 // Every sample extracted from one event, by metric name — the metric
@@ -1307,8 +863,8 @@ export async function listMetricBreakdown(
   }));
 }
 
-// Alerting reads: how many sentinel samples of one metric an app produced
-// inside the window (one row per event/error/fatal event).
+// Alerting reads: how many samples of one metric a scope produced inside
+// the window (one row per event/error/fatal event).
 export async function countClickHouseMetricSamples(options: {
   appId: string;
   metric: string;
@@ -1316,15 +872,13 @@ export async function countClickHouseMetricSamples(options: {
   until?: string;
   tags?: Record<string, string>;
 }): Promise<number> {
-  const conditions = withTags(
-    [
-      sql`appId = ${options.appId}`,
-      sql`metric = ${options.metric}`,
-      atOrAfter(options.since),
-      ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
-    ],
-    options.tags,
-  );
+  const conditions = [
+    sql`appId = ${options.appId}`,
+    sql`metric = ${options.metric}`,
+    atOrAfter(options.since),
+    ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
+    ...tagConditions(options.tags),
+  ];
   const rows = await queryRows<{ total: string | number }>(sql`
     SELECT count() AS total FROM ${METRICS_TABLE} FINAL
     ${conditionsToWhere(conditions)}
@@ -1343,15 +897,13 @@ export async function quantileClickHouseMetricSamples(options: {
   until?: string;
   tags?: Record<string, string>;
 }): Promise<number> {
-  const conditions = withTags(
-    [
-      sql`appId = ${options.appId}`,
-      sql`metric = ${options.metric}`,
-      atOrAfter(options.since),
-      ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
-    ],
-    options.tags,
-  );
+  const conditions = [
+    sql`appId = ${options.appId}`,
+    sql`metric = ${options.metric}`,
+    atOrAfter(options.since),
+    ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
+    ...tagConditions(options.tags),
+  ];
   const rows = await queryRows<{ value: number }>(sql`
     SELECT quantile(${sql.param(options.quantile / 100, "Float64")})(value) AS value
     FROM ${METRICS_TABLE} FINAL
@@ -1370,15 +922,13 @@ export async function countClickHouseMetricSamplesByProject(options: {
   until?: string;
   tags?: Record<string, string>;
 }): Promise<number> {
-  const conditions = withTags(
-    [
-      sql`projectId = ${options.projectId}`,
-      sql`metric = ${options.metric}`,
-      atOrAfter(options.since),
-      ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
-    ],
-    options.tags,
-  );
+  const conditions = [
+    sql`projectId = ${options.projectId}`,
+    sql`metric = ${options.metric}`,
+    atOrAfter(options.since),
+    ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
+    ...tagConditions(options.tags),
+  ];
   const rows = await queryRows<{ total: string | number }>(sql`
     SELECT count() AS total FROM ${METRICS_TABLE} FINAL
     ${conditionsToWhere(conditions)}
@@ -1394,15 +944,13 @@ export async function quantileClickHouseMetricSamplesByProject(options: {
   until?: string;
   tags?: Record<string, string>;
 }): Promise<number> {
-  const conditions = withTags(
-    [
-      sql`projectId = ${options.projectId}`,
-      sql`metric = ${options.metric}`,
-      atOrAfter(options.since),
-      ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
-    ],
-    options.tags,
-  );
+  const conditions = [
+    sql`projectId = ${options.projectId}`,
+    sql`metric = ${options.metric}`,
+    atOrAfter(options.since),
+    ...(options.until !== undefined ? [atOrBefore(options.until)] : []),
+    ...tagConditions(options.tags),
+  ];
   const rows = await queryRows<{ value: number }>(sql`
     SELECT quantile(${sql.param(options.quantile / 100, "Float64")})(value) AS value
     FROM ${METRICS_TABLE} FINAL
@@ -1412,7 +960,8 @@ export async function quantileClickHouseMetricSamplesByProject(options: {
   return Number.isFinite(value) ? value : 0;
 }
 
-// Every event of one project, oldest first — used by the release summary.
+// --- Inserts --------------------------------------------------------------
+
 // Row order follows `EVENTS_COLUMNS`; `receivedAt` is bound as a String
 // and cast by the target column so callers pass ISO timestamps.
 function eventRow(event: StoredEvent): string[] {

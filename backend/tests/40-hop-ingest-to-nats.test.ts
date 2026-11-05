@@ -1,9 +1,9 @@
 /**
  * Hop 1 — HTTP ingest -> NATS JetStream.
  *
- * A DSN-ingested envelope must land as a message on the `sentry.events`
+ * A DSN-ingested envelope must land as a message on the `benemetrics.events`
  * subject before the request answers 200, with its metric samples on
- * `sentry.metrics`. ClickHouse and Postgres are covered by the other hops
+ * `benemetrics.metrics`. ClickHouse and Postgres are covered by the other hops
  * (backend/tests/41, backend/tests/42, backend/tests/43, backend/tests/45).
  */
 
@@ -31,7 +31,7 @@ afterAll(async () => {
 });
 
 describe("Hop 1: ingest -> NATS", () => {
-  it("publishes an ingested envelope to sentry.events and answers the event id", async () => {
+  it("publishes an ingested envelope to benemetrics.events and answers the event id", async () => {
     const app = await startTestApp();
     const eventId = crypto.randomUUID();
     const url = new URL(`${TEST_ORIGIN}/api/${app.appNumber}/envelope/`);
@@ -63,7 +63,7 @@ describe("Hop 1: ingest -> NATS", () => {
       async () => {
         const found = await manager.streams
           .getMessage(TEST_STREAM, {
-            last_by_subj: `sentry.events.${app.appNumber}`,
+            last_by_subj: `benemetrics.events.${app.appNumber}`,
           })
           .catch(() => null);
         if (!found) return null;
@@ -119,7 +119,7 @@ describe("Hop 1: ingest -> NATS", () => {
     expect(response.status).toBe(401);
   });
 
-  it("publishes the extracted metric samples to sentry.metrics", async () => {
+  it("publishes the extracted metric samples to benemetrics.metrics", async () => {
     const app = await startTestApp();
     const eventId = crypto.randomUUID();
 

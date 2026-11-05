@@ -9,6 +9,7 @@ export interface AppRecord {
   name: string;
   platform: string;
   publicKey: string;
+  crashFree?: number;
 }
 
 export interface AppDetail extends ProjectRecord {

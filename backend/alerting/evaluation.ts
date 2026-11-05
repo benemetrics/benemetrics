@@ -12,6 +12,7 @@ import {
 import { trackIssuesForEvent, type TrackedIssue } from "../issues/tracking";
 import type { IssueDigest } from "../issues/grouping";
 import { resolveEffectiveAlertConfig, resolveScopedRules } from "./resolver";
+import { ALERT_LIST_LIMIT, FULL_SCAN_LIMIT } from "../limits";
 import { isClickHouseCircuitOpen } from "../clickhouse";
 import { mapWithConcurrency } from "./concurrency";
 import {
@@ -27,12 +28,10 @@ import {
 import type {
   AlertIncident,
   AlertMetric,
-  AlertNotification,
   AlertRuleFilters,
-  DeliveryResult,
 } from "../protocol/alerting";
 import { projectDAO } from "db/dao/projects";
-import { natsStream } from "../nats";
+import { natsStream, TOPICS } from "../nats";
 import type { DeliveryChannel, NotificationDelivery } from "../protocol/notifications";
 
 const DEFAULT_MEASUREMENT = "duration";
@@ -82,7 +81,7 @@ async function computeRuleValue(
     case "new_issue_count":
       if (projectId && !appId) {
         // The issues are app-scoped; the project's count is the sum of its apps.
-        const apps = (await appDAO.listByProject(projectId, { limit: 1000 })) as { id: string }[];
+        const apps = (await appDAO.listByProject(projectId, { limit: FULL_SCAN_LIMIT })) as { id: string }[];
         const counts = await Promise.all(
           apps.map((app) =>
             issueDAO.countNewSince(app.id, since, filters?.tags),
@@ -166,7 +165,7 @@ async function computeBaselineMetric(
     case "new_issue_count": {
       const apps =
         scope.projectId && !scope.appId
-          ? await appDAO.listByProject(scope.projectId, { limit: 1000 })
+          ? await appDAO.listByProject(scope.projectId, { limit: FULL_SCAN_LIMIT })
           : [{ id: scope.appId! }];
       const counts = await Promise.all(
         apps.map(async (app) =>
@@ -283,21 +282,6 @@ async function evaluateRules(scope: {
           return null;
         }
 
-        const silence = await activeSilence();
-        if (silence) {
-          logDecision({
-            event: "evaluated",
-            rule: rule.name,
-            scope: scope.projectId ? { projectId: scope.projectId } : { appId },
-            metric,
-            value,
-            threshold,
-            outcome: "silenced",
-            silence: silence.name,
-          });
-          return null;
-        }
-
         const now = new Date().toISOString();
         if (rule.lastTriggeredAt !== null) {
           const elapsed = Date.now() - new Date(rule.lastTriggeredAt).getTime();
@@ -361,11 +345,12 @@ async function evaluateRules(scope: {
           appId,
           now,
         );
-
-        await natsStream.publish(
-          "snotify.deliver",
-          selected.map<NotificationDelivery>((channel) => ({ channel, notification })).map((obj) => JSON.stringify(obj)).join('\n'),
-        )
+        
+        const batch = await natsStream.startBatch(TOPICS.NOTIFY);
+        for (const channel of selected) {
+          await batch.add(TOPICS.NOTIFY, JSON.stringify({ channel, notification }))
+        }
+        await batch.commit(TOPICS.NOTIFY)
 
         countIncidentFired();
         logDecision({
@@ -434,16 +419,6 @@ async function fireIssueTriggerRules(
   const matching = rules.filter(
     (rule) => rule.isEnabled && rule.trigger === trigger,
   );
-  const silence = await activeSilence();
-  if (silence) {
-    logDecision({
-      event: "issue_trigger",
-      trigger,
-      outcome: "silenced",
-      silence: silence.name,
-    });
-    return;
-  }
 
   await Promise.all(
     matching.map(async (rule) => {
@@ -476,10 +451,13 @@ async function fireIssueTriggerRules(
               scope.appId,
               now,
             );
-            await natsStream.publish(
-              "snotify.deliver",
-              selected.map((channel) => ({ channel, notification, queuedAt: new Date().toISOString() })).map((obj) => JSON.stringify(obj)).join('\n'),
-            )
+        
+            const batch = await natsStream.startBatch(TOPICS.NOTIFY);
+            for (const channel of selected) {
+              await batch.add(TOPICS.NOTIFY, JSON.stringify({ channel, notification }))
+            }
+            await batch.commit(TOPICS.NOTIFY)
+          
             countIncidentFired();
             logDecision({
               event: "issue_trigger",
@@ -599,8 +577,8 @@ export function startAlertSweeper(): void {
       return;
     }
     void Promise.all([
-      projectDAO.list({ cursor: undefined, limit: 1000 }, {}),
-      alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: 200 }),
+      projectDAO.list({ cursor: undefined, limit: FULL_SCAN_LIMIT }, {}),
+      alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: ALERT_LIST_LIMIT }),
     ])
       .then(async ([apps, projectRules]) => {
         const concurrency = Number(process.env.ALERT_SWEEPER_CONCURRENCY) || 8;

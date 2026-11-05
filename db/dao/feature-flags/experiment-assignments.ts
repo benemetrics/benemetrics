@@ -96,7 +96,7 @@ export const experimentAssignmentDAO = {
     return data;
   },
 
-  countByVariant: (flagId: string): Promise<VariantCount[]> =>
+  countByVariant: (flagId: string) =>
     db
       .select({
         variantKey: experimentAssignments.variantKey,

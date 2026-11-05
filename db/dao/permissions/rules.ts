@@ -37,7 +37,7 @@ function toRecord(row: {
   appFixes: string;
   isEnabled: boolean;
   updatedAt: string;
-}): PermissionRuleRecord {
+}) {
   return {
     id: row.id,
     name: row.name,
@@ -49,7 +49,7 @@ function toRecord(row: {
 }
 
 export const permissionRuleDAO = {
-  create: async (input: PermissionRuleInput): Promise<PermissionRuleRecord> => {
+  create: async (input: PermissionRuleInput) => {
     const [row] = await db
       .insert(permissionRules)
       .values({
@@ -57,15 +57,11 @@ export const permissionRuleDAO = {
         projectFixes: JSON.stringify(input.projectIds),
         appFixes: JSON.stringify(input.appPrefixes),
       })
-      .onConflictDoNothing({ target: permissionRules.name })
       .returning(permissionRulePublicFields);
-    if (!row) {
-      throw conflict(`Permission rule already exists: ${input.name}`);
-    }
     return toRecord(row);
   },
 
-  findById: async (id: string): Promise<PermissionRuleRecord | undefined> => {
+  findById: async (id: string) => {
     const [row] = await db
       .select(permissionRulePublicFields)
       .from(permissionRules)
@@ -74,7 +70,7 @@ export const permissionRuleDAO = {
     return row ? toRecord(row) : undefined;
   },
 
-  findByIdOrThrow: async (id: string): Promise<PermissionRuleRecord> => {
+  findByIdOrThrow: async (id: string) => {
     const rule = await permissionRuleDAO.findById(id);
     if (!rule) throw notFound("Permission rule", id);
     return rule;
@@ -82,7 +78,7 @@ export const permissionRuleDAO = {
 
   findByName: async (
     name: string,
-  ): Promise<PermissionRuleRecord | undefined> => {
+  ) => {
     const [row] = await db
       .select(permissionRulePublicFields)
       .from(permissionRules)
@@ -108,7 +104,7 @@ export const permissionRuleDAO = {
   updateOrThrow: async (
     id: string,
     data: Partial<PermissionRuleInput>,
-  ): Promise<PermissionRuleRecord> => {
+  ) => {
     const [row] = await db
       .update(permissionRules)
       .set({

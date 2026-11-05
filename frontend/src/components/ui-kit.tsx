@@ -1,3 +1,4 @@
+import { MonitorPlay } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Level } from "../lib/data";
 import { Link } from "react-router-dom";
@@ -20,6 +21,51 @@ export function LevelBadge({ level }: { level: Level }) {
     >
       {level}
     </span>
+  );
+}
+
+export function formatReplayDuration(seconds?: number) {
+  if (!seconds) return "";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+export function ReplayBadge({
+  duration,
+  className,
+  onClick,
+}: {
+  duration?: number | undefined;
+  className?: string;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
+      <MonitorPlay className="h-3 w-3" aria-hidden />
+      replay{duration ? ` ${formatReplayDuration(duration)}` : ""}
+    </>
+  );
+  if (!onClick) {
+    return (
+      <span
+        title="Session replay available (rrweb)"
+        className={cn("inline-flex shrink-0 items-center gap-1 rounded-sm border border-primary/40 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary", className)}
+      >
+        {content}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      title="Watch session replay (rrweb)"
+      aria-label={`Watch session replay${duration ? `, ${formatReplayDuration(duration)}` : ""}`}
+      onClick={onClick}
+      className={cn("inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-sm border border-primary/40 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary hover:bg-primary/20", className)}
+    >
+      {content}
+    </button>
   );
 }
 

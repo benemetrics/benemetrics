@@ -1,33 +1,22 @@
-import { db } from "db";
+import { apps, apps, db } from "db";
 import {
   permissionGrantPublicFields,
   permissionGrants,
   permissionRules,
-  permissionsProjectApp,
+  permissionsRulesProjects,
+  permissionsGrantsProjects,
   type PermissionGrantInsert,
 } from "db/schema/permissions";
-import { desc, eq, lt } from "drizzle-orm";
-import { conflict, internalError, notFound } from "backend/errors";
+import { desc, eq, inArray, lt } from "drizzle-orm";
+import { notFound } from "backend/errors";
 import { cursorLimit } from "../cursor";
 import { whereNotNull } from "db/utils";
 
 export const permissionGrantDAO = {
-  create: async (input: PermissionGrantInsert) => {
-    const [row] = await db
+  create: async (input: PermissionGrantInsert) => db
       .insert(permissionGrants)
-      .values({
-        identityId: input.identityId,
-        label: input.label ?? null,
-        projectFixes: JSON.stringify(input.projectFixes),
-        appFixes: JSON.stringify(input.appFixes),
-      })
-      .onConflictDoNothing({ target: permissionGrants.identityId })
-      .returning(permissionGrantPublicFields);
-
-    if (!row)
-      throw conflict(`Permission grant already exists: ${input.identityId}`);
-    return row;
-  },
+      .values(input)
+      .returning(permissionGrantPublicFields).then(([row]) => row),
 
   findById: (id: string) =>
     db
@@ -80,22 +69,35 @@ export const permissionGrantDAO = {
     return row;
   },
 
-  getUserGrantWithPermissions: async (identityId: string) => {
-    const x = await db
-      .select({
-        projectId: permissionsProjectApp.projectId,
-        appId: permissionsProjectApp.appId,
-      })
-      .from(permissionGrants)
-      .where(eq(permissionGrants.identityId, identityId))
-      .rightJoin(
-        permissionsProjectApp,
-        eq(permissionsProjectApp.permissionGrantId, permissionGrants.id),
-      );
+  getUserGrantWithPermissions: async (identityId: string, userGroups: string[]) => {
+    const [grants, groups] = await Promise.all([
+      db
+        .select({
+          projectId: permissionsGrantsProjects.projectId,
+        })
+        .from(permissionGrants)
+        .where(eq(permissionGrants.identityId, identityId))
+        .rightJoin(
+          permissionsGrantsProjects,
+          eq(permissionsGrantsProjects.permissionGrantId, permissionGrants.id),
+        ),
+      db
+        .select({
+          projectId: permissionsRulesProjects.projectId,
+        })
+        .from(permissionRules)
+        .where(inArray(permissionRules.group, userGroups))
+        .rightJoin(
+          permissionsRulesProjects,
+          eq(permissionsRulesProjects.permissionRuleId, permissionRules.id),
+        ),
+    ]);
 
+    const uniqueProjectIds = [...new Set([...grants.map(({ projectId }) => projectId), ...groups.map(({ projectId }) => projectId)])];
+    const appIds = await db.select({ appId: apps.id }).from(apps).where(inArray(apps.projectId, uniqueProjectIds))
     return {
-      projectIds: x.map(({ projectId }) => projectId),
-      appIds: x.map(({ appId }) => appId),
+      appIds: appIds.map(({ appId }) => appId),
+      projectIds: uniqueProjectIds
     };
   },
 

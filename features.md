@@ -87,7 +87,7 @@ This document lists the features implemented on the backend, grouped by area.
 | Single evaluation  | `POST /ofrep/v1/evaluate/flags/:key` — evaluate one flag for a targeting key + context.               |
 | Bulk evaluation    | `POST /ofrep/v1/evaluate/flags` — evaluate all flags with a static context; ETag / 304 caching.       |
 | Change stream      | `GET /ofrep/v1/events` — SSE (`refetchEvaluation` payloads with the latest etag / lastModified).      |
-| Experiment track   | `POST /api/sentry/flags/experiment/track` — record a metric value for a flag/user (DSN auth).         |
+| Experiment track   | `POST /api/benemetrics/flags/experiment/track` — record a metric value for a flag/user (DSN auth).         |
 
 Authentication: none — the DSN credential surface was removed from feature
 flags, so the OFREP evaluation surface is unauthenticated (OFREP marks auth as
@@ -182,8 +182,8 @@ At event read time, stack frames are matched to source-map artifacts by filename
 
 | Feature                 | Description                                                                                                                                                |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Event ingestion to NATS | Ingested events publish to `sentry.events`; metric samples publish to `sentry.metrics`.                                                                    |
+| Event ingestion to NATS | Ingested events publish to `benemetrics.events`; metric samples publish to `benemetrics.metrics`.                                                                    |
 | ClickHouse storage      | NATS engine tables + materialized views ingest into ClickHouse (`ReplacingMergeTree`, `FINAL` reads for idempotency, 1-month default TTL).                 |
 | Side-effects consumer   | Standalone `backend/consumer.ts` binary applies issue tracking, alert triggers, and release tracking to Postgres from the `side-effects` durable consumer. |
 | Replay offload          | `replay_recording` payloads written to the S3-compatible object store before NATS publish; envelope keeps only an object-key pointer.                      |
-| Live feed               | Browser subscribes to `sentry.events` directly over NATS WebSocket (no backend fanout).                                                                    |
+| Live feed               | Browser subscribes to `benemetrics.events` directly over NATS WebSocket (no backend fanout).                                                                    |

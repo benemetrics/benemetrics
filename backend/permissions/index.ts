@@ -3,6 +3,7 @@ import { type as arktype } from "arktype";
 import { permissionGrantDAO } from "db/dao/permissions/grants";
 import { permissionRuleDAO } from "db/dao/permissions/rules";
 import { badRequest } from "backend/errors";
+import { redis } from "bun";
 import {
   normalizeScopeList,
   permissionGrantBodySchema,
@@ -10,6 +11,7 @@ import {
   permissionRuleBodySchema,
   permissionRulePatchSchema,
 } from "../protocol/permissions";
+import { cache } from "backend/cache";
 
 // The audit write never fails the mutation: the change is already
 // committed when it is recorded.
@@ -73,6 +75,7 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
         appPrefixes: normalizeScopeList(body.appPrefixes ?? [], "appPrefixes"),
       });
       await audit("system", "rule", created.id, "create", null, created);
+      (await cache.PERMISSIONS('*')).clear();
       return created;
     },
     { body: permissionRuleBodySchema },
@@ -101,6 +104,7 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
           : {}),
       });
       await audit("system", "rule", id, "update", current, updated);
+      (await cache.PERMISSIONS('*')).clear();
       return updated;
     },
     { params: arktype({ id: "string.uuid" }), body: permissionRulePatchSchema },
@@ -111,6 +115,7 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
       const current = await permissionRuleDAO.findByIdOrThrow(id);
       await permissionRuleDAO.delete(id);
       await audit("system", "rule", id, "delete", current, null);
+      (await cache.PERMISSIONS('*')).clear();
       return { success: true };
     },
     { params: arktype({ id: "string.uuid" }) },
@@ -126,6 +131,7 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
         appPrefixes: normalizeScopeList(body.appPrefixes ?? [], "appPrefixes"),
       });
       await audit("system", "grant", created.id, "create", null, created);
+      (await cache.PERMISSIONS('*')).clear();
       return created;
     },
     { body: permissionGrantBodySchema },
@@ -160,6 +166,7 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
           : {}),
       });
       await audit("system", "grant", id, "update", current, updated);
+      (await cache.PERMISSIONS('*')).clear();
       return updated;
     },
     {
@@ -173,6 +180,7 @@ export const permissionRoutes = new Elysia({ prefix: "/api/admin/permissions" })
       const current = await permissionGrantDAO.findByIdOrThrow(id);
       await permissionGrantDAO.delete(id);
       await audit("system", "grant", id, "delete", current, null);
+      (await cache.PERMISSIONS('*')).clear();
       return { success: true };
     },
     { params: arktype({ id: "string.uuid" }) },

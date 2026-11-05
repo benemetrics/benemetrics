@@ -17,9 +17,7 @@ export const projectDAO = {
     const [created] = await db
       .insert(projects)
       .values(data)
-      .onConflictDoNothing()
       .returning(projectPublicFields);
-    if (!created) throw conflict(`Project slug already exists: ${data.name}`);
     return created;
   },
 
@@ -29,9 +27,7 @@ export const projectDAO = {
     const [created] = await db
       .insert(projects)
       .values(data)
-      .onConflictDoNothing()
       .returning(projectPublicFields);
-    if (!created) throw conflict(`Project slug already exists: ${data.name}`);
     return created;
   },
 

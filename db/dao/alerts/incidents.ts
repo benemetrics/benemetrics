@@ -25,13 +25,10 @@ export const alertIncidentDAO = {
       .insert(alertIncidents)
       .values({ ...data })
       .returning(alertIncidentPublicFields);
-    if (!created) {
-      throw internalError("Failed to create alert incident");
-    }
     return created;
   },
 
-  findById: (id: string): Promise<AlertIncident | undefined> =>
+  findById: (id: string) =>
     db
       .select(alertIncidentPublicFields)
       .from(alertIncidents)
@@ -51,7 +48,7 @@ export const alertIncidentDAO = {
     appId?: string;
     cursor?: string;
     limit?: number;
-  }): Promise<AlertIncident[]> => {
+  }) => {
     const limit = cursorLimit(options.limit);
     const where = and(
       whereNotNull(eq, alertIncidents.appId, options.appId ?? undefined),
@@ -72,12 +69,12 @@ export const alertIncidentDAO = {
     appId?: string;
     cursor?: string;
     limit?: number;
-  }): Promise<AlertIncident[]> => alertIncidentDAO.list(options),
+  }) => alertIncidentDAO.list(options),
 
   updateOrThrow: async (
     id: string,
     data: Partial<typeof alertIncidents.$inferInsert>,
-  ): Promise<AlertIncident> => {
+  ) => {
     const [updated] = await db
       .update(alertIncidents)
       .set(data)
@@ -89,7 +86,7 @@ export const alertIncidentDAO = {
 
   findOpen: (
     ruleId: string,
-  ): Promise<AlertIncident | undefined> =>
+  ) =>
     db
       .select(alertIncidentPublicFields)
       .from(alertIncidents)
@@ -124,7 +121,7 @@ export const alertIncidentDAO = {
   findLastForIssue: (
     ruleId: string,
     fingerprint: string,
-  ): Promise<{ triggeredAt: string } | undefined> =>
+  ) =>
     db
       .select({ triggeredAt: alertIncidents.triggeredAt })
       .from(alertIncidents)
@@ -142,7 +139,7 @@ export const alertIncidentDAO = {
   // it to decide whether the root cause was already reported.
   findLastByCorrelationKey: (
     correlationKey: string,
-  ): Promise<AlertIncident | undefined> =>
+  ) =>
     db
       .select(alertIncidentPublicFields)
       .from(alertIncidents)
@@ -154,7 +151,7 @@ export const alertIncidentDAO = {
   // The first incident of a correlation group — the group parent.
   findFirstByCorrelationKey: (
     correlationKey: string,
-  ): Promise<AlertIncident | undefined> =>
+  ) =>
     db
       .select(alertIncidentPublicFields)
       .from(alertIncidents)

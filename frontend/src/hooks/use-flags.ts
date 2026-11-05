@@ -119,7 +119,7 @@ export function useFlags(
 
   // Another instance (or another browser) changed a flag; refresh the list.
   useEffect(() => {
-    const close = subscribeSubject("sentry.flags.changed", {
+    const close = subscribeSubject("benemetrics.flags.changed", {
       onStatus: setLive,
       onMessage: (payload: string) => {
         try {

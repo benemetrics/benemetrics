@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { settingsRoutes } from "./settings";
 import { appsRoutes } from "./apps";
 import { issueRoutes } from "./issues";
 import { projectRoutes } from "./projects";
@@ -24,6 +25,7 @@ import {
 // own credential surface (public, dsn or oidc) and guards the groups that
 // need one; the oidc groups resolve the identity through `oidcGuard`.
 export const apiRoutes = new Elysia()
+  .use(settingsRoutes)
   .use(appsRoutes)
   .use(issueRoutes)
   .use(projectRoutes)

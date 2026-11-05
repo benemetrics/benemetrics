@@ -20,7 +20,7 @@ import "./test-env";
 import "./oidc-provider";
 import { closeDb } from "db";
 import { closeClickHouse, initClickHouse } from "../backend/clickhouse";
-// Importing the consumer starts its `sentry.events` subscription in this
+// Importing the consumer starts its `benemetrics.events` subscription in this
 // process, so the side effects land in this file's in-memory PGlite.
 import "../backend/consumer";
 import { oidcProvider } from "./oidc-provider";
@@ -29,7 +29,7 @@ import { oidcProvider } from "./oidc-provider";
 // RustFS (`docker compose up -d rustfs rustfs-init`); these defaults are
 // applied before any test file imports the storage module, so they are the
 // effective configuration (CI can override the S3_* values).
-process.env.S3_BUCKET ??= "sentry-replays";
+process.env.S3_BUCKET ??= "benemetrics-replays";
 process.env.S3_ENDPOINT ??= "http://localhost:9100";
 process.env.S3_ACCESS_KEY_ID ??= "rustfsadmin";
 process.env.S3_SECRET_ACCESS_KEY ??= "rustfsadmin";

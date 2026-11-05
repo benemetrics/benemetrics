@@ -1,14 +1,17 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { readEventsTtl, setEventsTtl, type TtlUnit } from "../clickhouse";
+import { readBucketTtl, setBucketTtl } from "../s3-ttl";
 import { badRequest } from "../errors";
 
 const MAX_AMOUNT = 1200;
 
-// The value is read back from the table definition, so the admin sees what the store enforces.
 // ── oidc surface: the admin reads and writes ─────────────
 export const settingsRoutes = new Elysia({ prefix: "/api/admin/settings" })
-  .get("/events-ttl", async () => readEventsTtl())
+  .get("/events-ttl", async () => ({
+    events: readEventsTtl(),
+    s3: readBucketTtl(),
+  }))
   .put(
     "/events-ttl",
     async ({ body }) => {
@@ -21,7 +24,11 @@ export const settingsRoutes = new Elysia({ prefix: "/api/admin/settings" })
           `"amount" must be an integer between 0 and ${MAX_AMOUNT}`,
         );
       }
-      return await setEventsTtl(body.amount, body.unit as TtlUnit);
+      const unit = body.unit as TtlUnit;
+      return {
+        events: await setEventsTtl(body.amount, unit),
+        s3: await setBucketTtl(body.amount, unit),
+      };
     },
     {
       body: arktype({

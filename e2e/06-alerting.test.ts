@@ -162,7 +162,7 @@ describe("Alerting (06-alerting.md)", () => {
     // Metrics are sent in a different format (statsd) and not stored as events
     // This test verifies the metric API doesn't throw
     Sentry.metrics.increment("queue.depth", 1, { tags: { type: "gauge" } });
-    expect(true).toBe(true);
+    // flush must complete without throwing
     await Sentry.flush(5000);
   });
 

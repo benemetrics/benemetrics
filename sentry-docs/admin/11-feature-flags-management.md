@@ -297,7 +297,7 @@ Feature flags support A/B testing through variant weights and statistical analys
 }
 ```
 
-### `GET /api/sentry/flags/:id/experiment/results`
+### `GET /api/benemetrics/flags/:id/experiment/results`
 
 Get experiment results with statistical significance.
 
@@ -357,7 +357,7 @@ Get experiment results with statistical significance.
 
 ## User Dashboard
 
-### `GET /api/sentry/flags/:id/users`
+### `GET /api/benemetrics/flags/:id/users`
 
 Get users assigned to each variant for a feature flag.
 
@@ -393,7 +393,7 @@ Get users assigned to each variant for a feature flag.
 }
 ```
 
-### `GET /api/sentry/flags/:id/user/:userId`
+### `GET /api/benemetrics/flags/:id/user/:userId`
 
 Get feature flag evaluation for a specific user.
 

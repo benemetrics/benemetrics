@@ -12,6 +12,8 @@ import ReleasesPage from "./routes/projects/[projectId]/apps/[appId]/releases/pa
 import SourceMapsPage from "./routes/projects/[projectId]/apps/[appId]/source-maps/page";
 import SettingsPage from "./routes/settings/page";
 import NotificationsPage from "./routes/notifications/page";
+import NoPermissionsPage from "./routes/no-permissions/page";
+import RedirectingPage from "./routes/redirecting/page";
 import { RootLayout } from "./components/root-layout";
 import { NotFoundPage } from "./components/not-found";
 import { LoadingScreen } from "./components/loading-screen";
@@ -81,6 +83,8 @@ const router = createBrowserRouter(
         },
         { path: "/settings", element: <SettingsPage /> },
         { path: "/notifications", element: <NotificationsPage /> },
+        { path: "/no-permissions", element: <NoPermissionsPage /> },
+        { path: "/redirecting", element: <RedirectingPage /> },
         { path: "*", element: <NotFoundPage /> },
       ],
     },

@@ -86,7 +86,7 @@ describe("Hop 5: live feed over the NATS WebSocket", () => {
     // the auth callout admits the connection, so give it a beat.
     await Bun.sleep(300);
     try {
-      await publish(`sentry.events.${app.appNumber}`, {
+      await publish(`benemetrics.events.${app.appNumber}`, {
         id: eventId,
         projectId: app.projectId,
         appId: app.appId,

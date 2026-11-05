@@ -3,7 +3,6 @@ import { type as arktype } from "arktype";
 import {
   badRequest,
   forbidden,
-  notFound,
   payloadTooLarge,
   unauthorized,
 } from "backend/errors";
@@ -14,12 +13,9 @@ import { sourceMapDAO } from "db/dao/source-maps";
 import { sourceMapTokenDAO } from "db/dao/source-maps/tokens";
 import { appDAO } from "db/dao/apps";
 import {
-  findSourceMapFor,
   invalidateSourceMapCache,
-  originalPositionFor,
-  parseMapCached,
 } from "./resolver";
-import { MAX_UPLOAD_BYTES, readSourceMapUpload } from "./upload";
+import { MAX_UPLOAD_BYTES, UPLOAD_TOO_LARGE_MESSAGE, readSourceMapUpload } from "./upload";
 
 // ── upload-token surface: the Sentry-compatible CLI (`/api/0/...`) ──
 export const sourceMapUploadRoutes = new Elysia({
@@ -27,7 +23,7 @@ export const sourceMapUploadRoutes = new Elysia({
 })
   // Upload-token auth is a middleware concern: it resolves the token and its
   // project once and hands them to every upload handler.
-  .resolve(async ({ request, params }) => {
+  .resolve(async ({ request }) => {
     const auth = await validateUploadAuth(request);
     if (!auth.valid || !auth.token) {
       throw unauthorized("Unauthorized - Invalid upload token");
@@ -72,10 +68,10 @@ export const sourceMapUploadRoutes = new Elysia({
   )
   .post(
     "/:org/:project/releases/:version/files/",
-    async ({ request, params: { version }, uploadToken, uploadProject }) => {
+    async ({ request, params: { version }, uploadToken }) => {
       const declared = Number(request.headers.get("content-length") ?? "");
       if (Number.isFinite(declared) && declared > MAX_UPLOAD_BYTES) {
-        throw payloadTooLarge("Source map exceeds the 10 MB limit");
+        throw payloadTooLarge(UPLOAD_TOO_LARGE_MESSAGE);
       }
       const upload = await readSourceMapUpload(await request.formData());
       const [, artifactRow] = await Promise.all([
@@ -105,7 +101,7 @@ export const sourceMapUploadRoutes = new Elysia({
   )
   .get(
     "/:org/:project/releases/:version/files/",
-    async ({ params: { version }, query, uploadToken, uploadProject }) => {
+    async ({ query, uploadToken }) => {
       const data = await sourceMapDAO.list(
         { appId: uploadToken.appId as string },
         { cursor: query.cursor, limit: query.limit },

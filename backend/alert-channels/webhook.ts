@@ -1,4 +1,3 @@
-import type { AlertNotification } from "../protocol/alerting";
 import type { Notifier } from "./notifier";
 import { requireString } from "./helpers";
 import { SIGNATURE_HEADER, TIMESTAMP_HEADER, signWebhook } from "../alerting/webhook-signature";

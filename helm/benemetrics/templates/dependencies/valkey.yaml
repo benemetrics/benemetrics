@@ -1,0 +1,82 @@
+{{- if .Values.dependencies.valkey.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "benemetrics.fullname" . }}-valkey
+  labels:
+    {{- include "benemetrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: valkey
+spec:
+  type: ClusterIP
+  ports:
+    - name: valkey
+      port: {{ .Values.valkey.port }}
+      targetPort: valkey
+  selector:
+    {{- include "benemetrics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: valkey
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "benemetrics.fullname" . }}-valkey
+  labels:
+    {{- include "benemetrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: valkey
+spec:
+  serviceName: {{ include "benemetrics.fullname" . }}-valkey
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "benemetrics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: valkey
+  template:
+    metadata:
+      labels:
+        {{- include "benemetrics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: valkey
+    spec:
+      containers:
+        - name: valkey
+          image: "{{ .Values.dependencies.valkey.image.repository }}:{{ .Values.dependencies.valkey.image.tag }}"
+          imagePullPolicy: {{ .Values.dependencies.valkey.image.pullPolicy }}
+          ports:
+            - name: valkey
+              containerPort: {{ .Values.valkey.port }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            tcpSocket:
+              port: valkey
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.dependencies.valkey.resources | nindent 12 }}
+      volumes:
+        - name: data
+          {{- if .Values.dependencies.valkey.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "benemetrics.fullname" . }}-valkey
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+  {{- if .Values.dependencies.valkey.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.dependencies.valkey.persistence.storageClass }}
+        annotations:
+          volume.beta.kubernetes.io/storage-class: {{ . }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.dependencies.valkey.persistence.accessModes | nindent 10 }}
+        {{- if .Values.dependencies.valkey.persistence.storageClass }}
+        storageClassName: {{ .Values.dependencies.valkey.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.dependencies.valkey.persistence.size }}
+  {{- end }}
+{{- end }}

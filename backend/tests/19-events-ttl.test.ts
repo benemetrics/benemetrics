@@ -47,7 +47,7 @@ describe("Event retention TTL", () => {
     expect(response.status).toBe(200);
 
     const ttl = await json<TtlResponse>(response);
-    expect(ttl.table).toBe("sentry_events");
+    expect(ttl.table).toBe("benemetrics_events");
     expect(ttl.interval).not.toBeNull();
     expect(ttl.expression).toContain("toInterval");
   });

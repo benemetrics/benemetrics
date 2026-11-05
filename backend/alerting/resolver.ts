@@ -1,4 +1,5 @@
 import { appDAO } from "db/dao/apps";
+import { ALERT_LIST_LIMIT } from "../limits";
 import { alertChannelDAO } from "db/dao/alerts/channels";
 import { alertRuleDAO } from "db/dao/alerts/rules";
 import type { AlertChannel, AlertRule } from "../protocol/alerting";
@@ -30,12 +31,12 @@ export async function resolveEffectiveAlertConfig(scope: {
     projectRules,
     appRules,
   ] = await Promise.all([
-    alertChannelDAO.list({ projectId: null }, { limit: 200 }),
-    projectId ? alertChannelDAO.list({ projectId }, { limit: 200 }) : Promise.resolve([]),
-    appId ? alertChannelDAO.list({ projectId: null }, { limit: 200 }) : Promise.resolve([]),
-    alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: 200 }),
-    projectId ? alertRuleDAO.listPaged({ appId: null, projectId, cursor: undefined, limit: 200 }) : Promise.resolve([]),
-    appId ? alertRuleDAO.listPaged({ appId, projectId: null, cursor: undefined, limit: 200 }) : Promise.resolve([]),
+    alertChannelDAO.list({ projectId: null }, { limit: ALERT_LIST_LIMIT }),
+    projectId ? alertChannelDAO.list({ projectId }, { limit: ALERT_LIST_LIMIT }) : Promise.resolve([]),
+    appId ? alertChannelDAO.list({ projectId: null }, { limit: ALERT_LIST_LIMIT }) : Promise.resolve([]),
+    alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: ALERT_LIST_LIMIT }),
+    projectId ? alertRuleDAO.listPaged({ appId: null, projectId, cursor: undefined, limit: ALERT_LIST_LIMIT }) : Promise.resolve([]),
+    appId ? alertRuleDAO.listPaged({ appId, projectId: null, cursor: undefined, limit: ALERT_LIST_LIMIT }) : Promise.resolve([]),
   ]);
 
   return {
@@ -59,13 +60,13 @@ export async function resolveScopedRules(scope: {
   const { projectId = null, appId = null } = scope;
   if (appId) {
     const [global, app] = await Promise.all([
-      alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: 200 }),
-      alertRuleDAO.listPaged({ appId, projectId: null, cursor: undefined, limit: 200 }),
+      alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: ALERT_LIST_LIMIT }),
+      alertRuleDAO.listPaged({ appId, projectId: null, cursor: undefined, limit: ALERT_LIST_LIMIT }),
     ]);
     return mergeByName(global, app);
   }
-  if (projectId) return alertRuleDAO.listPaged({ appId: null, projectId, cursor: undefined, limit: 200 });
-  return alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: 200 });
+  if (projectId) return alertRuleDAO.listPaged({ appId: null, projectId, cursor: undefined, limit: ALERT_LIST_LIMIT });
+  return alertRuleDAO.listPaged({ appId: null, projectId: null, cursor: undefined, limit: ALERT_LIST_LIMIT });
 }
 
 function mergeByName<T extends { name: string }>(

@@ -27,15 +27,11 @@ export const alertRuleDAO = {
     const [created] = await db
       .insert(alertRules)
       .values({ ...data })
-      .onConflictDoNothing()
       .returning(alertRulePublicFields);
-    if (!created) {
-      throw conflict(`Alert rule already exists in this scope: ${data.name}`);
-    }
     return created;
   },
 
-  findById: (id: string): Promise<AlertRule | undefined> =>
+  findById: (id: string) =>
     db
       .select(alertRulePublicFields)
       .from(alertRules)
@@ -56,7 +52,7 @@ export const alertRuleDAO = {
     projectId?: string | null;
     cursor?: string;
     limit?: number;
-  }): Promise<AlertRule[]> => {
+  }) => {
     const limit = cursorLimit(options.limit);
     const where = and(
       whereNotNull(eq, alertRules.appId, options.appId ?? undefined),

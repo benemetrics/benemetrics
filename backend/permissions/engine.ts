@@ -5,9 +5,9 @@ import { permissionGrantDAO } from "../../db/dao/permissions/grants";
 import { cache } from "backend/cache";
 
 export const projectsAndAppsPermissions = async ({ user }: Awaited<ReturnType<typeof resolveIdentity>>) => {
-  if (user.groups.has(env.OIDC_ADMIN_GROUP ?? "admin")) return { perms: { projectIds: [] } };
+  if (user.groups.has(env.OIDC_ADMIN_GROUP ?? "admin")) return { perms: { projectIds: [], appIds: [] } };
   
   const { write, value } = await cache.PERMISSIONS(user.id);
   if (value) return { perms: value };
-  return { perms: await write(permissionGrantDAO.getUserGrantWithPermissions(user.id)) };
+  return { perms: await write(permissionGrantDAO.getUserGrantWithPermissions(user.id, [...user.groups])) };
 };

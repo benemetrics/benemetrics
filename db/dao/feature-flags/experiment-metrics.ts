@@ -15,7 +15,7 @@ export const experimentMetricDAO = {
       id?: string;
       recordedAt?: string;
     },
-  ): Promise<void> =>
+  ) =>
     db.insert(experimentMetrics).values({
       ...data,
       recordedAt: data.recordedAt ?? new Date().toISOString(),
@@ -26,7 +26,7 @@ export const experimentMetricDAO = {
   countByVariant: (
     flagId: string,
     metricName: string,
-  ): Promise<VariantCount[]> =>
+  ) =>
     db
       .select({
         variantKey: experimentMetrics.variantKey,

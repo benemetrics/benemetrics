@@ -22,7 +22,7 @@ type Database = ReturnType<typeof pgliteDrizzle>;
 
 const MIGRATIONS_FOLDER = `${import.meta.dir}/migrations`;
 const DEV_DATA_DIR = "./.pglite";
-const PGLITE_CLIENT_KEY = Symbol.for("sentry.db.pgliteClient");
+const PGLITE_CLIENT_KEY = Symbol.for("benemetrics.db.pgliteClient");
 
 let pgliteClient: PGlite | null = null;
 

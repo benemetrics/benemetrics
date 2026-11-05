@@ -440,22 +440,23 @@ export const openFeatureRoutes = new Elysia({ prefix: "/ofrep/v1" })
   .get(
     "/events",
     async function* () {
-      nats.subscribe(FLAG_PING) {
+      for await (const _ of nats.subscribe(FLAG_PING)) {
         yield sse({ event: 'PING' });
       }
 
-      nats.subscribe(FLAG_CHANGE_SUBJECT)
-      yield sse({
-        event: 'refetchEvaluation',
-        data: { flagConfigLastModified: new Date().toISOString() },
-      });
+      for await (const m of nats.subscribe(FLAG_CHANGE_SUBJECT)) {
+        yield sse({
+          event: 'refetchEvaluation',
+          data: { flagConfigLastModified: new Date().toISOString() },
+        });
+      }
     },
     {},
   );
 
 // ── Experiment tracking (OFREP has no metric concept; retained separately) ─
 
-export const trackRoutes = new Elysia({ prefix: "api/sentry/flags" }).post(
+export const trackRoutes = new Elysia({ prefix: "api/benemetrics/flags" }).post(
   "/experiment/track",
   async ({ body }) => {
     const flag = await featureFlagDAO.findByKeyForScope(body.flagKey, null);

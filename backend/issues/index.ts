@@ -10,33 +10,28 @@ import { autoStepSeconds } from "../metrics";
 import { badRequest, notFound } from "../errors";
 import { parseIssueQuery, parseIssueSort, summarizeTerm } from "./query";
 import { narrowToScope, resolveIssueFilters } from "./resolve";
-import { scopedViewFor } from "../permissions/engine";
+import { resolveIdentity } from "backend/auth";
+import { projectsAndAppsPermissions } from "backend/permissions/engine";
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 
 // ── oidc surface: the admin reads and writes ─────────────
 export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
+  .resolve(resolveIdentity)
+  .resolve(projectsAndAppsPermissions)
   .get(
     "/",
     async ({
       query: { query, sort, cursor, limit },
-      request,
     }) => {
       const groups = parseIssueQuery(query ?? "");
-      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
-      // A scoped identity gets an empty list for a name that does not
-      // exist — the same answer as a name that exists but is out of
-      // scope, so the list cannot be used to probe what exists.
-      let filters = await resolveIssueFilters(groups, {
-        unknownIsEmpty: view !== null,
-      });
-      if (view) filters = narrowToScope(filters, [...view.appIds]);
+      let filters = await resolveIssueFilters(groups);
+      filters = narrowToScope(filters, appIds);
       const sortValue = parseIssueSort(sort);
       // `sort=users` orders on the distinct-user count, which the issues
       // table only knows after it is synced from the ClickHouse issue index.
-      if (sortValue === "users" && view) {
-        const appIds = [...view.appIds];
+      if (sortValue === "users") {
         const counts = await clickHouseIssueUserCounts({ appIds });
         await issueDAO.syncUserCounts(counts, appIds);
       }
@@ -65,20 +60,18 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
   )
   .get(
     "/:id",
-    async ({ params: { id }, request }) => {
-      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
+    async ({ params: { id }, perms: { appIds } }) => {
       const issue = await issueDAO.findByIdOrThrow(id);
-      if (view && !view.appIds.has(issue.appId)) throw notFound("Issue", id);
+      if (!appIds.includes(issue.appId)) throw notFound("Issue", id);
       return issue;
     },
     { params: arktype({ id: "string.uuid" }) },
   )
   .get(
     "/:id/events",
-    async ({ params: { id }, query, request }) => {
+    async ({ params: { id }, query, perms: { appIds } }) => {
       const issue = await issueDAO.findByIdOrThrow(id);
-      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
-      if (view && !view.appIds.has(issue.appId)) throw notFound("Issue", id);
+      if (!appIds.includes(issue.appId)) throw notFound("Issue", id);
       const page = await listClickHouseIssueOccurrences({
         appId: issue.appId,
         fingerprint: issue.fingerprint,
@@ -100,10 +93,9 @@ export const issueRoutes = new Elysia({ prefix: "/api/admin/issues" })
   )
   .get(
     "/:id/stats",
-    async ({ params: { id }, query, request }) => {
+    async ({ params: { id }, query, perms: { appIds } }) => {
       const issue = await issueDAO.findByIdOrThrow(id);
-      const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
-      if (view && !view.appIds.has(issue.appId)) throw notFound("Issue", id);
+      if (!appIds.includes(issue.appId)) throw notFound("Issue", id);
       const to = query.to ? new Date(query.to) : new Date();
       const from = query.from
         ? new Date(query.from)

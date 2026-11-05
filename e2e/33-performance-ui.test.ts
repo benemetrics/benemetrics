@@ -3,7 +3,7 @@
  *
  * The Performance page reads the metrics API (raw samples in ClickHouse):
  * the web vitals cards, the mobile vitals panel and the latency tables
- * must render them. Rows are seeded straight into `sentry_metrics` — no
+ * must render them. Rows are seeded straight into `benemetrics_metrics` — no
  * ingestion, no SDK: a unique transaction-name marker proves the
  * breakdown is served from the samples, and its P95 proves the quantile
  * path end to end (CH → API → UI).

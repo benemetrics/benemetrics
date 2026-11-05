@@ -18,11 +18,11 @@ SDK ──POST /api/:projectId/envelope/──▶ Ingest Handler
         Extract issue digests (grouping protocol)
                     │
                     ▼
-        NATS sentry.events { id, projectId, appId, envelopeHeader, envelopeItems,
+        NATS benemetrics.events { id, projectId, appId, envelopeHeader, envelopeItems,
                               receivedAt, type, issueEvents }  // issueEvents = JSON text array
             ├──▶ ClickHouse (NATS engine table + materialized views)
-            │      ├── sentry_events        — raw envelope (unchanged)
-            │      └── sentry_issue_events — one row per digest
+            │      ├── benemetrics_events        — raw envelope (unchanged)
+            │      └── benemetrics_issue_events — one row per digest
             └──▶ side-effects consumer (core NATS → Postgres)
                    Apply issue digests → issues projection and transitions
                    → new_issue / regression alert triggers (one-shot)
@@ -170,7 +170,7 @@ Standard DAO methods: `createIfNew`, `regressIfResolved`, `markSeen`, `findById`
 
 ---
 
-## 8. ClickHouse Issue Index (`sentry_issue_events`)
+## 8. ClickHouse Issue Index (`benemetrics_issue_events`)
 
 One row per event item, fed by a materialized view on the events engine table.
 
@@ -209,9 +209,9 @@ Extracts `issueEvents` from the NATS engine table using `JSONExtractArrayRaw` + 
 
 **Issues seen in a release** (serves the `release:` query term):
 
-- `DISTINCT fingerprint` from `sentry_issue_events` for visible apps matching the release.
+- `DISTINCT fingerprint` from `benemetrics_issue_events` for visible apps matching the release.
 
-**Retention**: The index is created with the same TTL as `sentry_events`. A Settings → Event retention change applies the new TTL to the index via `ALTER TABLE sentry_issue_events MODIFY TTL ...` — drill-down never outlives the raw events.
+**Retention**: The index is created with the same TTL as `benemetrics_events`. A Settings → Event retention change applies the new TTL to the index via `ALTER TABLE benemetrics_issue_events MODIFY TTL ...` — drill-down never outlives the raw events.
 
 **Dimension breakdowns — non-goal for now**: the index carries the occurrence's `level`, `user` and `tags` (JSON text) and nothing more. Browser/OS-style server-side breakdowns are deliberately not built: the SDKs do not consistently send them as tags, so an honest aggregate would mean adding parsed columns to the index (schema + MV + read). Add one only when a real breakdown needs it; `tag:` filtering (`JSONExtractString(tags, key)`) already covers whatever the SDKs _do_ send.
 
@@ -433,10 +433,10 @@ Issue reads inherit the admin guard and the scoped-read allowlist:
 
 **Hop tests** (one hop = test a single pipeline stage with mocked upstream/downstream):
 
-- **Ingest → NATS**: published `sentry.events` message carries `issueEvents` with the expected digest.
+- **Ingest → NATS**: published `benemetrics.events` message carries `issueEvents` with the expected digest.
 - **NATS → Postgres**: projection fields and transitions; redelivered message does not double `event_count`; regression reopens once.
-- **NATS → ClickHouse**: publish a message with digests; wait for `sentry_issue_events` rows (`FINAL`); a redelivery stays one row.
-- **ClickHouse → API reads**: seed `sentry_issue_events` directly; assert `/:id/events` cursor pagination and `/:id/stats` buckets/totals.
+- **NATS → ClickHouse**: publish a message with digests; wait for `benemetrics_issue_events` rows (`FINAL`); a redelivery stays one row.
+- **ClickHouse → API reads**: seed `benemetrics_issue_events` directly; assert `/:id/events` cursor pagination and `/:id/stats` buckets/totals.
 - **Query protocol**: seed Postgres issues; exercise every grammar term and sort, cursor pagination, `400`/`404` cases, and scoped-read filtering.
 
 **E2E (real HTTP + browser):** Issues UI test (status chips/query round-trips), issue detail metrics test (occurrences and metrics from the server endpoints), permissions test (scoped reads).
@@ -446,7 +446,7 @@ Issue reads inherit the admin guard and the scoped-read allowlist:
 ## 15. Accepted Consequences
 
 - The NATS message grows by the digest array (small, flat rows).
-- `sentry_issue_events` duplicates event dimensions in ClickHouse (one small row per event item); it is derived, replaceable and truncate-able — not the source of truth.
+- `benemetrics_issue_events` duplicates event dimensions in ClickHouse (one small row per event item); it is derived, replaceable and truncate-able — not the source of truth.
 - `release:` list filters, occurrence lists and stats depend on ClickHouse (5xx when down); the plain list does not.
 - `level:`, `user:` and `tag:` are any-occurrence and ClickHouse-backed (the issue index); `release:` is any-occurrence too.
 - Drill-down of a batched envelope (`/events/:messageId`) shows the envelope's first event item — the existing `/events/:id` semantics.

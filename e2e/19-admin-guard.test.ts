@@ -91,19 +91,12 @@ describe("Admin guard enforcement", () => {
     expect(response.status).toBe(200);
   });
 
-  it("rejects the UI surface while no admin credentials are configured", async () => {
-    const configured = process.env.ADMIN_TOKEN;
-    delete process.env.ADMIN_TOKEN;
-    try {
-      const events = await fetch(`${baseUrl}/events`);
-      expect(events.status).toBe(401);
+  it("rejects the UI surface without admin credentials", async () => {
+    const events = await fetch(`${baseUrl}/events`);
+    expect(events.status).toBe(401);
 
-      const unauthenticatedAdmin = await fetch(`${baseUrl}/api/admin/projects`);
-      expect(unauthenticatedAdmin.status).toBe(401);
-    } finally {
-      if (configured === undefined) delete process.env.ADMIN_TOKEN;
-      else process.env.ADMIN_TOKEN = configured;
-    }
+    const unauthenticatedAdmin = await fetch(`${baseUrl}/api/admin/projects`);
+    expect(unauthenticatedAdmin.status).toBe(401);
   });
 
   it("requires admin auth on the UI surface when ADMIN_TOKEN is configured", async () => {
@@ -119,21 +112,16 @@ describe("Admin guard enforcement", () => {
     // ADMIN_TOKEN is the master credential: configuring a provider adds an
     // identity, it never disables the token. Unauthenticated UI requests
     // still fail closed.
-    process.env.OIDC_ISSUER = "https://idp.example.com";
-    try {
-      const events = await fetch(`${baseUrl}/events`);
-      expect(events.status).toBe(401);
+    const events = await fetch(`${baseUrl}/events`);
+    expect(events.status).toBe(401);
 
-      const withToken = await fetch(`${baseUrl}/events`, {
-        headers: ADMIN_HEADERS,
-      });
-      expect(withToken.status).toBe(200);
-      const admin = await fetch(`${baseUrl}/api/admin/projects`, {
-        headers: ADMIN_HEADERS,
-      });
-      expect(admin.status).toBe(200);
-    } finally {
-      delete process.env.OIDC_ISSUER;
-    }
+    const withToken = await fetch(`${baseUrl}/events`, {
+      headers: ADMIN_HEADERS,
+    });
+    expect(withToken.status).toBe(200);
+    const admin = await fetch(`${baseUrl}/api/admin/projects`, {
+      headers: ADMIN_HEADERS,
+    });
+    expect(admin.status).toBe(200);
   });
 });

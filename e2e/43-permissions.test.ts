@@ -50,7 +50,7 @@ describe("Set permissions", () => {
     expect(rule.status).toBe(200);
     const ruleData = (await rule.json()) as { id: string; name: string };
     expect(ruleData.id).toBeDefined();
-    expect(ruleData.name).toStartWith("e2e rule");
+    expect(ruleData.name).toStartWith("E2E Rule");
 
     const list = await apiRequest("GET", "/api/admin/permissions/rules");
     expect(list.status).toBe(200);

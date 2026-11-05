@@ -1,8 +1,7 @@
 import { Elysia } from "elysia";
 import { type as arktype } from "arktype";
 import { ApiError, ErrorCode, badRequest, notFound } from "backend/errors";
-import { appDAO } from "db/dao/apps";
-import type { SentryEventMessage } from "../protocol/events";
+import type { BenemetricsEventMessage } from "../protocol/events";
 import { listStoredEvents, findStoredEventByIdOrThrow } from "../events-store";
 import {
   parseEnvelope,
@@ -20,10 +19,12 @@ import {
 import { offloadReplayItems } from "./offload";
 import { assertDeclaredSize, assertItemCount } from "../ratelimit/hygiene";
 import { rateLimitConfig } from "../ratelimit/config";
-import { s3 } from "../storage";
 import { replayObjectPrefix } from "./offload";
 import { symbolicateEventPayload } from "../source-maps/resolver";
 import { events, metrics } from "backend/nats";
+import { s3 } from "bun";
+import { projectsAndAppsPermissions } from "backend/permissions/engine";
+import { resolveIdentity } from "backend/auth";
 
 async function symbolicateBestEffort(
   projectId: string,
@@ -52,9 +53,11 @@ const URL_TTL_SECONDS = 900;
 
 // ── oidc surface: the event reads ──────────────────────────────
 export const eventsRoutes = new Elysia({ prefix: "events" })
+  .resolve(resolveIdentity)
+  .resolve(projectsAndAppsPermissions)
   .get(
     "/",
-    async ({ query, request }) => {
+    async ({ query }) => {
       // The filter belongs in the query: an unknown app yields an empty
       // list, not a lookup and a 404.
       let appIds: string[] | undefined;
@@ -112,14 +115,13 @@ export const eventsRoutes = new Elysia({ prefix: "events" })
   )
   .get(
     "/:eventId",
-    async ({ params: { eventId }, request }) => {
-      // const view = await scopedViewFor({ request, isAdmin: false, adminScope: null });
+    async ({ params: { eventId }, perms: { appIds } }) => {
       const stored = await findStoredEventByIdOrThrow(eventId);
-      if (view && stored.appId && !view.appIds.has(stored.appId)) {
-        throw notFound("Event", eventId);
-      }
+      if (!appIds.includes(stored.appId)) throw notFound("Event", eventId);
+      
       const parsed = parseStoredEnvelope(stored);
       if (!parsed) throw new ApiError(ErrorCode.NOT_FOUND, "Invalid envelope");
+      
       const eventItem = parsed.items.find(
         (item) => item.header.type === "event",
       );
@@ -224,7 +226,7 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
           : item,
       );
       const eventId = extractEventId({ header: parsed.header, items });
-      const message: SentryEventMessage = {
+      const message: BenemetricsEventMessage = {
         id: eventId,
         projectId: app.projectId,
         appId: app.id,
@@ -283,7 +285,7 @@ export const ingestionRoutes = new Elysia({ prefix: "api" })
           payload: event,
         },
       ];
-      const message: SentryEventMessage = {
+      const message: BenemetricsEventMessage = {
         id: eventId,
         projectId: app.projectId,
         appId: app.id,

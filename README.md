@@ -181,7 +181,7 @@ Benemetrics is **NATS-first**: ingestion is a publish, never a write path.
          ▼
   ┌────────────────┐   publish    ┌──────────────────┐
   │   API + UI     │ ──────────▶ │  NATS JetStream  │
-  │  (Bun/Elysia)  │              │     SENTRIES     │
+  │  (Bun/Elysia)  │              │     BENEMETRICS     │
   └───────┬────────┘              └────────┬─────────┘
           │ offload                         │
           ▼                         ┌────────┴─────────┐
@@ -197,7 +197,7 @@ Benemetrics is **NATS-first**: ingestion is a publish, never a write path.
 - **The API** resolves the app from the DSN, parses the envelope, extracts
   the metric samples, offloads the replay segments and publishes both
   subjects. A broker failure answers `503` — there is no in-process fallback.
-- **ClickHouse** ingests `sentry.events.<appNumber>` and `sentry.metrics` _by
+- **ClickHouse** ingests `benemetrics.events.<appNumber>` and `benemetrics.metrics` _by
   configuration_: NATS engine tables + a durable pull consumer + materialized
   views. The insert is acknowledged only after the view wrote the row, so an
   acknowledged batch is durable (`fsync_after_insert`).
@@ -266,7 +266,6 @@ host:
 ```bash
 docker compose up -d          # the services only — no app profile
 bun run dev                   # the API, hot reload
-bun run consumer              # the side-effects consumer, in a second terminal
 ```
 
 The environment of the host processes is the `x-app-environment` block of
@@ -284,7 +283,7 @@ export NATS_AUTH_KEY_SEED=SAAICRLV2CKHUW4DJ4UWKWWZOXS7K4AZ7F3DWLXHXA5FUVBM2OUZ3O
 export CLICKHOUSE_HOST=localhost
 export CLICKHOUSE_NATS_URL=localhost:4222
 export S3_ENDPOINT=http://localhost:9100
-export S3_BUCKET=sentry-replays
+export S3_BUCKET=benemetrics-replays
 export S3_ACCESS_KEY_ID=rustfsadmin
 export S3_SECRET_ACCESS_KEY=rustfsadmin
 ```
@@ -361,7 +360,7 @@ objectStorage:
 
 ### The live feed
 
-The browser subscribes to `sentry.events` over NATS WebSocket, so the
+The browser subscribes to `benemetrics.events` over NATS WebSocket, so the
 WebSocket listener has to be reachable from the browser. The UI reads
 `globalThis.__NATS_WS_URL__` and falls back to `ws://<ui-host>:9222`; publish
 that port (`dependencies.nats.websocket.service.type`) or inject your own
@@ -435,7 +434,6 @@ bun install
 docker compose up -d          # Postgres, ClickHouse, NATS, RustFS
 
 bun run dev                   # the API with hot reload
-bun run consumer              # the side-effects consumer
 bun run typecheck             # bun check
 bun run test                  # the whole suite (needs the docker services)
 ```

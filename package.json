@@ -1,5 +1,5 @@
 {
-  "name": "sentry",
+  "name": "benemetrics",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -9,7 +9,6 @@
     "dev": "bun --hot backend/index.ts",
     "start": "bun backend/index.ts",
     "build": "bun --cwd frontend run build",
-    "consumer": "bun backend/consumer.ts",
     "docker:stress": "docker compose -f docker-compose.yml -f docker-compose.stress.yml up -d",
     "docker:stress:down": "docker compose -f docker-compose.yml -f docker-compose.stress.yml down -v"
   },

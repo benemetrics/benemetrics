@@ -10,6 +10,8 @@ export interface IssueOccurrence {
   release: string | null;
   environment: string | null;
   user: string | null;
+  hasReplay?: boolean;
+  replayDuration?: number;
 }
 
 export function useIssueEvents(issueId: string | undefined, limit = 6) {

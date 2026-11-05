@@ -1,5 +1,5 @@
 // Browser → NATS WebSocket live feed (hop 5). The backend does not fan
-// events out: the browser subscribes to `sentry.events` itself over the
+// events out: the browser subscribes to `benemetrics.events` itself over the
 // NATS WebSocket listener and parses the same envelope shape the events
 // API returns.
 
@@ -17,7 +17,7 @@ export interface LiveEventItem {
 export type LiveFeedStatus = "connecting" | "connected" | "closed" | "error";
 
 /**
- * Parses a `sentry.events` payload. The backend batches the events of a
+ * Parses a `benemetrics.events` payload. The backend batches the events of a
  * 100 ms flush window into one message, newline-separated, so a payload
  * may hold more than one envelope. Returns the envelopes it could parse.
  */
@@ -214,8 +214,8 @@ export function subscribeLiveFeed(
 ): () => void {
   return subscribeSubject(
     options.appNumber !== undefined
-      ? `sentry.events.${options.appNumber}`
-      : "sentry.events.*",
+      ? `benemetrics.events.${options.appNumber}`
+      : "benemetrics.events.*",
     {
       onMessage: (payload) => {
         for (const message of parseLiveMessages(payload)) {

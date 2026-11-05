@@ -1,6 +1,6 @@
-import { internalError, serviceUnavailable, unauthorized } from "backend/errors";
+import { unauthorized } from "backend/errors";
 import { appDAO } from "db/dao/apps";
-import { validateAuth } from "../auth";
+import { extractSentryKey, validateAuth } from "../auth";
 import { readBodyCapped } from "../ratelimit/hygiene";
 
 // DSNs generate for apps route ingestion through the app's numeric
@@ -19,10 +19,7 @@ async function resolveApp(
   request: Request,
   projectId: string,
 ): Promise<AppResolveRecord | undefined> {
-  const authHeader = request.headers.get("X-Sentry-Auth");
-  const requestKey =
-    authHeader?.match(/sentry_key=([^,]+)/)?.[1] ??
-    new URL(request.url).searchParams.get("sentry_key");
+  const requestKey = extractSentryKey(request);
 
   if (!requestKey) return undefined;
 

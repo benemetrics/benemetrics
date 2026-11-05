@@ -161,7 +161,7 @@ describe("Session Replay (04-session-replay.md)", () => {
   });
 
   it("links backend transaction to frontend replay via trace_id", async () => {
-    const traceId = "0af7651916cd43dd8448eb211c80319c";
+    let traceId = "";
     const span = Sentry.startSpanManual(
       {
         name: "GET /api/orders/:id",
@@ -169,6 +169,7 @@ describe("Session Replay (04-session-replay.md)", () => {
       },
       (span) => {
         expect(span).toBeDefined();
+        traceId = span.spanContext().traceId;
         span.end();
       },
     );
@@ -182,5 +183,9 @@ describe("Session Replay (04-session-replay.md)", () => {
       testServer!.appId,
     );
     expect(transactionEvent).toBeDefined();
+
+    const transaction = await fetchEvent(transactionEvent!.id);
+    expect(transaction).toBeDefined();
+    expect((transaction as any).trace_id).toBe(traceId);
   });
 });

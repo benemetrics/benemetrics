@@ -1,5 +1,4 @@
 import nodemailer from "nodemailer";
-import type { AlertNotification } from "../protocol/alerting";
 import type { Notifier } from "./notifier";
 import { requireString } from "./helpers";
 

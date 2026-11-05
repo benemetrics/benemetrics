@@ -61,7 +61,7 @@ Sentry.init({
 | Endpoint Category                     | Paths                                                    | Auth Method | Credentials                                                  |
 | ------------------------------------- | -------------------------------------------------------- | ----------- | ------------------------------------------------------------ |
 | **Sentry Ingestion**                  | `/api/:projectId/envelope/`, `/api/:projectId/store/`    | DSN (None)  | `sentry_key` query param or `X-Sentry-Auth` header           |
-| **Sentry Feature Flag Tracking**      | `/api/sentry/flags/experiment/track`                    | None        | —                                                            |
+| **Sentry Feature Flag Tracking**      | `/api/benemetrics/flags/experiment/track`                    | None        | —                                                            |
 | **OFREP Flag Evaluation**             | `/ofrep/v1/*`                                           | None        | —                                                            |
 | **Admin Feature Flags**               | `/api/admin/feature-flags/*`                             | OAuth2/OIDC | `Authorization: Bearer <token>`                              |
 | **Admin Segments**                    | `/api/admin/feature-flags/segments/*`                    | OAuth2/OIDC | `Authorization: Bearer <token>`                              |

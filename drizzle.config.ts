@@ -9,6 +9,6 @@ export default defineConfig({
   dbCredentials: {
     url:
       process.env.DATABASE_URL ||
-      "postgresql://postgres:mysecretpassword@localhost:5432/sentry",
+      "postgresql://postgres:mysecretpassword@localhost:5432/benemetrics",
   },
 });

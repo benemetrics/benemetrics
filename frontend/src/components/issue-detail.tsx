@@ -1,8 +1,10 @@
-import { Check, EyeOff, RotateCcw, X } from "lucide-react";
-import { Btn, LevelBadge, Pill, Sparkline } from "./ui-kit";
+import { useState } from "react";
+import { Check, EyeOff, MonitorPlay, RotateCcw, X } from "lucide-react";
+import { Btn, formatReplayDuration, LevelBadge, Pill, ReplayBadge, Sparkline } from "./ui-kit";
+import { ReplaySheet } from "./session-replay";
 import { Stacktrace, exceptionsFromPayload } from "./stacktrace";
 import { useIssueStats } from "../hooks/use-issue-stats";
-import { useIssueEvents } from "../hooks/use-issue-events";
+import { useIssueEvents, type IssueOccurrence } from "../hooks/use-issue-events";
 import { useEventPayload } from "../hooks/use-event-payload";
 import { compact, timeAgo } from "../lib/utils";
 
@@ -40,6 +42,10 @@ export function IssueDetail({
   const { events: recent } = useIssueEvents(issue.id);
   const { payload } = useEventPayload(issue.latestEventId ?? undefined);
   const exceptions = exceptionsFromPayload(payload);
+  const [replay, setReplay] = useState<IssueOccurrence | null>(null);
+
+  const recentEvents = recent ?? [];
+  const replayable = recentEvents.filter((e) => e.hasReplay);
 
   return (
     <div className="space-y-4">
@@ -135,6 +141,28 @@ export function IssueDetail({
         </div>
       )}
 
+      {replayable.length > 0 && (
+        <section>
+          <h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            Session replay
+          </h3>
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-code p-3">
+            <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-sm border border-primary/40 bg-primary/10 text-primary">
+              <MonitorPlay className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1 font-mono text-xs">
+              <div className="font-semibold">rrweb recording</div>
+              <div className="text-muted-foreground">
+                {replayable.length} recent event{replayable.length > 1 ? "s" : ""} with replay · latest {formatReplayDuration(replayable[0]?.replayDuration)}
+              </div>
+            </div>
+            <Btn variant="primary" onClick={() => setReplay(replayable[0] ?? null)}>
+              <MonitorPlay className="h-4 w-4" />Watch replay
+            </Btn>
+          </div>
+        </section>
+      )}
+
       <section>
         <h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
           Recent events
@@ -175,6 +203,14 @@ export function IssueDetail({
           <div>Latest event: {issue.latestEventId.slice(0, 16)}…</div>
         )}
       </section>
+
+      <ReplaySheet
+        open={!!replay}
+        onClose={() => setReplay(null)}
+        title={replay?.title ?? ""}
+        duration={replay?.replayDuration ?? 0}
+        meta={replay ? `${replay.user ?? "unknown"} · ${replay.environment ?? "unknown"}` : undefined}
+      />
     </div>
   );
 }

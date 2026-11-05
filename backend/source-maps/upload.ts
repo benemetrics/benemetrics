@@ -2,6 +2,11 @@ import { badRequest, payloadTooLarge } from "backend/errors";
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
+// Derived from MAX_UPLOAD_BYTES so the message can't lie if the cap changes.
+export const UPLOAD_TOO_LARGE_MESSAGE = `Source map exceeds the ${
+  MAX_UPLOAD_BYTES / (1024 * 1024)
+} MB limit`;
+
 export interface SourceMapUpload {
   filename: string;
   dist: string | null;
@@ -18,7 +23,7 @@ export async function readSourceMapUpload(
     throw badRequest("Multipart upload requires 'file' and 'name' fields");
   }
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw payloadTooLarge("Source map exceeds the 10 MB limit");
+    throw payloadTooLarge(UPLOAD_TOO_LARGE_MESSAGE);
   }
 
   const mapJson = await file.text();

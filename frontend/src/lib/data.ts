@@ -21,6 +21,8 @@ export interface EventItem {
   user: string;
   browser: string;
   os: string;
+  hasReplay: boolean;
+  replayDuration?: number | undefined; // seconds of rrweb session replay
 }
 
 export interface Issue {
@@ -367,6 +369,8 @@ function makeEvents(appId: string, issues: Issue[]): EventItem[] {
       os: ["macOS 15", "Windows 11", "iOS 19", "Android 15", "Linux"][
         Math.floor(r() * 5)
       ]!,
+      hasReplay: r() > 0.6,
+      replayDuration: r() > 0.6 ? Math.floor(20 + r() * 400) : undefined,
     };
   });
 }
@@ -621,7 +625,8 @@ export interface Transaction {
   p99: number;
   failureRate: number;
   apdex: number;
-  series: number[]; // p95 over last 24h
+  series: number[]; // p95 over last 24h, oldest first
+  p50Series: number[]; // p50 over last 24h, oldest first
 }
 
 export interface LoadTest {
@@ -657,7 +662,7 @@ const txNames: Record<string, [string, string][]> = {
   ],
 };
 
-export function getPerformance(app: App) {
+export function getPerformance(app: { id: string; platform: string }) {
   const r = rng(app.id + "perf");
   const transactions: Transaction[] = (
     txNames[app.platform] ?? txNames["React"]!
@@ -674,6 +679,9 @@ export function getPerformance(app: App) {
       apdex: Math.round((0.7 + r() * 0.29) * 100) / 100,
       series: Array.from({ length: 24 }, () =>
         Math.round(p50 * (1.8 + r() * 1.6)),
+      ),
+      p50Series: Array.from({ length: 24 }, () =>
+        Math.round(p50 * (0.9 + r() * 0.4)),
       ),
     };
   });

@@ -10,6 +10,8 @@ export interface AppRecord {
   name: string;
   platform: string;
   publicKey: string;
+  crashFree?: number;
+  release?: string;
 }
 
 export interface ProjectRecord {
@@ -17,6 +19,7 @@ export interface ProjectRecord {
   name: string;
   slug: string;
   description: string;
+  team?: string;
 }
 
 export interface ChannelRecord {
@@ -24,6 +27,7 @@ export interface ChannelRecord {
   name: string;
   type: string;
   config: string;
+  verified?: boolean;
 }
 
 export function useProjects() {

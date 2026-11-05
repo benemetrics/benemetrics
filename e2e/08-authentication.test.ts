@@ -39,10 +39,11 @@ async function bootstrapProjectAndApp(): Promise<void> {
     ),
   );
   const created = (await appResponse.json()) as {
+    ingestKey: string;
     publicKey: string;
     number: number;
   };
-  TEST_PROJECT_ID = created.number;
+  TEST_PROJECT_ID = created.ingestKey;
   TEST_PUBLIC_KEY = created.publicKey;
   TEST_DSN = `http://${created.publicKey}@localhost:31337/${created.number}`;
 }
@@ -194,7 +195,7 @@ describe("Authentication - None (DSN-based) (08-authentication.md)", () => {
 });
 
 describe("Authentication - OAuth2 Client Credentials Flow (08-authentication.md)", () => {
-  it("demonstrates custom transport with Bearer token pattern", () => {
+  it("demonstrates custom transport with Bearer token pattern", async () => {
     let capturedToken = "";
 
     function createOAuthTransport() {
@@ -221,7 +222,8 @@ describe("Authentication - OAuth2 Client Credentials Flow (08-authentication.md)
     const transport = createOAuthTransport();
 
     expect(typeof transport.sendEvent).toBe("function");
-    expect(capturedToken).toBe("");
+    await transport.sendEvent({ message: "test" }, { url: "", headers: {} });
+    expect(capturedToken).toBe("Bearer simulated-oauth-token");
   });
 
   it("handles token refresh pattern", async () => {
@@ -371,7 +373,7 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
     expect(response.status).toBe(401);
   });
 
-  it("accepts admin endpoints with valid Bearer token", async () => {
+  it("accepts admin endpoints with valid API-Key token", async () => {
     const response = await app.handle(
       new Request("http://localhost:31337/api/admin/feature-flags", {
         method: "GET",
@@ -385,21 +387,21 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
     expect(response.status).toBe(200);
   });
 
-  it("OFREP endpoints are unauthenticated (no DSN gate)", async () => {
+  it("rejects sentry endpoints with admin token (invalid body)", async () => {
     const response = await app.handle(
-      new Request("http://localhost:31337/ofrep/v1/evaluate/flags", {
+      new Request("http://localhost:31337/api/benemetrics/flags/evaluate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: ADMIN_TOKEN,
         },
-        body: JSON.stringify({ context: { targetingKey: "1" } }),
+        body: JSON.stringify({ user: { id: "1" }, flags: [] }),
       }),
     );
 
-    // With the DSN credential surface removed, OFREP endpoints are
-    // unauthenticated; any bearer token is ignored and evaluation runs.
-    expect(response.status).toBe(200);
+    // Sentry endpoints accept DSN auth (sentry_key), not admin Bearer tokens
+    // They will reject if no sentry_key is provided, but body validation happens first
+    expect([400, 401]).toContain(response.status);
   });
 
   it("rejects admin endpoints with sentry_key", async () => {

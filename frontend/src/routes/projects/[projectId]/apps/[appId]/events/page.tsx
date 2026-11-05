@@ -4,7 +4,8 @@ import {
   useEvents,
   type EventRecord,
 } from "../../../../../../hooks/use-events";
-import { LevelBadge } from "../../../../../../components/ui-kit";
+import { LevelBadge, ReplayBadge } from "../../../../../../components/ui-kit";
+import { ReplaySheet } from "../../../../../../components/session-replay";
 import { cn } from "../../../../../../lib/utils";
 import { AppLayout } from "../../../../../../components/app-layout";
 import { LoadingScreen } from "../../../../../../components/loading-screen";
@@ -18,6 +19,7 @@ function EventsInner({
 }) {
   const { events, loading } = useEvents(projectId, appId);
   const [level, setLevel] = useState<string | "all">("all");
+  const [replay, setReplay] = useState<EventRecord | null>(null);
 
   const list = (events ?? []).filter(
     (e: EventRecord) =>
@@ -77,10 +79,29 @@ function EventsInner({
               <span className="shrink-0 text-muted-foreground">
                 {e.itemTypes.join(", ")}
               </span>
+              {e.hasReplay && (
+                <ReplayBadge
+                  duration={e.replayDuration}
+                  className="self-start md:self-auto"
+                  onClick={() => setReplay(e)}
+                />
+              )}
             </Link>
           );
         })}
       </div>
+
+      <ReplaySheet
+        open={!!replay}
+        onClose={() => setReplay(null)}
+        title={
+          ((replay?.event ?? replay?.transaction) as any)?.message ??
+          ((replay?.event ?? replay?.transaction) as any)?.name ??
+          "Event replay"
+        }
+        duration={replay?.replayDuration ?? 0}
+        meta={replay ? `${new Date(replay.receivedAt).toLocaleDateString()}` : undefined}
+      />
     </div>
   );
 }

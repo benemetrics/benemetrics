@@ -36,14 +36,6 @@ console.log = originalLog;
 
 export { app };
 
-if (!printedToken) {
-  throw new Error("admin token was not printed at boot");
-}
-
-app.store.adminTokenHash = await Bun.password.hash(printedToken);
-
-export const ADMIN_TOKEN = `API-Key ${printedToken}`;
-
 export const ADMIN_HEADERS: Record<string, string> = {
   "Content-Type": "application/json",
   Authorization: ADMIN_TOKEN,
@@ -70,6 +62,7 @@ export interface TestApp {
   projectId: string;
   appId: string;
   appNumber: number;
+  ingestKey: string;
   publicKey: string;
 }
 
@@ -104,6 +97,7 @@ export async function startTestApp(): Promise<TestApp> {
   const created = (await appResponse.json()) as {
     id: string;
     number: number;
+    ingestKey: string;
     publicKey: string;
   };
 
@@ -113,6 +107,7 @@ export async function startTestApp(): Promise<TestApp> {
     projectId: project.id,
     appId: created.id,
     appNumber: created.number,
+    ingestKey: created.ingestKey,
     publicKey: created.publicKey,
   };
 }
@@ -167,10 +162,10 @@ export async function waitForApiGet<T>(
 }
 
 /** The JetStream stream/consumers the suite relies on (backend/nats.ts). */
-export const TEST_STREAM = "SENTRIES";
-// A concrete shard: the publish side emits per app (sentry.events.<number>).
-export const TEST_EVENTS_SUBJECT = "sentry.events.1";
-export const TEST_METRICS_SUBJECT = "sentry.metrics";
+export const TEST_STREAM = "BENEMETRICS";
+// A concrete shard: the publish side emits per app (benemetrics.events.<number>).
+export const TEST_EVENTS_SUBJECT = "benemetrics.events.1";
+export const TEST_METRICS_SUBJECT = "benemetrics.metrics";
 
 /** Connects to the broker the backend uses (the suite requires NATS). */
 export async function connectTestNats(): Promise<NatsConnection> {

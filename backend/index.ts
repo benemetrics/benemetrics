@@ -5,12 +5,9 @@ import { uniqueViolationConstraint } from "db/pg-errors";
 import ui from "../frontend/index.html";
 import { apiRoutes } from "./routes";
 import { startAlertSweeper } from "./alerting/evaluation";
-import { startNotificationWorker } from "./notifications/delivery";
 import { initClickHouse } from "./clickhouse";
-import { assertStorageConfigured } from "./storage";
-import { startAuthCallout } from "./nats-auth-callout";
-import { nats } from "./nats";
 import { join } from "node:path";
+import './consumer'
 
 const SERVER_PORT = Number(process.env.PORT) || 31337;
 
@@ -23,7 +20,6 @@ const app = new Elysia({
     },
   },
 })
-  .state({ adminTokenHash: "" })
   .onError(({ code, error, set }) => {
     if (error instanceof ApiError) {
       set.status = error.httpStatus;
@@ -79,9 +75,7 @@ if (import.meta.main) {
   app.listen(SERVER_PORT, async () => {
     console.log(`[Server] Sentry backend listening on port ${SERVER_PORT}`);
     try {
-      assertStorageConfigured();
       await initClickHouse();
-      startAuthCallout(nats, () => app.store.adminTokenHash);
     } catch (err) {
       console.error(
         "[Server] Failed to initialize required services:",
@@ -90,7 +84,6 @@ if (import.meta.main) {
       process.exit(1);
     }
     startAlertSweeper();
-    startNotificationWorker();
   });
 }
 

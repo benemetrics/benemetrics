@@ -1,9 +1,5 @@
 import type {
-  ExperimentConfig,
   FeatureFlagStatus,
-  FeatureFlagType,
-  FeatureFlagVariant,
-  TargetingRule,
 } from "backend/protocol/feature-flags";
 import { db } from "db";
 import {
@@ -35,11 +31,7 @@ export const featureFlagDAO = {
     const [row] = await db
       .insert(featureFlags)
       .values({ ...data })
-      .onConflictDoNothing()
       .returning(featureFlagPublicFields);
-    if (!row) {
-      throw conflict(`Feature flag key already exists: ${data.key}`);
-    }
     return row;
   },
 

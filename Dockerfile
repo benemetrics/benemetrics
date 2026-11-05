@@ -25,11 +25,6 @@ RUN bun -e "import authEnvPlugin from './frontend/auth-env-plugin'; \
   const result = await Bun.build({ entrypoints: ['./backend/index.ts'], outdir: 'dist', target: 'bun', minify: true, plugins: [authEnvPlugin], external: ['crypto'] }); \
   if (!result.success) { for (const log of result.logs) console.error(log); process.exit(1); }"
 
-# The side-effects consumer is the second entry point of the same image:
-# it applies the Postgres side effects (issues, alerts, releases) from the
-# durable pull consumer.
-RUN bun build --target=bun --production --outdir=dist ./backend/consumer.ts
-
 # Drizzle reads db/migrations and the PGlite fallback loads its WASM/data
 # assets from disk at runtime, relative to the bundle directory
 RUN cp -r db/migrations dist/migrations \

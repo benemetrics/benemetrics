@@ -8,7 +8,7 @@
  * browser streams the segments straight into rrweb.
  *
  * The suite runs against the compose RustFS (`docker compose up -d rustfs
- * rustfs-init`, bucket `sentry-replays`); the bucket's CORS rule allows the
+ * rustfs-init`, bucket `benemetrics-replays`); the bucket's CORS rule allows the
  * UI origin to fetch the presigned GETs. The API is asserted directly for
  * ordering, pagination, absent replays and unknown events; a real Chrome
  * session asserts the section on the page.

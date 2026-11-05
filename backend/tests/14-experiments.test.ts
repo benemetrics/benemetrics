@@ -64,12 +64,12 @@ async function json<T>(response: Response): Promise<T> {
 // The flags belong to a project; the SDK surface resolves them in the
 // app's project, so the tests share one app.
 let testApp: Promise<TestApp> | null = null;
-async function sentryApp(): Promise<TestApp> {
+async function benemetricsApp(): Promise<TestApp> {
   testApp ??= startTestApp();
   return testApp;
 }
 async function flagProjectId(): Promise<string> {
-  return (await sentryApp()).projectId;
+  return (await benemetricsApp()).projectId;
 }
 
 async function evaluateFlags(
@@ -97,7 +97,7 @@ async function evaluateUser(
 }
 
 async function trackRequest(body: unknown): Promise<Response> {
-  const url = new URL(`${baseUrl}/api/sentry/flags/experiment/track`);
+  const url = new URL(`${baseUrl}/api/benemetrics/flags/experiment/track`);
   return await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -547,9 +547,9 @@ describe("Experiments / A/B Testing", () => {
     // The SDK-facing surface evaluates and tracks; it never reads the
     // experiment back.
     for (const path of [
-      `/api/sentry/flags/${flag.id}/experiment/results`,
-      `/api/sentry/flags/${flag.id}/users`,
-      `/api/sentry/flags/${flag.id}/user/public-user`,
+      `/api/benemetrics/flags/${flag.id}/experiment/results`,
+      `/api/benemetrics/flags/${flag.id}/users`,
+      `/api/benemetrics/flags/${flag.id}/user/public-user`,
     ]) {
       const res = await fetch(`${baseUrl}${path}`);
       expect(res.status).toBe(404);

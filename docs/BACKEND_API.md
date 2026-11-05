@@ -30,8 +30,8 @@
 | Test DB          | In-memory **PGlite** when `NODE_ENV=test`                                                                                                                                    |
 | Production DB    | **PostgreSQL** when `DATABASE_URL` is set (`drizzle-orm/bun-sql`)                                                                                                            |
 | Migrations       | `drizzle-kit` → `db/migrations/*`, applied at startup                                                                                                                        |
-| Messaging        | **NATS JetStream** (required) — `sentry.events.<appNumber>` (stream filter `sentry.events.*`), `sentry.metrics` subjects on `SENTRIES` stream; auth callout (`docs/nats.md`) |
-| Analytics Store  | **ClickHouse** (required) — `sentry_events`, `sentry_metrics` via NATS engine tables + MVs                                                                                   |
+| Messaging        | **NATS JetStream** (required) — `benemetrics.events.<appNumber>` (stream filter `benemetrics.events.*`), `benemetrics.metrics` subjects on `BENEMETRICS` stream; auth callout (`docs/nats.md`) |
+| Analytics Store  | **ClickHouse** (required) — `benemetrics_events`, `benemetrics_metrics` via NATS engine tables + MVs                                                                                   |
 | Object Store     | **S3-compatible** (required) — `S3_BUCKET` for replay segments; RustFS in dev (`:9100`)                                                                                      |
 | Frontend Client  | Eden Treaty (`@elysiajs/eden`) consumes exported `App` type                                                                                                                  |
 
@@ -91,7 +91,7 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 
 **DB Selection Logic** (`db/index.ts`): `NODE_ENV=test` → in-memory PGlite; else `DATABASE_URL` present → Postgres (Bun SQL); else file-backed PGlite in `./.pglite`. Committed migrations in `db/migrations` applied at startup (idempotent, tracked in `drizzle.__drizzle_migrations`).
 
-**Docker Compose** provides the whole stack — Postgres 17 (`:5432`), ClickHouse (`:8123`, `:9000`), RustFS (`:9100` S3 API, `:9101` console — `rustfsadmin`/`rustfsadmin`; `sentry-replays` bucket created by `rustfs-init`), NATS (`:4222` + WS `:9222`), Keycloak (`:8080`) and the API + the consumer (`:31337`). The environment of the API and the consumer is the `x-app-environment` block of `docker-compose.yml`; the NATS configuration is an inline compose config whose values come from the environment of the service.
+**Docker Compose** provides the whole stack — Postgres 17 (`:5432`), ClickHouse (`:8123`, `:9000`), RustFS (`:9100` S3 API, `:9101` console — `rustfsadmin`/`rustfsadmin`; `benemetrics-replays` bucket created by `rustfs-init`), NATS (`:4222` + WS `:9222`), Keycloak (`:8080`) and the API + the consumer (`:31337`). The environment of the API and the consumer is the `x-app-environment` block of `docker-compose.yml`; the NATS configuration is an inline compose config whose values come from the environment of the service.
 
 **Container image** (`Dockerfile`): the API (`bun index.js`) and the side-effects consumer (`bun consumer.js`) are two entry points of the same image; the production bundle is inlined in the Dockerfile (`bun -e`, registering the virtual OIDC module that `bun build` cannot apply from bunfig).
 
@@ -102,7 +102,6 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. I
 ```bash
 bun run dev        # bun --hot backend/index.ts
 bun run start      # bun backend/index.ts
-bun run consumer   # bun backend/consumer.ts (standalone consumer binary)
 bun run test       # bun test --parallel=1 backend/tests/ e2e/
 bun run typecheck  # bun check
 ```
@@ -131,7 +130,7 @@ backend/
     experiments.ts         # experimentRoutes (/api/admin/experiments/*) — lifecycle, results, participants
     ofrep.ts               # ofrepRoutes (/ofrep/v1/*) — OpenFeature OFREP evaluation + SSE change stream
     evaluate.ts            # The evaluation engine: rules, segments, rollout, FNV-1a buckets
-    track.ts               # trackRoutes (/api/sentry/flags/experiment/track) — metric tracking (unauthenticated)
+    track.ts               # trackRoutes (/api/benemetrics/flags/experiment/track) — metric tracking (unauthenticated)
     events.ts              # The flag-change bus: local fan-out + the stream subject
     service.ts             # Experiment results: participants, conversions, recommendation
     stats.ts               # Wilson interval + two-proportion z-test
@@ -178,7 +177,7 @@ const app = new Elysia()
   .use(eventsRoutes) // prefix "events"
   .use(ingestionRoutes) // prefix "api"
   .use(featureFlagRoutes) // prefix "/api/admin/feature-flags"
-  .use(trackRoutes) // prefix "api/sentry/flags" (experiment/track)
+  .use(trackRoutes) // prefix "api/benemetrics/flags" (experiment/track)
   .use(ofrepRoutes) // prefix "/ofrep/v1"
   .use(adminRoutes) // prefix "/api/admin"
   .onError(({ code, error, set }) => {
@@ -209,7 +208,7 @@ Every list endpoint is **cursor-paginated** — there is no `page`/offset and no
 
 ### 5.1 System
 
-There is no health endpoint: the UI's health signal is the live feed's NATS WebSocket connection state (the browser subscribes to `sentry.events.<appNumber>` directly with its credential in the CONNECT `auth_token` — see `frontend/src/lib/live-events.ts` and `docs/nats.md`).
+There is no health endpoint: the UI's health signal is the live feed's NATS WebSocket connection state (the browser subscribes to `benemetrics.events.<appNumber>` directly with its credential in the CONNECT `auth_token` — see `frontend/src/lib/live-events.ts` and `docs/nats.md`).
 
 ### 5.2 Events API (ClickHouse Only)
 
@@ -243,7 +242,7 @@ Prefix: `/api` — `backend/events/index.ts` → `ingestionRoutes`
 **Pipeline:**
 
 1. Parse envelope → extract metric samples (`backend/metrics/samples.ts`)
-2. Publish `sentry.events.<appNumber>` (envelope) + `sentry.metrics` (JSONEachRow samples) to NATS
+2. Publish `benemetrics.events.<appNumber>` (envelope) + `benemetrics.metrics` (JSONEachRow samples) to NATS
 3. NATS publish failure → `503` (`serviceUnavailable`) — **no in-process fallback**
 
 ### 5.4 DSNs
@@ -318,7 +317,7 @@ Prefix: `/api/admin/feature-flags` — `backend/feature-flags/index.ts` → `fea
 | Single evaluation   | `/ofrep/v1`         | `ofrepRoutes` | `POST /evaluate/flags/:key { context: { targetingKey, … } }` → `{ key, value, reason, variant }`  |
 | Bulk evaluation     | `/ofrep/v1`         | `ofrepRoutes` | `POST /evaluate/flags { context }` → `{ flags[], metadata, eventStreams[] }` + `ETag` / `If-None-Match → 304` |
 | Change stream (SSE) | `/ofrep/v1`         | `ofrepRoutes` | `GET /events` → `data: {"type":"refetchEvaluation", etag, lastModified}` + 20s heartbeat |
-| Experiment Tracking | `/api/sentry/flags` | `trackRoutes` | `POST /experiment/track { flagKey, userId, metric, value? }`                                |
+| Experiment Tracking | `/api/benemetrics/flags` | `trackRoutes` | `POST /experiment/track { flagKey, userId, metric, value? }`                                |
 
 **Auth:** the OFREP evaluation surface and the experiment tracking endpoint are
 unauthenticated — the DSN credential surface was removed from feature flags.
@@ -461,7 +460,7 @@ Prefix: `/api/admin/settings` — `backend/settings/index.ts` → `settingsRoute
 
 - Default: `TTL toDateTime(receivedAt) + toIntervalMonth(1)` (1 month).
 - Boot seeds default only when table has no TTL; **never overwrites** admin change.
-- The metric samples share the retention (`sentry_metrics` gets the same TTL).
+- The metric samples share the retention (`benemetrics_metrics` gets the same TTL).
 
 ### 5.15 Source Maps (Admin + CLI-Compatible)
 
@@ -569,7 +568,7 @@ When an issuer and client id are present, the SPA starts an authorization-code +
 
 **projects** — `id` (PK), `name`, `slug` (unique), `description`, `created_at`
 
-**sentry_issue_events** (ClickHouse) — `messageId`, `eventId`, `projectId`, `appId`, `fingerprint`, `title`, `level`, `type`, `release`, `environment`, `user`, `receivedAt`; `ReplacingMergeTree` ordered by `(appId, fingerprint, receivedAt, eventId)`, TTL = the events retention. Filled by the `sentry_issue_events_mv` view from the digests the ingest handler attaches to the message.
+**benemetrics_issue_events** (ClickHouse) — `messageId`, `eventId`, `projectId`, `appId`, `fingerprint`, `title`, `level`, `type`, `release`, `environment`, `user`, `receivedAt`; `ReplacingMergeTree` ordered by `(appId, fingerprint, receivedAt, eventId)`, TTL = the events retention. Filled by the `benemetrics_issue_events_mv` view from the digests the ingest handler attaches to the message.
 
 **apps** — `id` (PK), `number` (serial, unique — DSN path), `project_id`, `environment_id`, `name`, `platform` (default `javascript`), `ingest_key` (unique), `public_key`, `created_at`
 
@@ -645,7 +644,7 @@ Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featu
 - `extractEventId`: header `event_id` → payload `event_id` → span `trace_id` → random UUID.
 - `convertSpanToTransaction`: Sentry **span** items (`version: 2`) → transaction-shaped payloads (segment span = transaction; child spans collected; `sentry.measurement.*` → `measurements`).
 - `normalizeTransactionPayload`: hoists trace metadata from `contexts.trace`.
-- **Metric Extraction** (`backend/metrics/samples.ts`): `parseEnvelope` + `normalizeTransactionPayload` → every numeric measurement + sentinels → publish `sentry.events.<appNumber>` + `sentry.metrics`. Level-gated sentinels: `error_count` when level = `error`, `fatal_count` when level = `fatal` (missing/unknown level ⇒ `error`). OTLP traces are extracted the same way (`backend/otlp/index.ts`).
+- **Metric Extraction** (`backend/metrics/samples.ts`): `parseEnvelope` + `normalizeTransactionPayload` → every numeric measurement + sentinels → publish `benemetrics.events.<appNumber>` + `benemetrics.metrics`. Level-gated sentinels: `error_count` when level = `error`, `fatal_count` when level = `fatal` (missing/unknown level ⇒ `error`). OTLP traces are extracted the same way (`backend/otlp/index.ts`).
 
 ### Replay Offload (`backend/events/offload.ts`)
 
@@ -660,9 +659,9 @@ Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featu
 - **Order:** consumer binary (stream + durable pull consumers `clickhouse-events`, `clickhouse-metrics`) → API (`nats.ts` publish connection + ClickHouse engine tables/MVs) → fail fast.
 - **ClickHouse DDL** (engine tables pull via NATS engine):
   ```sql
-  CREATE TABLE nats_events (...) ENGINE = NATS SETTINGS nats_stream='SENTRIES', nats_consumer_name='clickhouse-events', nats_subjects='sentry.events.*', nats_format='JSONEachRow', input_format_skip_unknown_fields=1, nats_skip_broken_messages=10;
-  CREATE TABLE sentry_events (...) ENGINE = ReplacingMergeTree() ORDER BY (projectId, receivedAt, id) SETTINGS fsync_after_insert=1, fsync_part_directory=1;
-  CREATE MATERIALIZED VIEW sentry_events_mv TO sentry_events AS SELECT ... FROM nats_events;
+  CREATE TABLE nats_events (...) ENGINE = NATS SETTINGS nats_stream='BENEMETRICS', nats_consumer_name='clickhouse-events', nats_subjects='benemetrics.events.*', nats_format='JSONEachRow', input_format_skip_unknown_fields=1, nats_skip_broken_messages=10;
+  CREATE TABLE benemetrics_events (...) ENGINE = ReplacingMergeTree() ORDER BY (projectId, receivedAt, id) SETTINGS fsync_after_insert=1, fsync_part_directory=1;
+  CREATE MATERIALIZED VIEW benemetrics_events_mv TO benemetrics_events AS SELECT ... FROM nats_events;
   ```
 - **Metrics tables** mirror exactly (`clickhouse-metrics` consumer).
 - **TTL:** `TTL toDateTime(receivedAt) + toIntervalMonth(1)` (1 month default); admin-changeable via Settings → Event Retention; boot only seeds when no TTL exists.
@@ -672,8 +671,8 @@ Each DAO: plain object exported as `<entity>DAO` (e.g., `storedEventDAO`, `featu
 ### Side-Effects Consumer (`backend/consumer.ts`, `bun run consumer`)
 
 - Runs as its own binary; the API only publishes and ClickHouse ingests by configuration.
-- Provisions the `SENTRIES` stream and its durable pull consumers: `clickhouse-events` / `clickhouse-metrics` (ClickHouse's engine tables attach to them).
-- Subscribes to `sentry.events.*` over the `side-effects` durable pull consumer for the Postgres side effects.
+- Provisions the `BENEMETRICS` stream and its durable pull consumers: `clickhouse-events` / `clickhouse-metrics` (ClickHouse's engine tables attach to them).
+- Subscribes to `benemetrics.events.*` over the `side-effects` durable pull consumer for the Postgres side effects.
 - Applies: issue tracking (`createIfNew` / `regressIfResolved` / `markSeen`), alert triggers (`new_issue`/`regression`), and release tracking (`recordEvent` → first/last seen, event count, latest event id).
 - **Never inserts event/metric rows into ClickHouse** — ClickHouse's engine tables own that, so a CH outage never stalls side effects.
 
@@ -723,8 +722,8 @@ export const serviceUnavailable = (msg: string) => new ApiError(503, msg, "SERVI
 
 | #   | Test              | Assertion                                                                                           |
 | --- | ----------------- | --------------------------------------------------------------------------------------------------- |
-| 1   | Ingest → NATS     | POST envelope → assert `sentry.events.<appNumber>` + `sentry.metrics` in stream                     |
-| 2   | NATS → ClickHouse | Publish to NATS → `waitFor` row in `sentry_events`/`sentry_metrics` (`FINAL`); dup event id = 1 row |
+| 1   | Ingest → NATS     | POST envelope → assert `benemetrics.events.<appNumber>` + `benemetrics.metrics` in stream                     |
+| 2   | NATS → ClickHouse | Publish to NATS → `waitFor` row in `benemetrics_events`/`benemetrics_metrics` (`FINAL`); dup event id = 1 row |
 | 3   | NATS → Postgres   | Publish → assert issue/alert side effects; republished id ≠ 2nd issue/alert                         |
 | 4   | ClickHouse → API  | Seed CH directly → assert events/metrics endpoints                                                  |
 | 5   | Live Feed         | NATS WS client subscribes → publish → assert receipt                                                |

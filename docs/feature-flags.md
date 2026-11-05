@@ -156,7 +156,7 @@ When experiment enabled:
 
 ### Metric Recording
 
-`POST /api/sentry/flags/experiment/track`:
+`POST /api/benemetrics/flags/experiment/track`:
 
 - Validates assignment exists for user
 - Records metric row: `flagId`, `variantKey`, `userId`, `metricName`, `value` (default 1)
@@ -232,7 +232,7 @@ GET /ofrep/v1/events
 - Implemented with Elysia's native SSE (async generator + the `sse()` helper),
   not a hand-rolled `ReadableStream`.
 - On every flag CRUD/status change (published to the
-  `sentry.flags.changed` stream subject and fanned out by every instance) the
+  `benemetrics.flags.changed` stream subject and fanned out by every instance) the
   stream emits an SSE `message` event:
   `{ "type": "refetchEvaluation", "etag": "<etag>", "lastModified": <unix seconds> }`
   — the provider re-runs the bulk evaluation.
@@ -243,7 +243,7 @@ GET /ofrep/v1/events
 ### Experiment Tracking (retained, outside OFREP)
 
 ```
-POST /api/sentry/flags/experiment/track
+POST /api/benemetrics/flags/experiment/track
 { flagKey, userId, metric, value? }
 ```
 
@@ -280,7 +280,7 @@ Prefix: `/api/admin/experiments`
 
 > The SDK-facing surface evaluates and tracks only. Experiment results and
 > participant identities are admin-only — they are never served from
-> `/api/sentry/flags/*`.
+> `/api/benemetrics/flags/*`.
 
 **Lifecycle**:
 

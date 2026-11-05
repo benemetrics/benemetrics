@@ -15,7 +15,7 @@ import {
   handleFetch,
   TEST_ORIGIN,
 } from "./test-helpers";
-import { NOTIFY_DLQ_STREAM, NOTIFY_DLQ_SUBJECT } from "../nats";
+import { TOPICS } from "../nats";
 
 let nats: NatsConnection | null = null;
 let jsm: Awaited<ReturnType<typeof jetstreamManager>> | null = null;
@@ -43,7 +43,7 @@ function publishDeadLetter(entry: {
   failedAt: string;
 }) {
   return jsm!.jetstream().publish(
-    NOTIFY_DLQ_SUBJECT,
+    TOPICS.NOTIFY_DLQ,
     new TextEncoder().encode(JSON.stringify(entry)),
   );
 }

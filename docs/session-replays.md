@@ -74,7 +74,7 @@ Replaces the inline rrweb array when offload succeeds. Shape validated by reader
 
 - Configured via `S3_BUCKET` (and `S3_ENDPOINT`, `S3_REGION`, credentials); `AWS_*` env vars as fallbacks
 - Bun's native S3 client (`backend/storage.ts` → `s3`), configured from the `S3_*` env at boot
-- Recommended: dedicated bucket `sentry-replays`
+- Recommended: dedicated bucket `benemetrics-replays`
 - Local dev runs **RustFS** (S3-compatible) through the same `S3_*` configuration
 - The bucket must allow `GET`/`HEAD` from the UI origin (CORS): the browser fetches the presigned URLs directly. The compose `rustfs-init` applies a wildcard rule for local dev
 
@@ -174,7 +174,7 @@ Ingestion Handler
     │   │   └── Failure → keep inline, log
     │   └── Return modified items
     │
-    ├── Publish to NATS (sentry.events)
+    ├── Publish to NATS (benemetrics.events)
     │
     ▼
 Object Store (S3 / RustFS)

@@ -46,33 +46,38 @@ class Bucket {
   }
 }
 
-const NATS_AUTH_USER = env.NATS_AUTH_USER || "sentries-auth";
-const NATS_AUTH_PASSWORD = env.NATS_AUTH_PASSWORD || "sentries-dev-auth-pass";
+export const TOPICS = {
+  EVENTS: "benemetrics.events",
+  METRICS: "benemetrics.metrics",
+  FLAGS_CHANGED: "flags.changed",
+  FLAGS_PING: "flags.ping",
+  NOTIFY: "snotify.deliver",
+  NOTIFY_DLQ: "snotify.dlq",
+}
 
-export const EVENTS_SUBJECT = "sentry.events";
-export const METRICS_SUBJECT = "sentry.metrics";
-export const FLAG_CHANGE_SUBJECT = "flags.changed";
-export const FLAG_PING = "flags.ping";
+export const CONSUMERS = {
+  EVENTS: "benemetrics.backend-consumer.events",
+  NOTIFICATIONS: "benemetrics.backend-consumer.notifications",
+}
 
-
-export const SIDE_EFFECTS_CONSUMER =
-  env.NATS_SIDE_EFFECTS_CONSUMER || "side-effects";
-export const FLAGS_CONSUMER = env.NATS_FLAGS_CONSUMER || "flags-consumer";
-export const NOTIFY_MAX_DELIVER = Number(env.NOTIFY_MAX_DELIVER) || 5
-
+export const STREAMS = {
+  CONSUMERS: "CONSUMERS",
+  QUEUE: "QUEUE",
+  DLQ: "DLQ",
+}
 
 export const nats = await connect({
   servers: env.NATS_SERVERS,
-  user: NATS_AUTH_USER,
-  pass: NATS_AUTH_PASSWORD,
+  user: env.NATS_AUTH_USER,
+  pass: env.NATS_AUTH_PASSWORD,
 });
 
 export const manager = await jetstreamManager(nats);
 
 // CONSUMERS
-await manager.streams.add({
+const x= await manager.streams.add({
   name: 'CONSUMERS',
-  subjects: ["sentry.events", "sentry.metrics"],
+  subjects: [TOPICS.EVENTS, TOPICS.METRICS],
   allow_batched: true,
   retention: RetentionPolicy.Interest,
 });
@@ -80,16 +85,18 @@ await manager.streams.add({
 // QUEUE
 await manager.streams.add({
   name: "QUEUE",
-  subjects: ["snotify.deliver"],
+  subjects: [TOPICS.NOTIFY],
   retention: RetentionPolicy.Workqueue,
   max_age: 24 * 60 * 60 * 1_000_000_000,
+  allow_atomic: true,
+  allow_batched: true,
 });
 
 // DLQ
 await manager.streams.add({
   name: 'DLQ',
   allow_direct: true,
-  subjects: ["$JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.>"],
+  subjects: ["$JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.>", TOPICS.NOTIFY_DLQ],
   retention: RetentionPolicy.Limits,
   max_age: 30 * 24 * 60 * 60 * 1_000_000_000,
 });
@@ -97,6 +104,6 @@ await manager.streams.add({
 
 export const natsStream = manager.jetstream();
 
-export const events = new Bucket("sentry.events");
+export const events = new Bucket(TOPICS.EVENTS);
 
-export const metrics = new Bucket("sentry.metrics");
+export const metrics = new Bucket(TOPICS.METRICS);

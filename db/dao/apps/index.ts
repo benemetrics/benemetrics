@@ -19,11 +19,10 @@ export const appDAO = {
       .insert(apps)
       .values(data)
       .returning(appPublicFields);
-    if (!created) internalError("Failed to create app");
     return created;
   },
 
-  findById: (id: string): Promise<AppRecord | undefined> =>
+  findById: (id: string) =>
     db
       .select(appPublicFields)
       .from(apps)
@@ -44,7 +43,7 @@ export const appDAO = {
 
   findByPublicKey: async (
     publicKey: string,
-  ): Promise<AppRecord | undefined> => {
+  ) => {
     const app = (
       await db
         .select(appPublicFields)
@@ -59,7 +58,7 @@ export const appDAO = {
   findByProjectAndPublicKey: async (
     projectId: string,
     publicKey: string,
-  ): Promise<AppRecord | undefined> => {
+  ) => {
     const apps = await appDAO.listByProject(projectId, { limit: 1000 });
     const app = apps.find((candidate) => candidate.publicKey === publicKey);
     return app;
@@ -92,7 +91,7 @@ export const appDAO = {
       .limit(cursorLimit(options?.limit)),
 
   // The issue query resolves an app by its exact name (case-insensitive).
-  findByName: (name: string): Promise<{ id: string } | undefined> =>
+  findByName: (name: string) =>
     db
       .select({ id: apps.id })
       .from(apps)

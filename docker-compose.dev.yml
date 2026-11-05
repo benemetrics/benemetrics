@@ -14,7 +14,7 @@
 # are set so the backend accepts provider JWTs issued by the local realm.
 x-app-environment: &app-environment
   NODE_ENV: development
-  DATABASE_URL: postgres://postgres:mysecretpassword@postgres:5432/sentry
+  DATABASE_URL: postgres://postgres:mysecretpassword@postgres:5432/benemetrics
   NATS_SERVERS: nats://nats:4222
   NATS_STREAM_MAX_BYTES: "1073741824"
   # The backend's NATS config user (AUTH account; also the auth-callout
@@ -29,7 +29,7 @@ x-app-environment: &app-environment
   CLICKHOUSE_DATABASE: default
   CLICKHOUSE_NATS_URL: nats:4222
   S3_ENDPOINT: http://rustfs:9000
-  S3_BUCKET: sentry-replays
+  S3_BUCKET: benemetrics-replays
   S3_REGION: us-east-1
   S3_ACCESS_KEY_ID: rustfsadmin
   S3_SECRET_ACCESS_KEY: rustfsadmin
@@ -45,7 +45,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: mysecretpassword
-      POSTGRES_DB: sentry
+      POSTGRES_DB: benemetrics
     ports:
       - "5432:5432"
     volumes:
@@ -122,7 +122,7 @@ services:
       /bin/sh -c "
       until rc alias set local http://rustfs:9000 rustfsadmin rustfsadmin; do sleep 1; done;
       until rc ls local/ >/dev/null 2>&1; do sleep 1; done;
-      rc ls local/sentry-replays >/dev/null 2>&1 || rc mb local/sentry-replays;
+      rc ls local/benemetrics-replays >/dev/null 2>&1 || rc mb local/benemetrics-replays;
       "
 
   # Local identity provider (Keycloak). Realm clients/groups/users are
@@ -176,20 +176,6 @@ services:
       <<: *app-environment
     ports:
       - "31337:31337"
-
-  # The side-effects consumer in dev mode: applies Postgres transitions
-  # (issues, alerts, releases) from the durable JetStream pull consumer.
-  consumer:
-    image: oven/bun:1
-    working_dir: /usr/src/app
-    volumes:
-      - .:/usr/src/app
-    command: bun --hot backend/consumer.ts
-    depends_on:
-      backend:
-        condition: service_started
-    environment:
-      <<: *app-environment
 
 volumes:
   postgres_data:

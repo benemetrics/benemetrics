@@ -14,9 +14,7 @@ export const releaseDAO = {
     const [created] = await db
       .insert(releases)
       .values(data)
-      .onConflictDoNothing({ target: [releases.appId, releases.version] })
       .returning(releasePublicFields)
-    if (!created) throw conflict(`Release already exists for app: ${data.version}`);
     return created;
   },
 
@@ -64,7 +62,7 @@ export const releaseDAO = {
     appId: string,
     version: string,
     event: { eventId: string; at: string },
-  ): Promise<Release> => {
+  ) => {
     const now = new Date().toISOString();
     const [row] = await db
       .insert(releases)
@@ -97,7 +95,7 @@ export const releaseDAO = {
     appId?: string;
     cursor?: string;
     limit?: number;
-  }): Promise<Release[]> => {
+  }) => {
     const limit = cursorLimit(options.limit);
     // Releases without an event yet fall back to the creation time, which is
     // encoded in the uuidv7 id, so the keyset order matches the coalesced

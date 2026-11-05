@@ -14,9 +14,7 @@ export const alertChannelDAO = {
     const [created] = await db
       .insert(alertChannels)
       .values({ ...data })
-      .onConflictDoNothing()
       .returning(channelPublicFields);
-    if (!created) throw conflict(`Alert channel already exists in this scope: ${data.name}`);
     return created;
   },
 

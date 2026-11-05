@@ -14,6 +14,8 @@ export interface EventRecord {
   event: Record<string, unknown> | null;
   transaction: Record<string, unknown> | null;
   feedback: Record<string, unknown> | null;
+  hasReplay?: boolean;
+  replayDuration?: number;
 }
 
 export function useEvents(

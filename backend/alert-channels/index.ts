@@ -1,4 +1,4 @@
-import type { AlertChannelType, AlertNotification } from "../protocol/alerting";
+import type { AlertChannelType } from "../protocol/alerting";
 import type { Notifier } from "./notifier";
 import { emailNotifier } from "./email";
 import { msTeamsNotifier } from "./msteams";

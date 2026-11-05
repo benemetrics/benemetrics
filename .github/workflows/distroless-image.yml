@@ -108,8 +108,8 @@ jobs:
           docker run --rm --network benemetrics-test --entrypoint /bin/sh rustfs/rc:latest -c "
             until rc alias set local http://rustfs:9000 rustfsadmin rustfsadmin; do sleep 1; done;
             until rc ls local/ >/dev/null 2>&1; do sleep 1; done;
-            rc ls local/sentry-replays >/dev/null 2>&1 || rc mb local/sentry-replays;
-            printf '%s' '{\"rules\":[{\"allowedOrigins\":[\"*\"],\"allowedMethods\":[\"GET\",\"HEAD\"],\"allowedHeaders\":[\"*\"],\"exposeHeaders\":[\"ETag\",\"Content-Length\",\"Content-Type\"],\"maxAgeSeconds\":3000}]}' | rc bucket cors set local/sentry-replays -;
+            rc ls local/benemetrics-replays >/dev/null 2>&1 || rc mb local/benemetrics-replays;
+            printf '%s' '{\"rules\":[{\"allowedOrigins\":[\"*\"],\"allowedMethods\":[\"GET\",\"HEAD\"],\"allowedHeaders\":[\"*\"],\"exposeHeaders\":[\"ETag\",\"Content-Length\",\"Content-Type\"],\"maxAgeSeconds\":3000}]}' | rc bucket cors set local/benemetrics-replays -;
             "
 
       - name: Set up Bun

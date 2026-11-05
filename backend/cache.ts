@@ -9,7 +9,8 @@ const store = async <T>(time: number, key: string) => {
             await redis.expire(key, time);
             obj.value = newV; // need expire as well
             return newV;
-        }
+        },
+        clear: () => redis.del(key),
     }
     const value = await redis.get(key)
     if (value) obj.value = JSON.parse(value);

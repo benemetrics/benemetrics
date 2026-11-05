@@ -1,5 +1,5 @@
 /**
- * Hop 2 (metrics) — `sentry.metrics` -> ClickHouse.
+ * Hop 2 (metrics) — `benemetrics.metrics` -> ClickHouse.
  *
  * Samples are published as JSONEachRow (one sample per line): the NATS
  * engine table + materialized view insert them, the durable consumer
@@ -83,7 +83,7 @@ function publishSamples(samples: MetricSample[]) {
   );
 }
 
-describe("Hop 2 (metrics): sentry.metrics -> ClickHouse", () => {
+describe("Hop 2 (metrics): benemetrics.metrics -> ClickHouse", () => {
   it("inserts published JSONEachRow samples and acknowledges after the insert", async () => {
     const app = await startTestApp();
     const eventId = crypto.randomUUID();

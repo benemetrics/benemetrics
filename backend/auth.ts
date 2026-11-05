@@ -1,5 +1,5 @@
 import { env } from "bun";
-import { sourceMapTokenDAO, generateUploadToken } from "db/dao/source-maps/tokens";
+import { sourceMapTokenDAO } from "db/dao/source-maps/tokens";
 import { unauthorized } from "backend/errors";
 import * as jose from "jose";
 import * as client from "openid-client";
@@ -85,13 +85,7 @@ export const verifyWithIdP = async (token: string) => {
   }
 };
 
-export const resolveIdentity = async ({
-  request,
-  store,
-}: {
-  request: Request;
-  store?: { adminTokenHash?: string };
-}) => {
+export const resolveIdentity = async ({ request }: { request: Request }) => {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) throw unauthorized();
   const [type, token] = authHeader.split(" ");
@@ -100,13 +94,6 @@ export const resolveIdentity = async ({
   const allowedGroups = cacheAllowedGroups ?? await write(permissionGrantDAO.getAllowedGroups())
 
   switch (type) {
-    case "API-Key": {
-      const hash = store?.adminTokenHash;
-      if (!hash) throw unauthorized();
-      const ok = await Bun.password.verify(token, hash);
-      if (!ok) throw unauthorized();
-      return { user: { id: "local-admin", groups: new Set(["admin"]) } };
-    }
     case "Bearer": {
       const identity = await verifyWithIdP(token);
       if (identity && allowedGroups.intersection(identity.groups).size > 0)
@@ -120,16 +107,19 @@ export const resolveIdentity = async ({
 
 // Sentry SDK authentication: the DSN public key is sent either as the
 // `sentry_key` query parameter or inside the `X-Sentry-Auth` header.
+export function extractSentryKey(request: Request): string | undefined {
+  const authHeader = request.headers.get("X-Sentry-Auth");
+  return (
+    new URL(request.url).searchParams.get("sentry_key") ??
+    authHeader?.match(/sentry_key=([^,]+)/)?.[1]
+  );
+}
+
 export function validateAuth(
   request: Request,
   target: SentryAuthTarget,
 ): SentryAuthResult {
-  const authHeader = request.headers.get("X-Sentry-Auth");
-  const url = new URL(request.url);
-
-  const sentryKey =
-    url.searchParams.get("sentry_key") ??
-    authHeader?.match(/sentry_key=([^,]+)/)?.[1];
+  const sentryKey = extractSentryKey(request);
 
   if (!sentryKey) return { valid: false };
 

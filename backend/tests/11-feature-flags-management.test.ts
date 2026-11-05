@@ -58,15 +58,15 @@ async function apiRequest(
 // The flags belong to a project; the SDK surface resolves them in the
 // app's project, so the tests share one app.
 let testApp: Promise<TestApp> | null = null;
-async function sentryApp(): Promise<TestApp> {
+async function benemetricsApp(): Promise<TestApp> {
   testApp ??= startTestApp();
   return testApp;
 }
 async function flagProjectId(): Promise<string> {
-  return (await sentryApp()).projectId;
+  return (await benemetricsApp()).projectId;
 }
 
-async function sentryRequest(
+async function benemetricsRequest(
   method: string,
   path: string,
   body?: unknown,
@@ -540,7 +540,7 @@ describe("Feature Flags Management API", () => {
 
   describe("Flag scope", () => {
     it("resolves the app flag over the project flag", async () => {
-      const app = await sentryApp();
+      const app = await benemetricsApp();
       const key = `scoped-${Date.now()}`;
 
       const projectFlag = await apiRequest("POST", "/api/admin/feature-flags", {
@@ -562,7 +562,7 @@ describe("Feature Flags Management API", () => {
       });
       expect(appFlag.status).toBe(200);
 
-      const response = await sentryRequest(
+      const response = await benemetricsRequest(
         "POST",
         "/ofrep/v1/evaluate/flags",
         { context: { targetingKey: "scoped-user" } },
@@ -575,7 +575,7 @@ describe("Feature Flags Management API", () => {
     it("keeps the same key in two projects", async () => {
       const key = `shared-${Date.now()}`;
       const first = await apiRequest("POST", "/api/admin/feature-flags", {
-        projectId: (await sentryApp()).projectId,
+        projectId: (await benemetricsApp()).projectId,
         key,
         name: "First",
         type: "boolean",
@@ -624,7 +624,7 @@ describe("Feature Flags Management API", () => {
         ],
       });
 
-      const response = await sentryRequest(
+      const response = await benemetricsRequest(
         "POST",
         "/ofrep/v1/evaluate/flags",
         {

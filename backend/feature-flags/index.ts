@@ -2,7 +2,6 @@ import { Elysia } from "elysia";
 import { badRequest } from "backend/errors";
 import { type as arktype } from "arktype";
 import { featureFlagDAO } from "db/dao/feature-flags";
-import { appDAO } from "db/dao/apps";
 import { projectDAO } from "db/dao/projects";
 import {
   experimentConfigSchema,
@@ -65,12 +64,6 @@ export const featureFlagRoutes = new Elysia({
       assertRuleAttributes(body.targetingRules ?? []);
       // The flag belongs to a project, optionally narrowed to one of its apps.
       await projectDAO.findByIdOrThrow(body.projectId);
-      if (body.appId) {
-        const app = await appDAO.findByIdOrThrow(body.appId);
-        if (app.projectId !== body.projectId) {
-          throw badRequest("The app does not belong to the project");
-        }
-      }
       const created = await featureFlagDAO.create({
         key: body.key,
         name: body.name,
@@ -85,7 +78,6 @@ export const featureFlagRoutes = new Elysia({
         experiment:
           body.experiment != null ? JSON.stringify(body.experiment) : null,
         projectId: body.projectId,
-        appId: body.appId ?? null,
       });
       await nats.publish(FLAG_CHANGE_SUBJECT)
       return created;
@@ -103,7 +95,6 @@ export const featureFlagRoutes = new Elysia({
         experiment: experimentConfigSchema.optional(),
         rolloutPercentage: "0 <= number.integer <= 100?",
         projectId: "string.uuid",
-        appId: "string.uuid?",
       }),
     },
   )
@@ -111,7 +102,6 @@ export const featureFlagRoutes = new Elysia({
     "/",
     async ({ query }) => {
       if (query.projectId) await projectDAO.findByIdOrThrow(query.projectId);
-      if (query.appId) await appDAO.findByIdOrThrow(query.appId);
       return featureFlagDAO.list({
         cursor: query.cursor,
         limit: query.limit,
@@ -119,7 +109,6 @@ export const featureFlagRoutes = new Elysia({
         type: query.type,
         search: query.search,
         projectId: query.projectId ?? null,
-        appId: query.appId ?? null,
       });
     },
     {
@@ -130,7 +119,6 @@ export const featureFlagRoutes = new Elysia({
         type: "'boolean' | 'string' | 'number' | 'json'?",
         search: "string?",
         projectId: "string.uuid?",
-        appId: "string.uuid?",
       }),
     },
   )

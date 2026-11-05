@@ -2,7 +2,7 @@
  * E2E Test: A/B experiments
  *
  * Experiments start / results / stop on /api/admin/experiments/:flagId,
- * plus experiment tracking via /api/sentry/flags/experiment/track and
+ * plus experiment tracking via /api/benemetrics/flags/experiment/track and
  * evaluation via /ofrep/v1/evaluate/flags.
  * Runs against a real HTTP listener via startTestServer().
  */
@@ -29,7 +29,7 @@ async function apiRequest(
   return await fetch(url, options);
 }
 
-async function sentryRequest(
+async function benemetricsRequest(
   method: string,
   path: string,
   body?: unknown,
@@ -144,7 +144,7 @@ describe("A/B experiments", () => {
     expect(flag.status).toBe(200);
     const flagData = (await flag.json()) as { key: string };
 
-    const evaluation = await sentryRequest("POST", "/ofrep/v1/evaluate/flags", {
+    const evaluation = await benemetricsRequest("POST", "/ofrep/v1/evaluate/flags", {
       context: { targetingKey: "e2e-user-1" },
     });
     expect(evaluation.status).toBe(200);
@@ -153,7 +153,7 @@ describe("A/B experiments", () => {
     };
     expect(evalBody.flags).toHaveLength(1);
 
-    const tracked = await sentryRequest("POST", "/api/sentry/flags/experiment/track", {
+    const tracked = await benemetricsRequest("POST", "/api/benemetrics/flags/experiment/track", {
       flagKey: flagData.key,
       userId: "e2e-user-1",
       metric: "conversion",

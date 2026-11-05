@@ -1,17 +1,15 @@
 import { appDAO } from "db/dao/apps";
 import { releaseDAO } from "db/dao/releases";
 import { extractRelease } from "../events/utils";
-import type { SentryEventMessage } from "../protocol/events";
+import type { BenemetricsEventMessage } from "../protocol/events";
 import type { ItemHeader } from "../protocol/item-header";
 
 // Best-effort: messages without a release, without a resolvable app, or
 // for deleted apps are skipped. `recordEvent` is an upsert, so concurrent
 // deliveries cannot create two rows for one (app, version).
 export async function recordReleaseFromEvent(
-  event: SentryEventMessage,
-): Promise<void> {
-  if (!event.appId) return;
-
+  event: BenemetricsEventMessage,
+) {
   let items: Array<{ header: ItemHeader; payload: unknown }>;
   try {
     items = JSON.parse(event.envelopeItems) as Array<{

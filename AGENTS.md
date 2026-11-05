@@ -23,7 +23,7 @@ Agent operating rules for this repository. `docs/BACKEND_API.md` is the long-for
 
 ## Project
 
-Lightweight Sentry backend. Bun + Elysia (HTTP) + ArkType (validation) + Drizzle ORM + NATS JetStream + ClickHouse + S3-compatible object store. Frontend consumes the exported `App` type via Eden Treaty. Entry point: `backend/index.ts`.
+Benemetrics — a lightweight Sentry-compatible backend. Bun + Elysia (HTTP) + ArkType (validation) + Drizzle ORM + NATS JetStream + ClickHouse + S3-compatible object store. Frontend consumes the exported `App` type via Eden Treaty. Entry point: `backend/index.ts`.
 
 ## Business rules
 
@@ -45,7 +45,6 @@ The domain hierarchy is strictly **Project → Environment (shared by apps)**. D
 ```bash
 bun run dev        # hot-reload server
 bun run start      # run server
-bun run consumer   # standalone NATS consumer binary (stream/consumers + Postgres side effects)
 bun run typecheck  # bun check — MUST pass
 bun run test       # bun test --parallel=1 backend/tests/ e2e/ — MUST pass (generates the e2e identity provider's certificate first)
 ```
@@ -69,7 +68,7 @@ Route handler (backend/<domain>/index.ts)  ->  DAO (db/dao/*)  ->  Drizzle
 ## Pipeline Architecture (NATS-First)
 
 ```
-Ingest Handler → NATS (sentry.events.<appNumber>, sentry.metrics)
+Ingest Handler → NATS (benemetrics.events.<appNumber>, benemetrics.metrics)
                      │
          ┌───────────┴───────────┐
          ▼                       ▼
@@ -82,11 +81,11 @@ Ingest Handler → NATS (sentry.events.<appNumber>, sentry.metrics)
 ```
 
 - **NATS required** — no availability branches, no in-process fallback. Boot retries, then fails fast.
-- **Events are subject-sharded per app** — the API edge resolves the app before publishing and emits to `sentry.events.<appNumber>` (`apps.number`, the DSN path integer). The stream declares `sentry.events.*`; every `sentry.events` consumer filters `sentry.events.*`. A publish without the app token fails at the server.
-- **NATS auth callout** — every connection that is not a config user is routed to the backend (the auth service) over `$SYS.REQ.USER.AUTH`; it verifies the presented credential (Keycloak JWT or master admin token) and answers with a signed, **sub-only**, per-app user claim (`sentry.events.<appNumber>` of the scope). No reply = denied. See `docs/nats.md`.
+- **Events are subject-sharded per app** — the API edge resolves the app before publishing and emits to `benemetrics.events.<appNumber>` (`apps.number`, the DSN path integer). The stream declares `benemetrics.events.*`; every `benemetrics.events` consumer filters `benemetrics.events.*`. A publish without the app token fails at the server.
+- **NATS auth callout** — every connection that is not a config user is routed to the backend (the auth service) over `$SYS.REQ.USER.AUTH`; it verifies the presented credential (Keycloak JWT or master admin token) and answers with a signed, **sub-only**, per-app user claim (`benemetrics.events.<appNumber>` of the scope). No reply = denied. See `docs/nats.md`.
 - **ClickHouse ingests by configuration** — `ENGINE = NATS` + durable JetStream pull consumer + Materialized View. Ack after MV insert; redelivery on failure.
 - **Idempotent writes** — `ReplacingMergeTree` + `FINAL` reads; duplicates collapse.
-- **Side-effects consumer = Postgres only** — its own binary (`backend/consumer.ts`, `bun run consumer`); it reads the `sentry.events.*` subjects from the `SENTRIES` stream through the `side-effects` durable pull consumer, so an event published while it is down is not lost. Applies issue tracking, alert triggers, and release tracking; never inserts rows into ClickHouse. The shared `backend/nats.ts` provisions the stream and the durable pull consumers, so both processes may start in either order.
+- **Side-effects consumer = Postgres only** — (`backend/consumer.ts`); it reads the `benemetrics.events.*` subjects from the `BENEMETRICS` stream through the `side-effects` durable pull consumer, so an event published while it is down is not lost. Applies issue tracking, alert triggers, and release tracking; never inserts rows into ClickHouse. The shared `backend/nats.ts` provisions the stream and the durable pull consumers, so both processes may start in either order.
 - **Live feed = browser → NATS WebSocket** — no backend fanout, no `/events/live/feed`. The CONNECT carries the credential (`auth_token`); the callout's sub-only claim makes the feed honor the permission scope.
 - **Notifications = JetStream-native DLQ** — a rule breach publishes one `snotify.deliver` message per channel to the `NOTIFICATIONS` stream; the `notification-worker` durable pull consumer sends via the channel's notifier. Terminal failures republish to `snotify.dlq`; the admin polls `GET /api/admin/notifications/dlq` and dismisses with `DELETE /dlq/:seq` (idempotent). The old Postgres dead-letter stub is removed. See `docs/nats.md §1b`.
 - **Object store = S3-required** — replay segments offloaded at ingestion; local dev uses RustFS. Backend never recorded in pointer; reads resolve at read time.
@@ -142,11 +141,11 @@ Ingest Handler → NATS (sentry.events.<appNumber>, sentry.metrics)
 
 ## Ingestion
 
-- **NATS-first, always**: handlers publish via `dispatchIngestedEvent`; a broker failure answers `503` (`serviceUnavailable`) — there is no in-process fallback. The standalone `backend/consumer.ts` binary applies the Postgres side effects (issues, alerts, releases) from the `side-effects` durable pull consumer; ClickHouse ingests `sentry.events`/`sentry.metrics` itself (NATS engine tables + materialized views, ack after the insert). Event payloads and metric samples never land in Postgres.
+- **NATS-first, always**: handlers publish via `dispatchIngestedEvent`; a broker failure answers `503` (`serviceUnavailable`) — there is no in-process fallback. `backend/consumer.ts` applies the Postgres side effects (issues, alerts, releases) from the `side-effects` durable pull consumer; ClickHouse ingests `benemetrics.events`/`benemetrics.metrics` itself (NATS engine tables + materialized views, ack after the insert). Event payloads and metric samples never land in Postgres.
 - **MUST NOT auto-provision** projects/apps/DSNs during ingestion. Unknown ingest key/project or a `sentry_key` that does not match the resolved app → `401`, no writes.
 - **MUST keep ingestion idempotent**: duplicate `event_id` inserts are ignored via `onConflictDoNothing` (retries must not 500).
 - App resolution order in `resolveApp`: app number (path, DSN) → ingest key (path) → project id (path) + matching public key → public key alone (Sentry SDKs require numeric DSN project ids).
-- **Metric extraction at API edge**: `backend/metrics/samples.ts` parses envelope once, publishes both `sentry.events.<appNumber>` and `sentry.metrics`. SQL-side extraction rejected.
+- **Metric extraction at API edge**: `backend/metrics/samples.ts` parses envelope once, publishes both `benemetrics.events.<appNumber>` and `benemetrics.metrics`. SQL-side extraction rejected.
 
 ## Testing
 
@@ -175,7 +174,7 @@ Ingest Handler → NATS (sentry.events.<appNumber>, sentry.metrics)
 - **Sentry SDKs require numeric DSN project id**: the app DSN path is the DB-generated `apps.number`; `resolveApp` resolves it via `findByNumber` and keeps the ingest-key / project-id + public-key fallback. Keep that fallback when changing ingestion routing.
 - **App DSNs are always `http://`** (the backend serves plain HTTP; TLS is a reverse-proxy concern). NEVER derive `https` from the host name — the wrong scheme makes SDKs fail the TLS handshake.
 - **The app DSN is derived, never stored**: the API returns the ingredients (`publicKey` + `number`) and the caller composes `http://<publicKey>@<host>/<apps.number>` for the origin it reached (`frontend/src/lib/api.ts` → `appDsn`). The admin app responses MUST NOT carry a DSN or a host — the backend knows neither.
-- **ClickHouse is the events store**: it ingests `sentry.events.*`/`sentry.metrics` from JetStream by configuration (NATS engine tables + materialized views, ack after the insert) and the events API list/get reads it directly (`backend/events-store.ts`, `SELECT … FINAL`) — there is no Postgres fallback. Postgres stays the control-plane source of truth; keep ClickHouse paths retry-tolerant (`backend/retry.ts`) but never reintroduce an app-side event store. The events table declares a retention TTL (`TTL toDateTime(receivedAt) + toIntervalMonth(1)`, one month by default); the admin reads the live value back from the table definition and changes it under Settings → Event retention (`GET`/`PUT /api/admin/settings/events-ttl`, admin-token-only). Boot only seeds the default when the table has no TTL — never overwrite an admin change.
+- **ClickHouse is the events store**: it ingests `benemetrics.events.*`/`benemetrics.metrics` from JetStream by configuration (NATS engine tables + materialized views, ack after the insert) and the events API list/get reads it directly (`backend/events-store.ts`, `SELECT … FINAL`) — there is no Postgres fallback. Postgres stays the control-plane source of truth; keep ClickHouse paths retry-tolerant (`backend/retry.ts`) but never reintroduce an app-side event store. The events table declares a retention TTL (`TTL toDateTime(receivedAt) + toIntervalMonth(1)`, one month by default); the admin reads the live value back from the table definition and changes it under Settings → Event retention (`GET`/`PUT /api/admin/settings/events-ttl`, admin-token-only). Boot only seeds the default when the table has no TTL — never overwrite an admin change.
 - **Replay recording segments never sit in Postgres**: at ingestion (`backend/events/offload.ts`) each `replay_recording` payload is written to the S3-compatible object store (`backend/storage.ts` → `s3`; RustFS locally via the same `S3_*` config) and the envelope item keeps just the object key (`{ key }`). The backend is never recorded in the pointer: reads resolve keys against the storage configuration active at read time, so switching object stores means migrating the objects with them. Segment keys embed the segment start time, so the read path lists a session's keys in playback order and returns **presigned S3 URLs** (`GET /api/admin/events/:eventId/replay/:replayId`, paginated by `cursor`) — the browser fetches the bytes directly; never proxy recording payloads through the API. The offload runs before the NATS publish and is best-effort — a failed or timed-out write keeps the payload inline. NEVER fail, delay past the bound, or lose ingestion because of the object store.
 - **Ingest request hygiene**: every ingestion request is bounded before the expensive work — the declared body size, the decompressed size (a gzip bomb is invisible to the proxy), the item/span counts and the server-wide body cap (`backend/ratelimit/hygiene.ts`, the knobs in `backend/ratelimit/config.ts`). Over the cap is a `413`; a request is never parsed, offloaded or published after it is rejected. These are **caps, not quotas** — the rate limits (per source, per app) are the reverse proxy's job.
 - **A retried event id is answered without the work**: the id is the idempotency key — a recently seen id skips the object-store write and the publish (`wasRecentlyIngested`/`markIngested`, `backend/events/ingestion.ts`). The JetStream stream's disk is bounded (`NATS_STREAM_MAX_BYTES`, 1 GiB) so a flood fills the stream and the publish answers `503` instead of growing the disk — the SDK's retry carries the backpressure back to the sender.

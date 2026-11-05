@@ -1,4 +1,4 @@
-import { s3 } from "../storage";
+import { s3 } from "bun";
 import type { ParsedEnvelope } from "./utils";
 
 export interface OffloadedItemPayload {

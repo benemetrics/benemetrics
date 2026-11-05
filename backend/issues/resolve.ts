@@ -1,6 +1,7 @@
 import { notFound } from "backend/errors";
 import { projectDAO } from "db/dao/projects";
 import { appDAO } from "db/dao/apps";
+import { FULL_SCAN_LIMIT } from "../limits";
 import {
   clickHouseIssueFingerprintsByLevel,
   clickHouseIssueFingerprintsByTag,
@@ -47,8 +48,7 @@ export async function resolveIssueFilters(
   groups: IssueQueryTerm[][],
   options: {
     now?: Date;
-    visibleAppIds?: string[];
-    unknownIsEmpty?: boolean;
+    visibleAppIds?: string[]
   } = {},
 ): Promise<IssueFilter[]> {
   const filters: IssueFilter[] = [];
@@ -169,7 +169,7 @@ async function resolveProjectAppIds(
     if (unknownIsEmpty) return [];
     throw notFound("Project", value);
   }
-  return (await appDAO.listByProject(project.id, { limit: 1000 })).map((app) => app.id);
+  return (await appDAO.listByProject(project.id, { limit: FULL_SCAN_LIMIT })).map((app) => app.id);
 }
 
 // Resolves the parsed terms into the filter the DAO queries with. The

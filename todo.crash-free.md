@@ -2,7 +2,7 @@
 
 **Definition:** crash-free % = `(sessions − crashed) / sessions × 100` per app/release/environment over a window. Unit = **session** (envelope item `session`, `status: ok | exited | abnormal | crashed`), NOT events. `abnormal` is reported but never counted as a crash. Until an app sends sessions, every read returns `null` (UI shows "—") — no invented baselines, no fatal/error-ratio proxies labeled "crash".
 
-The storage side needs nothing new: `sentry.metrics` already flows to `sentry_metrics` (`PROJECTID, APPID, EVENTID, metric, value, dimension, tags, receivedAt`, `ReplacingMergeTree` + `FINAL`). The metric name + tags carry the session semantics.
+The storage side needs nothing new: `benemetrics.metrics` already flows to `benemetrics_metrics` (`PROJECTID, APPID, EVENTID, metric, value, dimension, tags, receivedAt`, `ReplacingMergeTree` + `FINAL`). The metric name + tags carry the session semantics.
 
 ## 1. Ingest edge (extract sessions → counters) — ✅ done
 
@@ -47,7 +47,7 @@ The storage side needs nothing new: `sentry.metrics` already flows to `sentry_me
 ## 7. Tests (one hop each) — ❌ NOT done (explicitly skipped: "dump with no checks")
 
 - [ ] ingest → NATS: envelope with a `session` item (`status: crashed`) publishes `session_total` + `session_crashed`; `started` publishes nothing.
-- [ ] NATS → CH: samples land in `sentry_metrics` via the MV.
+- [ ] NATS → CH: samples land in `benemetrics_metrics` via the MV.
 - [ ] CH → API: `/api/admin/metrics/series?metric=crash_free_rate` returns the expected ratio; empty window → no points; `session_total`/`session_crashed` series present.
 - [ ] Alert evaluation: a `session_crashed > N` rule fires and does not double-fire on redelivery.
 - [ ] `sid` replay dedup (`FINAL`) unit test.

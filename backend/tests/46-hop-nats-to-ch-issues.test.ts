@@ -2,7 +2,7 @@
  * Hop 5 — NATS -> ClickHouse issue index (the drill-down source).
  *
  * The digests the ingest handler attached to the message land in the
- * derived `sentry_issue_events` index, so the issue's occurrences and
+ * derived `benemetrics_issue_events` index, so the issue's occurrences and
  * stats are read from ClickHouse instead of re-fingerprinting the events.
  */
 

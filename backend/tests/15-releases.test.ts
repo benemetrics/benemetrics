@@ -20,7 +20,7 @@ import { describe, it, expect } from "bun:test";
 import {
   handleFetch as fetch,
   TEST_ORIGIN,
-  ADMIN_TOKEN,
+  ADMIN_HEADERS,
   waitForStoredEvent,
 } from "./test-helpers";
 
@@ -69,7 +69,7 @@ async function apiRequest(
   method: string,
   path: string,
   body?: unknown,
-  token: string = ADMIN_TOKEN,
+  token: string = ADMIN_HEADERS.Authorization,
 ): Promise<Response> {
   const options: RequestInit = {
     method,

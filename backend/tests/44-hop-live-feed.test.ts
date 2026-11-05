@@ -18,7 +18,7 @@ import {
 } from "../../frontend/src/lib/live-events";
 import { startAuthCallout } from "../nats-auth-callout";
 import {
-  ADMIN_TOKEN,
+  ADMIN_HEADERS,
   app,
   connectTestNats,
   startTestApp,
@@ -37,7 +37,10 @@ beforeAll(async () => {
   nats = await connectTestNats();
   // The browser-style connection needs a verdict: run the callout service
   // on this (config-user) connection, like the backend process does.
-  startAuthCallout(nats, () => app.store.adminTokenHash as string);
+  startAuthCallout(
+    nats,
+    () => (app.store as { adminTokenHash?: string }).adminTokenHash as string,
+  );
 });
 
 afterAll(async () => {
@@ -67,7 +70,7 @@ function startFeed(handlers: {
       {
         url: NATS_WS_URL,
         appNumber: handlers.appNumber,
-        authToken: ADMIN_TOKEN,
+        authToken: ADMIN_HEADERS.Authorization,
       },
     );
   });

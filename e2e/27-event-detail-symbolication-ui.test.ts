@@ -17,9 +17,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import {
   app,
-  ADMIN_TOKEN,
   ADMIN_HEADERS,
-  ADMIN_TOKEN_RAW,
+  ADMIN_JWT,
 } from "./test-helpers";
 const ORG = "default";
 const RELEASE = "ui-1.0.0";
@@ -47,7 +46,7 @@ async function adminRequest(
 ): Promise<Response> {
   return fetch(`${baseUrl}${path}`, {
     method,
-    headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
@@ -248,7 +247,7 @@ describe("Event detail stack trace — symbolication in the real UI", () => {
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${baseUrl}/ui/overview`);
     await view.evaluate(
-      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_JWT}")`,
     );
     await view.navigate(`${baseUrl}/ui/overview`);
     await waitForTextInUI(`Symbolicated UI`, 20000);

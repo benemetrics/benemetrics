@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN, ADMIN_TOKEN } from "./test-helpers";
+import { handleFetch as fetch, TEST_ORIGIN, ADMIN_HEADERS } from "./test-helpers";
 import { issueDAO } from "db/dao/issues";
 import { appDAO, projectDAO } from "db/dao/project";
 
@@ -39,7 +39,7 @@ async function apiRequest(
 ): Promise<Response> {
   const options: RequestInit = {
     method,
-    headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
   };
   if (body !== undefined) options.body = JSON.stringify(body);
   return fetch(`${TEST_ORIGIN}${path}`, options);

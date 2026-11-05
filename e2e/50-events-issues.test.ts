@@ -11,7 +11,7 @@ import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import {
   startTestServer,
-  ADMIN_TOKEN,
+  ADMIN_HEADERS,
   waitForEventListItem,
   type TestServer,
 } from "./test-helpers";
@@ -27,7 +27,7 @@ async function apiRequest(
   const url = new URL(`${SERVER_URL}${path}`);
   const options: RequestInit = {
     method,
-    headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
   };
   if (body !== undefined) options.body = JSON.stringify(body);
   return await fetch(url, options);

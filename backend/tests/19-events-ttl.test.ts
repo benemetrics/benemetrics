@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN, ADMIN_TOKEN } from "./test-helpers";
+import { handleFetch as fetch, TEST_ORIGIN, ADMIN_HEADERS } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
 
@@ -24,7 +24,7 @@ async function adminRequest(
   method: string,
   path: string,
   body?: unknown,
-  token: string = ADMIN_TOKEN,
+  token: string = ADMIN_HEADERS.Authorization,
 ): Promise<Response> {
   const options: RequestInit = {
     method,

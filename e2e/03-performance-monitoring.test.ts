@@ -10,7 +10,7 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import {
   startTestServer,
   waitForEventListItem,
-  ADMIN_TOKEN,
+  ADMIN_HEADERS,
   type TestServer,
 } from "./test-helpers";
 
@@ -37,7 +37,7 @@ async function apiRequest(
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: ADMIN_TOKEN,
+      Authorization: ADMIN_HEADERS.Authorization,
     },
   };
   if (body !== undefined) {

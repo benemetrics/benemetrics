@@ -7,14 +7,14 @@
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN, ADMIN_TOKEN } from "./test-helpers";
-import { permissionGrantDAO } from "db/dao/permission-grants";
-import { permissionRuleDAO } from "db/dao/permission-rules";
+import { handleFetch as fetch, TEST_ORIGIN, ADMIN_HEADERS } from "./test-helpers";
+import { permissionGrantDAO } from "db/dao/permissions/grants";
+import { permissionRuleDAO } from "db/dao/permissions/rules";
 import {
   computeScopedView,
   resolveScopeForIdentity,
 } from "backend/permissions/engine";
-import { projectDAO, appDAO } from "db/dao/project";
+import { projectDAO, appDAO } from "db/dao/projects";
 
 const uniq = () =>
   Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
@@ -29,7 +29,7 @@ async function apiRequest(
 ): Promise<Response> {
   const options: RequestInit = {
     method,
-    headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
   };
   if (body !== undefined) options.body = JSON.stringify(body);
   return fetch(`${TEST_ORIGIN}${path}`, options);

@@ -11,7 +11,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import * as jose from "jose";
-import { app, ADMIN_TOKEN } from "./test-helpers";
+import { app, ADMIN_HEADERS, ADMIN_JWT } from "./test-helpers";
 import { identityId, oidcProvider } from "./oidc-provider";
 const SUBJECT = "e2e-oidc-user";
 
@@ -26,7 +26,7 @@ beforeAll(async () => {
   // The grant for the provider identity.
   const created = await fetch(`${baseUrl}/api/admin/permissions/grants`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
     body: JSON.stringify({
       identityId: identityId(SUBJECT),
       label: "e2e oidc identity",
@@ -160,10 +160,7 @@ describe("OIDC authentication", () => {
     // app is out of its scope.
     const project = await fetch(`${baseUrl}/api/admin/projects`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: ADMIN_TOKEN,
-      },
+      headers: ADMIN_HEADERS,
       body: JSON.stringify({ name: `OIDC probe ${Date.now()}` }),
     });
     const projectId = ((await project.json()) as { id: string }).id;
@@ -171,10 +168,7 @@ describe("OIDC authentication", () => {
       `${baseUrl}/api/admin/projects/${projectId}/apps`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: ADMIN_TOKEN,
-        },
+        headers: ADMIN_HEADERS,
         body: JSON.stringify({ name: "hidden-api" }),
       },
     );

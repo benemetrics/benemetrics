@@ -3,9 +3,8 @@
  *
  * /api/admin/* and the UI surface (/events) always require the configured
  * credentials: unauthenticated mutations must fail with 401 and leave no
- * side effect. When no OIDC/OAuth2 env is set, ADMIN_TOKEN is the
- * credential; a configured provider adds an identity but never disables
- * the admin token.
+ * side effect. The suite always bootstraps an identity provider (via
+ * `e2e/preload.ts`), so admin requests authenticate with the OIDC admin JWT.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
@@ -99,19 +98,18 @@ describe("Admin guard enforcement", () => {
     expect(unauthenticatedAdmin.status).toBe(401);
   });
 
-  it("requires admin auth on the UI surface when ADMIN_TOKEN is configured", async () => {
+  it("requires admin auth on the UI surface", async () => {
     const events = await fetch(`${baseUrl}/events`);
     expect(events.status).toBe(401);
 
-    // The same surface accepts the configured admin token.
+    // The same surface accepts the OIDC admin JWT.
     const authed = await fetch(`${baseUrl}/events`, { headers: ADMIN_HEADERS });
     expect(authed.status).toBe(200);
   });
 
-  it("keeps the admin token valid alongside an identity provider", async () => {
-    // ADMIN_TOKEN is the master credential: configuring a provider adds an
-    // identity, it never disables the token. Unauthenticated UI requests
-    // still fail closed.
+  it("keeps the admin JWT valid alongside an identity provider", async () => {
+    // The provider adds an identity; the admin JWT still authenticates.
+    // Unauthenticated UI requests still fail closed.
     const events = await fetch(`${baseUrl}/events`);
     expect(events.status).toBe(401);
 

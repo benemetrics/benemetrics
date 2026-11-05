@@ -23,7 +23,7 @@ import {
   handleFetch as appFetch,
   startTestApp,
   waitForStoredEvent,
-  ADMIN_TOKEN,
+  ADMIN_HEADERS,
   type TestApp,
 } from "./test-helpers";
 
@@ -118,7 +118,7 @@ async function sendEnvelope(envelope: string): Promise<Response> {
 
 async function apiGet<T>(path: string): Promise<T> {
   const response = await appFetch(`${testServer.baseUrl}${path}`, {
-    headers: { Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
   });
   return (await response.json()) as T;
 }
@@ -143,7 +143,7 @@ function replayRequest(
   query = "",
 ): Promise<Response> {
   return appFetch(replayQuery(eventId, replayId, query), {
-    headers: { Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
   });
 }
 

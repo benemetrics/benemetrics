@@ -12,8 +12,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import {
   startTestServer,
-  ADMIN_TOKEN,
-  ADMIN_TOKEN_RAW,
+  ADMIN_HEADERS,
+  ADMIN_JWT,
   type TestServer,
 } from "./test-helpers";
 
@@ -118,7 +118,7 @@ async function resolveIssueId(
   while (Date.now() - start < timeoutMs) {
     const response = await fetch(
       `${testServer.baseUrl}/api/admin/issues?query=${encodeURIComponent(`app:${testServer.appId}`)}&limit=100`,
-      { headers: { Authorization: ADMIN_TOKEN } },
+      { headers: ADMIN_HEADERS },
     );
     const body = (await response.json()) as {
       data?: Array<{ id: string; latestEventId: string | null }>;
@@ -273,7 +273,7 @@ describe("Issue details — metrics, event list and event switching", () => {
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
     await view.evaluate(
-      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_JWT}")`,
     );
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
     await waitForTextInUI("Overview");

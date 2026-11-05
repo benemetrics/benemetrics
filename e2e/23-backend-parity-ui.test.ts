@@ -16,9 +16,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import {
   app,
-  ADMIN_TOKEN,
   ADMIN_HEADERS,
-  ADMIN_TOKEN_RAW,
+  ADMIN_JWT,
 } from "./test-helpers";
 const PROJECT_NAME = `Parity UI Project ${Date.now()}`;
 const SEGMENT_NAME = `Paying customers ${Date.now()}`;
@@ -33,10 +32,7 @@ let view: Bun.WebView;
 let appPublicKey = "";
 let projectId = "";
 
-const adminHeaders = () => ({
-  "Content-Type": "application/json",
-  Authorization: ADMIN_TOKEN,
-});
+const adminHeaders = () => ADMIN_HEADERS;
 
 async function adminRequest(
   method: string,
@@ -215,7 +211,7 @@ describe("Backend parity — admin UI surfaces", () => {
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${baseUrl}/ui/overview`);
     await view.evaluate(
-      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_JWT}")`,
     );
     await view.navigate(`${baseUrl}/ui/overview`);
     // Wait until the workspace resolved the project before visiting

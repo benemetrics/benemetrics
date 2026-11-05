@@ -24,7 +24,7 @@ import {
   handleFetch as fetch,
   TEST_ORIGIN,
   waitForStoredEvent,
-  ADMIN_TOKEN,
+  ADMIN_HEADERS,
 } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
@@ -41,7 +41,7 @@ async function apiRequest(
   method: string,
   path: string,
   body?: unknown,
-  token: string = ADMIN_TOKEN,
+  token: string = ADMIN_HEADERS.Authorization,
 ): Promise<Response> {
   const options: RequestInit = {
     method,
@@ -58,6 +58,7 @@ async function json<T>(response: Response): Promise<T> {
 interface AlertApp {
   projectId: string;
   id: string;
+  appNumber: number;
   publicKey: string;
 }
 
@@ -69,13 +70,14 @@ async function makeApp(): Promise<AlertApp> {
   );
   const appRecord = await json<{
     id: string;
+    number: number;
     publicKey: string;
   }>(
     await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `AlertApp-${uniq()}`,
     }),
   );
-  return { projectId: project.id, ...appRecord };
+  return { projectId: project.id, appNumber: appRecord.number, ...appRecord };
 }
 
 // Legacy store ingestion: the path segment is the app ingest key and the

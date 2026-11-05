@@ -10,6 +10,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import * as jose from "jose";
+import { db } from "db";
+import { permissionRules } from "db/schema/permissions";
 import { ensureSigningKey, readPublicJwk } from "./oidc-fixture";
 
 const CLIENT_ID = "e2e-spa";
@@ -124,36 +126,42 @@ beforeAll(async () => {
   });
   issuer = `http://127.0.0.1:${provider.port}`;
 
-  // Intercept console.log so the backend's printed admin token is captured
-  // before the app module is loaded (it prints at import time).
-  const originalLog = console.log.bind(console);
-  let printedToken = "";
-  console.log = (...args: unknown[]) => {
-    for (const arg of args) {
-      const match = String(arg).match(
-        /\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/,
-      );
-      if (match) printedToken = match[0];
-    }
-    return originalLog(...args);
-  };
-  app = (await import("../backend/index")).default;
-  console.log = originalLog;
-  if (!printedToken) throw new Error("admin token was not printed at boot");
-  app.store.adminTokenHash = await Bun.password.hash(printedToken);
-  app.listen(0);
-  baseUrl = `http://localhost:${(app as any).server.port}`;
-
+  // Point the backend at the provider before it loads: backend/auth.ts
+  // discovers the issuer at import time and verifies Bearer JWTs against it.
   process.env.OIDC_ISSUER = issuer;
   process.env.OIDC_CLIENT_ID = CLIENT_ID;
   process.env.OIDC_AUDIENCE = CLIENT_ID;
+
+  app = (await import("../backend/index")).default;
+  app.listen(0);
+  baseUrl = `http://localhost:${(app as any).server.port}`;
+
+  // Seed the `admin` group rule so the allowed-groups gate admits the admin JWT.
+  await db.insert(permissionRules).values({
+    name: "admin",
+    group: "admin",
+    isEnabled: true,
+    canWrite: true,
+  });
+
+  // Sign an admin JWT carrying the `admin` group.
+  const adminJwt = await new jose.SignJWT({
+    sub: "e2e-admin",
+    groups: ["admin"],
+  })
+    .setProtectedHeader({ alg: "RS256", kid: "e2e-key" })
+    .setIssuer(issuer)
+    .setAudience(CLIENT_ID)
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(privateKey);
 
   // The grant for the browser's identity: the id is `<issuer>-<subject>`.
   const granted = await fetch(`${baseUrl}/api/admin/permissions/grants`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `API-Key ${printedToken}`,
+      Authorization: `Bearer ${adminJwt}`,
     },
     body: JSON.stringify({
       identityId: `${issuer}-oidc-user-1`,

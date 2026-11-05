@@ -1,11 +1,19 @@
 import { env } from "bun";
+import { oidcProvider } from "e2e/oidc-provider";
+
+// The stress client authenticates as an administrator through the OIDC admin
+// JWT (the backend must be running with an identity provider and an `admin`
+// group rule provisioned, as the test suite does via `e2e/preload.ts`).
+const adminJwt = await oidcProvider.sign({
+  claims: { sub: "stress", groups: ["admin"] },
+});
 
 const BASE_URL = "http://localhost:31337";
 const RPS = env.RPS || "5000";
 const DURATION = env.DURATION || "60s";
 const headers = {
   "Content-Type": "application/json",
-  Authorization: `API-Key ${env.ADMIN_TOKEN}`,
+  Authorization: `Bearer ${adminJwt}`,
 };
 
 const projectResp = await fetch(`${BASE_URL}/api/admin/projects`, {

@@ -6,40 +6,48 @@
  * Starts the real backend on an ephemeral port and provisions a project +
  * app through the admin API. Ingestion never auto-creates apps anymore, so
  * SDK-based tests need a real DSN.
+ *
+ * Authentication is OIDC. `e2e/preload.ts` boots the identity provider stub
+ * and sets `OIDC_ISSUER` / `OIDC_CLIENT_ID` before any backend module loads,
+ * so `backend/auth.ts` verifies Bearer JWTs. The helpers seed an `admin`
+ * permission rule and sign an admin JWT carrying the `admin` group; that JWT
+ * authenticates as an administrator through `resolveIdentity`.
+ *
+ * There is no `ADMIN_TOKEN` anymore: `ADMIN_HEADERS` carries a `Bearer`
+ * OIDC admin token, and `ADMIN_JWT` is the raw token for surfaces that store
+ * the credential in the browser (sessionStorage).
  */
 
-// The admin token is generated at boot and `generateAdminToken()` prints it
-// on stdout. Intercept console.log before loading the backend so the suite
-// authenticates against the printed token instead of a hardcoded fixture.
-const originalLog = console.log.bind(console);
-let printedToken = "";
-console.log = (...args: unknown[]) => {
-  for (const arg of args) {
-    const match = String(arg).match(
-      /\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/,
-    );
-    if (match) printedToken = match[0];
-  }
-  return originalLog(...args);
-};
+import { db } from "db";
+import { permissionRules } from "db/schema/permissions";
+import { oidcProvider } from "./oidc-provider";
+
+// The identity provider stub is already started by `e2e/preload.ts` (it sets
+// OIDC_* before the backend imports `backend/auth.ts`). Sign an admin JWT
+// carrying the `admin` group.
+const adminJwt = await oidcProvider.sign({
+  claims: { sub: "e2e-admin", groups: ["admin"] },
+});
+
+// Seed the `admin` group into permission_rules so the allowed-groups gate in
+// `resolveIdentity` admits the admin JWT. The database is fresh per test file
+// (in-memory PGlite), so this runs once per file at helper import time.
+await db.insert(permissionRules).values({
+  name: "admin",
+  group: "admin",
+  isEnabled: true,
+  canWrite: true,
+});
 
 const { default: app } = await import("../backend/index");
-console.log = originalLog;
 
 export { app };
 
-if (!printedToken) {
-  throw new Error("admin token was not printed at boot");
-}
-
-app.store.adminTokenHash = await Bun.password.hash(printedToken);
-
-export const ADMIN_TOKEN_RAW = printedToken;
-export const ADMIN_TOKEN = `API-Key ${printedToken}`;
+export const ADMIN_JWT = adminJwt;
 
 export const ADMIN_HEADERS = {
   "Content-Type": "application/json",
-  Authorization: ADMIN_TOKEN,
+  Authorization: `Bearer ${adminJwt}`,
 };
 
 /** Polls `fn` until the predicate holds; returns the last value either way. */
@@ -91,7 +99,7 @@ export async function waitForEventListItem<
 ): Promise<T | null> {
   const query = appId
     ? `?limit=100&appId=${encodeURIComponent(appId)}`
-    : "?limit=100";
+    : `?limit=100`;
   return await waitFor(
     async () => {
       const response = await fetch(`${baseUrl}/events${query}`, {

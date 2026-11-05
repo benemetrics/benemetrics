@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";
-import { app, ADMIN_TOKEN, ADMIN_HEADERS } from "./test-helpers";
+import { app, ADMIN_HEADERS, ADMIN_JWT } from "./test-helpers";
 
 // Test DSN for authentication. Apps are only created through the admin
 // API, so the DSN is provisioned before the ingestion tests run.
@@ -377,10 +377,7 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
     const response = await app.handle(
       new Request("http://localhost:31337/api/admin/feature-flags", {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: ADMIN_TOKEN,
-        },
+        headers: ADMIN_HEADERS,
       }),
     );
 
@@ -391,10 +388,7 @@ describe("Admin Authentication - OAuth2/OIDC (08-authentication.md)", () => {
     const response = await app.handle(
       new Request("http://localhost:31337/api/benemetrics/flags/evaluate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: ADMIN_TOKEN,
-        },
+        headers: ADMIN_HEADERS,
         body: JSON.stringify({ user: { id: "1" }, flags: [] }),
       }),
     );

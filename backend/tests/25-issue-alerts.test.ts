@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { handleFetch as fetch, TEST_ORIGIN, ADMIN_TOKEN } from "./test-helpers";
+import { handleFetch as fetch, TEST_ORIGIN, ADMIN_HEADERS } from "./test-helpers";
 
 const baseUrl = TEST_ORIGIN;
 
@@ -28,7 +28,7 @@ async function apiRequest(
   method: string,
   path: string,
   body?: unknown,
-  token: string = ADMIN_TOKEN,
+  token: string = ADMIN_HEADERS.Authorization,
 ): Promise<Response> {
   const options: RequestInit = {
     method,
@@ -45,6 +45,7 @@ async function json<T>(response: Response): Promise<T> {
 interface TestApp {
   projectId: string;
   id: string;
+  appNumber: number;
   publicKey: string;
 }
 
@@ -56,13 +57,14 @@ async function makeApp(): Promise<TestApp> {
   );
   const appRecord = await json<{
     id: string;
+    number: number;
     publicKey: string;
   }>(
     await apiRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `IssueApp-${uniq()}`,
     }),
   );
-  return { projectId: project.id, ...appRecord };
+  return { projectId: project.id, appNumber: appRecord.number, ...appRecord };
 }
 
 async function makeAppInProject(projectId: string): Promise<TestApp> {

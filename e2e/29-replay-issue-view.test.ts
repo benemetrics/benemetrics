@@ -17,8 +17,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import {
   startTestServer,
-  ADMIN_TOKEN,
-  ADMIN_TOKEN_RAW,
+  ADMIN_HEADERS,
+  ADMIN_JWT,
   type TestServer,
 } from "./test-helpers";
 const REPLAY_ID = "4f9a4f9a4f9a4f9a4f9a4f9a4f9a4f9a";
@@ -83,7 +83,7 @@ async function sendEnvelope(envelope: string): Promise<Response> {
 
 async function apiGet<T>(path: string): Promise<T> {
   const response = await fetch(`${testServer.baseUrl}${path}`, {
-    headers: { Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
   });
   return (await response.json()) as T;
 }
@@ -95,7 +95,7 @@ function replayRequest(
 ): Promise<Response> {
   return fetch(
     `${testServer.baseUrl}/api/admin/events/${eventId}/replay/${replayId}${query}`,
-    { headers: { Authorization: ADMIN_TOKEN } },
+    { headers: ADMIN_HEADERS },
   );
 }
 
@@ -312,7 +312,7 @@ describe("Session replay on the issue details page", () => {
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
     await view.evaluate(
-      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_JWT}")`,
     );
     await view.navigate(`${testServer.baseUrl}/ui/overview`);
   }, 30000);

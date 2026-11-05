@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { startTestServer, ADMIN_TOKEN, type TestServer } from "./test-helpers";
+import { startTestServer, ADMIN_HEADERS, type TestServer } from "./test-helpers";
 
 let SERVER_URL = "";
 let testServer!: TestServer;
@@ -19,7 +19,7 @@ async function apiRequest(
   const url = new URL(`${SERVER_URL}${path}`);
   const options: RequestInit = {
     method,
-    headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
+    headers: { "Content-Type": "application/json", Authorization: ADMIN_HEADERS.Authorization },
   };
   if (body !== undefined) options.body = JSON.stringify(body);
   return await fetch(url, options);

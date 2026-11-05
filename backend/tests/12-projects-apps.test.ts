@@ -12,7 +12,7 @@ import { describe, it, expect } from "bun:test";
 import {
   handleFetch as fetch,
   TEST_ORIGIN,
-  ADMIN_TOKEN,
+  ADMIN_HEADERS,
   waitForApiGet,
   waitForStoredEvent,
 } from "./test-helpers";
@@ -46,7 +46,7 @@ async function apiRequest(
 ): Promise<Response> {
   const options: RequestInit = {
     method,
-    headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
   };
   if (body !== undefined) options.body = JSON.stringify(body);
   return fetch(`${baseUrl}${path}`, options);

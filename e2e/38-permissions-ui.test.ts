@@ -8,9 +8,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import {
   app,
-  ADMIN_TOKEN,
   ADMIN_HEADERS,
-  ADMIN_TOKEN_RAW,
+  ADMIN_JWT,
 } from "./test-helpers";
 const GROUP_NAME = `backend-team-${Date.now()}`;
 
@@ -24,7 +23,7 @@ async function adminRequest(
 ): Promise<Response> {
   return fetch(`${baseUrl}${path}`, {
     method,
-    headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
@@ -87,7 +86,7 @@ describe("Permissions UI", () => {
     view = new Bun.WebView({ backend: "chrome", width: 1280, height: 900 });
     await view.navigate(`${baseUrl}/ui/overview`);
     await view.evaluate(
-      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_JWT}")`,
     );
     await view.navigate(`${baseUrl}/ui/permissions`);
     await waitForTextInUI("Permissions");

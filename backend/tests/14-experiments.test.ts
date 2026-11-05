@@ -12,7 +12,7 @@ import {
   handleFetch as fetch,
   startTestApp,
   TEST_ORIGIN,
-  ADMIN_TOKEN,
+  ADMIN_HEADERS,
   type TestApp,
 } from "./test-helpers";
 
@@ -50,7 +50,7 @@ async function adminRequest(
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: ADMIN_TOKEN,
+      Authorization: ADMIN_HEADERS.Authorization,
     },
   };
   if (body !== undefined) options.body = JSON.stringify(body);

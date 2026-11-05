@@ -14,7 +14,7 @@ import {
   handleFetch as fetch,
   TEST_METRICS_SUBJECT,
   TEST_ORIGIN,
-  ADMIN_TOKEN,
+  ADMIN_HEADERS,
   waitFor,
   waitForApiGet,
 } from "./test-helpers";
@@ -46,7 +46,7 @@ async function adminRequest(
 ): Promise<Response> {
   const options: RequestInit = {
     method,
-    headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
   };
   if (body !== undefined) options.body = JSON.stringify(body);
   return fetch(`${baseUrl}${path}`, options);
@@ -59,6 +59,7 @@ async function json<T>(response: Response): Promise<T> {
 interface OtlpApp {
   projectId: string;
   id: string;
+  appNumber: number;
   publicKey: string;
 }
 
@@ -70,13 +71,14 @@ async function makeApp(): Promise<OtlpApp> {
   );
   const appRecord = await json<{
     id: string;
+    number: number;
     publicKey: string;
   }>(
     await adminRequest("POST", `/api/admin/projects/${project.id}/apps`, {
       name: `OtlpApp-${uniq()}`,
     }),
   );
-  return { projectId: project.id, ...appRecord };
+  return { projectId: project.id, appNumber: appRecord.number, ...appRecord };
 }
 
 async function postOtlp(
@@ -305,7 +307,7 @@ describe("OTLP/JSON ingestion", () => {
         }>(
           await fetch(
             `${baseUrl}/events/?projectId=${encodeURIComponent(appRecord.projectId)}&limit=1`,
-            { headers: { Authorization: ADMIN_TOKEN } },
+            { headers: ADMIN_HEADERS },
           ),
         ),
       (body) => body.data.some((item) => item.id === rootSpanId),

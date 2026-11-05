@@ -2,7 +2,7 @@
  * One-off wire-up diagnostic (not a committed suite): drives the real UI in
  * a real browser through the admin-token + create-project flow.
  */
-import { app, ADMIN_TOKEN_RAW } from "./test-helpers";
+import { app, ADMIN_JWT } from "./test-helpers";
 
 const OIDC_KEYS = [
   "OIDC_ISSUER",
@@ -84,7 +84,7 @@ describe("wire-up: token + create project", () => {
     const prompt = await waitForUI((t) => t.includes("Sign in to Glitchlog"));
     if (!prompt.includes("Sign in to Glitchlog"))
       throw new Error(`no token prompt, body: ${prompt.slice(0, 400)}`);
-    const typed = await typeInto('input[name="token"]', ADMIN_TOKEN_RAW);
+    const typed = await typeInto('input[name="token"]', ADMIN_JWT);
     if (!typed) throw new Error("token input missing");
     await clickButton("Continue");
     const ready = await waitForUI((t) => t.includes("Projects"), 20000);
@@ -126,7 +126,7 @@ describe("wire-up: token + create project", () => {
     const listOut =
       (await view.evaluate(`(async () => {
         const cred = sessionStorage.getItem("benemetrics.credential") ?? "";
-        const res = await fetch("/api/admin/projects?limit=100", { headers: { authorization: "API-Key " + cred } });
+        const res = await fetch("/api/admin/projects?limit=100", { headers: { authorization: "Bearer " + cred } });
         return res.status + " " + (await res.text()).slice(0, 300);
       })()`)) ?? "";
     console.log("PROJECT LIST:", listOut);

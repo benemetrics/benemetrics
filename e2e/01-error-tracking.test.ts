@@ -7,7 +7,7 @@
 
 import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { startTestServer, ADMIN_TOKEN, type TestServer } from "./test-helpers";
+import { startTestServer, ADMIN_HEADERS, type TestServer } from "./test-helpers";
 
 let SERVER_URL = "";
 let testServer: TestServer | null = null;
@@ -27,7 +27,7 @@ async function apiRequest(
     method,
     headers: {
       "Content-Type": "application/json",
-      Authorization: ADMIN_TOKEN,
+      Authorization: ADMIN_HEADERS.Authorization,
     },
   };
   if (body !== undefined) {

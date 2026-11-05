@@ -12,9 +12,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import {
   app,
-  ADMIN_TOKEN,
   ADMIN_HEADERS,
-  ADMIN_TOKEN_RAW,
+  ADMIN_JWT,
 } from "./test-helpers";
 import { insertClickHouseMetricSamples } from "../backend/clickhouse";
 const PROJECT_NAME = `Perf UI Project ${Date.now()}`;
@@ -30,7 +29,7 @@ async function adminRequest(
 ): Promise<Response> {
   return fetch(`${baseUrl}${path}`, {
     method,
-    headers: { "Content-Type": "application/json", Authorization: ADMIN_TOKEN },
+    headers: ADMIN_HEADERS,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
@@ -203,7 +202,7 @@ describe("Performance metrics UI", () => {
     // The UI has no built-in token fallback: log in by storing the admin
     // token in localStorage, then reload so the SPA picks it up.
     await view.evaluate(
-      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_JWT}")`,
     );
     await view.navigate(`${baseUrl}/ui/overview`);
     // The workspace auto-selects the first project; scope the fixture.

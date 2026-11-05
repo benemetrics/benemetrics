@@ -6,40 +6,53 @@
  * — SDK-driven tests, WebView UI tests — keep using `e2e/test-helpers.ts`.
  * (The live-feed hop drives a real WebSocket client from here; it needs no
  * listener, only the NATS broker.)
+ *
+ * Authentication is OIDC. `e2e/preload.ts` boots the identity provider stub
+ * and sets `OIDC_ISSUER` / `OIDC_CLIENT_ID` before any backend module loads,
+ * so `backend/auth.ts` verifies Bearer JWTs. The helpers seed an `admin`
+ * permission rule and sign an admin JWT carrying the `admin` group; that JWT
+ * authenticates as an administrator through `resolveIdentity`.
+ *
+ * There is no `ADMIN_TOKEN` anymore: `ADMIN_HEADERS` carries a `Bearer`
+ * OIDC admin token, and `ADMIN_JWT` is the raw token.
  */
 
+import { db } from "db";
 import { findStoredEventById } from "../events-store";
-import type { StoredEvent } from "../protocol/events";
+import type { StoredEvent } from "../events/protocol/events";
 import { connect, type NatsConnection } from "@nats-io/transport-node";
 import { jetstreamManager } from "@nats-io/jetstream";
+import { oidcProvider } from "e2e/oidc-provider";
+import { permissionRules } from "db/schema/permissions";
 
 /** Canonical origin for in-process requests; DSN hosts derive from it. */
 export const TEST_ORIGIN = "http://test.local";
 
-// The admin token is generated at boot and `generateAdminToken()` prints it
-// on stdout. Intercept console.log before loading the backend so the suite
-// authenticates against the printed token instead of a hardcoded fixture.
-const originalLog = console.log.bind(console);
-let printedToken = "";
-console.log = (...args: unknown[]) => {
-  for (const arg of args) {
-    const match = String(arg).match(
-      /\bbnm_[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}\b/,
-    );
-    if (match) printedToken = match[0];
-  }
-  return originalLog(...args);
-};
+// Sign an admin JWT carrying the `admin` group. The provider stub is already
+// started by `e2e/preload.ts`, which also set OIDC_* before `backend/auth.ts`
+// loaded, so the backend can verify this token.
+export const ADMIN_JWT = await oidcProvider.sign({
+  claims: { sub: "backend-admin", groups: ["admin"] },
+});
+
+// Seed the `admin` group into permission_rules so the allowed-groups gate in
+// `resolveIdentity` admits the admin JWT. The database is fresh per test file
+// (in-memory PGlite), so this runs once per file at helper import time.
+await db.insert(permissionRules).values({
+  name: "admin",
+  group: "admin",
+  isEnabled: true,
+  canWrite: true,
+});
 
 const { default: app } = await import("../index");
-console.log = originalLog;
 
 export { app };
 
-export const ADMIN_HEADERS: Record<string, string> = {
+export const ADMIN_HEADERS = {
   "Content-Type": "application/json",
-  Authorization: ADMIN_TOKEN,
-};
+  Authorization: `Bearer ${ADMIN_JWT}`,
+} as const;
 
 /** fetch-shaped, but routed through `app.handle` (no network). */
 export function handleFetch(

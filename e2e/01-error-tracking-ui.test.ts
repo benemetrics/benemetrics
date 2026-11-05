@@ -15,9 +15,8 @@ import * as Sentry from "@sentry/bun";
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import {
   app,
-  ADMIN_TOKEN,
   ADMIN_HEADERS,
-  ADMIN_TOKEN_RAW,
+  ADMIN_JWT,
 } from "./test-helpers";
 
 const PROJECT_NAME = `E2E UI Project ${Date.now()}`;
@@ -100,10 +99,7 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
 
     // Apps are only created through the admin API; provision one and
     // point the Sentry SDK at its real DSN.
-    const adminHeaders = {
-      "Content-Type": "application/json",
-      Authorization: ADMIN_TOKEN,
-    };
+    const adminHeaders = ADMIN_HEADERS;
     const projectResponse = await fetch(`${baseUrl}/api/admin/projects`, {
       method: "POST",
       headers: adminHeaders,
@@ -136,7 +132,7 @@ describe("Error Tracking — Full Circle (SDK → Backend → Admin UI)", () => 
     // The UI has no built-in token fallback: log in by storing the admin
     // token in localStorage, then reload so the SPA picks it up.
     await view.evaluate(
-      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_TOKEN_RAW}")`,
+      `sessionStorage.setItem("benemetrics.credential", "${ADMIN_JWT}")`,
     );
     await view.navigate(`${baseUrl}/ui/issues`);
   });

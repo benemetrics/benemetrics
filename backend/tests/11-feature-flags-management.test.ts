@@ -10,7 +10,7 @@ import {
   handleFetch as fetch,
   startTestApp,
   TEST_ORIGIN,
-  ADMIN_TOKEN,
+  ADMIN_HEADERS,
   type TestApp,
 } from "./test-helpers";
 
@@ -37,7 +37,7 @@ async function apiRequest(
   method: string,
   path: string,
   body?: unknown,
-  token: string = ADMIN_TOKEN,
+  token: string = ADMIN_HEADERS.Authorization,
 ): Promise<Response> {
   const url = new URL(`${baseUrl}${path}`);
   const options: RequestInit = {

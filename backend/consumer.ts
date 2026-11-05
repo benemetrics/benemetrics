@@ -2,7 +2,7 @@ import { encodeAuthorizationResponse, encodeUser } from "node_modules/@nats-io/j
 import { processIngestedEvent } from "./alerting/evaluation";
 import { verifyWithIdP } from "./auth";
 import { parseIssueDigests } from "./issues/tracking";
-import { nats, natsStream, TOPICS, CONSUMERS } from "./nats";
+import { nats, natsStream, STREAMS, TOPICS, CONSUMERS } from "./nats";
 import type { BenemetricsEventMessage } from "./protocol/events";
 import { recordReleaseFromEvent } from "./releases/tracking";
 import { env } from "bun";
@@ -32,7 +32,7 @@ async function applyEventMessage(event: BenemetricsEventMessage): Promise<void> 
 }
 
 (async () => {
-  for await (const message of await (await natsStream.consumers.get(TOPICS.EVENTS, CONSUMERS.EVENTS)).consume()) {
+  for await (const message of await (await natsStream.consumers.get(STREAMS.CONSUMERS, CONSUMERS.EVENTS)).consume()) {
     try {
       const payload = message.string();
       // Handle batched events (JSONEachRow format)
@@ -55,7 +55,7 @@ async function applyEventMessage(event: BenemetricsEventMessage): Promise<void> 
 
 // NOTIFICATIONS
 (async () => {
-  for await (const message of await (await natsStream.consumers.get(TOPICS.NOTIFY, CONSUMERS.NOTIFICATIONS)).consume()) {
+  for await (const message of await (await natsStream.consumers.get(STREAMS.QUEUE, CONSUMERS.NOTIFICATIONS)).consume()) {
     try {
       const { channel, notification } = message.json() as NotificationDelivery;
       const notifier = notifierFor(channel.type);

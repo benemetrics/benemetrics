@@ -1,5 +1,6 @@
 import { connect } from "@nats-io/transport-node";
 import {
+  AckPolicy,
   jetstreamManager,
   RetentionPolicy,
 } from "@nats-io/jetstream";
@@ -56,8 +57,8 @@ export const TOPICS = {
 }
 
 export const CONSUMERS = {
-  EVENTS: "benemetrics.backend-consumer.events",
-  NOTIFICATIONS: "benemetrics.backend-consumer.notifications",
+  EVENTS: "benemetrics-backend-consumer-events",
+  NOTIFICATIONS: "benemetrics-backend-consumer-notifications",
 }
 
 export const STREAMS = {
@@ -101,8 +102,26 @@ await manager.streams.add({
   max_age: 30 * 24 * 60 * 60 * 1_000_000_000,
 });
 
-
 export const natsStream = manager.jetstream();
+
+// Durable consumers for backend consumers (consumer.ts). JetStream validates
+// that stream and consumer names do not contain dots, so these names are
+// dot-free. Idempotent: re-running against existing consumers is a no-op.
+const consumerConfigs: Array<[string, string, string]> = [
+  [STREAMS.CONSUMERS, CONSUMERS.EVENTS, TOPICS.EVENTS],
+  [STREAMS.QUEUE, CONSUMERS.NOTIFICATIONS, TOPICS.NOTIFY],
+];
+for (const [stream, consumer, subject] of consumerConfigs) {
+  try {
+    await manager.consumers.add(stream, {
+      durable_name: consumer,
+      filter_subject: subject,
+      ack_policy: AckPolicy.Explicit,
+    });
+  } catch {
+    // Consumer already exists: nothing to do.
+  }
+}
 
 export const events = new Bucket(TOPICS.EVENTS);
 
